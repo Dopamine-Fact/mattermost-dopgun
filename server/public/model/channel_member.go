@@ -52,6 +52,16 @@ type ChannelUnreadAt struct {
 	NotifyProps        StringMap `json:"-"`
 }
 
+// ChannelMemberReadReceipt describes how far a channel member has read and whether
+// they have been reachable since a given point in time. Clients use it to render
+// sent/delivered/read indicators on their own posts.
+type ChannelMemberReadReceipt struct {
+	UserId         string `json:"user_id"`
+	LastViewedAt   int64  `json:"last_viewed_at"`
+	LastActivityAt int64  `json:"last_activity_at"`
+	Status         string `json:"status"`
+}
+
 type ChannelMember struct {
 	ChannelId               string    `json:"channel_id"`
 	UserId                  string    `json:"user_id"`

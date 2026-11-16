@@ -954,6 +954,23 @@ func (s SqlChannelStore) GetChannelUnread(channelId, userId string) (*model.Chan
 	return &unreadChannel, nil
 }
 
+func (s SqlChannelStore) GetChannelIdsWithUnreadPosts(userID string) ([]string, error) {
+	query := s.getQueryBuilder().
+		Select("ChannelMembers.ChannelId").
+		From("ChannelMembers").
+		Join("Channels ON Channels.Id = ChannelMembers.ChannelId").
+		Where(sq.Eq{"ChannelMembers.UserId": userID}).
+		Where(sq.Eq{"Channels.DeleteAt": 0}).
+		Where(sq.Eq{"Channels.Type": messageChannelTypes}).
+		Where(sq.Expr("Channels.LastPostAt > ChannelMembers.LastViewedAt"))
+
+	channelIDs := []string{}
+	if err := s.GetReplica().SelectBuilder(&channelIDs, query); err != nil {
+		return nil, errors.Wrapf(err, "failed to get channels with unread posts for userId=%s", userID)
+	}
+	return channelIDs, nil
+}
+
 //nolint:unparam
 func (s SqlChannelStore) InvalidateChannel(id string) {
 }

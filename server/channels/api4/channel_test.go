@@ -7150,6 +7150,95 @@ func TestGetChannelMembersTimezones(t *testing.T) {
 	require.Empty(t, timezone, "should return 0 timezone")
 }
 
+func TestGetChannelReadReceipts(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	client := th.Client
+
+	receiptsByUser := func(t *testing.T, client *model.Client4, channelID string) map[string]*model.ChannelMemberReadReceipt {
+		t.Helper()
+		receipts, _, err := client.GetChannelReadReceipts(context.Background(), channelID)
+		require.NoError(t, err)
+
+		byUser := make(map[string]*model.ChannelMemberReadReceipt, len(receipts))
+		for _, receipt := range receipts {
+			byUser[receipt.UserId] = receipt
+		}
+		return byUser
+	}
+
+	t.Run("reports when another member has read a post", func(t *testing.T) {
+		post := th.CreatePost(t)
+
+		receipts := receiptsByUser(t, client, th.BasicChannel.Id)
+		require.Contains(t, receipts, th.BasicUser.Id)
+		require.Contains(t, receipts, th.BasicUser2.Id)
+		assert.Less(t, receipts[th.BasicUser2.Id].LastViewedAt, post.CreateAt)
+
+		client2 := th.CreateClient()
+		th.LoginBasic2WithClient(t, client2)
+		_, _, err := client2.ViewChannel(context.Background(), th.BasicUser2.Id, &model.ChannelView{ChannelId: th.BasicChannel.Id})
+		require.NoError(t, err)
+
+		receipts = receiptsByUser(t, client, th.BasicChannel.Id)
+		assert.GreaterOrEqual(t, receipts[th.BasicUser2.Id].LastViewedAt, post.CreateAt)
+	})
+
+	t.Run("excludes bots", func(t *testing.T) {
+		th.App.UpdateConfig(func(cfg *model.Config) {
+			*cfg.ServiceSettings.EnableBotAccountCreation = true
+		})
+		bot := th.CreateBotWithSystemAdminClient(t)
+		_, _, appErr := th.App.AddUserToTeam(th.Context, th.BasicTeam.Id, bot.UserId, "")
+		require.Nil(t, appErr)
+		botUser, appErr := th.App.GetUser(th.Context, bot.UserId)
+		require.Nil(t, appErr)
+		th.AddUserToChannel(t, botUser, th.BasicChannel)
+
+		receipts := receiptsByUser(t, client, th.BasicChannel.Id)
+		assert.NotContains(t, receipts, bot.UserId)
+	})
+
+	t.Run("requires permission to read the channel", func(t *testing.T) {
+		privateChannel := th.CreatePrivateChannel(t)
+
+		client2 := th.CreateClient()
+		th.LoginBasic2WithClient(t, client2)
+		_, resp, err := client2.GetChannelReadReceipts(context.Background(), privateChannel.Id)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+	})
+}
+
+func TestChannelMemberDeliveredEvent(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+
+	th.App.SetStatusOffline(th.BasicUser2.Id, false, true)
+	th.CreatePost(t)
+
+	wsClient := th.CreateConnectedWebSocketClient(t)
+
+	// BasicUser2 has an unread post in BasicChannel, so coming online delivers it.
+	th.App.SetStatusOnline(th.BasicUser2.Id, false)
+
+	timeout := time.After(5 * time.Second)
+	for {
+		select {
+		case event := <-wsClient.EventChannel:
+			if event.EventType() != model.WebsocketEventChannelMemberDelivered || event.GetBroadcast().ChannelId != th.BasicChannel.Id {
+				continue
+			}
+			assert.Equal(t, th.BasicUser2.Id, event.GetData()["user_id"])
+			assert.NotZero(t, event.GetData()["delivered_at"])
+			return
+		case <-timeout:
+			require.Fail(t, "timed out waiting for the channel_member_delivered event")
+			return
+		}
+	}
+}
+
 func TestChannelMembersMinusGroupMembers(t *testing.T) {
 	mainHelper.Parallel(t)
 	th := Setup(t).InitBasic(t)

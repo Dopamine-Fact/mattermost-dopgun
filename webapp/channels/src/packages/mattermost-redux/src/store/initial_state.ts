@@ -78,6 +78,7 @@ const state: GlobalState = {
                 countsByChannel: {},
                 myList: [],
             },
+            readReceipts: {},
         },
         channelBookmarks: {
             byChannelId: {},

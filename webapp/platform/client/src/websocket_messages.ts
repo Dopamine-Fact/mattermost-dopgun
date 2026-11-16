@@ -245,6 +245,18 @@ export type MultipleChannelsViewed = BaseWebSocketMessage<WebSocketEvents.Multip
     channel_times: Record<string, number>;
 }>;
 
+// Sent to the other members of a channel when a user reads it. The channel id is on the broadcast.
+export type ChannelMemberViewed = BaseWebSocketMessage<WebSocketEvents.ChannelMemberViewed, {
+    user_id: string;
+    last_viewed_at: number;
+}>;
+
+// Sent to the other members of a channel when a user who had unread posts in it comes online.
+export type ChannelMemberDelivered = BaseWebSocketMessage<WebSocketEvents.ChannelMemberDelivered, {
+    user_id: string;
+    delivered_at: number;
+}>;
+
 // Channel bookmark messages
 
 export type ChannelBookmarkCreated = BaseWebSocketMessage<WebSocketEvents.ChannelBookmarkCreated, {

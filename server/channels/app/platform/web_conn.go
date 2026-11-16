@@ -1157,7 +1157,9 @@ func (wc *WebConn) ShouldSendEvent(msg *model.WebSocketEvent, channelKey [16]byt
 		switch msg.EventType() {
 		case model.WebsocketEventTyping,
 			model.WebsocketEventStatusChange,
-			model.WebsocketEventMultipleChannelsViewed:
+			model.WebsocketEventMultipleChannelsViewed,
+			model.WebsocketEventChannelMemberViewed,
+			model.WebsocketEventChannelMemberDelivered:
 			if wc.Active.Load() && time.Since(wc.lastLogTimeSlow) > websocketSuppressWarnThreshold {
 				wc.Platform.logger.Warn(
 					"websocket.slow: dropping message",

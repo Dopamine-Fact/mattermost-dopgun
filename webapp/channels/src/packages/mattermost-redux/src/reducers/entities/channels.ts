@@ -13,6 +13,7 @@ import type {
     ChannelStats,
     ChannelMemberCountByGroup,
     ChannelMemberCountsByGroup,
+    ChannelMemberReadReceipt,
     ServerChannel,
     ChannelsState,
 } from '@mattermost/types/channels';
@@ -25,7 +26,7 @@ import type {
 } from '@mattermost/types/utilities';
 
 import type {MMReduxAction} from 'mattermost-redux/action_types';
-import {AdminTypes, ChannelTypes, UserTypes, SchemeTypes, GroupTypes, PostTypes} from 'mattermost-redux/action_types';
+import {AdminTypes, ChannelTypes, GeneralTypes, UserTypes, SchemeTypes, GroupTypes, PostTypes} from 'mattermost-redux/action_types';
 import {General} from 'mattermost-redux/constants';
 import {MarkUnread} from 'mattermost-redux/constants/channels';
 import {channelListToMap, splitRoles} from 'mattermost-redux/utils/channel_utils';
@@ -973,6 +974,105 @@ function restrictedDMs(state: ChannelsState['restrictedDMs'] = {}, action: MMRed
     }
 }
 
+function readReceipts(state: ChannelsState['readReceipts'] = {}, action: MMReduxAction): ChannelsState['readReceipts'] {
+    switch (action.type) {
+    case ChannelTypes.RECEIVED_CHANNEL_READ_RECEIPTS: {
+        const {channelId, receipts} = action.data as {channelId: string; receipts: ChannelMemberReadReceipt[]};
+
+        const byUser: Record<string, ChannelMemberReadReceipt> = {};
+        for (const receipt of receipts) {
+            byUser[receipt.user_id] = receipt;
+        }
+
+        return {
+            ...state,
+            [channelId]: byUser,
+        };
+    }
+    case ChannelTypes.RECEIVED_CHANNEL_MEMBER_VIEWED: {
+        const {channelId, userId, lastViewedAt} = action.data as {channelId: string; userId: string; lastViewedAt: number};
+
+        // Only track channels whose receipts have been loaded. Otherwise the first
+        // event would make a partial set of members look like the whole channel.
+        const channelReceipts = state[channelId];
+        if (!channelReceipts) {
+            return state;
+        }
+
+        const existing = channelReceipts[userId];
+        if (existing && existing.last_viewed_at >= lastViewedAt) {
+            return state;
+        }
+
+        return {
+            ...state,
+            [channelId]: {
+                ...channelReceipts,
+                [userId]: {
+                    user_id: userId,
+                    status: existing?.status ?? General.ONLINE,
+                    last_activity_at: Math.max(existing?.last_activity_at ?? 0, lastViewedAt),
+                    last_viewed_at: lastViewedAt,
+                },
+            },
+        };
+    }
+    case ChannelTypes.RECEIVED_CHANNEL_MEMBER_DELIVERED: {
+        const {channelId, userId, deliveredAt} = action.data as {channelId: string; userId: string; deliveredAt: number};
+
+        const existing = state[channelId]?.[userId];
+        if (!existing || existing.last_activity_at >= deliveredAt) {
+            return state;
+        }
+
+        return {
+            ...state,
+            [channelId]: {
+                ...state[channelId],
+                [userId]: {
+                    ...existing,
+                    status: General.ONLINE,
+                    last_activity_at: deliveredAt,
+                },
+            },
+        };
+    }
+    case ChannelTypes.LEAVE_CHANNEL:
+    case ChannelTypes.REMOVE_MEMBER_FROM_CHANNEL:
+    case UserTypes.RECEIVED_PROFILE_NOT_IN_CHANNEL: {
+        const data = action.data;
+        if (!data || !state[data.id]?.[data.user_id]) {
+            return state;
+        }
+
+        const channelReceipts = {...state[data.id]};
+        Reflect.deleteProperty(channelReceipts, data.user_id);
+        return {
+            ...state,
+            [data.id]: channelReceipts,
+        };
+    }
+    case UserTypes.RECEIVED_PROFILE_IN_CHANNEL: {
+        // A member joined, so drop the channel's receipts to have them fetched again.
+        const data = action.data;
+        if (!data || !state[data.id] || state[data.id][data.user_id]) {
+            return state;
+        }
+
+        const nextState = {...state};
+        Reflect.deleteProperty(nextState, data.id);
+        return nextState;
+    }
+
+    // Receipts may have changed while the websocket was disconnected.
+    case GeneralTypes.WEBSOCKET_SUCCESS:
+    case UserTypes.LOGOUT_SUCCESS:
+        return {};
+    default:
+        return state;
+    }
+}
+
 // Discoverable Private Channels — join requests reducer.
 //
 // One slice tracks four orthogonal projections of the same underlying rows:
@@ -1179,4 +1279,7 @@ export default combineReducers({
 
     // Discoverable Private Channels — join requests slice
     joinRequests,
+
+    // object where every key is the channel id and has an object mapping user ids to their read receipt
+    readReceipts,
 });

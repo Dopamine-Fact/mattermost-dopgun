@@ -350,6 +350,36 @@ func (ps *PlatformService) SetStatusOnline(userID string, manual bool) {
 	if broadcast {
 		ps.BroadcastStatus(status)
 	}
+
+	// Posts sent while the user was offline have now reached one of their clients.
+	if oldStatus == model.StatusOffline {
+		deliveredAt := status.LastActivityAt
+		ps.Go(func() {
+			ps.publishChannelsDelivered(userID, deliveredAt)
+		})
+	}
+}
+
+// publishChannelsDelivered tells the other members of every channel holding posts that userID
+// has not viewed yet that those posts were delivered to userID at deliveredAt.
+func (ps *PlatformService) publishChannelsDelivered(userID string, deliveredAt int64) {
+	if ps.Busy.IsBusy() {
+		// this is considered a non-critical service and will be disabled when server busy.
+		return
+	}
+
+	channelIDs, err := ps.Store.Channel().GetChannelIdsWithUnreadPosts(userID)
+	if err != nil {
+		ps.Log().Warn("Failed to get channels with unread posts", mlog.String("user_id", userID), mlog.Err(err))
+		return
+	}
+
+	for _, channelID := range channelIDs {
+		event := model.NewWebSocketEvent(model.WebsocketEventChannelMemberDelivered, "", channelID, "", map[string]bool{userID: true}, "")
+		event.Add("user_id", userID)
+		event.Add("delivered_at", deliveredAt)
+		ps.Publish(event)
+	}
 }
 
 func (ps *PlatformService) SetStatusOffline(userID string, manual bool, force bool) {

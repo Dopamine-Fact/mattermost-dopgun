@@ -12,6 +12,7 @@ import type {
     ChannelJoinRequestList,
     ChannelJoinRequestPatch,
     ChannelNotifyProps,
+    ChannelMemberReadReceipt,
     ChannelMembership,
     ChannelModerationPatch,
     ChannelsWithTotalCount,
@@ -464,6 +465,47 @@ export function getChannelTimezones(channelId: string): ActionFuncAsync<string[]
         }
 
         return {data: channelTimezones};
+    };
+}
+
+export function getChannelReadReceipts(channelId: string): ActionFuncAsync<ChannelMemberReadReceipt[]> {
+    return async (dispatch, getState) => {
+        let receipts;
+        try {
+            receipts = await Client4.getChannelReadReceipts(channelId);
+        } catch (error) {
+            forceLogoutIfNecessary(error, dispatch, getState);
+            dispatch(logError(error));
+            return {error};
+        }
+
+        dispatch({
+            type: ChannelTypes.RECEIVED_CHANNEL_READ_RECEIPTS,
+            data: {channelId, receipts},
+        });
+
+        return {data: receipts};
+    };
+}
+
+const readReceiptRequests = new Set<string>();
+
+// fetchChannelReadReceiptsIfNeeded loads a channel's read receipts once, no matter how
+// many posts in the channel ask for them at the same time.
+export function fetchChannelReadReceiptsIfNeeded(channelId: string): ActionFuncAsync {
+    return async (dispatch, getState) => {
+        if (getState().entities.channels.readReceipts[channelId] || readReceiptRequests.has(channelId)) {
+            return {data: true};
+        }
+
+        readReceiptRequests.add(channelId);
+        try {
+            await dispatch(getChannelReadReceipts(channelId));
+        } finally {
+            readReceiptRequests.delete(channelId);
+        }
+
+        return {data: true};
     };
 }
 

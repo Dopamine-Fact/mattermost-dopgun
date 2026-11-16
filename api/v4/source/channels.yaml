@@ -502,6 +502,44 @@
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  "/api/v4/channels/{channel_id}/read_receipts":
+    get:
+      tags:
+        - channels
+      summary: Get read receipts for a channel
+      description: |
+        Get how far each member of a channel has read, along with their status and
+        last activity time. Bots and deactivated users are excluded. Clients use this
+        to show whether their own posts have been delivered to and read by the other
+        members.
+
+        __Minimum server version__: 12.3
+
+        ##### Permissions
+        Must have the `read_channel` permission.
+      operationId: GetChannelReadReceipts
+      parameters:
+        - name: channel_id
+          in: path
+          description: Channel GUID
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Read receipts retrieval successful
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChannelMemberReadReceipt"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   "/api/v4/channels/{channel_id}":
     get:
       tags:

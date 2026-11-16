@@ -1361,4 +1361,128 @@ describe('myMembers', () => {
             expect(nextState).toBe(state);
         });
     });
+
+    describe('readReceipts', () => {
+        const receipt = (userId: string, lastViewedAt: number) => ({
+            user_id: userId,
+            last_viewed_at: lastViewedAt,
+            last_activity_at: 0,
+            status: General.OFFLINE,
+        });
+
+        test('should store received receipts by user', () => {
+            const state = deepFreeze(channelsReducer(makeInitialState({readReceipts: {}}), {} as AnyAction));
+
+            const nextState = channelsReducer(state, {
+                type: ChannelTypes.RECEIVED_CHANNEL_READ_RECEIPTS,
+                data: {channelId: 'channel1', receipts: [receipt('user1', 100), receipt('user2', 200)]},
+            });
+
+            expect(nextState.readReceipts).toEqual({
+                channel1: {
+                    user1: receipt('user1', 100),
+                    user2: receipt('user2', 200),
+                },
+            });
+        });
+
+        test('should move a member\'s read position forward when they view the channel', () => {
+            const state = deepFreeze(channelsReducer(makeInitialState({
+                readReceipts: {channel1: {user1: receipt('user1', 100)}},
+            }), {} as AnyAction));
+
+            const nextState = channelsReducer(state, {
+                type: ChannelTypes.RECEIVED_CHANNEL_MEMBER_VIEWED,
+                data: {channelId: 'channel1', userId: 'user1', lastViewedAt: 300},
+            });
+
+            expect(nextState.readReceipts.channel1.user1).toEqual({
+                user_id: 'user1',
+                last_viewed_at: 300,
+                last_activity_at: 300,
+                status: General.OFFLINE,
+            });
+        });
+
+        test('should not move a member\'s read position backwards', () => {
+            const state = deepFreeze(channelsReducer(makeInitialState({
+                readReceipts: {channel1: {user1: receipt('user1', 300)}},
+            }), {} as AnyAction));
+
+            const nextState = channelsReducer(state, {
+                type: ChannelTypes.RECEIVED_CHANNEL_MEMBER_VIEWED,
+                data: {channelId: 'channel1', userId: 'user1', lastViewedAt: 100},
+            });
+
+            expect(nextState.readReceipts).toBe(state.readReceipts);
+        });
+
+        test('should ignore views in channels whose receipts are not loaded', () => {
+            const state = deepFreeze(channelsReducer(makeInitialState({readReceipts: {}}), {} as AnyAction));
+
+            const nextState = channelsReducer(state, {
+                type: ChannelTypes.RECEIVED_CHANNEL_MEMBER_VIEWED,
+                data: {channelId: 'channel1', userId: 'user1', lastViewedAt: 100},
+            });
+
+            expect(nextState.readReceipts).toBe(state.readReceipts);
+        });
+
+        test('should mark posts as delivered when a member comes online', () => {
+            const state = deepFreeze(channelsReducer(makeInitialState({
+                readReceipts: {channel1: {user1: receipt('user1', 100)}},
+            }), {} as AnyAction));
+
+            const nextState = channelsReducer(state, {
+                type: ChannelTypes.RECEIVED_CHANNEL_MEMBER_DELIVERED,
+                data: {channelId: 'channel1', userId: 'user1', deliveredAt: 500},
+            });
+
+            expect(nextState.readReceipts.channel1.user1).toEqual({
+                user_id: 'user1',
+                last_viewed_at: 100,
+                last_activity_at: 500,
+                status: General.ONLINE,
+            });
+        });
+
+        test('should ignore deliveries for members whose receipts are not loaded', () => {
+            const state = deepFreeze(channelsReducer(makeInitialState({
+                readReceipts: {channel1: {user1: receipt('user1', 100)}},
+            }), {} as AnyAction));
+
+            const nextState = channelsReducer(state, {
+                type: ChannelTypes.RECEIVED_CHANNEL_MEMBER_DELIVERED,
+                data: {channelId: 'channel1', userId: 'user2', deliveredAt: 500},
+            });
+
+            expect(nextState.readReceipts).toBe(state.readReceipts);
+        });
+
+        test('should drop a channel\'s receipts when a new member joins', () => {
+            const state = deepFreeze(channelsReducer(makeInitialState({
+                readReceipts: {channel1: {user1: receipt('user1', 100)}},
+            }), {} as AnyAction));
+
+            const nextState = channelsReducer(state, {
+                type: UserTypes.RECEIVED_PROFILE_IN_CHANNEL,
+                data: {id: 'channel1', user_id: 'user2'},
+            });
+
+            expect(nextState.readReceipts).toEqual({});
+        });
+
+        test('should remove a member who leaves', () => {
+            const state = deepFreeze(channelsReducer(makeInitialState({
+                readReceipts: {channel1: {user1: receipt('user1', 100), user2: receipt('user2', 100)}},
+            }), {} as AnyAction));
+
+            const nextState = channelsReducer(state, {
+                type: ChannelTypes.REMOVE_MEMBER_FROM_CHANNEL,
+                data: {id: 'channel1', user_id: 'user2'},
+            });
+
+            expect(nextState.readReceipts).toEqual({channel1: {user1: receipt('user1', 100)}});
+        });
+    });
 });

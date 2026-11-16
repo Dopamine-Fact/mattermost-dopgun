@@ -918,6 +918,36 @@ func (_m *ChannelStore) GetByNamesIncludeDeleted(teamID string, names []string, 
 	return r0, r1
 }
 
+// GetChannelIdsWithUnreadPosts provides a mock function with given fields: userID
+func (_m *ChannelStore) GetChannelIdsWithUnreadPosts(userID string) ([]string, error) {
+	ret := _m.Called(userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetChannelIdsWithUnreadPosts")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]string, error)); ok {
+		return rf(userID)
+	}
+	if rf, ok := ret.Get(0).(func(string) []string); ok {
+		r0 = rf(userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetChannelMembersForExport provides a mock function with given fields: userID, teamID, includeArchivedChannel
 func (_m *ChannelStore) GetChannelMembersForExport(userID string, teamID string, includeArchivedChannel bool) ([]*model.ChannelMemberForExport, error) {
 	ret := _m.Called(userID, teamID, includeArchivedChannel)

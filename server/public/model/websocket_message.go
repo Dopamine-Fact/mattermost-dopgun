@@ -125,6 +125,8 @@ const (
 	WebsocketEventSharedChannelRemoteUpdated WebsocketEventType = "shared_channel_remote_updated"
 	WebsocketEventChannelJoinRequestCreated  WebsocketEventType = "channel_join_request_created"
 	WebsocketEventChannelJoinRequestUpdated  WebsocketEventType = "channel_join_request_updated"
+	WebsocketEventChannelMemberViewed        WebsocketEventType = "channel_member_viewed"
+	WebsocketEventChannelMemberDelivered     WebsocketEventType = "channel_member_delivered"
 
 	WebSocketMsgTypeResponse = "response"
 	WebSocketMsgTypeEvent    = "event"

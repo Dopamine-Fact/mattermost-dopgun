@@ -97,6 +97,10 @@ export default keyMirror({
     RECEIVED_IS_DM_RESTRICTED: null,
     RESTRICTED_DMS_TEAMS_CHANGED: null,
 
+    RECEIVED_CHANNEL_READ_RECEIPTS: null,
+    RECEIVED_CHANNEL_MEMBER_VIEWED: null,
+    RECEIVED_CHANNEL_MEMBER_DELIVERED: null,
+
     // Discoverable Private Channels — join requests
     RECEIVED_MY_CHANNEL_JOIN_REQUEST: null,
     RECEIVED_MY_CHANNEL_JOIN_REQUESTS: null,

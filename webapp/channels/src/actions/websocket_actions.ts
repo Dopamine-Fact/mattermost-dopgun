@@ -632,6 +632,14 @@ export function handleEvent(msg: WebSocketMessage) {
         handleMultipleChannelsViewedEvent(msg);
         break;
 
+    case WebSocketEvents.ChannelMemberViewed:
+        dispatch(handleChannelMemberViewedEvent(msg));
+        break;
+
+    case WebSocketEvents.ChannelMemberDelivered:
+        dispatch(handleChannelMemberDeliveredEvent(msg));
+        break;
+
     case WebSocketEvents.PluginEnabled:
         handlePluginEnabled(msg);
         break;
@@ -974,6 +982,28 @@ export function handleTeamAccessControlUpdatedEvent(msg: WebSocketMessages.TeamA
 // hook narrows the channel-id broadcast). When the current user is the
 // requester we never see this event — the create path's thunk dispatches the
 // row directly.
+export function handleChannelMemberViewedEvent(msg: WebSocketMessages.ChannelMemberViewed): MMReduxAction {
+    return {
+        type: ChannelTypes.RECEIVED_CHANNEL_MEMBER_VIEWED,
+        data: {
+            channelId: msg.broadcast.channel_id,
+            userId: msg.data.user_id,
+            lastViewedAt: msg.data.last_viewed_at,
+        },
+    };
+}
+
+export function handleChannelMemberDeliveredEvent(msg: WebSocketMessages.ChannelMemberDelivered): MMReduxAction {
+    return {
+        type: ChannelTypes.RECEIVED_CHANNEL_MEMBER_DELIVERED,
+        data: {
+            channelId: msg.broadcast.channel_id,
+            userId: msg.data.user_id,
+            deliveredAt: msg.data.delivered_at,
+        },
+    };
+}
+
 function handleChannelJoinRequestCreated(msg: WebSocketMessages.ChannelJoinRequestCreated): ThunkActionFunc<void> {
     return (doDispatch, doGetState) => {
         if (!msg.data.request) {

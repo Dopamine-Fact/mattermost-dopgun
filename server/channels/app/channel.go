@@ -2660,6 +2660,76 @@ func (a *App) GetChannelMembersTimezones(rctx request.CTX, channelID string) ([]
 	return model.RemoveDuplicateStrings(timezones), nil
 }
 
+// GetChannelReadReceipts returns the read state of every non-bot, non-deleted member of a channel.
+func (a *App) GetChannelReadReceipts(rctx request.CTX, channelID string) ([]*model.ChannelMemberReadReceipt, *model.AppError) {
+	members, appErr := a.GetChannelMembersPage(rctx, channelID, 0, 10000000)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	userIDs := make([]string, 0, len(members))
+	for _, member := range members {
+		userIDs = append(userIDs, member.UserId)
+	}
+
+	if len(userIDs) == 0 {
+		return []*model.ChannelMemberReadReceipt{}, nil
+	}
+
+	users, err := a.Srv().Store().User().GetProfileByIds(rctx, userIDs, nil, true)
+	if err != nil {
+		return nil, model.NewAppError("GetChannelReadReceipts", "app.user.get_profiles.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
+	}
+
+	readers := make(map[string]bool, len(users))
+	for _, user := range users {
+		if !user.IsBot && user.DeleteAt == 0 {
+			readers[user.Id] = true
+		}
+	}
+
+	statuses, appErr := a.GetUserStatusesByIds(userIDs)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	statusByUser := make(map[string]*model.Status, len(statuses))
+	for _, status := range statuses {
+		statusByUser[status.UserId] = status
+	}
+
+	receipts := make([]*model.ChannelMemberReadReceipt, 0, len(readers))
+	for _, member := range members {
+		if !readers[member.UserId] {
+			continue
+		}
+
+		receipt := &model.ChannelMemberReadReceipt{
+			UserId:       member.UserId,
+			LastViewedAt: member.LastViewedAt,
+			Status:       model.StatusOffline,
+		}
+		if status, ok := statusByUser[member.UserId]; ok {
+			receipt.LastActivityAt = status.LastActivityAt
+			receipt.Status = status.Status
+		}
+		receipts = append(receipts, receipt)
+	}
+
+	return receipts, nil
+}
+
+// publishChannelMembersViewed lets the other members of each channel know how far
+// userID has read, so that their clients can update read receipts.
+func (a *App) publishChannelMembersViewed(userID string, times map[string]int64) {
+	for channelID, lastViewedAt := range times {
+		message := model.NewWebSocketEvent(model.WebsocketEventChannelMemberViewed, "", channelID, "", map[string]bool{userID: true}, "")
+		message.Add("user_id", userID)
+		message.Add("last_viewed_at", lastViewedAt)
+		a.Publish(message)
+	}
+}
+
 func (a *App) GetChannelMembersByIds(rctx request.CTX, channelID string, userIDs []string) (model.ChannelMembers, *model.AppError) {
 	members, err := a.Srv().Store().Channel().GetMembersByIds(channelID, userIDs)
 	if err != nil {
@@ -3635,7 +3705,8 @@ func (a *App) MarkTeamChannelsAndThreadsViewed(rctx request.CTX, teamID string, 
 	}
 
 	if len(channelsToView) > 0 {
-		_, err = a.Srv().Store().Channel().UpdateLastViewedAt(channelsToView, userID)
+		var viewedTimes map[string]int64
+		viewedTimes, err = a.Srv().Store().Channel().UpdateLastViewedAt(channelsToView, userID)
 		if err != nil {
 			var invErr *store.ErrInvalidInput
 			switch {
@@ -3645,6 +3716,8 @@ func (a *App) MarkTeamChannelsAndThreadsViewed(rctx request.CTX, teamID string, 
 				return nil, model.NewAppError("MarkTeamChannelsAndThreadsViewed", "app.channel.update_last_viewed_at.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
 			}
 		}
+
+		a.publishChannelMembersViewed(userID, viewedTimes)
 
 		if *a.Config().ServiceSettings.EnableChannelViewedMessages {
 			message := model.NewWebSocketEvent(model.WebsocketEventMultipleChannelsViewed, "", "", userID, nil, "")
@@ -3695,7 +3768,8 @@ func (a *App) MarkAllDirectAndGroupMessagesViewed(rctx request.CTX, userID strin
 	}
 
 	if len(messagesToView) > 0 {
-		_, err = a.Srv().Store().Channel().UpdateLastViewedAt(messagesToView, userID)
+		var viewedTimes map[string]int64
+		viewedTimes, err = a.Srv().Store().Channel().UpdateLastViewedAt(messagesToView, userID)
 		if err != nil {
 			var invErr *store.ErrInvalidInput
 			switch {
@@ -3705,6 +3779,8 @@ func (a *App) MarkAllDirectAndGroupMessagesViewed(rctx request.CTX, userID strin
 				return nil, model.NewAppError("MarkAllDirectAndGroupMessagesViewed", "app.channel.update_last_viewed_at.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
 			}
 		}
+
+		a.publishChannelMembersViewed(userID, viewedTimes)
 
 		if *a.Config().ServiceSettings.EnableChannelViewedMessages {
 			message := model.NewWebSocketEvent(model.WebsocketEventMultipleChannelsViewed, "", "", userID, nil, "")
@@ -3758,7 +3834,8 @@ func (a *App) MarkChannelsAsViewed(rctx request.CTX, channelIDs []string, userID
 		}
 	}
 
-	_, err = a.Srv().Store().Channel().UpdateLastViewedAt(channelsToView, userID)
+	var viewedTimes map[string]int64
+	viewedTimes, err = a.Srv().Store().Channel().UpdateLastViewedAt(channelsToView, userID)
 	if err != nil {
 		var invErr *store.ErrInvalidInput
 		switch {
@@ -3768,6 +3845,8 @@ func (a *App) MarkChannelsAsViewed(rctx request.CTX, channelIDs []string, userID
 			return nil, model.NewAppError("MarkChannelsAsViewed", "app.channel.update_last_viewed_at.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
 		}
 	}
+
+	a.publishChannelMembersViewed(userID, viewedTimes)
 
 	if *a.Config().ServiceSettings.EnableChannelViewedMessages {
 		message := model.NewWebSocketEvent(model.WebsocketEventMultipleChannelsViewed, "", "", userID, nil, "")

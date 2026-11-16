@@ -92,6 +92,7 @@ func TestChannelStore(t *testing.T, rctx request.CTX, ss store.Store, s SqlStore
 	t.Run("GetMembersWithCursorPagination", func(t *testing.T) { testChannelStoreGetMembersWithCursorPagination(t, rctx, ss) })
 	t.Run("Update", func(t *testing.T) { testChannelStoreUpdate(t, rctx, ss) })
 	t.Run("GetChannelUnread", func(t *testing.T) { testGetChannelUnread(t, rctx, ss) })
+	t.Run("GetChannelIdsWithUnreadPosts", func(t *testing.T) { testGetChannelIdsWithUnreadPosts(t, rctx, ss) })
 	t.Run("Get", func(t *testing.T) { testChannelStoreGet(t, rctx, ss, s) })
 	t.Run("GetMany", func(t *testing.T) { testChannelStoreGetMany(t, rctx, ss, s) })
 	t.Run("GetChannelsByIds", func(t *testing.T) { testChannelStoreGetChannelsByIds(t, rctx, ss) })
@@ -690,6 +691,36 @@ func testGetChannelUnread(t *testing.T, rctx request.CTX, ss store.Store) {
 	require.EqualValues(t, 5, ch2.MentionCount, "wrong MentionCount for channel 2")
 	require.EqualValues(t, 1, ch2.MentionCountRoot, "wrong MentionCountRoot for channel 2")
 	require.EqualValues(t, 10, ch2.MsgCount, "wrong MsgCount for channel 2")
+}
+
+func testGetChannelIdsWithUnreadPosts(t *testing.T, rctx request.CTX, ss store.Store) {
+	teamID := model.NewId()
+	userID := model.NewId()
+	notifyProps := model.GetDefaultChannelNotifyProps()
+
+	saveChannel := func(lastPostAt, lastViewedAt int64) *model.Channel {
+		t.Helper()
+		channel, err := ss.Channel().Save(rctx, &model.Channel{TeamId: teamID, Name: NewTestID(), DisplayName: "Channel", Type: model.ChannelTypeOpen, LastPostAt: lastPostAt}, -1)
+		require.NoError(t, err)
+		_, err = ss.Channel().SaveMember(rctx, &model.ChannelMember{ChannelId: channel.Id, UserId: userID, NotifyProps: notifyProps, LastViewedAt: lastViewedAt})
+		require.NoError(t, err)
+		return channel
+	}
+
+	unread := saveChannel(2000, 1000)
+	saveChannel(2000, 2000)
+	saveChannel(0, 0)
+
+	deleted := saveChannel(2000, 1000)
+	require.NoError(t, ss.Channel().Delete(deleted.Id, model.GetMillis()))
+
+	channelIDs, err := ss.Channel().GetChannelIdsWithUnreadPosts(userID)
+	require.NoError(t, err)
+	assert.Equal(t, []string{unread.Id}, channelIDs)
+
+	channelIDs, err = ss.Channel().GetChannelIdsWithUnreadPosts(model.NewId())
+	require.NoError(t, err)
+	assert.Empty(t, channelIDs)
 }
 
 func testChannelStoreGet(t *testing.T, rctx request.CTX, ss store.Store, s SqlStore) {

@@ -2996,6 +2996,16 @@ func (c *Client4) GetChannelMembersTimezones(ctx context.Context, channelId stri
 	return DecodeJSONFromResponse[[]string](r)
 }
 
+// GetChannelReadReceipts gets the read state of every non-bot member of a channel.
+func (c *Client4) GetChannelReadReceipts(ctx context.Context, channelId string) ([]*ChannelMemberReadReceipt, *Response, error) {
+	r, err := c.doAPIGet(ctx, c.channelRoute(channelId).Join("read_receipts"), "")
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return DecodeJSONFromResponse[[]*ChannelMemberReadReceipt](r)
+}
+
 // GetPinnedPosts gets a list of pinned posts.
 func (c *Client4) GetPinnedPosts(ctx context.Context, channelId string, etag string) (*PostList, *Response, error) {
 	r, err := c.doAPIGet(ctx, c.channelRoute(channelId).Join("pinned"), etag)

@@ -251,6 +251,13 @@ export type ChannelUnread = {
     deltaMsgs: number;
 };
 
+export type ChannelMemberReadReceipt = {
+    user_id: string;
+    last_viewed_at: number;
+    last_activity_at: number;
+    status: string;
+};
+
 export type ChannelsState = {
     currentChannelId: string;
     channels: IDMappedObjects<Channel>;
@@ -268,6 +275,7 @@ export type ChannelsState = {
     channelsMemberCount: Record<string, number>;
     restrictedDMs: RelationOneToOne<Channel, boolean>;
     joinRequests: ChannelJoinRequestsState;
+    readReceipts: RelationOneToOne<Channel, Record<string, ChannelMemberReadReceipt>>;
 };
 
 export type ChannelModeration = {

@@ -28891,6 +28891,30 @@
     "defaultMessage": "(you)",
     "description": "Suffix appended after the current user's name in the acknowledgements list to mark it as themselves."
   },
+  "post_read_receipt.delivered": {
+    "defaultMessage": "Delivered",
+    "description": "Tooltip on the tick shown under your own message in a direct message when the recipient has received it but not read it yet."
+  },
+  "post_read_receipt.read": {
+    "defaultMessage": "Read",
+    "description": "Tooltip on the tick shown under your own message in a direct message when the recipient has read it."
+  },
+  "post_read_receipt.read_by_everyone": {
+    "defaultMessage": "Read by everyone",
+    "description": "Tooltip on the tick shown under your own message in a channel when every other member has read it."
+  },
+  "post_read_receipt.read_by_some": {
+    "defaultMessage": "Read by {readCount} of {recipientCount}, delivered to {deliveredCount}",
+    "description": "Tooltip on the tick shown under your own message in a channel when not everyone has read it yet. {readCount} and {deliveredCount} are numbers of members; {recipientCount} is the number of other members in the channel."
+  },
+  "post_read_receipt.sending": {
+    "defaultMessage": "Sending",
+    "description": "Tooltip on the clock icon shown under your own message while it is still being sent to the server."
+  },
+  "post_read_receipt.sent": {
+    "defaultMessage": "Sent",
+    "description": "Tooltip on the single tick shown under your own message in a direct message when it has reached the server but not the recipient yet."
+  },
   "post_reminder_custom_time_picker_modal.defaultMsg": {
     "defaultMessage": "Set a reminder",
     "description": "Fallback title for the message reminder dialog (same wording as the header)."

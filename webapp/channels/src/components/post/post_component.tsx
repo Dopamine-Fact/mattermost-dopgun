@@ -38,6 +38,7 @@ import PostAriaLabelDiv from 'components/post_view/post_aria_label_div';
 import PostBodyAdditionalContent from 'components/post_view/post_body_additional_content';
 import PostMessageContainer from 'components/post_view/post_message_view';
 import PostPreHeader from 'components/post_view/post_pre_header';
+import PostReadReceipt from 'components/post_view/post_read_receipt';
 import PostTime from 'components/post_view/post_time';
 import ReactionList from 'components/post_view/reaction_list';
 import RedactedFilesPlaceholder from 'components/post_view/redacted_files_placeholder';
@@ -597,6 +598,13 @@ function PostComponent(props: Props) {
     // orphaned, so suppress it — it stays paired with the timestamp anchor in
     // `badges-wrapper`.
     const showPostHeaderBadge = showTimestamp && (!props.isConsecutivePost || props.compactDisplay);
+
+    const showReadReceipt =
+        post.user_id === props.currentUserId &&
+        !isSystemMessage &&
+        !post.failed &&
+        post.state !== Posts.POST_DELETED &&
+        (props.location === Locations.CENTER || props.location === Locations.RHS_ROOT || props.location === Locations.RHS_COMMENT);
     if (!hideProfilePicture && hideProfileCase) {
         profilePic = (
             <PostProfilePicture
@@ -953,6 +961,7 @@ function PostComponent(props: Props) {
                                     />
                                 )}
                                 {showReactions && <ReactionList post={post}/>}
+                                {showReadReceipt && <PostReadReceipt post={post}/>}
                             </div>
                             {threadFooter}
                         </div>

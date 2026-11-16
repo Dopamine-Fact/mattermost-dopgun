@@ -19,6 +19,7 @@ import type {
     ChannelJoinRequestList,
     ChannelJoinRequestPatch,
     ChannelMemberCountsByGroup,
+    ChannelMemberReadReceipt,
     ChannelMembership,
     ChannelModeration,
     ChannelModerationPatch,
@@ -1990,6 +1991,13 @@ export default class Client4 {
     getChannelTimezones = (channelId: string) => {
         return this.doFetch<string[]>(
             `${this.getChannelRoute(channelId)}/timezones`,
+            {method: 'get'},
+        );
+    };
+
+    getChannelReadReceipts = (channelId: string) => {
+        return this.doFetch<ChannelMemberReadReceipt[]>(
+            `${this.getChannelRoute(channelId)}/read_receipts`,
             {method: 'get'},
         );
     };
