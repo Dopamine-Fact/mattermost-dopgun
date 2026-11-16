@@ -33,6 +33,7 @@ type TimerLayer struct {
 	CommandWebhookStore             store.CommandWebhookStore
 	ComplianceStore                 store.ComplianceStore
 	ContentFlaggingStore            store.ContentFlaggingStore
+	DailyReportStore                store.DailyReportStore
 	DeliveryTrackingStore           store.DeliveryTrackingStore
 	DesktopTokensStore              store.DesktopTokensStore
 	DraftStore                      store.DraftStore
@@ -142,6 +143,10 @@ func (s *TimerLayer) Compliance() store.ComplianceStore {
 
 func (s *TimerLayer) ContentFlagging() store.ContentFlaggingStore {
 	return s.ContentFlaggingStore
+}
+
+func (s *TimerLayer) DailyReport() store.DailyReportStore {
+	return s.DailyReportStore
 }
 
 func (s *TimerLayer) DeliveryTracking() store.DeliveryTrackingStore {
@@ -412,6 +417,11 @@ type TimerLayerComplianceStore struct {
 
 type TimerLayerContentFlaggingStore struct {
 	store.ContentFlaggingStore
+	Root *TimerLayer
+}
+
+type TimerLayerDailyReportStore struct {
+	store.DailyReportStore
 	Root *TimerLayer
 }
 
@@ -4397,6 +4407,102 @@ func (s *TimerLayerContentFlaggingStore) SaveReviewerSettings(reviewerSettings m
 		s.Root.Metrics.ObserveStoreMethodDuration("ContentFlaggingStore.SaveReviewerSettings", success, elapsed)
 	}
 	return err
+}
+
+func (s *TimerLayerDailyReportStore) Get(id string) (*model.DailyReport, error) {
+	start := time.Now()
+
+	result, err := s.DailyReportStore.Get(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.Get", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDailyReportStore) GetForTeam(teamID string, fromDate string, toDate string, userID string) ([]*model.DailyReport, error) {
+	start := time.Now()
+
+	result, err := s.DailyReportStore.GetForTeam(teamID, fromDate, toDate, userID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.GetForTeam", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDailyReportStore) GetForUserDate(teamID string, userID string, date string) (*model.DailyReport, error) {
+	start := time.Now()
+
+	result, err := s.DailyReportStore.GetForUserDate(teamID, userID, date)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.GetForUserDate", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDailyReportStore) GetPendingBefore(createdBefore int64) ([]*model.DailyReport, error) {
+	start := time.Now()
+
+	result, err := s.DailyReportStore.GetPendingBefore(createdBefore)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.GetPendingBefore", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDailyReportStore) Save(r *model.DailyReport) (*model.DailyReport, error) {
+	start := time.Now()
+
+	result, err := s.DailyReportStore.Save(r)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.Save", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDailyReportStore) Update(r *model.DailyReport) (*model.DailyReport, error) {
+	start := time.Now()
+
+	result, err := s.DailyReportStore.Update(r)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.Update", success, elapsed)
+	}
+	return result, err
 }
 
 func (s *TimerLayerDeliveryTrackingStore) ClearCaches() {
@@ -16916,6 +17022,7 @@ func New(childStore store.Store, metrics einterfaces.MetricsInterface) *TimerLay
 	newStore.CommandWebhookStore = &TimerLayerCommandWebhookStore{CommandWebhookStore: childStore.CommandWebhook(), Root: &newStore}
 	newStore.ComplianceStore = &TimerLayerComplianceStore{ComplianceStore: childStore.Compliance(), Root: &newStore}
 	newStore.ContentFlaggingStore = &TimerLayerContentFlaggingStore{ContentFlaggingStore: childStore.ContentFlagging(), Root: &newStore}
+	newStore.DailyReportStore = &TimerLayerDailyReportStore{DailyReportStore: childStore.DailyReport(), Root: &newStore}
 	newStore.DeliveryTrackingStore = &TimerLayerDeliveryTrackingStore{DeliveryTrackingStore: childStore.DeliveryTracking(), Root: &newStore}
 	newStore.DesktopTokensStore = &TimerLayerDesktopTokensStore{DesktopTokensStore: childStore.DesktopTokens(), Root: &newStore}
 	newStore.DraftStore = &TimerLayerDraftStore{DraftStore: childStore.Draft(), Root: &newStore}

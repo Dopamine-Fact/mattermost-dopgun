@@ -18167,6 +18167,41 @@
     "description": "Validation error for a Custom Profile Attributes field; {{.Name}} is the rejected field name, which collides with a reserved word of the CEL expression language."
   },
   {
+    "id": "model.daily_report.is_valid.create_at.app_error",
+    "translation": "Create at must be a valid time.",
+    "description": "API validation error when a daily report's creation or update timestamp is unset."
+  },
+  {
+    "id": "model.daily_report.is_valid.date.app_error",
+    "translation": "Invalid report date.",
+    "description": "API validation error when a daily report's date is not a valid YYYY-MM-DD day."
+  },
+  {
+    "id": "model.daily_report.is_valid.id.app_error",
+    "translation": "Invalid daily report id.",
+    "description": "API validation error when a daily report's ID is malformed."
+  },
+  {
+    "id": "model.daily_report.is_valid.message.app_error",
+    "translation": "The report message is too long.",
+    "description": "API validation error when a daily report's message exceeds the maximum length."
+  },
+  {
+    "id": "model.daily_report.is_valid.status.app_error",
+    "translation": "Invalid report status.",
+    "description": "API validation error when a daily report's status is neither pending nor approved."
+  },
+  {
+    "id": "model.daily_report.is_valid.team_id.app_error",
+    "translation": "Invalid team id.",
+    "description": "API validation error when a daily report's team ID is malformed."
+  },
+  {
+    "id": "model.daily_report.is_valid.user_id.app_error",
+    "translation": "Invalid user id.",
+    "description": "API validation error when a daily report's user ID is malformed."
+  },
+  {
     "id": "model.dcr.is_valid.client_name.app_error",
     "translation": "Client name must be 64 characters or less.",
     "description": "API error for OAuth Dynamic Client Registration when the submitted client name exceeds 64 characters; audience is app developers."
@@ -19345,6 +19380,16 @@
     "id": "model.team.is_valid.create_at.app_error",
     "translation": "Create at must be a valid time.",
     "description": "API error when a team record's creation timestamp is unset; 'Create at' names the CreateAt field."
+  },
+  {
+    "id": "model.team.is_valid.daily_report_time.app_error",
+    "translation": "Daily report time must be in HH:MM format.",
+    "description": "API error when a team has daily reports enabled and the report time is not a valid 24-hour HH:MM time."
+  },
+  {
+    "id": "model.team.is_valid.daily_report_timezone.app_error",
+    "translation": "Invalid daily report timezone.",
+    "description": "API error when a team has daily reports enabled and the report timezone is not a valid IANA time zone name."
   },
   {
     "id": "model.team.is_valid.description.app_error",

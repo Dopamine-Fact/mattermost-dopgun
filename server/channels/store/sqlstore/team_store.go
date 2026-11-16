@@ -234,6 +234,9 @@ func prefixedTeamSliceColumns(isSelect bool, prefix string) []string {
 		prefix + ".CloudLimitsArchived",
 		prefix + ".TasksEnabled",
 		prefix + ".RevisionsEnabled",
+		prefix + ".DailyReportsEnabled",
+		prefix + ".DailyReportTime",
+		prefix + ".DailyReportTimezone",
 	}
 
 	if isSelect {
@@ -296,10 +299,10 @@ func (s SqlTeamStore) Save(team *model.Team) (*model.Team, error) {
 
 	if _, err := s.GetMaster().NamedExec(`INSERT INTO Teams
 		(Id, CreateAt, UpdateAt, DeleteAt, DisplayName, Name, Description, Email, Type, CompanyName, AllowedDomains,
-		InviteId, AllowOpenInvite, LastTeamIconUpdate, SchemeId, GroupConstrained, CloudLimitsArchived, TasksEnabled, RevisionsEnabled)
+		InviteId, AllowOpenInvite, LastTeamIconUpdate, SchemeId, GroupConstrained, CloudLimitsArchived, TasksEnabled, RevisionsEnabled, DailyReportsEnabled, DailyReportTime, DailyReportTimezone)
 		VALUES
 		(:Id, :CreateAt, :UpdateAt, :DeleteAt, :DisplayName, :Name, :Description, :Email, :Type, :CompanyName, :AllowedDomains,
-		:InviteId, :AllowOpenInvite, :LastTeamIconUpdate, :SchemeId, :GroupConstrained, :CloudLimitsArchived, :TasksEnabled, :RevisionsEnabled)`, team); err != nil {
+		:InviteId, :AllowOpenInvite, :LastTeamIconUpdate, :SchemeId, :GroupConstrained, :CloudLimitsArchived, :TasksEnabled, :RevisionsEnabled, :DailyReportsEnabled, :DailyReportTime, :DailyReportTimezone)`, team); err != nil {
 		if IsUniqueConstraintError(err, []string{"Name", "teams_name_key"}) {
 			return nil, store.NewErrInvalidInput("Team", "id", team.Id)
 		}
@@ -337,7 +340,8 @@ func (s SqlTeamStore) Update(team *model.Team) (*model.Team, error) {
 			SET CreateAt=:CreateAt, UpdateAt=:UpdateAt, DeleteAt=:DeleteAt, DisplayName=:DisplayName, Name=:Name,
 				Description=:Description, Email=:Email, Type=:Type, CompanyName=:CompanyName, AllowedDomains=:AllowedDomains,
 				InviteId=:InviteId, AllowOpenInvite=:AllowOpenInvite, LastTeamIconUpdate=:LastTeamIconUpdate,
-				SchemeId=:SchemeId, GroupConstrained=:GroupConstrained, CloudLimitsArchived=:CloudLimitsArchived, TasksEnabled=:TasksEnabled, RevisionsEnabled=:RevisionsEnabled
+				SchemeId=:SchemeId, GroupConstrained=:GroupConstrained, CloudLimitsArchived=:CloudLimitsArchived, TasksEnabled=:TasksEnabled, RevisionsEnabled=:RevisionsEnabled,
+				DailyReportsEnabled=:DailyReportsEnabled, DailyReportTime=:DailyReportTime, DailyReportTimezone=:DailyReportTimezone
 			WHERE Id=:Id`, team)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to update Team with id=%s", team.Id)

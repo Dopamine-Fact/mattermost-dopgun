@@ -92,6 +92,7 @@ type Store interface {
 	ChannelBookmark() ChannelBookmarkStore
 	ScheduledPost() ScheduledPostStore
 	Task() TaskStore
+	DailyReport() DailyReportStore
 	View() ViewStore
 	PropertyGroup() PropertyGroupStore
 	PropertyField() PropertyFieldStore
@@ -1217,6 +1218,18 @@ type TaskStore interface {
 	GetComment(id string) (*model.TaskComment, error)
 	GetCommentsForTask(taskId string) ([]*model.TaskComment, error)
 	DeleteComment(id string) error
+}
+
+type DailyReportStore interface {
+	// Save returns *store.ErrConflict when the user already has a report for that team and date.
+	Save(r *model.DailyReport) (*model.DailyReport, error)
+	Update(r *model.DailyReport) (*model.DailyReport, error)
+	Get(id string) (*model.DailyReport, error)
+	GetForUserDate(teamID, userID, date string) (*model.DailyReport, error)
+	// GetForTeam lists reports with fromDate <= Date <= toDate; an empty userID means every user.
+	GetForTeam(teamID, fromDate, toDate, userID string) ([]*model.DailyReport, error)
+	// GetPendingBefore lists pending reports created before the given time, across all teams.
+	GetPendingBefore(createdBefore int64) ([]*model.DailyReport, error)
 }
 
 type ScheduledPostStore interface {

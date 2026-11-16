@@ -345,6 +345,26 @@ func (_m *Store) ContentFlagging() store.ContentFlaggingStore {
 	return r0
 }
 
+// DailyReport provides a mock function with no fields
+func (_m *Store) DailyReport() store.DailyReportStore {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for DailyReport")
+	}
+
+	var r0 store.DailyReportStore
+	if rf, ok := ret.Get(0).(func() store.DailyReportStore); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.DailyReportStore)
+		}
+	}
+
+	return r0
+}
+
 // DeliveryTracking provides a mock function with no fields
 func (_m *Store) DeliveryTracking() store.DeliveryTrackingStore {
 	ret := _m.Called()

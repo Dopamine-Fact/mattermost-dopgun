@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -44,6 +45,9 @@ type Team struct {
 	CloudLimitsArchived bool    `json:"cloud_limits_archived"`
 	TasksEnabled        bool    `json:"tasks_enabled"`
 	RevisionsEnabled    bool    `json:"revisions_enabled"` // revision channels; only effective with TasksEnabled
+	DailyReportsEnabled bool    `json:"daily_reports_enabled"`
+	DailyReportTime     string  `json:"daily_report_time"` // "HH:MM" in DailyReportTimezone
+	DailyReportTimezone string  `json:"daily_report_timezone"`
 
 	// Not persisted; derived by the store via EXISTS on AccessControlPolicies(Type='team').
 	// Use HasMembershipPolicyAction for enforcement — this is a read-path signal only.
@@ -91,6 +95,9 @@ func (o *Team) Auditable() map[string]any {
 		"cloud_limits_archived": o.CloudLimitsArchived,
 		"tasks_enabled":         o.TasksEnabled,
 		"revisions_enabled":     o.RevisionsEnabled,
+		"daily_reports_enabled": o.DailyReportsEnabled,
+		"daily_report_time":     o.DailyReportTime,
+		"daily_report_timezone": o.DailyReportTimezone,
 	}
 }
 
@@ -108,6 +115,9 @@ type TeamPatch struct {
 	CloudLimitsArchived *bool   `json:"cloud_limits_archived"`
 	TasksEnabled        *bool   `json:"tasks_enabled"`
 	RevisionsEnabled    *bool   `json:"revisions_enabled"`
+	DailyReportsEnabled *bool   `json:"daily_reports_enabled"`
+	DailyReportTime     *string `json:"daily_report_time"`
+	DailyReportTimezone *string `json:"daily_report_timezone"`
 }
 
 func (o *TeamPatch) Auditable() map[string]any {
@@ -117,6 +127,9 @@ func (o *TeamPatch) Auditable() map[string]any {
 		"cloud_limits_archived": o.CloudLimitsArchived,
 		"tasks_enabled":         o.TasksEnabled,
 		"revisions_enabled":     o.RevisionsEnabled,
+		"daily_reports_enabled": o.DailyReportsEnabled,
+		"daily_report_time":     o.DailyReportTime,
+		"daily_report_timezone": o.DailyReportTimezone,
 	}
 }
 
@@ -201,6 +214,15 @@ func (o *Team) IsValid() *AppError {
 
 	if len(o.AllowedDomains) > TeamAllowedDomainsMaxLength {
 		return NewAppError("Team.IsValid", "model.team.is_valid.domains.app_error", nil, "id="+o.Id, http.StatusBadRequest)
+	}
+
+	if o.DailyReportsEnabled {
+		if _, _, ok := ParseDailyReportTime(o.DailyReportTime); !ok {
+			return NewAppError("Team.IsValid", "model.team.is_valid.daily_report_time.app_error", nil, "id="+o.Id, http.StatusBadRequest)
+		}
+		if _, err := time.LoadLocation(o.DailyReportTimezone); err != nil || o.DailyReportTimezone == "" {
+			return NewAppError("Team.IsValid", "model.team.is_valid.daily_report_timezone.app_error", nil, "id="+o.Id, http.StatusBadRequest)
+		}
 	}
 
 	return nil
@@ -325,6 +347,18 @@ func (o *Team) Patch(patch *TeamPatch) {
 
 	if patch.RevisionsEnabled != nil {
 		o.RevisionsEnabled = *patch.RevisionsEnabled
+	}
+
+	if patch.DailyReportsEnabled != nil {
+		o.DailyReportsEnabled = *patch.DailyReportsEnabled
+	}
+
+	if patch.DailyReportTime != nil {
+		o.DailyReportTime = *patch.DailyReportTime
+	}
+
+	if patch.DailyReportTimezone != nil {
+		o.DailyReportTimezone = *patch.DailyReportTimezone
 	}
 }
 

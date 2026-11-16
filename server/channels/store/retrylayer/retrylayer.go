@@ -34,6 +34,7 @@ type RetryLayer struct {
 	CommandWebhookStore             store.CommandWebhookStore
 	ComplianceStore                 store.ComplianceStore
 	ContentFlaggingStore            store.ContentFlaggingStore
+	DailyReportStore                store.DailyReportStore
 	DeliveryTrackingStore           store.DeliveryTrackingStore
 	DesktopTokensStore              store.DesktopTokensStore
 	DraftStore                      store.DraftStore
@@ -143,6 +144,10 @@ func (s *RetryLayer) Compliance() store.ComplianceStore {
 
 func (s *RetryLayer) ContentFlagging() store.ContentFlaggingStore {
 	return s.ContentFlaggingStore
+}
+
+func (s *RetryLayer) DailyReport() store.DailyReportStore {
+	return s.DailyReportStore
 }
 
 func (s *RetryLayer) DeliveryTracking() store.DeliveryTrackingStore {
@@ -413,6 +418,11 @@ type RetryLayerComplianceStore struct {
 
 type RetryLayerContentFlaggingStore struct {
 	store.ContentFlaggingStore
+	Root *RetryLayer
+}
+
+type RetryLayerDailyReportStore struct {
+	store.DailyReportStore
 	Root *RetryLayer
 }
 
@@ -5271,6 +5281,132 @@ func (s *RetryLayerContentFlaggingStore) SaveReviewerSettings(reviewerSettings m
 		if tries >= 3 {
 			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
 			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDailyReportStore) Get(id string) (*model.DailyReport, error) {
+
+	tries := 0
+	for {
+		result, err := s.DailyReportStore.Get(id)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDailyReportStore) GetForTeam(teamID string, fromDate string, toDate string, userID string) ([]*model.DailyReport, error) {
+
+	tries := 0
+	for {
+		result, err := s.DailyReportStore.GetForTeam(teamID, fromDate, toDate, userID)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDailyReportStore) GetForUserDate(teamID string, userID string, date string) (*model.DailyReport, error) {
+
+	tries := 0
+	for {
+		result, err := s.DailyReportStore.GetForUserDate(teamID, userID, date)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDailyReportStore) GetPendingBefore(createdBefore int64) ([]*model.DailyReport, error) {
+
+	tries := 0
+	for {
+		result, err := s.DailyReportStore.GetPendingBefore(createdBefore)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDailyReportStore) Save(r *model.DailyReport) (*model.DailyReport, error) {
+
+	tries := 0
+	for {
+		result, err := s.DailyReportStore.Save(r)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDailyReportStore) Update(r *model.DailyReport) (*model.DailyReport, error) {
+
+	tries := 0
+	for {
+		result, err := s.DailyReportStore.Update(r)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
 		}
 		timepkg.Sleep(100 * timepkg.Millisecond)
 	}
@@ -21379,6 +21515,7 @@ func New(childStore store.Store) *RetryLayer {
 	newStore.CommandWebhookStore = &RetryLayerCommandWebhookStore{CommandWebhookStore: childStore.CommandWebhook(), Root: &newStore}
 	newStore.ComplianceStore = &RetryLayerComplianceStore{ComplianceStore: childStore.Compliance(), Root: &newStore}
 	newStore.ContentFlaggingStore = &RetryLayerContentFlaggingStore{ContentFlaggingStore: childStore.ContentFlagging(), Root: &newStore}
+	newStore.DailyReportStore = &RetryLayerDailyReportStore{DailyReportStore: childStore.DailyReport(), Root: &newStore}
 	newStore.DeliveryTrackingStore = &RetryLayerDeliveryTrackingStore{DeliveryTrackingStore: childStore.DeliveryTracking(), Root: &newStore}
 	newStore.DesktopTokensStore = &RetryLayerDesktopTokensStore{DesktopTokensStore: childStore.DesktopTokens(), Root: &newStore}
 	newStore.DraftStore = &RetryLayerDraftStore{DraftStore: childStore.Draft(), Root: &newStore}
