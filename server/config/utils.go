@@ -39,6 +39,9 @@ func Desanitize(actual, target *model.Config) {
 	if target.FileSettings.ExportAmazonS3SecretAccessKey != nil && *target.FileSettings.ExportAmazonS3SecretAccessKey == model.FakeSetting && actual.FileSettings.ExportAmazonS3SecretAccessKey != nil {
 		target.FileSettings.ExportAmazonS3SecretAccessKey = actual.FileSettings.ExportAmazonS3SecretAccessKey
 	}
+	if target.BackupSettings.AmazonS3SecretAccessKey != nil && *target.BackupSettings.AmazonS3SecretAccessKey == model.FakeSetting && actual.BackupSettings.AmazonS3SecretAccessKey != nil {
+		target.BackupSettings.AmazonS3SecretAccessKey = actual.BackupSettings.AmazonS3SecretAccessKey
+	}
 	if target.FileSettings.AzureAccessKey != nil && *target.FileSettings.AzureAccessKey == model.FakeSetting && actual.FileSettings.AzureAccessKey != nil {
 		target.FileSettings.AzureAccessKey = actual.FileSettings.AzureAccessKey
 	}

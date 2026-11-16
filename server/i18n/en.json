@@ -17277,6 +17277,21 @@
     "description": "Config validation error shown to system admins for the Azure Blob storage request timeout setting; {{.Value}} is the rejected timeout value."
   },
   {
+    "id": "model.config.is_valid.backup.bucket.app_error",
+    "translation": "Backup S3 bucket is required when backups are enabled.",
+    "description": "Config validation error shown to system admins on the Backups settings page when scheduled backups are turned on but no Amazon S3 bucket name is set."
+  },
+  {
+    "id": "model.config.is_valid.backup.retention_days.app_error",
+    "translation": "Backup retention must be at least 1 day.",
+    "description": "Config validation error shown to system admins on the Backups settings page when the number of days to keep backups is below one."
+  },
+  {
+    "id": "model.config.is_valid.backup.run_time.app_error",
+    "translation": "Backup time must be in HH:MM format.",
+    "description": "Config validation error shown to system admins on the Backups settings page when the daily backup time is not a valid 24-hour HH:MM value."
+  },
+  {
     "id": "model.config.is_valid.cache_type.app_error",
     "translation": "Cache type must be either lru or redis.",
     "description": "Config validation error shown to system admins; 'lru' and 'redis' are literal cache type option values and must not be translated."
