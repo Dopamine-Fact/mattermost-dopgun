@@ -32655,6 +32655,14 @@
     "defaultMessage": "Describe the revision at the current moment",
     "description": "Placeholder of the field where a user describes what must change at the paused moment of the video."
   },
+  "tasks.revisions.replace": {
+    "defaultMessage": "Replace video",
+    "description": "Button in a revision channel's Revisions tab that uploads a new video in place of the current one."
+  },
+  "tasks.revisions.replacing": {
+    "defaultMessage": "Uploading…",
+    "description": "Shown on the Replace video button while the new video uploads."
+  },
   "tasks.revisions.seek": {
     "defaultMessage": "Go to {time}",
     "description": "Accessible label of the time stamp button of a revision; time is the position in the video, like 1:23.50."

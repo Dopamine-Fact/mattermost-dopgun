@@ -11,7 +11,7 @@ import type {UserProfile} from '@mattermost/types/users';
 
 import {Client4} from 'mattermost-redux/client';
 
-import {createTask} from 'actions/tasks';
+import {createTask, setTaskSectionVideo} from 'actions/tasks';
 
 import {AssigneeLabel, StatusSelect} from './task_bits';
 import {formatVideoTime} from './task_utils';
@@ -37,7 +37,11 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
     const revisions = useMemo(() => tasks.filter((t) => t.section_id === section.id).sort((a, b) => a.video_time - b.video_time), [tasks, section.id]);
-    const videoUrl = Client4.getTaskSectionVideoUrl(section.id);
+
+    // ?v= changes with the file, so a replaced video is not served from the browser cache.
+    const videoUrl = `${Client4.getTaskSectionVideoUrl(section.id)}?v=${section.video_file_id}`;
+    const [replacing, setReplacing] = useState(false);
+    const [replaceError, setReplaceError] = useState('');
     const stills = useFrameThumbnails(videoUrl, revisions.map((r) => r.video_time));
 
     const video = useRef<HTMLVideoElement>(null);
@@ -86,10 +90,23 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
         }
     };
 
+    const replaceVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file || replacing) {
+            return;
+        }
+        setReplacing(true);
+        setReplaceError('');
+        const result = await dispatch(setTaskSectionVideo(section.id, file));
+        setReplacing(false);
+        setReplaceError(result.error?.message ?? '');
+    };
+
     return (
         <div className='TaskRevisions'>
             <video
-                key={section.id}
+                key={videoUrl}
                 ref={video}
                 className='TaskRevisions__video'
                 src={videoUrl}
@@ -101,7 +118,31 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
                     id='tasks.revisions.frameHint'
                     defaultMessage='Use ← and → to step one frame.'
                 />
+                {canManage && (
+                    <label className={classNames('btn btn-tertiary btn-xs TaskRevisions__replace', {disabled: replacing})}>
+                        {replacing ? (
+                            <FormattedMessage
+                                id='tasks.revisions.replacing'
+                                defaultMessage='Uploading…'
+                            />
+                        ) : (
+                            <FormattedMessage
+                                id='tasks.revisions.replace'
+                                defaultMessage='Replace video'
+                            />
+                        )}
+                        <input
+                            type='file'
+                            hidden={true}
+                            disabled={replacing}
+                            accept='video/mp4,video/webm,video/ogg,video/quicktime,.m4v'
+                            aria-label={formatMessage({id: 'tasks.revisions.replace', defaultMessage: 'Replace video'})}
+                            onChange={replaceVideo}
+                        />
+                    </label>
+                )}
             </div>
+            {replaceError && <div className='TaskRevisions__error error-text'>{replaceError}</div>}
 
             {canManage && (
                 <form

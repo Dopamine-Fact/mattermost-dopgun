@@ -6,6 +6,8 @@ import {renderHook, act} from '@testing-library/react';
 import {useFrameThumbnails} from './use_frame_thumbnails';
 
 describe('useFrameThumbnails', () => {
+    afterEach(() => jest.restoreAllMocks());
+
     test('grabs one still per revision time, seeking a hidden copy of the video', async () => {
         const seeks: number[] = [];
         let video: HTMLVideoElement | undefined;
@@ -39,5 +41,36 @@ describe('useFrameThumbnails', () => {
         expect(seeks).toEqual([1.2, 83.5]);
         expect(jest.mocked(document.createElement).mock.calls.filter(([tag]) => tag === 'video')).toHaveLength(1);
         expect(result.current).toEqual({1200: 'still-1.2-320x180', 83500: 'still-83.5-320x180'});
+    });
+
+    test('a replaced video drops the old stills and grabs new ones', async () => {
+        const videos: HTMLVideoElement[] = [];
+        const create = document.createElement.bind(document);
+        jest.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+            const el = create(tag);
+            if (tag === 'video') {
+                videos.push(el as HTMLVideoElement);
+                Object.defineProperty(el, 'videoWidth', {value: 640});
+                Object.defineProperty(el, 'videoHeight', {value: 360});
+                Object.defineProperty(el, 'currentTime', {set: () => setTimeout(() => el.dispatchEvent(new Event('seeked')))});
+            }
+            return el;
+        });
+        jest.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({drawImage: jest.fn()} as any);
+        jest.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockImplementation(() => `still-${videos.length}`);
+        const load = async () => act(async () => {
+            videos[videos.length - 1].dispatchEvent(new Event('loadeddata'));
+            await new Promise((r) => setTimeout(r, 20));
+        });
+
+        const {result, rerender} = renderHook(({src}) => useFrameThumbnails(src, [1200]), {initialProps: {src: '/video?v=a'}});
+        await load();
+        expect(result.current).toEqual({1200: 'still-1'});
+
+        rerender({src: '/video?v=b'});
+        expect(result.current).toEqual({});
+        await load();
+        expect(videos[1].src).toContain('v=b');
+        expect(result.current).toEqual({1200: 'still-2'});
     });
 });
