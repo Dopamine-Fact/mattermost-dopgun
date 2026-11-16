@@ -56,6 +56,18 @@ func TestTeamPreSave(t *testing.T) {
 	o.Etag()
 }
 
+func TestTeamPreSaveDailyReportDefaults(t *testing.T) {
+	o := Team{DisplayName: "test"}
+	o.PreSave()
+	assert.Equal(t, "18:00", o.DailyReportTime)
+	assert.Equal(t, "Europe/Istanbul", o.DailyReportTimezone)
+
+	o = Team{DisplayName: "test", DailyReportTime: "09:30", DailyReportTimezone: "UTC"}
+	o.PreSave()
+	assert.Equal(t, "09:30", o.DailyReportTime)
+	assert.Equal(t, "UTC", o.DailyReportTimezone)
+}
+
 func TestTeamPreUpdate(t *testing.T) {
 	o := Team{DisplayName: "test"}
 	o.PreUpdate()

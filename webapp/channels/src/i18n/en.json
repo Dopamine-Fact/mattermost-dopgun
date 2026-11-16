@@ -24144,8 +24144,12 @@
     "description": "Title of the Invite Code section in team settings; the code is part of the team invitation link."
   },
   "general_tab.dailyReportTime": {
-    "defaultMessage": "Reminder time",
-    "description": "Label of the time input in Team Settings > Info that sets when members are reminded to write their daily report."
+    "defaultMessage": "Report deadline",
+    "description": "Label of the time input in Team Settings > Info that sets the daily report deadline; reminders are sent 10 and 5 minutes before it."
+  },
+  "general_tab.dailyReportTimezone": {
+    "defaultMessage": "Timezone: {timezone}",
+    "description": "Help text under the daily report deadline input in Team Settings > Info; {timezone} is the team's saved timezone, e.g. Europe/Istanbul."
   },
   "general_tab.dailyReportsEnabled": {
     "defaultMessage": "Enable daily reports for this team",

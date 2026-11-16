@@ -253,6 +253,7 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
                 dailyReportsEnabled={dailyReportsEnabled}
                 handleDailyReportsEnabledChange={handleDailyReportsEnabledChange}
                 dailyReportTime={dailyReportTime}
+                dailyReportTimezone={team.daily_report_timezone ?? ''}
                 handleDailyReportTimeChange={handleDailyReportTimeChange}
             />
             {(areThereUnsavedChanges || saveChangesPanelState === 'saved') && (

@@ -4,6 +4,7 @@
 package app
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -190,4 +191,33 @@ func TestExportDailyReportsCSV(t *testing.T) {
 	assert.Contains(t, sb.String(), `2026-11-16,`+th.BasicUser.Username+`,"line one, ""quoted""`)
 	assert.Contains(t, sb.String(), `'=cmd|' /c calc`)
 	assert.Contains(t, sb.String(), `A; B,approved,false,`+th.BasicUser2.Username+`,1970-01-01T00:00:01Z,1970-01-01T00:00:02Z`)
+}
+
+func TestDailyReportEventHasNoContent(t *testing.T) {
+	r := &model.DailyReport{Id: "i", TeamId: "t", UserId: "u", Date: "2026-11-16", Message: "secret", Tasks: []model.DailyReportTask{{Title: "private"}}}
+	data, err := json.Marshal(dailyReportEvent(r))
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"id":"i","team_id":"t","user_id":"u","date":"2026-11-16"}`, string(data))
+}
+
+func TestSubmitDailyReportConcurrentFirstSubmit(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	team := enableDailyReports(t, th)
+
+	// Two first submits racing: one Save hits the unique constraint and must fall back to an update, not a 409.
+	done := make(chan *model.AppError, 2)
+	for _, msg := range []string{"two", "three"} {
+		go func() {
+			_, e := th.App.SubmitDailyReport(th.Context, team.Id, th.BasicUser.Id, msg)
+			done <- e
+		}()
+	}
+	require.Nil(t, <-done)
+	require.Nil(t, <-done)
+	date, err := DailyReportDate(team, time.Now())
+	require.NoError(t, err)
+	reports, appErr := th.App.GetDailyReports(team.Id, date, date, th.BasicUser.Id)
+	require.Nil(t, appErr)
+	assert.Len(t, reports, 1)
 }

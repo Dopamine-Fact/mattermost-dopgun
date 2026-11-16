@@ -17,6 +17,7 @@ import DailyReports, {todayIn} from './daily_reports';
 jest.mock('mattermost-redux/actions/users', () => ({
     ...jest.requireActual('mattermost-redux/actions/users'),
     getProfilesInTeam: jest.fn(() => () => Promise.resolve({data: []})),
+    getMissingProfilesByIds: jest.fn(() => () => Promise.resolve({data: []})),
 }));
 jest.mock('mattermost-redux/selectors/entities/roles', () => ({
     ...jest.requireActual('mattermost-redux/selectors/entities/roles'),
@@ -47,6 +48,9 @@ const report = (extra: Partial<DailyReport>): DailyReport => ({
     ...extra,
 });
 
+const bot = TestHelper.getUserMock({id: 'u4', username: 'bot', is_bot: true});
+const exMember = TestHelper.getUserMock({id: 'u5', username: 'leaver'});
+
 const renderPage = (canApprove: boolean) => {
     (roles.haveITeamPermission as jest.Mock).mockReturnValue(canApprove);
     return renderWithContext(<DailyReports/>, {
@@ -58,8 +62,8 @@ const renderPage = (canApprove: boolean) => {
             },
             users: {
                 currentUserId: 'me',
-                profiles: {me, u2: ayse, u3: mehmet},
-                profilesInTeam: {team1: new Set(['me', 'u2', 'u3'])},
+                profiles: {me, u2: ayse, u3: mehmet, u4: bot, u5: exMember},
+                profilesInTeam: {team1: new Set(['me', 'u2', 'u3', 'u4'])},
             },
         },
     });
@@ -123,6 +127,43 @@ describe('DailyReports', () => {
         });
 
         expect(approve).toHaveBeenCalledWith('r1');
+    });
+
+    test('lists report authors who left the team but not bots without a report', async () => {
+        jest.spyOn(Client4, 'getDailyReports').mockResolvedValue([report({user_id: 'u5', message: 'Handover notes'})]);
+        renderPage(true);
+
+        fireEvent.click(await screen.findByRole('tab', {name: 'Team reports'}));
+        expect(await screen.findByText('Handover notes')).toBeInTheDocument();
+        expect(screen.getByText('leaver')).toBeInTheDocument();
+        expect(screen.queryByText('bot')).not.toBeInTheDocument();
+        expect(screen.getAllByText('Missing')).toHaveLength(3); // me, ayse and mehmet
+    });
+
+    test('disables the CSV download when the range is reversed', async () => {
+        renderPage(false);
+        const link = await screen.findByText('Download CSV');
+        expect(link.closest('a')).toHaveAttribute('href');
+
+        const [from] = screen.getAllByDisplayValue(/^\d{4}-\d{2}-\d{2}$/);
+        fireEvent.change(from, {target: {value: '2999-01-01'}});
+
+        expect(link.closest('a')).not.toHaveAttribute('href');
+        expect(link.closest('a')).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    test('clears the error after a successful refresh', async () => {
+        const list = jest.spyOn(Client4, 'getDailyReports').mockRejectedValue(new Error('boom'));
+        renderPage(false);
+        expect(await screen.findByRole('alert')).toHaveTextContent('boom');
+
+        list.mockResolvedValue([]);
+        const listener = (WebSocketClient.addMessageListener as jest.Mock).mock.calls.at(-1)[0];
+        await act(async () => {
+            listener({event: 'daily_report_updated'});
+        });
+
+        await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
     });
 
     test('labels an auto-approved row', async () => {

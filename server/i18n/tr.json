@@ -2228,7 +2228,7 @@
   },
   {
     "id": "app.daily_report.disabled.app_error",
-    "translation": "Bu ekip için günlük raporlar etkin değil."
+    "translation": "Bu takım için günlük raporlar etkin değil."
   },
   {
     "id": "app.daily_report.export.app_error",
@@ -3800,7 +3800,7 @@
   },
   {
     "id": "model.daily_report.is_valid.team_id.app_error",
-    "translation": "Geçersiz ekip kimliği."
+    "translation": "Geçersiz takım kimliği."
   },
   {
     "id": "model.daily_report.is_valid.user_id.app_error",

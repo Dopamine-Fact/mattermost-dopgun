@@ -58,6 +58,7 @@ import type {
     LdapSettings, ContentFlaggingSettings,
 } from '@mattermost/types/config';
 import type {ContentFlaggingConfig} from '@mattermost/types/content_flagging';
+import type {DailyReport} from '@mattermost/types/daily_reports';
 import type {
     DataRetentionCustomPolicies,
     CreateDataRetentionCustomPolicy,
@@ -131,7 +132,6 @@ import type {Scheme} from '@mattermost/types/schemes';
 import type {Session} from '@mattermost/types/sessions';
 import type {CompleteOnboardingRequest} from '@mattermost/types/setup';
 import type {RemoteClusterInfo, SharedChannelRemote} from '@mattermost/types/shared_channels';
-import type {DailyReport} from '@mattermost/types/daily_reports';
 import type {Task, TaskComment, TaskPatch, TaskSection, TaskSectionCreate, TaskSectionPatch} from '@mattermost/types/tasks';
 import type {
     GetTeamMembersOpts,

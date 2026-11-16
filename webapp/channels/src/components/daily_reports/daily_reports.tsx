@@ -10,13 +10,13 @@ import {Redirect} from 'react-router-dom';
 import {FileTextOutlineIcon} from '@mattermost/compass-icons/components';
 import type {DailyReport} from '@mattermost/types/daily_reports';
 
-import {getProfilesInTeam as fetchProfilesInTeam} from 'mattermost-redux/actions/users';
+import {getMissingProfilesByIds, getProfilesInTeam as fetchProfilesInTeam} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
 import {Permissions} from 'mattermost-redux/constants';
 import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
 import {haveITeamPermission} from 'mattermost-redux/selectors/entities/roles';
 import {getCurrentTeam} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUserId, getProfilesInTeam} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, getProfilesInTeam, getUsers} from 'mattermost-redux/selectors/entities/users';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 
 import {selectLhsItem} from 'actions/views/lhs';
@@ -80,6 +80,7 @@ const DailyReports = () => {
     const enabled = Boolean(team?.daily_reports_enabled);
 
     const members = useSelector((state: GlobalState) => getProfilesInTeam(state, teamId));
+    const profiles = useSelector(getUsers);
     const nameDisplay = useSelector(getTeammateNameDisplaySetting);
     const currentUserId = useSelector(getCurrentUserId);
     const canApprove = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_TEAM_TASKS));
@@ -124,6 +125,7 @@ const DailyReports = () => {
             } else {
                 setTeamReports(await Client4.getDailyReports(teamId, date, date));
             }
+            setError('');
         } catch (e) {
             setError((e as Error).message);
         }
@@ -148,10 +150,25 @@ const DailyReports = () => {
         return () => WebSocketClient.removeMessageListener(listener);
     }, [enabled, refresh]);
 
+    // Authors of reports may have left the team or be past the first member page: load their profiles by id.
+    useEffect(() => {
+        const missing = teamReports.map((r) => r.user_id).filter((id) => !profiles[id]);
+        if (missing.length) {
+            dispatch(getMissingProfilesByIds(missing));
+        }
+    }, [dispatch, teamReports, profiles]);
+
+    // Active members (they may owe a report) plus every report author (ex-members keep their reports).
     const rows = useMemo(() => {
         const byUser = new Map(teamReports.map((r) => [r.user_id, r]));
-        return members.map((user) => ({user, report: byUser.get(user.id)}));
-    }, [members, teamReports]);
+        const users = new Map(members.filter((u) => !u.is_bot && !u.delete_at).map((u) => [u.id, u]));
+        byUser.forEach((_, id) => {
+            if (profiles[id]) {
+                users.set(id, profiles[id]);
+            }
+        });
+        return Array.from(users.values(), (user) => ({user, report: byUser.get(user.id)}));
+    }, [members, profiles, teamReports]);
 
     if (!team) {
         return null;
@@ -188,6 +205,7 @@ const DailyReports = () => {
     }
 
     const locked = mine?.status === 'approved';
+    const exportable = Boolean(from && to && from <= to);
 
     return (
         <div className='DailyReportsPage'>
@@ -341,8 +359,9 @@ const DailyReports = () => {
                         />
                     </label>
                     <a
-                        className='btn btn-tertiary'
-                        href={Client4.getDailyReportsExportUrl(teamId, from, to)}
+                        className={classNames('btn btn-tertiary', {disabled: !exportable})}
+                        href={exportable ? Client4.getDailyReportsExportUrl(teamId, from, to) : undefined}
+                        aria-disabled={!exportable}
                         download={true}
                     >
                         <FormattedMessage

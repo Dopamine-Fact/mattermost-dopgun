@@ -91,8 +91,13 @@ func (a *App) finishedTasksForDay(teamID, userID string, loc *time.Location, dat
 	return result, nil
 }
 
+// dailyReportEvent is the websocket payload. It goes to the whole team, so it carries no content: clients refetch.
+func dailyReportEvent(r *model.DailyReport) map[string]string {
+	return map[string]string{"id": r.Id, "team_id": r.TeamId, "user_id": r.UserId, "date": r.Date}
+}
+
 func (a *App) publishDailyReport(rctx request.CTX, report *model.DailyReport) {
-	a.publishTaskEvent(rctx, model.WebsocketDailyReportUpdated, report.TeamId, "report", report, "")
+	a.publishTaskEvent(rctx, model.WebsocketDailyReportUpdated, report.TeamId, "report", dailyReportEvent(report), "")
 }
 
 // SubmitDailyReport creates today's report for the user, or rewrites it (and re-snapshots the tasks) until it is approved.
@@ -114,20 +119,23 @@ func (a *App) SubmitDailyReport(rctx request.CTX, teamID, userID, message string
 	var saved *model.DailyReport
 	existing, err := a.Srv().Store().DailyReport().GetForUserDate(teamID, userID, date)
 	var nfErr *store.ErrNotFound
-	switch {
-	case err == nil:
+	var conflictErr *store.ErrConflict
+	if errors.As(err, &nfErr) {
+		saved, err = a.Srv().Store().DailyReport().Save(&model.DailyReport{TeamId: teamID, UserId: userID, Date: date, Message: message, Tasks: tasks})
+		if errors.As(err, &conflictErr) { // a concurrent submit created it first: rewrite that one
+			existing, err = a.Srv().Store().DailyReport().GetForUserDate(teamID, userID, date)
+		}
+	}
+	if err == nil && saved == nil {
 		if existing.Status == model.DailyReportStatusApproved {
 			return nil, model.NewAppError("SubmitDailyReport", "app.daily_report.approved.app_error", nil, "id="+existing.Id, http.StatusBadRequest)
 		}
 		existing.Message = message
 		existing.Tasks = tasks
 		saved, err = a.Srv().Store().DailyReport().Update(existing)
-		var conflictErr *store.ErrConflict
 		if errors.As(err, &conflictErr) { // approved between the read and the write
 			return nil, model.NewAppError("SubmitDailyReport", "app.daily_report.approved.app_error", nil, "id="+existing.Id, http.StatusBadRequest)
 		}
-	case errors.As(err, &nfErr):
-		saved, err = a.Srv().Store().DailyReport().Save(&model.DailyReport{TeamId: teamID, UserId: userID, Date: date, Message: message, Tasks: tasks})
 	}
 	if err != nil {
 		return nil, dailyReportStoreError("SubmitDailyReport", teamID, err)
@@ -299,17 +307,17 @@ func (a *App) sendDailyReportReminders(rctx request.CTX, team *model.Team, now t
 		return
 	}
 	date := local.Format(time.DateOnly)
+	reports, err := a.Srv().Store().DailyReport().GetForTeam(team.Id, date, date, "")
+	if err != nil {
+		logger.Error("Daily report reminders: failed to load the reports", mlog.Err(err))
+		return
+	}
+	reported := make(map[string]bool, len(reports))
+	for _, r := range reports {
+		reported[r.UserId] = true
+	}
 	for _, user := range users {
-		if user.IsBot {
-			continue
-		}
-		_, err := a.Srv().Store().DailyReport().GetForUserDate(team.Id, user.Id, date)
-		var nfErr *store.ErrNotFound
-		if err == nil {
-			continue
-		}
-		if !errors.As(err, &nfErr) {
-			logger.Warn("Daily report reminders: failed to look up the report", mlog.String("user_id", user.Id), mlog.Err(err))
+		if user.IsBot || reported[user.Id] {
 			continue
 		}
 		if appErr := a.postDailyReportReminder(rctx, team, user, minutes); appErr != nil {

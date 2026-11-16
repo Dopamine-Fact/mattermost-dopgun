@@ -251,6 +251,14 @@ func (o *Team) PreSave() {
 	if o.InviteId == "" {
 		o.InviteId = NewId()
 	}
+
+	// Same defaults the migration gives existing teams.
+	if o.DailyReportTime == "" {
+		o.DailyReportTime = "18:00"
+	}
+	if o.DailyReportTimezone == "" {
+		o.DailyReportTimezone = "Europe/Istanbul"
+	}
 }
 
 func (o *Team) PreUpdate() {

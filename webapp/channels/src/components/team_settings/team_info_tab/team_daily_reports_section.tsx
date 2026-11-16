@@ -10,10 +10,11 @@ type Props = {
     dailyReportsEnabled: boolean;
     handleDailyReportsEnabledChange: (enabled: boolean) => void;
     dailyReportTime: string;
+    dailyReportTimezone: string;
     handleDailyReportTimeChange: (time: string) => void;
 };
 
-const TeamDailyReportsSection = ({dailyReportsEnabled, handleDailyReportsEnabledChange, dailyReportTime, handleDailyReportTimeChange}: Props) => {
+const TeamDailyReportsSection = ({dailyReportsEnabled, handleDailyReportsEnabledChange, dailyReportTime, dailyReportTimezone, handleDailyReportTimeChange}: Props) => {
     const {formatMessage} = useIntl();
 
     return (
@@ -40,7 +41,7 @@ const TeamDailyReportsSection = ({dailyReportsEnabled, handleDailyReportsEnabled
                 <label className='tasks-setting-item'>
                     <FormattedMessage
                         id='general_tab.dailyReportTime'
-                        defaultMessage='Reminder time'
+                        defaultMessage='Report deadline'
                     />
                     <input
                         type='time'
@@ -48,6 +49,13 @@ const TeamDailyReportsSection = ({dailyReportsEnabled, handleDailyReportsEnabled
                         value={dailyReportTime}
                         onChange={(e) => e.target.value && handleDailyReportTimeChange(e.target.value)}
                     />
+                    <span className='help-text'>
+                        <FormattedMessage
+                            id='general_tab.dailyReportTimezone'
+                            defaultMessage='Timezone: {timezone}'
+                            values={{timezone: dailyReportTimezone}}
+                        />
+                    </span>
                 </label>
             )}
         </>

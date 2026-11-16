@@ -149,7 +149,8 @@ func (s *SqlDailyReportStore) GetForUserDate(teamID, userID, date string) (*mode
 
 func (s *SqlDailyReportStore) getOne(desc, notFoundID string, where sq.Sqlizer) (*model.DailyReport, error) {
 	var row dailyReportRow
-	err := s.GetReplica().GetBuilder(&row, s.getQueryBuilder().Select(dailyReportColumns...).From("DailyReports").Where(where))
+	// Master, not replica: submit reads back what it or a concurrent submit just wrote.
+	err := s.GetMaster().GetBuilder(&row, s.getQueryBuilder().Select(dailyReportColumns...).From("DailyReports").Where(where))
 	if err == sql.ErrNoRows {
 		return nil, store.NewErrNotFound("DailyReport", notFoundID)
 	} else if err != nil {
