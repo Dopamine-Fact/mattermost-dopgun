@@ -52,11 +52,13 @@ function statusOf(report?: DailyReport): Status {
     return 'pending';
 }
 
-// The browser's local calendar day as YYYY-MM-DD (the server's own "today" uses the team's timezone).
-function localToday() {
-    const d = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+// The calendar day (YYYY-MM-DD) in the team's timezone; falls back to the browser's when it is empty or invalid.
+export function todayIn(timeZone?: string, now = new Date()) {
+    try {
+        return new Intl.DateTimeFormat('en-CA', {timeZone: timeZone || undefined}).format(now);
+    } catch {
+        return new Intl.DateTimeFormat('en-CA').format(now);
+    }
 }
 
 function StatusChip({status}: {status: Status}) {
@@ -84,10 +86,10 @@ const DailyReports = () => {
     const [tab, setTab] = useState<Tab>('mine');
     const [mine, setMine] = useState<DailyReport>();
     const [message, setMessage] = useState('');
-    const [date, setDate] = useState(localToday);
+    const [date, setDate] = useState(() => todayIn(team?.daily_report_timezone));
     const [teamReports, setTeamReports] = useState<DailyReport[]>([]);
-    const [from, setFrom] = useState(localToday);
-    const [to, setTo] = useState(localToday);
+    const [from, setFrom] = useState(() => todayIn(team?.daily_report_timezone));
+    const [to, setTo] = useState(() => todayIn(team?.daily_report_timezone));
     const [error, setError] = useState('');
 
     const activeTab = canApprove ? tab : 'mine';

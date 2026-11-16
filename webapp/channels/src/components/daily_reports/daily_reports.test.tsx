@@ -11,7 +11,7 @@ import * as roles from 'mattermost-redux/selectors/entities/roles';
 import {act, fireEvent, renderWithContext, screen, waitFor} from 'tests/react_testing_utils';
 import {TestHelper} from 'utils/test_helper';
 
-import DailyReports from './daily_reports';
+import DailyReports, {todayIn} from './daily_reports';
 
 jest.mock('mattermost-redux/actions/users', () => ({
     ...jest.requireActual('mattermost-redux/actions/users'),
@@ -109,5 +109,20 @@ describe('DailyReports', () => {
         fireEvent.click(await screen.findByRole('tab', {name: 'Team reports'}));
         expect(await screen.findByText('Auto-approved')).toBeInTheDocument();
         expect(screen.queryByRole('button', {name: 'Approve'})).not.toBeInTheDocument();
+    });
+});
+
+describe('todayIn', () => {
+    const instant = new Date('2026-11-16T23:30:00Z');
+
+    test('uses the team timezone for the date boundary', () => {
+        expect(todayIn('Europe/Istanbul', instant)).toBe('2026-11-17');
+        expect(todayIn('America/New_York', instant)).toBe('2026-11-16');
+    });
+
+    test('falls back to the browser timezone when empty or invalid', () => {
+        const local = todayIn(undefined, instant);
+        expect(todayIn('', instant)).toBe(local);
+        expect(todayIn('Not/AZone', instant)).toBe(local);
     });
 });
