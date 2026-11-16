@@ -434,6 +434,7 @@ const AdvancedTextEditor = ({
         wysiwygRef.current?.insertText(text);
     }, []);
 
+    const stickerTarget = useMemo(() => ({channelId, rootId}), [channelId, rootId]);
     const {
         emojiPicker,
         enableEmojiPicker,
@@ -443,6 +444,7 @@ const AdvancedTextEditor = ({
         isDisabled,
         showPreview,
         wysiwygEnabled ? insertWysiwygText : undefined,
+        isInEditMode ? undefined : stickerTarget,
     );
     const {
         labels: priorityLabels,

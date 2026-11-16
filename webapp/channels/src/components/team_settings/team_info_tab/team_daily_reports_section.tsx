@@ -4,6 +4,7 @@
 import React from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 
+import BaseSettingItem from 'components/widgets/modals/components/base_setting_item';
 import CheckboxSettingItem from 'components/widgets/modals/components/checkbox_setting_item';
 
 type Props = {
@@ -38,25 +39,24 @@ const TeamDailyReportsSection = ({dailyReportsEnabled, handleDailyReportsEnabled
                 handleChange={handleDailyReportsEnabledChange}
             />
             {dailyReportsEnabled && (
-                <label className='tasks-setting-item'>
-                    <FormattedMessage
-                        id='general_tab.dailyReportTime'
-                        defaultMessage='Report deadline'
-                    />
-                    <input
-                        type='time'
-                        data-testid='dailyReportTimeInput'
-                        value={dailyReportTime}
-                        onChange={(e) => e.target.value && handleDailyReportTimeChange(e.target.value)}
-                    />
-                    <span className='help-text'>
-                        <FormattedMessage
-                            id='general_tab.dailyReportTimezone'
-                            defaultMessage='Timezone: {timezone}'
-                            values={{timezone: dailyReportTimezone}}
+                <BaseSettingItem
+                    className='tasks-setting-item daily-report-time-item'
+                    title={formatMessage({id: 'general_tab.dailyReportTime', defaultMessage: 'Report deadline'})}
+                    description={formatMessage(
+                        {id: 'general_tab.dailyReportTimezone', defaultMessage: 'Timezone: {timezone}'},
+                        {timezone: dailyReportTimezone},
+                    )}
+                    descriptionAboveContent={true}
+                    content={
+                        <input
+                            type='time'
+                            className='form-control'
+                            data-testid='dailyReportTimeInput'
+                            value={dailyReportTime}
+                            onChange={(e) => e.target.value && handleDailyReportTimeChange(e.target.value)}
                         />
-                    </span>
-                </label>
+                    }
+                />
             )}
         </>
     );

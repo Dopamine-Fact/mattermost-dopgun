@@ -18,7 +18,7 @@ import {
 import React, {useCallback} from 'react';
 import {useSelector} from 'react-redux';
 
-import type {Emoji} from '@mattermost/types/emojis';
+import type {CustomEmoji, Emoji} from '@mattermost/types/emojis';
 
 import {getIsMobileView} from 'selectors/views/browser';
 
@@ -36,6 +36,7 @@ type UseEmojiPickerOptions = {
     onAddCustomEmojiClick?: () => void;
     onEmojiClick: (emoji: Emoji) => void;
     onGifClick?: (gif: string) => void;
+    onStickerClick?: (emoji: CustomEmoji) => void;
 
     /**
      * Replaces the middleware for positioning the emoji picker in cases where we want it positioned differently.
@@ -57,6 +58,7 @@ export default function useEmojiPicker({
     onAddCustomEmojiClick,
     onEmojiClick,
     onGifClick,
+    onStickerClick,
 
     overrideMiddleware,
 }: UseEmojiPickerOptions): UseEmojiPickerReturn {
@@ -106,6 +108,7 @@ export default function useEmojiPicker({
             onEmojiClose={hideEmojiPicker}
             onEmojiClick={onEmojiClick}
             onGifClick={onGifClick}
+            onStickerClick={onStickerClick}
         />
     );
 

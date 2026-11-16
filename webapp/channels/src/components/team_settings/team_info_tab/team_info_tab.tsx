@@ -232,41 +232,45 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
             aria-labelledby='infoButton'
             role='tabpanel'
         >
-            <div className='name-description-container'>
-                <TeamNameSection
-                    name={name}
-                    clientError={nameClientError}
-                    handleNameChanges={handleNameChanges}
-                />
-                <TeamDescriptionSection
-                    description={description}
-                    handleDescriptionChanges={handleDescriptionChanges}
+            <div className='team-info-top-row'>
+                <div className='name-description-container'>
+                    <TeamNameSection
+                        name={name}
+                        clientError={nameClientError}
+                        handleNameChanges={handleNameChanges}
+                    />
+                    <TeamDescriptionSection
+                        description={description}
+                        handleDescriptionChanges={handleDescriptionChanges}
+                    />
+                </div>
+                <TeamPictureSection
+                    imageSrc={imageURLForTeam(team)}
+                    file={teamIconFile}
+                    disabled={loading}
+                    onFileChange={updateTeamIcon}
+                    onRemove={handleTeamIconRemove}
+                    teamName={team.display_name ?? team.name}
+                    clientError={imageClientError}
                 />
             </div>
-            <TeamPictureSection
-                imageSrc={imageURLForTeam(team)}
-                file={teamIconFile}
-                disabled={loading}
-                onFileChange={updateTeamIcon}
-                onRemove={handleTeamIconRemove}
-                teamName={team.display_name ?? team.name}
-                clientError={imageClientError}
-            />
-            <TeamTasksSection
-                tasksEnabled={tasksEnabled}
-                handleTasksEnabledChange={handleTasksEnabledChange}
-                revisionsEnabled={revisionsEnabled}
-                handleRevisionsEnabledChange={handleRevisionsEnabledChange}
-                canvasEnabled={canvasEnabled}
-                handleCanvasEnabledChange={handleCanvasEnabledChange}
-            />
-            <TeamDailyReportsSection
-                dailyReportsEnabled={dailyReportsEnabled}
-                handleDailyReportsEnabledChange={handleDailyReportsEnabledChange}
-                dailyReportTime={dailyReportTime}
-                dailyReportTimezone={team.daily_report_timezone ?? ''}
-                handleDailyReportTimeChange={handleDailyReportTimeChange}
-            />
+            <div className='team-features-container'>
+                <TeamTasksSection
+                    tasksEnabled={tasksEnabled}
+                    handleTasksEnabledChange={handleTasksEnabledChange}
+                    revisionsEnabled={revisionsEnabled}
+                    handleRevisionsEnabledChange={handleRevisionsEnabledChange}
+                    canvasEnabled={canvasEnabled}
+                    handleCanvasEnabledChange={handleCanvasEnabledChange}
+                />
+                <TeamDailyReportsSection
+                    dailyReportsEnabled={dailyReportsEnabled}
+                    handleDailyReportsEnabledChange={handleDailyReportsEnabledChange}
+                    dailyReportTime={dailyReportTime}
+                    dailyReportTimezone={team.daily_report_timezone ?? ''}
+                    handleDailyReportTimeChange={handleDailyReportTimeChange}
+                />
+            </div>
             {(areThereUnsavedChanges || saveChangesPanelState === 'saved') && (
                 <SaveChangesPanel
                     handleCancel={handleCancel}

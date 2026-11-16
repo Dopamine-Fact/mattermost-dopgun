@@ -177,7 +177,7 @@ export default class PostMessageView extends React.PureComponent<Props, State> {
             <>
                 <div
                     id={id}
-                    className='post-message__text'
+                    className={post.props?.sticker === true ? 'post-message__text post-message__text--sticker' : 'post-message__text'}
                     data-testid='post-message-text'
                     dir='auto'
                     onClick={this.handleFormattedTextClick}

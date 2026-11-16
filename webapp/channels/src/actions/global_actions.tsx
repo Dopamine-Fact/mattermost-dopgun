@@ -416,7 +416,7 @@ export async function redirectUserToDefaultTeam(searchParams?: URLSearchParams) 
                 dispatch(fetchTeamScheduledPosts(team.id, true));
             }
             dispatch(selectChannel(channel.id));
-            historyPushWithQueryParams(`/${team.name}/channels/${channel.name}`, searchParams);
+            historyPushWithQueryParams(`/${team.name}/dashboard`, searchParams);
             return;
         }
     }
@@ -428,7 +428,7 @@ export async function redirectUserToDefaultTeam(searchParams?: URLSearchParams) 
         const channel = await getTeamRedirectChannelIfIsAccesible(user, myTeam); // eslint-disable-line no-await-in-loop
         if (channel) {
             dispatch(selectChannel(channel.id));
-            historyPushWithQueryParams(`/${myTeam.name}/channels/${channel.name}`, searchParams);
+            historyPushWithQueryParams(`/${myTeam.name}/dashboard`, searchParams);
             return;
         }
     }

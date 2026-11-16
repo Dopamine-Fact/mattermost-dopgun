@@ -154,17 +154,19 @@ function formatDuration(seconds: number): string {
     return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
-const VideoTile = ({fileInfo, index, total, enablePublicLink, onClick}: Props) => {
+const VideoTile = ({fileInfo, index, total, enablePublicLink}: Props) => {
     const {formatMessage} = useIntl();
     const fileUrl = getFileUrl(fileInfo.id);
     const tileRef = useRef<HTMLDivElement>(null);
     const inView = useInViewport(tileRef);
+    const [playing, setPlaying] = useState(false);
 
-    const {poster, failed, duration} = useFirstFramePoster(fileInfo.id, fileUrl, inView);
+    const {poster, failed, duration} = useFirstFramePoster(fileInfo.id, fileUrl, inView && !playing);
 
+    // Play inline in the post; the native controls provide fullscreen.
     const handleActivate = useCallback(() => {
-        onClick(index);
-    }, [onClick, index]);
+        setPlaying(true);
+    }, []);
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -186,6 +188,28 @@ const VideoTile = ({fileInfo, index, total, enablePublicLink, onClick}: Props) =
 
     const showPlaceholder = !poster;
     const showPlaceholderIcon = failed;
+
+    if (playing) {
+        return (
+            <div
+                ref={tileRef}
+                className='MediaGallery__tile MediaGallery__tile--playing'
+                data-testid='media-gallery-tile'
+                data-file-name={fileInfo.name || ''}
+                style={tileSizeVars(fileInfo)}
+            >
+                <video
+                    src={fileUrl}
+                    poster={poster ?? undefined}
+                    controls={true}
+                    autoPlay={true}
+                    playsInline={true}
+                    aria-label={fileInfo.name}
+                    data-testid='media-gallery-video-player'
+                />
+            </div>
+        );
+    }
 
     return (
         <div

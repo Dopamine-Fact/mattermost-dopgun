@@ -200,6 +200,15 @@
         object-fit: cover;
     }
 
+    &--playing {
+        background: #000;
+
+        video {
+            cursor: default;
+            object-fit: contain;
+        }
+    }
+
     &:hover .image-preview-utility-buttons-container,
     &:focus-within .image-preview-utility-buttons-container {
         display: inline-block;

@@ -5,11 +5,13 @@ import React, {useCallback, useRef, useState} from 'react';
 import {Tab, Tabs} from 'react-bootstrap';
 import {FormattedMessage, useIntl} from 'react-intl';
 
-import type {Emoji} from '@mattermost/types/emojis';
+import {EmoticonCustomOutlineIcon} from '@mattermost/compass-icons/components';
+import type {CustomEmoji, Emoji} from '@mattermost/types/emojis';
 
 import {makeAsyncComponent} from 'components/async_load';
 import EmojiPicker from 'components/emoji_picker';
 import EmojiPickerHeader from 'components/emoji_picker/components/emoji_picker_header';
+import StickerPicker from 'components/emoji_picker/components/sticker_picker';
 import EmojiIcon from 'components/widgets/icons/emoji_icon';
 import GifIcon from 'components/widgets/icons/giphy_icon';
 
@@ -19,6 +21,7 @@ export interface Props {
     onEmojiClose: () => void;
     onEmojiClick: (emoji: Emoji) => void;
     onGifClick?: (gif: string) => void;
+    onStickerClick?: (emoji: CustomEmoji) => void;
     onAddCustomEmojiClick?: () => void;
     enableGifPicker?: boolean;
 }
@@ -32,14 +35,24 @@ export default function EmojiPickerTabs(props: Props) {
     const rootPickerNodeRef = useRef<HTMLDivElement>(null);
     const getRootPickerNode = useCallback(() => rootPickerNodeRef.current, []);
 
-    if (props.enableGifPicker && typeof props.onGifClick != 'undefined') {
+    const showGifs = Boolean(props.enableGifPicker && props.onGifClick);
+    const onStickerClick = props.onStickerClick;
+
+    if (showGifs || onStickerClick) {
+        let dialogLabel = intl.formatMessage({id: 'emoji_gif_picker.dialog.emojis', defaultMessage: 'Emoji Picker'});
+        if (activeKey === 2) {
+            dialogLabel = intl.formatMessage({id: 'emoji_gif_picker.dialog.gifs', defaultMessage: 'GIF Picker'});
+        } else if (activeKey === 3) {
+            dialogLabel = intl.formatMessage({id: 'emoji_gif_picker.dialog.stickers', defaultMessage: 'Sticker Picker'});
+        }
+
         return (
             <div
                 id='emojiGifPicker'
                 ref={rootPickerNodeRef}
                 className='a11y__popup emoji-picker'
                 role='dialog'
-                aria-label={activeKey === 1 ? intl.formatMessage({id: 'emoji_gif_picker.dialog.emojis', defaultMessage: 'Emoji Picker'}) : intl.formatMessage({id: 'emoji_gif_picker.dialog.gifs', defaultMessage: 'GIF Picker'})}
+                aria-label={dialogLabel}
                 aria-modal='true'
             >
                 <EmojiPickerHeader handleEmojiPickerClose={props.onEmojiClose}/>
@@ -76,30 +89,54 @@ export default function EmojiPickerTabs(props: Props) {
                             handleEmojiPickerClose={props.onEmojiClose}
                         />
                     </Tab>
-                    <Tab
-                        eventKey={2}
-                        title={
-                            <div className={'custom-emoji-tab__icon__text'}>
-                                <GifIcon
-                                    className='custom-emoji-tab__icon'
-                                    aria-hidden={true}
-                                />
-                                <FormattedMessage
-                                    id='emoji_gif_picker.tabs.gifs'
-                                    defaultMessage='GIFs'
-                                />
-                            </div>
-                        }
-                        unmountOnExit={true}
-                        tabClassName={'custom-emoji-tab'}
-                    >
-                        <GifPicker
-                            filter={filter}
-                            getRootPickerNode={getRootPickerNode}
-                            onGifClick={props.onGifClick}
-                            handleFilterChange={setFilter}
-                        />
-                    </Tab>
+                    {showGifs && (
+                        <Tab
+                            eventKey={2}
+                            title={
+                                <div className={'custom-emoji-tab__icon__text'}>
+                                    <GifIcon
+                                        className='custom-emoji-tab__icon'
+                                        aria-hidden={true}
+                                    />
+                                    <FormattedMessage
+                                        id='emoji_gif_picker.tabs.gifs'
+                                        defaultMessage='GIFs'
+                                    />
+                                </div>
+                            }
+                            unmountOnExit={true}
+                            tabClassName={'custom-emoji-tab'}
+                        >
+                            <GifPicker
+                                filter={filter}
+                                getRootPickerNode={getRootPickerNode}
+                                onGifClick={props.onGifClick}
+                                handleFilterChange={setFilter}
+                            />
+                        </Tab>
+                    )}
+                    {onStickerClick && (
+                        <Tab
+                            eventKey={3}
+                            title={
+                                <div className={'custom-emoji-tab__icon__text'}>
+                                    <EmoticonCustomOutlineIcon
+                                        className='custom-emoji-tab__icon'
+                                        size={16}
+                                        aria-hidden={true}
+                                    />
+                                    <FormattedMessage
+                                        id='emoji_gif_picker.tabs.stickers'
+                                        defaultMessage='Stickers'
+                                    />
+                                </div>
+                            }
+                            unmountOnExit={true}
+                            tabClassName={'custom-emoji-tab'}
+                        >
+                            <StickerPicker onStickerClick={onStickerClick}/>
+                        </Tab>
+                    )}
                 </Tabs>
             </div>
         );

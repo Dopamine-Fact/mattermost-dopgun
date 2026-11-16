@@ -23099,6 +23099,82 @@
     "defaultMessage": "Update",
     "description": "Button that updates the user's already submitted daily report while it is not yet approved."
   },
+  "dashboard.due.overdue": {
+    "defaultMessage": "Overdue",
+    "description": "Badge on a task in the Dashboard focus list whose due date has passed."
+  },
+  "dashboard.due.today": {
+    "defaultMessage": "Today",
+    "description": "Badge on a task in the Dashboard focus list that is due today."
+  },
+  "dashboard.due.tomorrow": {
+    "defaultMessage": "Tomorrow",
+    "description": "Badge on a task in the Dashboard focus list that is due tomorrow."
+  },
+  "dashboard.focus.all": {
+    "defaultMessage": "All tasks",
+    "description": "Link in the Dashboard focus panel header that opens the team's Tasks page."
+  },
+  "dashboard.focus.empty": {
+    "defaultMessage": "No open tasks are assigned to you.",
+    "description": "Shown in the Dashboard focus panel when the user has no unfinished tasks assigned."
+  },
+  "dashboard.focus.title": {
+    "defaultMessage": "Your focus",
+    "description": "Heading of the Dashboard panel listing the user's unfinished tasks, soonest due first."
+  },
+  "dashboard.greeting": {
+    "defaultMessage": "Hello, {name}",
+    "description": "Greeting at the top of the Dashboard page; {name} is the user's first name or username."
+  },
+  "dashboard.sidebarLink": {
+    "defaultMessage": "Dashboard",
+    "description": "Left sidebar link that opens the user's Dashboard home page."
+  },
+  "dashboard.stat.assignedTasks": {
+    "defaultMessage": "Tasks assigned to you",
+    "description": "Label of the Dashboard stat card counting the user's unfinished assigned tasks."
+  },
+  "dashboard.stat.mentions": {
+    "defaultMessage": "Mentions",
+    "description": "Label of the Dashboard stat card counting unread mentions of the user in the current team."
+  },
+  "dashboard.stat.priorityTasks": {
+    "defaultMessage": "Priority tasks",
+    "description": "Label of the Dashboard stat card counting the user's tasks that are overdue or due by tomorrow."
+  },
+  "dashboard.stat.unreadMessages": {
+    "defaultMessage": "Unread messages",
+    "description": "Label of the Dashboard stat card counting unread messages in the current team's channels and direct messages."
+  },
+  "dashboard.status.done": {
+    "defaultMessage": "Done",
+    "description": "Status shown next to a task in the Dashboard focus list."
+  },
+  "dashboard.status.in_progress": {
+    "defaultMessage": "In progress",
+    "description": "Status shown next to a task in the Dashboard focus list."
+  },
+  "dashboard.status.todo": {
+    "defaultMessage": "To do",
+    "description": "Status shown next to a task in the Dashboard focus list."
+  },
+  "dashboard.title": {
+    "defaultMessage": "Dashboard",
+    "description": "Title in the header of the Dashboard page."
+  },
+  "dashboard.unreads.empty": {
+    "defaultMessage": "You're all caught up.",
+    "description": "Shown in the Dashboard unread channels panel when nothing is unread."
+  },
+  "dashboard.unreads.messages": {
+    "defaultMessage": "{count, plural, one {# new message} other {# new messages}}",
+    "description": "Count of new messages next to a channel in the Dashboard unread channels panel."
+  },
+  "dashboard.unreads.title": {
+    "defaultMessage": "Unread channels",
+    "description": "Heading of the Dashboard panel listing channels with unread messages."
+  },
   "data_spillage_report_post.reporting_comment.placeholder": {
     "defaultMessage": "No comment",
     "description": "Placeholder value shown in the flagged-message review card when the reporter left no comment."
@@ -23715,6 +23791,10 @@
     "defaultMessage": "GIF Picker",
     "description": "Accessibility label (aria-label) for the GIF picker popup dialog; not visible on screen."
   },
+  "emoji_gif_picker.dialog.stickers": {
+    "defaultMessage": "Sticker Picker",
+    "description": ""
+  },
   "emoji_gif_picker.tabs.emojis": {
     "defaultMessage": "Emojis",
     "description": "Tab label in the combined emoji/GIF picker for the emoji tab; compact space."
@@ -23722,6 +23802,10 @@
   "emoji_gif_picker.tabs.gifs": {
     "defaultMessage": "GIFs",
     "description": "Tab label in the combined emoji/GIF picker for the GIF tab; compact space."
+  },
+  "emoji_gif_picker.tabs.stickers": {
+    "defaultMessage": "Stickers",
+    "description": ""
   },
   "emoji_list.actions": {
     "defaultMessage": "Actions",
@@ -24487,14 +24571,6 @@
     "defaultMessage": "Invite Code",
     "description": "Title of the Invite Code section in team settings; the code is part of the team invitation link."
   },
-  "general_tab.dailyReportTime": {
-    "defaultMessage": "Report deadline",
-    "description": "Label of the time input in Team Settings > Info that sets the daily report deadline; reminders are sent 10 and 5 minutes before it."
-  },
-  "general_tab.dailyReportTimezone": {
-    "defaultMessage": "Timezone: {timezone}",
-    "description": "Help text under the daily report deadline input in Team Settings > Info; {timezone} is the team's saved timezone, e.g. Europe/Istanbul."
-  },
   "general_tab.dailyReportsEnabled": {
     "defaultMessage": "Enable daily reports for this team",
     "description": "Checkbox label of the daily reports setting in Team Settings > Info."
@@ -24506,6 +24582,14 @@
   "general_tab.dailyReportsTitle": {
     "defaultMessage": "Daily reports",
     "description": "Section title in Team Settings > Info for the setting that turns daily reports on or off for the team."
+  },
+  "general_tab.dailyReportTime": {
+    "defaultMessage": "Report deadline",
+    "description": "Label of the time input in Team Settings > Info that sets the daily report deadline; reminders are sent 10 and 5 minutes before it."
+  },
+  "general_tab.dailyReportTimezone": {
+    "defaultMessage": "Timezone: {timezone}",
+    "description": "Help text under the daily report deadline input in Team Settings > Info; {timezone} is the team's saved timezone, e.g. Europe/Istanbul."
   },
   "general_tab.regenerate": {
     "defaultMessage": "Regenerate",
@@ -32218,6 +32302,10 @@
   "slash_commands.header": {
     "defaultMessage": "Slash Commands",
     "description": "Breadcrumb link on the slash command setup confirmation page; navigates back to the Slash Commands list."
+  },
+  "sticker_picker.empty": {
+    "defaultMessage": "No stickers yet. Add custom emojis to use them as stickers.",
+    "description": ""
   },
   "suggestion.all": {
     "defaultMessage": "All channel types",
