@@ -101,6 +101,8 @@ const (
 	WebsocketTaskDeleted                              WebsocketEventType = "task_deleted"
 	WebsocketTaskSectionUpserted                      WebsocketEventType = "task_section_upserted"
 	WebsocketTaskSectionDeleted                       WebsocketEventType = "task_section_deleted"
+	WebsocketEventCanvasUpdated                       WebsocketEventType = "canvas_updated"
+	WebsocketEventCanvasAwareness                     WebsocketEventType = "canvas_awareness"
 	WebsocketEventCPAFieldCreated                     WebsocketEventType = "custom_profile_attributes_field_created"
 	WebsocketEventCPAFieldUpdated                     WebsocketEventType = "custom_profile_attributes_field_updated"
 	WebsocketEventCPAFieldDeleted                     WebsocketEventType = "custom_profile_attributes_field_deleted"

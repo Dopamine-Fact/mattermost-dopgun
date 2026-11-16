@@ -69,6 +69,31 @@ describe('SidebarBrowseOrAddChannelMenu', () => {
         expect(await open(state(true, []))).toBe(false);
     });
 
+    test('offers "Create canvas channel" only when the team has canvases on and the user can create public channels', async () => {
+        const state = (canvasEnabled: boolean, permissions: string[]) => ({
+            entities: {
+                users: {currentUserId: 'me', profiles: {me: TestHelper.getUserMock({id: 'me', roles: 'system_user'})}},
+                teams: {
+                    currentTeamId: 'team_id',
+                    teams: {team_id: TestHelper.getTeamMock({id: 'team_id', canvas_enabled: canvasEnabled})},
+                    myMembers: {team_id: TestHelper.getTeamMembershipMock({team_id: 'team_id', user_id: 'me', roles: 'team_user'})},
+                },
+                roles: {roles: {team_user: TestHelper.getRoleMock({name: 'team_user', permissions})}},
+            },
+        });
+        const open = async (s: ReturnType<typeof state>) => {
+            const {unmount} = renderWithContext(<SidebarBrowseOrAddChannelMenu {...props}/>, s);
+            await userEvent.click(screen.getByRole('button', {name: 'Browse or create channels'}));
+            const shown = Boolean(screen.queryByRole('menuitem', {name: 'Create canvas channel'}));
+            unmount();
+            return shown;
+        };
+
+        expect(await open(state(true, ['create_public_channel']))).toBe(true);
+        expect(await open(state(false, ['create_public_channel']))).toBe(false);
+        expect(await open(state(true, []))).toBe(false);
+    });
+
     test('lists a plugin item after the built-in items by default', async () => {
         const ids = await menuItemIds([{id: 'default_item', text: 'Default item'}]);
 

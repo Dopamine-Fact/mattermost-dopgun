@@ -37,7 +37,7 @@ const config = {
     modulePaths: ['<rootDir>/src'],
     moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
     transformIgnorePatterns: [
-        'node_modules/(?!react-native|react-router|pdfjs-dist|p-queue|p-timeout|@mattermost/compass-icons|cidr-regex|ip-regex|serialize-error|@tiptap|marked|lowlight|devlop|fault|hast-util-to-text|@types/hast|unist-util-find-after)',
+        'node_modules/(?!react-native|react-router|pdfjs-dist|p-queue|p-timeout|@mattermost/compass-icons|cidr-regex|ip-regex|serialize-error|@tiptap|marked|lowlight|devlop|fault|hast-util-to-text|@types/hast|unist-util-find-after|yjs|lib0|y-protocols)',
     ],
     transform: {
         '^.+\\.(js|jsx|ts|tsx|mjs)$': 'babel-jest',

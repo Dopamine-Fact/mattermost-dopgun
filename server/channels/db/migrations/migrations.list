@@ -489,3 +489,5 @@ channels/db/migrations/postgres/000246_add_task_revisions.down.sql
 channels/db/migrations/postgres/000246_add_task_revisions.up.sql
 channels/db/migrations/postgres/000247_add_channel_last_icon_update.down.sql
 channels/db/migrations/postgres/000247_add_channel_last_icon_update.up.sql
+channels/db/migrations/postgres/000248_create_canvases.down.sql
+channels/db/migrations/postgres/000248_create_canvases.up.sql

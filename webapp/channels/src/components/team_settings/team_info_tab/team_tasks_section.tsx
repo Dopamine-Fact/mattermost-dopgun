@@ -11,9 +11,11 @@ type Props = {
     handleTasksEnabledChange: (enabled: boolean) => void;
     revisionsEnabled: boolean;
     handleRevisionsEnabledChange: (enabled: boolean) => void;
+    canvasEnabled: boolean;
+    handleCanvasEnabledChange: (enabled: boolean) => void;
 };
 
-const TeamTasksSection = ({tasksEnabled, handleTasksEnabledChange, revisionsEnabled, handleRevisionsEnabledChange}: Props) => {
+const TeamTasksSection = ({tasksEnabled, handleTasksEnabledChange, revisionsEnabled, handleRevisionsEnabledChange, canvasEnabled, handleCanvasEnabledChange}: Props) => {
     const {formatMessage} = useIntl();
 
     return (
@@ -56,6 +58,24 @@ const TeamTasksSection = ({tasksEnabled, handleTasksEnabledChange, revisionsEnab
                     handleChange={handleRevisionsEnabledChange}
                 />
             )}
+            <CheckboxSettingItem
+                className='tasks-setting-item'
+                title={formatMessage({id: 'general_tab.canvasTitle', defaultMessage: 'Canvas channels'})}
+                description={formatMessage({
+                    id: 'general_tab.canvasInfo',
+                    defaultMessage: 'When enabled, team members can create canvas channels: chat channels with a shared whiteboard for drawing and diagrams.',
+                })}
+                descriptionAboveContent={true}
+                inputFieldTitle={
+                    <FormattedMessage
+                        id='general_tab.canvasEnabled'
+                        defaultMessage='Enable canvas channels'
+                    />
+                }
+                inputFieldData={{name: 'canvasEnabled', dataTestId: 'canvasEnabledCheckbox'}}
+                inputFieldValue={canvasEnabled}
+                handleChange={handleCanvasEnabledChange}
+            />
         </>
     );
 };

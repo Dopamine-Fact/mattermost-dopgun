@@ -10,6 +10,7 @@ import type {AppBinding, AppCallRequest, AppCallResponse} from '@mattermost/type
 import type {Audit} from '@mattermost/types/audits';
 import type {UserAutocomplete, AutocompleteSuggestion} from '@mattermost/types/autocomplete';
 import type {Bot, BotPatch} from '@mattermost/types/bots';
+import type {Canvas, CanvasState} from '@mattermost/types/canvas';
 import type {ChannelBookmark, ChannelBookmarkCreate, ChannelBookmarkPatch, UpdateChannelBookmarkResponse} from '@mattermost/types/channel_bookmarks';
 import type {ChannelCategory, OrderedChannelCategories} from '@mattermost/types/channel_categories';
 import type {
@@ -5200,6 +5201,35 @@ export default class Client4 {
 
     getTaskCommentFileUrl = (commentId: string, fileId: string) => {
         return `${this.getBaseRoute()}/task_comments/${commentId}/files/${fileId}`;
+    };
+
+    createCanvas = (teamId: string, channelId: string) => {
+        return this.doFetch<Canvas>(
+            `${this.getTeamRoute(teamId)}/canvases`,
+            {method: 'post', body: JSON.stringify({channel_id: channelId})},
+        );
+    };
+
+    getCanvas = (channelId: string) => {
+        return this.doFetch<Canvas>(`${this.getChannelRoute(channelId)}/canvas`, {method: 'get'});
+    };
+
+    getCanvasState = (channelId: string, after = 0) => {
+        return this.doFetch<CanvasState>(`${this.getChannelRoute(channelId)}/canvas/state${buildQueryString({after})}`, {method: 'get'});
+    };
+
+    postCanvasUpdate = (channelId: string, data: string, connectionId = '') => {
+        return this.doFetch<{seq: number}>(
+            `${this.getChannelRoute(channelId)}/canvas/updates`,
+            {method: 'post', body: JSON.stringify({data}), headers: {'Connection-Id': connectionId}},
+        );
+    };
+
+    saveCanvasSnapshot = (channelId: string, data: string, uptoSeq: number) => {
+        return this.doFetch<{applied: boolean}>(
+            `${this.getChannelRoute(channelId)}/canvas/snapshot`,
+            {method: 'put', body: JSON.stringify({data, upto_seq: uptoSeq})},
+        );
     };
 
     restorePostVersion = (postId: string, restoreVersionId: string, connectionId: string) => {

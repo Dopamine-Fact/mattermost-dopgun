@@ -43,6 +43,9 @@ export type Team = {
     /** revision channels; only effective together with tasks_enabled */
     revisions_enabled?: boolean;
 
+    /** canvas (whiteboard) channels; independent of tasks_enabled */
+    canvas_enabled?: boolean;
+
     /** Data Retention Policy id. Unrelated to access-control policies below. */
     policy_id?: string | null;
     last_team_icon_update?: number;

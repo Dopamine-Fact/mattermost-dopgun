@@ -26,6 +26,8 @@ export type WebSocketMessage = (
     Messages.TaskDeleted |
     Messages.TaskSectionUpserted |
     Messages.TaskSectionDeleted |
+    Messages.CanvasUpdated |
+    Messages.CanvasAwareness |
     Messages.PostTranslationUpdated |
 
     Messages.ThreadUpdated |

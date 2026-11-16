@@ -92,6 +92,7 @@ type Store interface {
 	ChannelBookmark() ChannelBookmarkStore
 	ScheduledPost() ScheduledPostStore
 	Task() TaskStore
+	Canvas() CanvasStore
 	View() ViewStore
 	PropertyGroup() PropertyGroupStore
 	PropertyField() PropertyFieldStore
@@ -1217,6 +1218,14 @@ type TaskStore interface {
 	GetComment(id string) (*model.TaskComment, error)
 	GetCommentsForTask(taskId string) ([]*model.TaskComment, error)
 	DeleteComment(id string) error
+}
+
+type CanvasStore interface {
+	Save(canvas *model.Canvas) (*model.Canvas, error)
+	Get(channelID string) (*model.Canvas, error)
+	AppendUpdate(channelID, userID string, data []byte) (int64, error)
+	GetState(channelID string, afterSeq int64) (*model.CanvasState, error)
+	SaveSnapshot(channelID string, data []byte, uptoSeq int64) (bool, error)
 }
 
 type ScheduledPostStore interface {

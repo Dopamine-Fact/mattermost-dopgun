@@ -14752,5 +14752,29 @@
   {
     "id": "app.task.revision_comment",
     "translation": ":speech_balloon: [{{.Title}}]({{.Link}}) revizyonuna yorum:\n{{.Message}}"
+  },
+  {
+    "id": "app.canvas.archived.app_error",
+    "translation": "Kanal arşivlenmiş."
+  },
+  {
+    "id": "app.canvas.disabled.app_error",
+    "translation": "Bu takım için tuval etkin değil."
+  },
+  {
+    "id": "app.canvas.invalid_channel.app_error",
+    "translation": "Bu kanal için tuval oluşturulamaz."
+  },
+  {
+    "id": "app.canvas.not_found.app_error",
+    "translation": "Bu kanalda tuval yok."
+  },
+  {
+    "id": "app.canvas.store.app_error",
+    "translation": "Tuval kaydedilemedi veya yüklenemedi."
+  },
+  {
+    "id": "app.canvas.too_large.app_error",
+    "translation": "Tuval verisi çok büyük."
   }
 ]

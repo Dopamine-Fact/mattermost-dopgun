@@ -54,6 +54,7 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
     const [description, setDescription] = useState<Team['description']>(team.description);
     const [tasksEnabled, setTasksEnabled] = useState<boolean>(Boolean(team.tasks_enabled));
     const [revisionsEnabled, setRevisionsEnabled] = useState<boolean>(Boolean(team.revisions_enabled));
+    const [canvasEnabled, setCanvasEnabled] = useState<boolean>(Boolean(team.canvas_enabled));
     const [teamIconFile, setTeamIconFile] = useState<File | undefined>();
     const [loading, setLoading] = useState<boolean>(false);
     const [imageClientError, setImageClientError] = useState<BaseSettingItemProps['error'] | undefined>();
@@ -61,7 +62,7 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
     const [saveChangesPanelState, setSaveChangesPanelState] = useState<SaveChangesPanelState>();
 
     const handleNameDescriptionSubmit = useCallback(async (): Promise<boolean> => {
-        if (name.trim() === team.display_name && description === team.description && tasksEnabled === Boolean(team.tasks_enabled) && revisionsEnabled === Boolean(team.revisions_enabled)) {
+        if (name.trim() === team.display_name && description === team.description && tasksEnabled === Boolean(team.tasks_enabled) && revisionsEnabled === Boolean(team.revisions_enabled) && canvasEnabled === Boolean(team.canvas_enabled)) {
             return true;
         }
 
@@ -73,12 +74,12 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
             return false;
         }
         setNameClientError(undefined);
-        const {error} = await actions.patchTeam({id: team.id, display_name: name, description, tasks_enabled: tasksEnabled, revisions_enabled: revisionsEnabled});
+        const {error} = await actions.patchTeam({id: team.id, display_name: name, description, tasks_enabled: tasksEnabled, revisions_enabled: revisionsEnabled, canvas_enabled: canvasEnabled});
         if (error) {
             return false;
         }
         return true;
-    }, [actions, description, name, tasksEnabled, revisionsEnabled, team.description, team.display_name, team.id, team.tasks_enabled, team.revisions_enabled]);
+    }, [actions, description, name, tasksEnabled, revisionsEnabled, canvasEnabled, team.description, team.display_name, team.id, team.tasks_enabled, team.revisions_enabled, team.canvas_enabled]);
 
     const handleTeamIconSubmit = useCallback(async (): Promise<boolean> => {
         if (!teamIconFile) {
@@ -118,11 +119,12 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
         setDescription(team.description);
         setTasksEnabled(Boolean(team.tasks_enabled));
         setRevisionsEnabled(Boolean(team.revisions_enabled));
+        setCanvasEnabled(Boolean(team.canvas_enabled));
         setTeamIconFile(undefined);
         setImageClientError(undefined);
         setNameClientError(undefined);
         handleClose();
-    }, [handleClose, team.description, team.display_name, team.name, team.tasks_enabled, team.revisions_enabled]);
+    }, [handleClose, team.description, team.display_name, team.name, team.tasks_enabled, team.revisions_enabled, team.canvas_enabled]);
 
     const handleTeamIconRemove = useCallback(async () => {
         setLoading(true);
@@ -183,6 +185,12 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
         setRevisionsEnabled(enabled);
     }, [setAreThereUnsavedChanges]);
 
+    const handleCanvasEnabledChange = useCallback((enabled: boolean) => {
+        setAreThereUnsavedChanges(true);
+        setSaveChangesPanelState('editing');
+        setCanvasEnabled(enabled);
+    }, [setAreThereUnsavedChanges]);
+
     return (
         <div
             className='modal-info-tab-content user-settings'
@@ -215,6 +223,8 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
                 handleTasksEnabledChange={handleTasksEnabledChange}
                 revisionsEnabled={revisionsEnabled}
                 handleRevisionsEnabledChange={handleRevisionsEnabledChange}
+                canvasEnabled={canvasEnabled}
+                handleCanvasEnabledChange={handleCanvasEnabledChange}
             />
             {(areThereUnsavedChanges || saveChangesPanelState === 'saved') && (
                 <SaveChangesPanel

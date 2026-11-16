@@ -120,6 +120,26 @@ func (_m *Store) Bot() store.BotStore {
 	return r0
 }
 
+// Canvas provides a mock function with no fields
+func (_m *Store) Canvas() store.CanvasStore {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Canvas")
+	}
+
+	var r0 store.CanvasStore
+	if rf, ok := ret.Get(0).(func() store.CanvasStore); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.CanvasStore)
+		}
+	}
+
+	return r0
+}
+
 // Channel provides a mock function with no fields
 func (_m *Store) Channel() store.ChannelStore {
 	ret := _m.Called()

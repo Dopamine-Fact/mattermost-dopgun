@@ -67,6 +67,7 @@ type Store struct {
 	ChannelGuardStore               mocks.ChannelGuardStore
 	ScheduledPostStore              mocks.ScheduledPostStore
 	TaskStore                       mocks.TaskStore
+	CanvasStore                     mocks.CanvasStore
 	PropertyGroupStore              mocks.PropertyGroupStore
 	PropertyFieldStore              mocks.PropertyFieldStore
 	PropertyValueStore              mocks.PropertyValueStore
@@ -136,6 +137,7 @@ func (s *Store) SharedChannel() store.SharedChannelStore     { return &s.SharedC
 func (s *Store) PostPriority() store.PostPriorityStore       { return &s.PostPriorityStore }
 func (s *Store) ScheduledPost() store.ScheduledPostStore     { return &s.ScheduledPostStore }
 func (s *Store) Task() store.TaskStore                       { return &s.TaskStore }
+func (s *Store) Canvas() store.CanvasStore                   { return &s.CanvasStore }
 func (s *Store) PropertyGroup() store.PropertyGroupStore     { return &s.PropertyGroupStore }
 func (s *Store) PropertyField() store.PropertyFieldStore     { return &s.PropertyFieldStore }
 func (s *Store) PropertyValue() store.PropertyValueStore     { return &s.PropertyValueStore }
@@ -262,6 +264,7 @@ func (s *Store) AssertExpectations(t mock.TestingT) bool {
 		&s.ChannelGuardStore,
 		&s.ScheduledPostStore,
 		&s.TaskStore,
+		&s.CanvasStore,
 		&s.AccessControlPolicyStore,
 		&s.AttributesStore,
 		&s.SessionAttributeStore,

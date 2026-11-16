@@ -44,6 +44,7 @@ type Team struct {
 	CloudLimitsArchived bool    `json:"cloud_limits_archived"`
 	TasksEnabled        bool    `json:"tasks_enabled"`
 	RevisionsEnabled    bool    `json:"revisions_enabled"` // revision channels; only effective with TasksEnabled
+	CanvasEnabled       bool    `json:"canvas_enabled"`
 
 	// Not persisted; derived by the store via EXISTS on AccessControlPolicies(Type='team').
 	// Use HasMembershipPolicyAction for enforcement — this is a read-path signal only.
@@ -91,6 +92,7 @@ func (o *Team) Auditable() map[string]any {
 		"cloud_limits_archived": o.CloudLimitsArchived,
 		"tasks_enabled":         o.TasksEnabled,
 		"revisions_enabled":     o.RevisionsEnabled,
+		"canvas_enabled":        o.CanvasEnabled,
 	}
 }
 
@@ -108,6 +110,7 @@ type TeamPatch struct {
 	CloudLimitsArchived *bool   `json:"cloud_limits_archived"`
 	TasksEnabled        *bool   `json:"tasks_enabled"`
 	RevisionsEnabled    *bool   `json:"revisions_enabled"`
+	CanvasEnabled       *bool   `json:"canvas_enabled"`
 }
 
 func (o *TeamPatch) Auditable() map[string]any {
@@ -117,6 +120,7 @@ func (o *TeamPatch) Auditable() map[string]any {
 		"cloud_limits_archived": o.CloudLimitsArchived,
 		"tasks_enabled":         o.TasksEnabled,
 		"revisions_enabled":     o.RevisionsEnabled,
+		"canvas_enabled":        o.CanvasEnabled,
 	}
 }
 
@@ -325,6 +329,10 @@ func (o *Team) Patch(patch *TeamPatch) {
 
 	if patch.RevisionsEnabled != nil {
 		o.RevisionsEnabled = *patch.RevisionsEnabled
+	}
+
+	if patch.CanvasEnabled != nil {
+		o.CanvasEnabled = *patch.CanvasEnabled
 	}
 }
 

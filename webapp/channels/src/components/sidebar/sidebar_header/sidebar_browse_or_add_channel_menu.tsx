@@ -13,6 +13,7 @@ import {
     GlobeIcon,
     AccountOutlineIcon,
     PlayBoxMultipleOutlineIcon,
+    PencilOutlineIcon,
 } from '@mattermost/compass-icons/components';
 import {Icon} from '@mattermost/compass-ui/components/icon';
 
@@ -23,6 +24,7 @@ import {getCurrentTeam, getCurrentTeamId} from 'mattermost-redux/selectors/entit
 import {openModal} from 'actions/views/modals';
 import {getSidebarBrowseOrAddChannelMenuPluginComponents} from 'selectors/plugins';
 
+import CanvasChannelModal from 'components/canvas/canvas_channel_modal';
 import * as Menu from 'components/menu';
 import RevisionChannelModal from 'components/tasks/revision_channel_modal';
 import {OnboardingTourSteps} from 'components/tours';
@@ -64,6 +66,8 @@ export default function SidebarBrowserOrAddChannelMenu(props: Props) {
     const team = useSelector(getCurrentTeam);
     const canManageTasks = useSelector((state: GlobalState) => haveICurrentTeamPermission(state, Permissions.MANAGE_TEAM_TASKS));
 
+    const canCreatePublicChannel = useSelector((state: GlobalState) => haveICurrentTeamPermission(state, Permissions.CREATE_PUBLIC_CHANNEL));
+
     const showCreateAndJoinChannelsTutorialTip = useShowOnboardingTutorialStep(OnboardingTourSteps.CREATE_AND_JOIN_CHANNELS);
     const showInvitePeopleTutorialTip = useShowOnboardingTutorialStep(OnboardingTourSteps.INVITE_PEOPLE);
 
@@ -97,6 +101,24 @@ export default function SidebarBrowserOrAddChannelMenu(props: Props) {
                     <FormattedMessage
                         id='sidebarLeft.browserOrCreateChannelMenu.createRevisionChannelMenuItem.primaryLabel'
                         defaultMessage='Create revision channel'
+                    />
+                )}
+                aria-haspopup='true'
+            />
+        );
+    }
+
+    let createCanvasChannelMenuItem: JSX.Element | null = null;
+    if (team?.canvas_enabled && canCreatePublicChannel) {
+        createCanvasChannelMenuItem = (
+            <Menu.Item
+                id='createCanvasChannelMenuItem'
+                onClick={() => dispatch(openModal({modalId: ModalIdentifiers.CANVAS_CHANNEL_MODAL, dialogType: CanvasChannelModal}))}
+                leadingElement={<PencilOutlineIcon size={18}/>}
+                labels={(
+                    <FormattedMessage
+                        id='sidebarLeft.browserOrCreateChannelMenu.createCanvasChannelMenuItem.primaryLabel'
+                        defaultMessage='Create canvas channel'
                     />
                 )}
                 aria-haspopup='true'
@@ -240,6 +262,7 @@ export default function SidebarBrowserOrAddChannelMenu(props: Props) {
         >
             {createNewChannelMenuItem}
             {createRevisionChannelMenuItem}
+            {createCanvasChannelMenuItem}
             {afterCreateChannelMenuItems}
             {browseChannelsMenuItem}
             {createDirectMessageMenuItem}
