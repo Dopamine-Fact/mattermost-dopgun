@@ -28,6 +28,8 @@ services:
     environment:
       MM_SQLSETTINGS_DRIVERNAME: postgres
       MM_SQLSETTINGS_DATASOURCE: postgres://mmuser:${POSTGRES_PASSWORD}@postgres:5432/mattermost?sslmode=disable&connect_timeout=10
+      # Server clock; the daily backup time in System Console > Backups follows it (e.g. TZ=Europe/Istanbul).
+      TZ: ${TZ:-UTC}
     volumes:
       - mm-config:/mattermost/config
       - mm-data:/mattermost/data
