@@ -23099,6 +23099,82 @@
     "defaultMessage": "Update",
     "description": "Button that updates the user's already submitted daily report while it is not yet approved."
   },
+  "dashboard.due.overdue": {
+    "defaultMessage": "Overdue",
+    "description": "Badge on a task in the Dashboard focus list whose due date has passed."
+  },
+  "dashboard.due.today": {
+    "defaultMessage": "Today",
+    "description": "Badge on a task in the Dashboard focus list that is due today."
+  },
+  "dashboard.due.tomorrow": {
+    "defaultMessage": "Tomorrow",
+    "description": "Badge on a task in the Dashboard focus list that is due tomorrow."
+  },
+  "dashboard.focus.all": {
+    "defaultMessage": "All tasks",
+    "description": "Link in the Dashboard focus panel header that opens the team's Tasks page."
+  },
+  "dashboard.focus.empty": {
+    "defaultMessage": "No open tasks are assigned to you.",
+    "description": "Shown in the Dashboard focus panel when the user has no unfinished tasks assigned."
+  },
+  "dashboard.focus.title": {
+    "defaultMessage": "Your focus",
+    "description": "Heading of the Dashboard panel listing the user's unfinished tasks, soonest due first."
+  },
+  "dashboard.greeting": {
+    "defaultMessage": "Hello, {name}",
+    "description": "Greeting at the top of the Dashboard page; {name} is the user's first name or username."
+  },
+  "dashboard.sidebarLink": {
+    "defaultMessage": "Dashboard",
+    "description": "Left sidebar link that opens the user's Dashboard home page."
+  },
+  "dashboard.stat.assignedTasks": {
+    "defaultMessage": "Tasks assigned to you",
+    "description": "Label of the Dashboard stat card counting the user's unfinished assigned tasks."
+  },
+  "dashboard.stat.mentions": {
+    "defaultMessage": "Mentions",
+    "description": "Label of the Dashboard stat card counting unread mentions of the user in the current team."
+  },
+  "dashboard.stat.priorityTasks": {
+    "defaultMessage": "Priority tasks",
+    "description": "Label of the Dashboard stat card counting the user's tasks that are overdue or due by tomorrow."
+  },
+  "dashboard.stat.unreadMessages": {
+    "defaultMessage": "Unread messages",
+    "description": "Label of the Dashboard stat card counting unread messages in the current team's channels and direct messages."
+  },
+  "dashboard.status.done": {
+    "defaultMessage": "Done",
+    "description": "Status shown next to a task in the Dashboard focus list."
+  },
+  "dashboard.status.in_progress": {
+    "defaultMessage": "In progress",
+    "description": "Status shown next to a task in the Dashboard focus list."
+  },
+  "dashboard.status.todo": {
+    "defaultMessage": "To do",
+    "description": "Status shown next to a task in the Dashboard focus list."
+  },
+  "dashboard.title": {
+    "defaultMessage": "Dashboard",
+    "description": "Title in the header of the Dashboard page."
+  },
+  "dashboard.unreads.empty": {
+    "defaultMessage": "You're all caught up.",
+    "description": "Shown in the Dashboard unread channels panel when nothing is unread."
+  },
+  "dashboard.unreads.messages": {
+    "defaultMessage": "{count, plural, one {# new message} other {# new messages}}",
+    "description": "Count of new messages next to a channel in the Dashboard unread channels panel."
+  },
+  "dashboard.unreads.title": {
+    "defaultMessage": "Unread channels",
+    "description": "Heading of the Dashboard panel listing channels with unread messages."
+  },
   "data_spillage_report_post.reporting_comment.placeholder": {
     "defaultMessage": "No comment",
     "description": "Placeholder value shown in the flagged-message review card when the reporter left no comment."

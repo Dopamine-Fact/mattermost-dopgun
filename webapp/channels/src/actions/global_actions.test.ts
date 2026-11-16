@@ -143,7 +143,7 @@ describe('actions/global_actions', () => {
             getState.mockImplementation(store.getState);
 
             await redirectUserToDefaultTeam();
-            expect(getHistory().push).toHaveBeenCalledWith('/team2/channels/channel-in-team-2');
+            expect(getHistory().push).toHaveBeenCalledWith('/team2/dashboard');
         });
 
         it('should redirect to last channel on first team with channels when the user have no channels in the current team', async () => {
@@ -216,7 +216,7 @@ describe('actions/global_actions', () => {
             getState.mockImplementation(store.getState);
 
             await redirectUserToDefaultTeam();
-            expect(getHistory().push).toHaveBeenCalledWith('/team2/channels/channel-in-team-2');
+            expect(getHistory().push).toHaveBeenCalledWith('/team2/dashboard');
         });
 
         it('should redirect to /select_team when the user have no channels in the any of his teams', async () => {
@@ -572,7 +572,7 @@ describe('actions/global_actions', () => {
             getState.mockImplementation(store.getState);
 
             await redirectUserToDefaultTeam();
-            expect(getHistory().push).toHaveBeenCalledWith('/team1/channels/channel-in-team-1');
+            expect(getHistory().push).toHaveBeenCalledWith('/team1/dashboard');
         });
     });
 
