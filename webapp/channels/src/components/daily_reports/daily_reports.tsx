@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import classNames from 'classnames';
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {defineMessages, FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {Redirect} from 'react-router-dom';
@@ -16,7 +16,7 @@ import {Permissions} from 'mattermost-redux/constants';
 import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
 import {haveITeamPermission} from 'mattermost-redux/selectors/entities/roles';
 import {getCurrentTeam} from 'mattermost-redux/selectors/entities/teams';
-import {getProfilesInTeam} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, getProfilesInTeam} from 'mattermost-redux/selectors/entities/users';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 
 import {selectLhsItem} from 'actions/views/lhs';
@@ -81,6 +81,7 @@ const DailyReports = () => {
 
     const members = useSelector((state: GlobalState) => getProfilesInTeam(state, teamId));
     const nameDisplay = useSelector(getTeammateNameDisplaySetting);
+    const currentUserId = useSelector(getCurrentUserId);
     const canApprove = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_TEAM_TASKS));
 
     const [tab, setTab] = useState<Tab>('mine');
@@ -92,6 +93,7 @@ const DailyReports = () => {
     const [to, setTo] = useState(() => todayIn(team?.daily_report_timezone));
     const [error, setError] = useState('');
 
+    const syncedReport = useRef('');
     const activeTab = canApprove ? tab : 'mine';
 
     useEffect(() => {
@@ -109,16 +111,23 @@ const DailyReports = () => {
         try {
             if (activeTab === 'mine') {
                 // No dates: the server defaults to today in the team's timezone.
-                const [today] = await Client4.getDailyReports(teamId);
+                // user_id: approvers would otherwise get the whole team's reports.
+                const [today] = await Client4.getDailyReports(teamId, undefined, undefined, currentUserId);
                 setMine(today);
-                setMessage((current) => current || today?.message || '');
+
+                // Follow the server's report when it changes; keep what the user is typing otherwise.
+                const key = today ? `${today.id}:${today.update_at}` : '';
+                if (key !== syncedReport.current) {
+                    syncedReport.current = key;
+                    setMessage(today?.message ?? '');
+                }
             } else {
                 setTeamReports(await Client4.getDailyReports(teamId, date, date));
             }
         } catch (e) {
             setError((e as Error).message);
         }
-    }, [activeTab, teamId, date]);
+    }, [activeTab, teamId, date, currentUserId]);
 
     useEffect(() => {
         if (enabled) {
@@ -156,6 +165,7 @@ const DailyReports = () => {
         try {
             const saved = await Client4.submitDailyReport(teamId, message);
             setMine(saved);
+            syncedReport.current = `${saved.id}:${saved.update_at}`;
             setMessage(saved.message);
         } catch (e) {
             setError((e as Error).message);

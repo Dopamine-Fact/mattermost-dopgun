@@ -8,6 +8,7 @@ import type {DailyReport} from '@mattermost/types/daily_reports';
 import {Client4} from 'mattermost-redux/client';
 import * as roles from 'mattermost-redux/selectors/entities/roles';
 
+import WebSocketClient from 'client/web_websocket_client';
 import {act, fireEvent, renderWithContext, screen, waitFor} from 'tests/react_testing_utils';
 import {TestHelper} from 'utils/test_helper';
 
@@ -79,6 +80,28 @@ describe('DailyReports', () => {
 
         await waitFor(() => expect(submit).toHaveBeenCalledWith('team1', 'Did things'));
         expect(await screen.findByRole('button', {name: 'Update'})).toBeInTheDocument();
+    });
+
+    test('My report ignores other users reports, even for approvers', async () => {
+        const list = jest.spyOn(Client4, 'getDailyReports').mockResolvedValue([report({message: 'Not mine'})]);
+        renderPage(true);
+
+        await screen.findByRole('textbox', {name: 'Your report for today'});
+        await waitFor(() => expect(list).toHaveBeenCalledWith('team1', undefined, undefined, 'me'));
+    });
+
+    test('My report follows the server report when it changes', async () => {
+        const list = jest.spyOn(Client4, 'getDailyReports').mockResolvedValue([report({user_id: 'me', message: 'v1'})]);
+        renderPage(false);
+        expect(await screen.findByDisplayValue('v1')).toBeInTheDocument();
+
+        list.mockResolvedValue([report({user_id: 'me', message: 'v2', update_at: 2})]);
+        const listener = (WebSocketClient.addMessageListener as jest.Mock).mock.calls.at(-1)[0];
+        await act(async () => {
+            listener({event: 'daily_report_updated'});
+        });
+
+        expect(await screen.findByDisplayValue('v2')).toBeInTheDocument();
     });
 
     test('hides the Team reports tab without permission', async () => {

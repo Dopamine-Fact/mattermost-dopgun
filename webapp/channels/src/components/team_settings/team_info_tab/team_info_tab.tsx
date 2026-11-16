@@ -13,10 +13,10 @@ import SaveChangesPanel, {type SaveChangesPanelState} from 'components/widgets/m
 import Constants from 'utils/constants';
 import {imageURLForTeam} from 'utils/utils';
 
+import TeamDailyReportsSection from './team_daily_reports_section';
 import TeamDescriptionSection from './team_description_section';
 import TeamNameSection from './team_name_section';
 import TeamPictureSection from './team_picture_section';
-import TeamDailyReportsSection from './team_daily_reports_section';
 import TeamTasksSection from './team_tasks_section';
 
 import type {PropsFromRedux, OwnProps} from '.';
@@ -78,11 +78,20 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
             return false;
         }
         setNameClientError(undefined);
-        const {error} = await actions.patchTeam({id: team.id, display_name: name, description, tasks_enabled: tasksEnabled,
+        const dailyReportsChanged = dailyReportsEnabled !== Boolean(team.daily_reports_enabled) || dailyReportTime !== (team.daily_report_time || DEFAULT_DAILY_REPORT_TIME);
+
+        // The timezone travels only with the daily-report fields, so renaming the team never moves its reporting timezone.
+        const {error} = await actions.patchTeam({
+            id: team.id,
+            display_name: name,
+            description,
+            tasks_enabled: tasksEnabled,
             revisions_enabled: revisionsEnabled,
-            daily_reports_enabled: dailyReportsEnabled,
-            daily_report_time: dailyReportTime,
-            daily_report_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            ...(dailyReportsChanged && {
+                daily_reports_enabled: dailyReportsEnabled,
+                daily_report_time: dailyReportTime,
+                daily_report_timezone: new Intl.DateTimeFormat().resolvedOptions().timeZone,
+            }),
         });
         if (error) {
             return false;
