@@ -16,6 +16,7 @@ import {imageURLForTeam} from 'utils/utils';
 import TeamDescriptionSection from './team_description_section';
 import TeamNameSection from './team_name_section';
 import TeamPictureSection from './team_picture_section';
+import TeamDailyReportsSection from './team_daily_reports_section';
 import TeamTasksSection from './team_tasks_section';
 
 import type {PropsFromRedux, OwnProps} from '.';
@@ -49,11 +50,15 @@ const translations = defineMessages({
 
 type Props = PropsFromRedux & OwnProps;
 
+const DEFAULT_DAILY_REPORT_TIME = '18:00';
+
 const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError, setShowTabSwitchError, setAreThereUnsavedChanges, actions}: Props) => {
     const [name, setName] = useState<Team['display_name']>(team.display_name);
     const [description, setDescription] = useState<Team['description']>(team.description);
     const [tasksEnabled, setTasksEnabled] = useState<boolean>(Boolean(team.tasks_enabled));
     const [revisionsEnabled, setRevisionsEnabled] = useState<boolean>(Boolean(team.revisions_enabled));
+    const [dailyReportsEnabled, setDailyReportsEnabled] = useState<boolean>(Boolean(team.daily_reports_enabled));
+    const [dailyReportTime, setDailyReportTime] = useState<string>(team.daily_report_time || DEFAULT_DAILY_REPORT_TIME);
     const [teamIconFile, setTeamIconFile] = useState<File | undefined>();
     const [loading, setLoading] = useState<boolean>(false);
     const [imageClientError, setImageClientError] = useState<BaseSettingItemProps['error'] | undefined>();
@@ -61,7 +66,7 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
     const [saveChangesPanelState, setSaveChangesPanelState] = useState<SaveChangesPanelState>();
 
     const handleNameDescriptionSubmit = useCallback(async (): Promise<boolean> => {
-        if (name.trim() === team.display_name && description === team.description && tasksEnabled === Boolean(team.tasks_enabled) && revisionsEnabled === Boolean(team.revisions_enabled)) {
+        if (name.trim() === team.display_name && description === team.description && tasksEnabled === Boolean(team.tasks_enabled) && revisionsEnabled === Boolean(team.revisions_enabled) && dailyReportsEnabled === Boolean(team.daily_reports_enabled) && dailyReportTime === (team.daily_report_time || DEFAULT_DAILY_REPORT_TIME)) {
             return true;
         }
 
@@ -73,12 +78,17 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
             return false;
         }
         setNameClientError(undefined);
-        const {error} = await actions.patchTeam({id: team.id, display_name: name, description, tasks_enabled: tasksEnabled, revisions_enabled: revisionsEnabled});
+        const {error} = await actions.patchTeam({id: team.id, display_name: name, description, tasks_enabled: tasksEnabled,
+            revisions_enabled: revisionsEnabled,
+            daily_reports_enabled: dailyReportsEnabled,
+            daily_report_time: dailyReportTime,
+            daily_report_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        });
         if (error) {
             return false;
         }
         return true;
-    }, [actions, description, name, tasksEnabled, revisionsEnabled, team.description, team.display_name, team.id, team.tasks_enabled, team.revisions_enabled]);
+    }, [actions, description, name, tasksEnabled, revisionsEnabled, dailyReportsEnabled, dailyReportTime, team.description, team.display_name, team.id, team.tasks_enabled, team.revisions_enabled, team.daily_reports_enabled, team.daily_report_time]);
 
     const handleTeamIconSubmit = useCallback(async (): Promise<boolean> => {
         if (!teamIconFile) {
@@ -118,11 +128,13 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
         setDescription(team.description);
         setTasksEnabled(Boolean(team.tasks_enabled));
         setRevisionsEnabled(Boolean(team.revisions_enabled));
+        setDailyReportsEnabled(Boolean(team.daily_reports_enabled));
+        setDailyReportTime(team.daily_report_time || DEFAULT_DAILY_REPORT_TIME);
         setTeamIconFile(undefined);
         setImageClientError(undefined);
         setNameClientError(undefined);
         handleClose();
-    }, [handleClose, team.description, team.display_name, team.name, team.tasks_enabled, team.revisions_enabled]);
+    }, [handleClose, team.description, team.display_name, team.name, team.tasks_enabled, team.revisions_enabled, team.daily_reports_enabled, team.daily_report_time]);
 
     const handleTeamIconRemove = useCallback(async () => {
         setLoading(true);
@@ -183,6 +195,18 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
         setRevisionsEnabled(enabled);
     }, [setAreThereUnsavedChanges]);
 
+    const handleDailyReportsEnabledChange = useCallback((enabled: boolean) => {
+        setAreThereUnsavedChanges(true);
+        setSaveChangesPanelState('editing');
+        setDailyReportsEnabled(enabled);
+    }, [setAreThereUnsavedChanges]);
+
+    const handleDailyReportTimeChange = useCallback((time: string) => {
+        setAreThereUnsavedChanges(true);
+        setSaveChangesPanelState('editing');
+        setDailyReportTime(time);
+    }, [setAreThereUnsavedChanges]);
+
     return (
         <div
             className='modal-info-tab-content user-settings'
@@ -215,6 +239,12 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
                 handleTasksEnabledChange={handleTasksEnabledChange}
                 revisionsEnabled={revisionsEnabled}
                 handleRevisionsEnabledChange={handleRevisionsEnabledChange}
+            />
+            <TeamDailyReportsSection
+                dailyReportsEnabled={dailyReportsEnabled}
+                handleDailyReportsEnabledChange={handleDailyReportsEnabledChange}
+                dailyReportTime={dailyReportTime}
+                handleDailyReportTimeChange={handleDailyReportTimeChange}
             />
             {(areThereUnsavedChanges || saveChangesPanelState === 'saved') && (
                 <SaveChangesPanel

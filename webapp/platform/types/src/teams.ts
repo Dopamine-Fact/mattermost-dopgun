@@ -43,6 +43,11 @@ export type Team = {
     /** revision channels; only effective together with tasks_enabled */
     revisions_enabled?: boolean;
 
+    /** daily end-of-day reports; time is HH:MM in daily_report_timezone (IANA) */
+    daily_reports_enabled?: boolean;
+    daily_report_time?: string;
+    daily_report_timezone?: string;
+
     /** Data Retention Policy id. Unrelated to access-control policies below. */
     policy_id?: string | null;
     last_team_icon_update?: number;

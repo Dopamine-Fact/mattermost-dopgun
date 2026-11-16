@@ -36,6 +36,13 @@ const Recaps = makeAsyncComponent('Recaps', lazy(() => import('components/recaps
         </div>
     ),
 );
+const DailyReports = makeAsyncComponent('DailyReports', lazy(() => import('components/daily_reports')),
+    (
+        <div className='app__content'>
+            <LoadingScreen/>
+        </div>
+    ),
+);
 const Tasks = makeAsyncComponent('Tasks', lazy(() => import('components/tasks')),
     (
         <div className='app__content'>
@@ -124,6 +131,10 @@ export default class CenterChannel extends React.PureComponent<Props, State> {
                         <Route
                             path={`/:team(${TEAM_NAME_PATH_PATTERN})/tasks`}
                             component={Tasks}
+                        />
+                        <Route
+                            path={`/:team(${TEAM_NAME_PATH_PATTERN})/daily_reports`}
+                            component={DailyReports}
                         />
                         <Route
                             path={`/:team(${TEAM_NAME_PATH_PATTERN})/drafts`}

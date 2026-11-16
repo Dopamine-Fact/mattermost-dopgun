@@ -131,6 +131,7 @@ import type {Scheme} from '@mattermost/types/schemes';
 import type {Session} from '@mattermost/types/sessions';
 import type {CompleteOnboardingRequest} from '@mattermost/types/setup';
 import type {RemoteClusterInfo, SharedChannelRemote} from '@mattermost/types/shared_channels';
+import type {DailyReport} from '@mattermost/types/daily_reports';
 import type {Task, TaskComment, TaskPatch, TaskSection, TaskSectionCreate, TaskSectionPatch} from '@mattermost/types/tasks';
 import type {
     GetTeamMembersOpts,
@@ -5117,6 +5118,29 @@ export default class Client4 {
             `${this.getPostsRoute()}/schedule/${schedulePostId}`,
             {method: 'delete', headers: {'Connection-Id': connectionId}},
         );
+    };
+
+    // Daily report methods
+    getDailyReports = (teamId: string, from?: string, to?: string, userId?: string) => {
+        return this.doFetch<DailyReport[]>(
+            `${this.getTeamRoute(teamId)}/daily_reports${buildQueryString({from, to, user_id: userId})}`,
+            {method: 'get'},
+        );
+    };
+
+    submitDailyReport = (teamId: string, message: string) => {
+        return this.doFetch<DailyReport>(
+            `${this.getTeamRoute(teamId)}/daily_reports/mine`,
+            {method: 'put', body: JSON.stringify({message})},
+        );
+    };
+
+    approveDailyReport = (reportId: string) => {
+        return this.doFetch<DailyReport>(`${this.getBaseRoute()}/daily_reports/${reportId}/approve`, {method: 'post'});
+    };
+
+    getDailyReportsExportUrl = (teamId: string, from: string, to: string) => {
+        return `${this.getTeamRoute(teamId)}/daily_reports/export${buildQueryString({from, to})}`;
     };
 
     // Task methods
