@@ -71,35 +71,8 @@ var locales = make(map[string]string)
 // supportedLocales is a hard-coded list of locales considered ready for production use. It must
 // be kept in sync with ../../../../webapp/channels/src/i18n/i18n.ts.
 var supportedLocales = []string{
-	"de",
 	"en",
-	"en-AU",
-	"es",
-	"fr",
-	"it",
-	"hu",
-	"nl",
-	"pl",
-	"pt-BR",
-	"ro",
-	"sv",
-	"vi",
 	"tr",
-	"bg",
-	"ru",
-	"uk",
-	"fa",
-	"ko",
-	"zh-CN",
-	"zh-TW",
-	"ja",
-	"da",
-	"cs",
-	"hr",
-	"lt",
-	"nb-NO",
-	"pt",
-	"fi",
 }
 
 var (

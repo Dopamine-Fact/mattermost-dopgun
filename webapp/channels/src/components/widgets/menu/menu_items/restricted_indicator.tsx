@@ -24,8 +24,6 @@ type Props = {
     tooltipTitle?: ReactNode;
     tooltipMessage?: ReactNode;
     tooltipMessageBlocked?: string | MessageDescriptor;
-    titleAdminPreTrial?: ReactNode;
-    messageAdminPreTrial?: ReactNode;
     titleAdminPostTrial?: ReactNode;
     messageAdminPostTrial?: ReactNode;
     titleEndUser?: ReactNode;
@@ -45,8 +43,6 @@ const RestrictedIndicator = ({
     tooltipTitle,
     tooltipMessage,
     tooltipMessageBlocked,
-    titleAdminPreTrial,
-    messageAdminPreTrial,
     titleAdminPostTrial,
     messageAdminPostTrial,
     titleEndUser,
@@ -112,8 +108,6 @@ const RestrictedIndicator = ({
                             dialogType={FeatureRestrictedModal}
                             onClick={handleClickCallback}
                             dialogProps={{
-                                titleAdminPreTrial,
-                                messageAdminPreTrial,
                                 titleAdminPostTrial,
                                 messageAdminPostTrial,
                                 titleEndUser,

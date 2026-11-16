@@ -556,8 +556,18 @@ export function applyTheme(theme: Theme) {
     });
 }
 
+// Logged-out and onboarding pages have fixed light backgrounds, so they use a light theme with Dopaminefact accents.
+export const loggedOutTheme: Theme = {
+    ...Preferences.THEMES.denim,
+    sidebarTextActiveBorder: '#ff6a00',
+    newMessageSeparator: '#ff6a00',
+    linkColor: '#e05d00',
+    buttonBg: '#ff6a00',
+    buttonColor: '#000000',
+};
+
 export function resetTheme() {
-    applyTheme(Preferences.THEMES.denim);
+    applyTheme(loggedOutTheme);
 }
 
 function changeCss(className: string, classValue: string) {

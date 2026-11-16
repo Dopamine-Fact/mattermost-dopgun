@@ -1,13 +1,12 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useEffect} from 'react';
+import React from 'react';
 import {useIntl} from 'react-intl';
-import {useDispatch, useSelector} from 'react-redux';
+import {useSelector} from 'react-redux';
 
 import type {ProductIdentifier} from '@mattermost/types/products';
 
-import {getPrevTrialLicense} from 'mattermost-redux/actions/admin';
 import {getCloudSubscription} from 'mattermost-redux/selectors/entities/cloud';
 import {getConfig, isCloudLicense} from 'mattermost-redux/selectors/entities/general';
 import {getCurrentTeam} from 'mattermost-redux/selectors/entities/teams';
@@ -44,8 +43,6 @@ type Props = {
 export function SwitchProductMenu(props: Props) {
     const {formatMessage} = useIntl();
 
-    const dispatch = useDispatch();
-
     const config = useSelector(getConfig);
 
     const appDownloadLink = config.AppDownloadLink;
@@ -75,10 +72,6 @@ export function SwitchProductMenu(props: Props) {
     // The product rail lists Channels and every product, so the menu keeps only the rest. The rail
     // needs a current team and isn't shown on mobile or backstage pages, so there the menu keeps them too.
     const productRailShown = useProductRailShown();
-
-    useEffect(() => {
-        dispatch(getPrevTrialLicense());
-    }, [dispatch]);
 
     return (
         <Menu.Container

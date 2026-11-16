@@ -8,20 +8,17 @@ import FeatureDiscovery from 'components/admin_console/feature_discovery/feature
 import {
     renderWithContext,
     screen,
-    userEvent,
     waitFor,
 } from 'tests/react_testing_utils';
-import {AboutLinks, LicenseSkus} from 'utils/constants';
+import {LicenseSkus} from 'utils/constants';
 
 import GroupsSVG from './features/images/groups_svg';
 
 describe('components/feature_discovery', () => {
     describe('FeatureDiscovery', () => {
-        test('should match the default state of the component when is not cloud environment', async () => {
-            const getPrevTrialLicense = jest.fn();
+        test('should match the default state of the component when is not cloud environment', () => {
             const getCloudSubscription = jest.fn();
             const openModal = jest.fn();
-            const openTrialForm = jest.fn();
 
             renderWithContext(
                 <FeatureDiscovery
@@ -39,16 +36,12 @@ describe('components/feature_discovery', () => {
                     featureDiscoveryImage={<GroupsSVG/>}
                     // eslint-disable-next-line @typescript-eslint/naming-convention
                     stats={{TOTAL_USERS: 20}}
-                    prevTrialLicense={{IsLicensed: 'false'}}
                     isCloud={false}
                     isCloudTrial={false}
                     hadPrevCloudTrial={false}
                     isSubscriptionLoaded={true}
                     isPaidSubscription={false}
-                    isEnterpriseReady={true}
-                    openTrialForm={openTrialForm}
                     actions={{
-                        getPrevTrialLicense,
                         getCloudSubscription,
                         openModal,
                     }}
@@ -59,10 +52,8 @@ describe('components/feature_discovery', () => {
             expect(screen.queryByText('Foo')).toBeInTheDocument();
             expect(screen.getByTestId('featureDiscovery_title').tagName).toBe('SPAN');
 
-            expect(screen.getByRole('button', {name: 'Start trial'})).toBeInTheDocument();
-            await userEvent.click(screen.getByRole('button', {name: 'Start trial'}));
-            expect(openTrialForm).toHaveBeenCalled();
-            await userEvent.click(screen.getByText('Mattermost Software Evaluation Agreement'));
+            expect(screen.queryByRole('button', {name: 'Start trial'})).not.toBeInTheDocument();
+            expect(screen.getByRole('button', {name: 'Contact sales'})).toBeInTheDocument();
 
             //cloud option
             expect(screen.queryByRole('button', {name: 'Try free for 30 days'})).not.toBeInTheDocument();
@@ -72,16 +63,12 @@ describe('components/feature_discovery', () => {
             expect(featureLink).toBeInTheDocument();
             expect(featureLink).toHaveAttribute('href', 'https://test.mattermost.com/secondary/?utm_source=mattermost&utm_medium=in-product&utm_content=feature_discovery&uid=&sid=&edition=team&server_version=');
             expect(featureLink).toHaveTextContent('Learn more');
-            expect(screen.getByText('Mattermost Software Evaluation Agreement')).toHaveAttribute('href', 'https://mattermost.com/pl/software-and-services-license-agreement?utm_source=mattermost&utm_medium=in-product&utm_content=feature_discovery&uid=&sid=&edition=team&server_version=');
-            expect(screen.getByText('Privacy Policy')).toHaveAttribute('href', AboutLinks.PRIVACY_POLICY + '?utm_source=mattermost&utm_medium=in-product&utm_content=feature_discovery&uid=&sid=&edition=team&server_version=');
 
-            expect(getPrevTrialLicense).toHaveBeenCalled();
             expect(getCloudSubscription).not.toHaveBeenCalled();
             expect(openModal).not.toHaveBeenCalled();
         });
 
         test('should match component state when is cloud environment', async () => {
-            const getPrevTrialLicense = jest.fn();
             const getCloudSubscription = jest.fn();
             const openModal = jest.fn();
 
@@ -102,15 +89,12 @@ describe('components/feature_discovery', () => {
                         featureDiscoveryImage={<GroupsSVG/>}
                         // eslint-disable-next-line @typescript-eslint/naming-convention
                         stats={{TOTAL_USERS: 20}}
-                        prevTrialLicense={{IsLicensed: 'false'}}
                         isCloud={true}
                         isCloudTrial={false}
                         hadPrevCloudTrial={false}
                         isPaidSubscription={false}
                         isSubscriptionLoaded={true}
-                        isEnterpriseReady={true}
                         actions={{
-                            getPrevTrialLicense,
                             getCloudSubscription,
                             openModal,
                         }}
@@ -136,7 +120,6 @@ describe('components/feature_discovery', () => {
             expect(featureLink).toHaveAttribute('href', 'https://test.mattermost.com/secondary/?utm_source=mattermost&utm_medium=in-product&utm_content=feature_discovery&uid=&sid=&edition=team&server_version=');
             expect(featureLink).toHaveTextContent('Learn more');
 
-            expect(getPrevTrialLicense).toHaveBeenCalled();
             expect(getCloudSubscription).not.toHaveBeenCalled();
             expect(openModal).not.toHaveBeenCalled();
 
@@ -144,7 +127,6 @@ describe('components/feature_discovery', () => {
         });
 
         test('should match component state when is cloud environment and subscription is not loaded yet in redux store', () => {
-            const getPrevTrialLicense = jest.fn();
             const getCloudSubscription = jest.fn();
             const openModal = jest.fn();
 
@@ -164,15 +146,12 @@ describe('components/feature_discovery', () => {
                     featureDiscoveryImage={<GroupsSVG/>}
                     // eslint-disable-next-line @typescript-eslint/naming-convention
                     stats={{TOTAL_USERS: 20}}
-                    prevTrialLicense={{IsLicensed: 'false'}}
                     isCloud={true}
                     isCloudTrial={false}
                     hadPrevCloudTrial={false}
                     isSubscriptionLoaded={false}
                     isPaidSubscription={false}
-                    isEnterpriseReady={true}
                     actions={{
-                        getPrevTrialLicense,
                         getCloudSubscription,
                         openModal,
                     }}
@@ -190,7 +169,6 @@ describe('components/feature_discovery', () => {
 
             expect(screen.queryByTestId('featureDiscovery_secondaryCallToAction')).not.toBeInTheDocument();
 
-            expect(getPrevTrialLicense).toHaveBeenCalled();
             expect(getCloudSubscription).not.toHaveBeenCalled();
             expect(openModal).not.toHaveBeenCalled();
 
@@ -198,7 +176,6 @@ describe('components/feature_discovery', () => {
         });
 
         test('should show Contact Sales when isEnterpriseReady is false (Team Edition)', () => {
-            const getPrevTrialLicense = jest.fn();
             const getCloudSubscription = jest.fn();
             const openModal = jest.fn();
 
@@ -218,15 +195,12 @@ describe('components/feature_discovery', () => {
                     featureDiscoveryImage={<GroupsSVG/>}
                     // eslint-disable-next-line @typescript-eslint/naming-convention
                     stats={{TOTAL_USERS: 20}}
-                    prevTrialLicense={{IsLicensed: 'false'}}
                     isCloud={false}
                     isCloudTrial={false}
                     hadPrevCloudTrial={false}
                     isSubscriptionLoaded={true}
                     isPaidSubscription={false}
-                    isEnterpriseReady={false}
                     actions={{
-                        getPrevTrialLicense,
                         getCloudSubscription,
                         openModal,
                     }}
@@ -253,13 +227,11 @@ describe('components/feature_discovery', () => {
             expect(featureLink.className).not.toMatch(/size-large/);
             expect(featureLink.closest('button')).toBeNull();
 
-            expect(getPrevTrialLicense).toHaveBeenCalled();
             expect(getCloudSubscription).not.toHaveBeenCalled();
             expect(openModal).not.toHaveBeenCalled();
         });
 
         test('should show Contact Sales when previous trial license exists', () => {
-            const getPrevTrialLicense = jest.fn();
             const getCloudSubscription = jest.fn();
             const openModal = jest.fn();
 
@@ -279,15 +251,12 @@ describe('components/feature_discovery', () => {
                     featureDiscoveryImage={<GroupsSVG/>}
                     // eslint-disable-next-line @typescript-eslint/naming-convention
                     stats={{TOTAL_USERS: 20}}
-                    prevTrialLicense={{IsLicensed: 'true'}}
                     isCloud={false}
                     isCloudTrial={false}
                     hadPrevCloudTrial={false}
                     isSubscriptionLoaded={true}
                     isPaidSubscription={false}
-                    isEnterpriseReady={true}
                     actions={{
-                        getPrevTrialLicense,
                         getCloudSubscription,
                         openModal,
                     }}
@@ -314,68 +283,6 @@ describe('components/feature_discovery', () => {
             expect(featureLink.className).not.toMatch(/size-large/);
             expect(featureLink.closest('button')).toBeNull();
 
-            expect(getPrevTrialLicense).toHaveBeenCalled();
-            expect(getCloudSubscription).not.toHaveBeenCalled();
-            expect(openModal).not.toHaveBeenCalled();
-        });
-
-        test('should show Start Trial when isEnterpriseReady is true and no previous trial license', () => {
-            const getPrevTrialLicense = jest.fn();
-            const getCloudSubscription = jest.fn();
-            const openModal = jest.fn();
-            const openTrialForm = jest.fn();
-
-            renderWithContext(
-                <FeatureDiscovery
-                    featureName='test'
-                    minimumSKURequiredForFeature={LicenseSkus.Professional}
-                    title={{
-                        id: 'translation.test.title',
-                        defaultMessage: 'Foo',
-                    }}
-                    copy={{
-                        id: 'translation.test.copy',
-                        defaultMessage: 'Bar',
-                    }}
-                    learnMoreURL='https://test.mattermost.com/secondary/'
-                    featureDiscoveryImage={<GroupsSVG/>}
-                    // eslint-disable-next-line @typescript-eslint/naming-convention
-                    stats={{TOTAL_USERS: 20}}
-                    prevTrialLicense={{IsLicensed: 'false'}}
-                    isCloud={false}
-                    isCloudTrial={false}
-                    hadPrevCloudTrial={false}
-                    isSubscriptionLoaded={true}
-                    isPaidSubscription={false}
-                    isEnterpriseReady={true}
-                    openTrialForm={openTrialForm}
-                    actions={{
-                        getPrevTrialLicense,
-                        getCloudSubscription,
-                        openModal,
-                    }}
-                />,
-            );
-
-            expect(screen.queryByText('Bar')).toBeInTheDocument();
-            expect(screen.queryByText('Foo')).toBeInTheDocument();
-            expect(screen.getByTestId('featureDiscovery_title').tagName).toBe('SPAN');
-
-            // Should show Start Trial button when Enterprise Ready and no previous trial
-            const startTrialButton = screen.getByRole('button', {name: 'Start trial'});
-            expect(startTrialButton).toBeInTheDocument();
-            expect(startTrialButton).toHaveAttribute('id', 'start_trial_btn');
-            expect(startTrialButton.className).toMatch(/size-medium/);
-            expect(screen.queryByRole('button', {name: 'Contact sales'})).not.toBeInTheDocument();
-
-            const featureLink = screen.getByTestId('featureDiscovery_secondaryCallToAction');
-            expect(featureLink).toBeInTheDocument();
-            expect(featureLink).toHaveAttribute('href', 'https://test.mattermost.com/secondary/?utm_source=mattermost&utm_medium=in-product&utm_content=feature_discovery&uid=&sid=&edition=team&server_version=');
-            expect(featureLink).toHaveTextContent('Learn more');
-            expect(featureLink.tagName).toBe('A');
-            expect(featureLink.closest('button')).toBeNull();
-
-            expect(getPrevTrialLicense).toHaveBeenCalled();
             expect(getCloudSubscription).not.toHaveBeenCalled();
             expect(openModal).not.toHaveBeenCalled();
         });
@@ -397,15 +304,12 @@ describe('components/feature_discovery', () => {
                     featureDiscoveryImage={<GroupsSVG/>}
                     // eslint-disable-next-line @typescript-eslint/naming-convention
                     stats={{TOTAL_USERS: 20}}
-                    prevTrialLicense={{IsLicensed: 'false'}}
                     isCloud={false}
                     isCloudTrial={false}
                     hadPrevCloudTrial={false}
                     isSubscriptionLoaded={true}
                     isPaidSubscription={false}
-                    isEnterpriseReady={true}
                     actions={{
-                        getPrevTrialLicense: jest.fn(),
                         getCloudSubscription: jest.fn(),
                         openModal: jest.fn(),
                     }}
@@ -433,15 +337,12 @@ describe('components/feature_discovery', () => {
                     featureDiscoveryImage={<GroupsSVG/>}
                     // eslint-disable-next-line @typescript-eslint/naming-convention
                     stats={{TOTAL_USERS: 20}}
-                    prevTrialLicense={{IsLicensed: 'false'}}
                     isCloud={false}
                     isCloudTrial={false}
                     hadPrevCloudTrial={false}
                     isSubscriptionLoaded={true}
                     isPaidSubscription={false}
-                    isEnterpriseReady={true}
                     actions={{
-                        getPrevTrialLicense: jest.fn(),
                         getCloudSubscription: jest.fn(),
                         openModal: jest.fn(),
                     }}

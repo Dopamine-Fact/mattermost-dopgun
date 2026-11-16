@@ -17,15 +17,12 @@ jest.mock('../index', () => {
             <FeatureDiscovery
                 {...props}
                 stats={{TOTAL_USERS: 20}}
-                prevTrialLicense={{IsLicensed: 'true'}}
                 isCloud={false}
                 isCloudTrial={false}
                 hadPrevCloudTrial={false}
                 isSubscriptionLoaded={true}
                 isPaidSubscription={false}
-                isEnterpriseReady={true}
                 actions={{
-                    getPrevTrialLicense: jest.fn(),
                     getCloudSubscription: jest.fn(),
                     openModal: jest.fn(),
                 }}
@@ -38,7 +35,7 @@ describe('components/admin_console/feature_discovery/features/DataSpillageFeatur
     it('renders the Data Spillage discovery card', () => {
         renderWithContext(<DataSpillageFeatureDiscovery/>);
 
-        expect(screen.getByText('Handle data spillage with Mattermost Enterprise Advanced')).toBeInTheDocument();
+        expect(screen.getByText('Handle data spillage with Dopaminefact Enterprise Advanced')).toBeInTheDocument();
         expect(screen.getByText(
             'Set up the ability for users to quarantine messages so designated Content Reviewers can decide whether to keep or remove them.',
         )).toBeInTheDocument();

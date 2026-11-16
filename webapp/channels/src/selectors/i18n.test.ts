@@ -16,7 +16,7 @@ describe('selectors/i18n', () => {
                 entities: {
                     general: {
                         config: {
-                            DefaultClientLocale: 'fr',
+                            DefaultClientLocale: 'tr',
                         },
                     },
                     users: {
@@ -26,7 +26,7 @@ describe('selectors/i18n', () => {
                 },
             };
 
-            expect(getCurrentLocale(state as GlobalState)).toEqual('fr');
+            expect(getCurrentLocale(state as GlobalState)).toEqual('tr');
         });
 
         test('logged in', () => {
@@ -34,21 +34,21 @@ describe('selectors/i18n', () => {
                 entities: {
                     general: {
                         config: {
-                            DefaultClientLocale: 'fr',
+                            DefaultClientLocale: 'en',
                         },
                     },
                     users: {
                         currentUserId: 'abcd',
                         profiles: {
                             abcd: {
-                                locale: 'de',
+                                locale: 'tr',
                             },
                         },
                     },
                 },
             };
 
-            expect(getCurrentLocale(state as GlobalState)).toEqual('de');
+            expect(getCurrentLocale(state as GlobalState)).toEqual('tr');
         });
 
         test('returns default locale when invalid user locale specified', () => {
@@ -90,7 +90,7 @@ describe('selectors/i18n', () => {
                     entities: {
                         general: {
                             config: {
-                                DefaultClientLocale: 'fr',
+                                DefaultClientLocale: 'en',
                             },
                         },
                         users: {
@@ -100,9 +100,9 @@ describe('selectors/i18n', () => {
                     },
                 };
 
-                setWindowLocaleQueryParameter('ko');
+                setWindowLocaleQueryParameter('tr');
 
-                expect(getCurrentLocale(state as GlobalState)).toEqual('ko');
+                expect(getCurrentLocale(state as GlobalState)).toEqual('tr');
             });
 
             test('returns DefaultClientLocale if locale from query parameter is not valid', () => {
@@ -110,7 +110,7 @@ describe('selectors/i18n', () => {
                     entities: {
                         general: {
                             config: {
-                                DefaultClientLocale: 'fr',
+                                DefaultClientLocale: 'tr',
                             },
                         },
                         users: {
@@ -122,7 +122,7 @@ describe('selectors/i18n', () => {
 
                 setWindowLocaleQueryParameter('invalid_locale');
 
-                expect(getCurrentLocale(state as GlobalState)).toEqual('fr');
+                expect(getCurrentLocale(state as GlobalState)).toEqual('tr');
             });
 
             test('returns user locale when logged in and locale is provided in query parameter', () => {
@@ -130,23 +130,23 @@ describe('selectors/i18n', () => {
                     entities: {
                         general: {
                             config: {
-                                DefaultClientLocale: 'fr',
+                                DefaultClientLocale: 'en',
                             },
                         },
                         users: {
                             currentUserId: 'abcd',
                             profiles: {
                                 abcd: {
-                                    locale: 'de',
+                                    locale: 'tr',
                                 },
                             },
                         },
                     },
                 };
 
-                setWindowLocaleQueryParameter('ko');
+                setWindowLocaleQueryParameter('en');
 
-                expect(getCurrentLocale(state as GlobalState)).toEqual('de');
+                expect(getCurrentLocale(state as GlobalState)).toEqual('tr');
             });
         });
     });
@@ -170,7 +170,7 @@ describe('selectors/i18n', () => {
         });
 
         test('returns null for unloaded translations', () => {
-            expect(getTranslations(state, 'fr')).toEqual(undefined);
+            expect(getTranslations(state, 'tr')).toEqual(undefined);
         });
 
         test('returns English translations for unsupported locale', () => {

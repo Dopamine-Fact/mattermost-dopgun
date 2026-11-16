@@ -11,10 +11,12 @@ import type {BaseSettingItemProps} from 'components/widgets/modals/components/ba
 import SaveChangesPanel, {type SaveChangesPanelState} from 'components/widgets/modals/components/save_changes_panel';
 
 import Constants from 'utils/constants';
+import {imageURLForTeam} from 'utils/utils';
 
 import TeamDescriptionSection from './team_description_section';
 import TeamNameSection from './team_name_section';
 import TeamPictureSection from './team_picture_section';
+import TeamTasksSection from './team_tasks_section';
 
 import type {PropsFromRedux, OwnProps} from '.';
 
@@ -50,6 +52,8 @@ type Props = PropsFromRedux & OwnProps;
 const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError, setShowTabSwitchError, setAreThereUnsavedChanges, actions}: Props) => {
     const [name, setName] = useState<Team['display_name']>(team.display_name);
     const [description, setDescription] = useState<Team['description']>(team.description);
+    const [tasksEnabled, setTasksEnabled] = useState<boolean>(Boolean(team.tasks_enabled));
+    const [revisionsEnabled, setRevisionsEnabled] = useState<boolean>(Boolean(team.revisions_enabled));
     const [teamIconFile, setTeamIconFile] = useState<File | undefined>();
     const [loading, setLoading] = useState<boolean>(false);
     const [imageClientError, setImageClientError] = useState<BaseSettingItemProps['error'] | undefined>();
@@ -57,7 +61,7 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
     const [saveChangesPanelState, setSaveChangesPanelState] = useState<SaveChangesPanelState>();
 
     const handleNameDescriptionSubmit = useCallback(async (): Promise<boolean> => {
-        if (name.trim() === team.display_name && description === team.description) {
+        if (name.trim() === team.display_name && description === team.description && tasksEnabled === Boolean(team.tasks_enabled) && revisionsEnabled === Boolean(team.revisions_enabled)) {
             return true;
         }
 
@@ -69,12 +73,12 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
             return false;
         }
         setNameClientError(undefined);
-        const {error} = await actions.patchTeam({id: team.id, display_name: name, description});
+        const {error} = await actions.patchTeam({id: team.id, display_name: name, description, tasks_enabled: tasksEnabled, revisions_enabled: revisionsEnabled});
         if (error) {
             return false;
         }
         return true;
-    }, [actions, description, name, team.description, team.display_name, team.id]);
+    }, [actions, description, name, tasksEnabled, revisionsEnabled, team.description, team.display_name, team.id, team.tasks_enabled, team.revisions_enabled]);
 
     const handleTeamIconSubmit = useCallback(async (): Promise<boolean> => {
         if (!teamIconFile) {
@@ -112,11 +116,13 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
     const handleCancel = useCallback(() => {
         setName(team.display_name ?? team.name);
         setDescription(team.description);
+        setTasksEnabled(Boolean(team.tasks_enabled));
+        setRevisionsEnabled(Boolean(team.revisions_enabled));
         setTeamIconFile(undefined);
         setImageClientError(undefined);
         setNameClientError(undefined);
         handleClose();
-    }, [handleClose, team.description, team.display_name, team.name]);
+    }, [handleClose, team.description, team.display_name, team.name, team.tasks_enabled, team.revisions_enabled]);
 
     const handleTeamIconRemove = useCallback(async () => {
         setLoading(true);
@@ -165,6 +171,18 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
         setDescription(description);
     }, [setAreThereUnsavedChanges]);
 
+    const handleTasksEnabledChange = useCallback((enabled: boolean) => {
+        setAreThereUnsavedChanges(true);
+        setSaveChangesPanelState('editing');
+        setTasksEnabled(enabled);
+    }, [setAreThereUnsavedChanges]);
+
+    const handleRevisionsEnabledChange = useCallback((enabled: boolean) => {
+        setAreThereUnsavedChanges(true);
+        setSaveChangesPanelState('editing');
+        setRevisionsEnabled(enabled);
+    }, [setAreThereUnsavedChanges]);
+
     return (
         <div
             className='modal-info-tab-content user-settings'
@@ -184,13 +202,19 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
                 />
             </div>
             <TeamPictureSection
-                team={team}
+                imageSrc={imageURLForTeam(team)}
                 file={teamIconFile}
                 disabled={loading}
                 onFileChange={updateTeamIcon}
                 onRemove={handleTeamIconRemove}
                 teamName={team.display_name ?? team.name}
                 clientError={imageClientError}
+            />
+            <TeamTasksSection
+                tasksEnabled={tasksEnabled}
+                handleTasksEnabledChange={handleTasksEnabledChange}
+                revisionsEnabled={revisionsEnabled}
+                handleRevisionsEnabledChange={handleRevisionsEnabledChange}
             />
             {(areThereUnsavedChanges || saveChangesPanelState === 'saved') && (
                 <SaveChangesPanel

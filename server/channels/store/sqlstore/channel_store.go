@@ -182,6 +182,7 @@ func channelSliceColumns(isSelect bool, prefix ...string) []string {
 		p + "DefaultCategoryName",
 		p + "Discoverable",
 		p + "DisableJoinLeaveMessages",
+		p + "LastIconUpdate",
 	}
 
 	if isSelect {
@@ -226,6 +227,7 @@ func channelToSlice(channel *model.Channel) []any {
 		channel.DefaultCategoryName,
 		channel.Discoverable,
 		channel.DisableJoinLeaveMessages,
+		channel.LastIconUpdate,
 	}
 }
 
@@ -904,7 +906,8 @@ func (s SqlChannelStore) updateChannelT(transaction *sqlxTxWrapper, channel *mod
 			DefaultCategoryName=:DefaultCategoryName,
 			AutoTranslation=:AutoTranslation,
 			Discoverable=:Discoverable,
-			DisableJoinLeaveMessages=:DisableJoinLeaveMessages
+			DisableJoinLeaveMessages=:DisableJoinLeaveMessages,
+			LastIconUpdate=:LastIconUpdate
 		WHERE Id=:Id`, channel)
 	if err != nil {
 		if IsUniqueConstraintError(err, []string{"Name", "channels_name_teamid_key"}) {

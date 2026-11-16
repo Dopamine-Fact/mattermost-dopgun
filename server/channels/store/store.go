@@ -91,6 +91,7 @@ type Store interface {
 	DesktopTokens() DesktopTokensStore
 	ChannelBookmark() ChannelBookmarkStore
 	ScheduledPost() ScheduledPostStore
+	Task() TaskStore
 	View() ViewStore
 	PropertyGroup() PropertyGroupStore
 	PropertyField() PropertyFieldStore
@@ -1199,6 +1200,23 @@ type ViewStore interface {
 	Update(view *model.View) (*model.View, error)
 	Delete(viewID string, deleteAt int64) error
 	UpdateSortOrder(viewID, channelID string, newIndex int64) ([]*model.View, error)
+}
+
+type TaskStore interface {
+	Save(task *model.Task) (*model.Task, error)
+	Get(id string) (*model.Task, error)
+	GetForTeam(teamId string) ([]*model.Task, error)
+	Update(task *model.Task) (*model.Task, error)
+	Delete(id string) error
+	SaveSection(section *model.TaskSection) (*model.TaskSection, error)
+	GetSection(id string) (*model.TaskSection, error)
+	GetSectionsForTeam(teamId string) ([]*model.TaskSection, error)
+	UpdateSection(section *model.TaskSection) (*model.TaskSection, error)
+	DeleteSection(id string) error
+	SaveComment(comment *model.TaskComment) (*model.TaskComment, error)
+	GetComment(id string) (*model.TaskComment, error)
+	GetCommentsForTask(taskId string) ([]*model.TaskComment, error)
+	DeleteComment(id string) error
 }
 
 type ScheduledPostStore interface {

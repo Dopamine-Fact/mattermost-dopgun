@@ -20,11 +20,7 @@ describe('component/user_groups_modal/ad_ldap_upsell_banner', () => {
                 config: {},
             },
             cloud: {},
-            admin: {
-                prevTrialLicense: {
-                    IsLicensed: 'false',
-                },
-            },
+            admin: {},
             users: {
                 currentUserId: 'user1',
                 profiles: {
@@ -37,26 +33,14 @@ describe('component/user_groups_modal/ad_ldap_upsell_banner', () => {
         },
     };
 
-    test('should display for admin users on professional with option to start trial if no self-hosted trial before', () => {
+    test('should never offer a trial, even with no self-hosted trial before', () => {
         renderWithContext(
             <ADLDAPUpsellBanner/>,
             initState as any,
         );
 
         expect(screen.getByText('AD/LDAP group sync creates groups faster')).toBeInTheDocument();
-        expect(screen.getByText('Start trial')).toBeInTheDocument();
-    });
-
-    test('should display for admin users on professional with option to contact sales if self-hosted trialed before', () => {
-        const state = JSON.parse(JSON.stringify(initState));
-        state.entities.admin.prevTrialLicense.IsLicensed = 'true';
-
-        renderWithContext(
-            <ADLDAPUpsellBanner/>,
-            state,
-        );
-
-        expect(screen.getByText('AD/LDAP group sync creates groups faster')).toBeInTheDocument();
+        expect(screen.queryByText('Start trial')).not.toBeInTheDocument();
         expect(screen.getByText('Contact sales to use')).toBeInTheDocument();
     });
 

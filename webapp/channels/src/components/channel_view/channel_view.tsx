@@ -14,6 +14,7 @@ import ChannelHeader from 'components/channel_header';
 import deferComponentRender from 'components/deferComponentRender';
 import {DropOverlayIdCenterChannel, FileUploadOverlay} from 'components/file_upload_overlay/file_upload_overlay';
 import PostView from 'components/post_view';
+import RevisionTabs from 'components/tasks/revision_tabs';
 
 import WebSocketClient from 'client/web_websocket_client';
 import type {KindMessages} from 'utils/channel_kind';
@@ -279,7 +280,9 @@ export default class ChannelView extends React.PureComponent<Props, State> {
                         channelId={this.props.channelId}
                     />
                 )}
-                {center}
+                <RevisionTabs channelId={this.props.channelId}>
+                    {center}
+                </RevisionTabs>
             </div>
         );
     }

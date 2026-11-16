@@ -36,7 +36,7 @@ describe('components/IntlProvider', () => {
     test('should render children when passed translation strings for a non-default locale', () => {
         const props = {
             ...baseProps,
-            locale: 'fr',
+            locale: 'tr',
             translations: {
                 'test.hello_world': 'Bonjour tout le monde!',
             },
@@ -61,7 +61,7 @@ describe('components/IntlProvider', () => {
     test('on mount, should attempt to load missing translations', () => {
         const props = {
             ...baseProps,
-            locale: 'fr',
+            locale: 'tr',
             translations: undefined,
             actions: {
                 loadTranslations: jest.fn(),
@@ -70,13 +70,13 @@ describe('components/IntlProvider', () => {
 
         render(<IntlProvider {...props}/>);
 
-        expect(props.actions.loadTranslations).toHaveBeenCalledWith('fr', getLanguageInfo('fr').url);
+        expect(props.actions.loadTranslations).toHaveBeenCalledWith('tr', getLanguageInfo('tr').url);
     });
 
     test('on mount, should not attempt to load when given translations', () => {
         const props = {
             ...baseProps,
-            locale: 'fr',
+            locale: 'tr',
             translations: {
                 'test.hello_world': 'Bonjour tout le monde!',
             },
@@ -106,13 +106,13 @@ describe('components/IntlProvider', () => {
             rerender(
                 <IntlProvider
                     {...props}
-                    locale='fr'
+                    locale='tr'
                     translations={undefined}
                 />,
             );
         });
 
-        expect(props.actions.loadTranslations).toHaveBeenCalledWith('fr', getLanguageInfo('fr').url);
+        expect(props.actions.loadTranslations).toHaveBeenCalledWith('tr', getLanguageInfo('tr').url);
     });
 
     test('on locale change, should not attempt to load when given translations', () => {
@@ -131,7 +131,7 @@ describe('components/IntlProvider', () => {
             rerender(
                 <IntlProvider
                     {...props}
-                    locale='fr'
+                    locale='tr'
                     translations={{
                         'test.hello_world': 'Bonjour tout le monde!',
                     }}
@@ -158,7 +158,7 @@ describe('components/IntlProvider', () => {
             rerender(
                 <IntlProvider
                     {...props}
-                    locale='fr'
+                    locale='tr'
                     translations={{
                         'test.hello_world': 'Bonjour tout le monde!',
                     }}
@@ -166,7 +166,7 @@ describe('components/IntlProvider', () => {
             );
         });
 
-        expect(document.documentElement.lang).toBe('fr');
+        expect(document.documentElement.lang).toBe('tr');
     });
 });
 

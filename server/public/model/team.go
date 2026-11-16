@@ -42,6 +42,8 @@ type Team struct {
 	GroupConstrained    *bool   `json:"group_constrained"`
 	PolicyID            *string `json:"policy_id"` // Data Retention policy — unrelated to ABAC below
 	CloudLimitsArchived bool    `json:"cloud_limits_archived"`
+	TasksEnabled        bool    `json:"tasks_enabled"`
+	RevisionsEnabled    bool    `json:"revisions_enabled"` // revision channels; only effective with TasksEnabled
 
 	// Not persisted; derived by the store via EXISTS on AccessControlPolicies(Type='team').
 	// Use HasMembershipPolicyAction for enforcement — this is a read-path signal only.
@@ -87,6 +89,8 @@ func (o *Team) Auditable() map[string]any {
 		"group_constrained":     o.GroupConstrained,
 		"policy_id":             o.PolicyID,
 		"cloud_limits_archived": o.CloudLimitsArchived,
+		"tasks_enabled":         o.TasksEnabled,
+		"revisions_enabled":     o.RevisionsEnabled,
 	}
 }
 
@@ -102,6 +106,8 @@ type TeamPatch struct {
 	AllowOpenInvite     *bool   `json:"allow_open_invite"`
 	GroupConstrained    *bool   `json:"group_constrained"`
 	CloudLimitsArchived *bool   `json:"cloud_limits_archived"`
+	TasksEnabled        *bool   `json:"tasks_enabled"`
+	RevisionsEnabled    *bool   `json:"revisions_enabled"`
 }
 
 func (o *TeamPatch) Auditable() map[string]any {
@@ -109,6 +115,8 @@ func (o *TeamPatch) Auditable() map[string]any {
 		"allow_open_invite":     o.AllowOpenInvite,
 		"group_constrained":     o.GroupConstrained,
 		"cloud_limits_archived": o.CloudLimitsArchived,
+		"tasks_enabled":         o.TasksEnabled,
+		"revisions_enabled":     o.RevisionsEnabled,
 	}
 }
 
@@ -309,6 +317,14 @@ func (o *Team) Patch(patch *TeamPatch) {
 
 	if patch.CloudLimitsArchived != nil {
 		o.CloudLimitsArchived = *patch.CloudLimitsArchived
+	}
+
+	if patch.TasksEnabled != nil {
+		o.TasksEnabled = *patch.TasksEnabled
+	}
+
+	if patch.RevisionsEnabled != nil {
+		o.RevisionsEnabled = *patch.RevisionsEnabled
 	}
 }
 

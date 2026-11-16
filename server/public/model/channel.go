@@ -128,6 +128,7 @@ type Channel struct {
 	ManagedCategoryName      string `json:"managed_category_name"`
 	Discoverable             bool   `json:"discoverable"`
 	DisableJoinLeaveMessages bool   `json:"disable_join_leave_messages"`
+	LastIconUpdate           int64  `json:"last_icon_update"`
 }
 
 // HasPolicyAction reports whether the channel's policy declares the given

@@ -14,9 +14,9 @@ describe('ProductSwitcherAboutMenuItem', () => {
         expect(screen.getByText('About Contoso Chat')).toBeInTheDocument();
     });
 
-    test('should fall back to Mattermost when no site name is configured', () => {
+    test('should fall back to Dopaminefact when no site name is configured', () => {
         renderWithContext(<ProductSwitcherAboutMenuItem/>);
 
-        expect(screen.getByText('About Mattermost')).toBeInTheDocument();
+        expect(screen.getByText('About Dopaminefact')).toBeInTheDocument();
     });
 });

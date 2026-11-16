@@ -16,7 +16,6 @@ import * as Menu from 'components/menu';
 import UserGroupsModal from 'components/user_groups_modal';
 import RestrictedIndicator from 'components/widgets/menu/menu_items/restricted_indicator';
 
-import {FREEMIUM_TO_ENTERPRISE_TRIAL_LENGTH_DAYS} from 'utils/cloud_utils';
 import {LicenseSkus, MattermostFeatures, ModalIdentifiers} from 'utils/constants';
 
 type Props = {
@@ -77,16 +76,6 @@ export default function ProductSwitcherUserGroupsMenuItem(props: Props) {
                     tooltipMessage={formatMessage({
                         id: 'navbar_dropdown.userGroups.tooltip.cloudFreeTrial',
                         defaultMessage: 'During your trial you are able to create user groups. These user groups will be archived after your trial.',
-                    })}
-                    titleAdminPreTrial={formatMessage({
-                        id: 'navbar_dropdown.userGroups.modal.titleAdminPreTrial',
-                        defaultMessage: 'Try unlimited user groups with a free trial',
-                    })}
-                    messageAdminPreTrial={formatMessage({
-                        id: 'navbar_dropdown.userGroups.modal.messageAdminPreTrial',
-                        defaultMessage: 'Create unlimited user groups with one of our paid plans. Get the full experience of Enterprise when you start a free, {trialLength} day trial.',
-                    }, {
-                        trialLength: FREEMIUM_TO_ENTERPRISE_TRIAL_LENGTH_DAYS,
                     })}
                     titleAdminPostTrial={formatMessage({
                         id: 'navbar_dropdown.userGroups.modal.titleAdminPostTrial',

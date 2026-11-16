@@ -30,7 +30,7 @@ const Footer = () => {
                 className='footer-copyright'
                 data-testid='footer-copyright'
             >
-                {`© ${new Date().getFullYear()} Mattermost Inc.`}
+                {`© ${new Date().getFullYear()} Dopaminefact Inc.`}
             </span>
             {AboutLink && (
                 <ExternalLink

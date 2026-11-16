@@ -4,6 +4,7 @@
 import React from 'react';
 
 import {renderWithContext, screen, userEvent} from 'tests/react_testing_utils';
+import {TestHelper} from 'utils/test_helper';
 
 import SidebarBrowseOrAddChannelMenu from './sidebar_browse_or_add_channel_menu';
 
@@ -42,6 +43,31 @@ describe('SidebarBrowseOrAddChannelMenu', () => {
         await userEvent.click(screen.getByRole('button', {name: 'Browse or create channels'}));
         return screen.getAllByRole('menuitem').map((item) => item.id);
     }
+
+    test('offers "Create revision channel" only when the team has revisions on and the user manages tasks', async () => {
+        const state = (revisionsEnabled: boolean, permissions: string[]) => ({
+            entities: {
+                users: {currentUserId: 'me', profiles: {me: TestHelper.getUserMock({id: 'me', roles: 'system_user'})}},
+                teams: {
+                    currentTeamId: 'team_id',
+                    teams: {team_id: TestHelper.getTeamMock({id: 'team_id', tasks_enabled: true, revisions_enabled: revisionsEnabled})},
+                    myMembers: {team_id: TestHelper.getTeamMembershipMock({team_id: 'team_id', user_id: 'me', roles: 'team_user'})},
+                },
+                roles: {roles: {team_user: TestHelper.getRoleMock({name: 'team_user', permissions})}},
+            },
+        });
+        const open = async (s: ReturnType<typeof state>) => {
+            const {unmount} = renderWithContext(<SidebarBrowseOrAddChannelMenu {...props}/>, s);
+            await userEvent.click(screen.getByRole('button', {name: 'Browse or create channels'}));
+            const shown = Boolean(screen.queryByRole('menuitem', {name: 'Create revision channel'}));
+            unmount();
+            return shown;
+        };
+
+        expect(await open(state(true, ['manage_team_tasks']))).toBe(true);
+        expect(await open(state(false, ['manage_team_tasks']))).toBe(false);
+        expect(await open(state(true, []))).toBe(false);
+    });
 
     test('lists a plugin item after the built-in items by default', async () => {
         const ids = await menuItemIds([{id: 'default_item', text: 'Default item'}]);

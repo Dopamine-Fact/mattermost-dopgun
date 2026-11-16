@@ -50,8 +50,8 @@ export interface EnterpriseEditionProps {
 }
 
 export const messages = defineMessages({
-    keyRemove: {id: 'admin.license.keyRemove', defaultMessage: 'Remove license and downgrade to Mattermost Free'},
-    keyRemoveEntry: {id: 'admin.license.keyRemoveEntry', defaultMessage: 'Remove license and downgrade to Mattermost Entry'},
+    keyRemove: {id: 'admin.license.keyRemove', defaultMessage: 'Remove license and downgrade to Dopaminefact Free'},
+    keyRemoveEntry: {id: 'admin.license.keyRemoveEntry', defaultMessage: 'Remove license and downgrade to Dopaminefact Entry'},
 });
 
 const EnterpriseEditionLeftPanel = ({
@@ -120,7 +120,7 @@ const EnterpriseEditionLeftPanel = ({
                 <div className='EnterpriseEditionLeftPanel__Header'>
                     <div>
                         <div className='EnterpriseEditionLeftPanel__Title'>
-                            {`Mattermost ${getSkuDisplayName(unsanitizedLicense.SkuShortName, unsanitizedLicense.IsGovSku === 'true')}`}
+                            {`Dopaminefact ${getSkuDisplayName(unsanitizedLicense.SkuShortName, unsanitizedLicense.IsGovSku === 'true')}`}
                         </div>
                     </div>
                     {viewPlansButton}
@@ -204,7 +204,7 @@ const EnterpriseEditionLeftPanel = ({
             <div className='EnterpriseEditionLeftPanel__Header'>
                 <div>
                     <div className='EnterpriseEditionLeftPanel__Title'>
-                        {`Mattermost ${skuName}`}
+                        {`Dopaminefact ${skuName}`}
                         {isTrialLicense && (
                             <Tag
                                 text={formatMessage({
@@ -258,7 +258,7 @@ const EnterpriseEditionLeftPanel = ({
                 {/* This notice should not be translated */}
                 {upgradedFromTE ? <>
                     <p>
-                        {'When using Mattermost Enterprise Edition, the software is offered under a commercial license. See '}
+                        {'When using Dopaminefact Enterprise Edition, the software is offered under a commercial license. See '}
                         <a
                             role='button'
                             onClick={openEELicenseModal}
@@ -389,7 +389,7 @@ const renderLicenseContent = (
 ) => {
     // Note: DO NOT LOCALISE THESE STRINGS. Legally we can not since the license is in English.
 
-    const sku = license.SkuShortName ? <>{`Mattermost ${toTitleCase(skuName)}${isTrialLicense ? ' License Trial' : ''}`}</> : null;
+    const sku = license.SkuShortName ? <>{`Dopaminefact ${toTitleCase(skuName)}${isTrialLicense ? ' License Trial' : ''}`}</> : null;
 
     const users = <FormattedNumber value={parseInt(license.Users, 10)}/>;
     const activeUsers = <FormattedNumber value={statsActiveUsers}/>;

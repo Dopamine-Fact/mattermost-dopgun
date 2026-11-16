@@ -1,0 +1,886 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+// Each status sets one colour; cards, dots, pills and bars read it.
+.TaskStatus--todo {
+    --task-status-color: rgba(var(--center-channel-color-rgb), 0.48);
+}
+
+.TaskStatus--in_progress {
+    --task-status-color: var(--online-indicator);
+}
+
+// A fixed blue: themes can make --button-bg any colour, and done must not read as a warning.
+.TaskStatus--done {
+    --task-status-color: #5d89ea;
+}
+
+.TasksPage {
+    display: flex;
+    height: 100%;
+    background-color: var(--center-channel-bg);
+    color: var(--center-channel-color);
+
+    &__main {
+        display: flex;
+        min-width: 0;
+        flex: 1;
+        flex-direction: column;
+    }
+
+    &__header {
+        display: flex;
+        height: 56px;
+        flex-shrink: 0;
+        align-items: center;
+        padding: 0 20px;
+        border-bottom: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+        gap: 24px;
+    }
+
+    &__title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        h1 {
+            margin: 0;
+            font-family: 'Metropolis', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+        }
+    }
+
+    &__tabs {
+        display: flex;
+        align-self: stretch;
+        gap: 4px;
+    }
+
+    &__tab {
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
+        border: none;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+        font-weight: 600;
+        gap: 6px;
+
+        &:hover {
+            color: var(--center-channel-color);
+        }
+
+        &--active {
+            border-bottom-color: var(--button-bg);
+            color: var(--button-bg);
+        }
+    }
+
+    &__content {
+        display: flex;
+        overflow: auto;
+        min-height: 0;
+        flex: 1;
+        flex-direction: column;
+    }
+}
+
+.TaskStatusDot {
+    width: 10px;
+    height: 10px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--task-status-color);
+}
+
+.TaskDoneToggle {
+    display: inline-flex;
+    flex-shrink: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: rgba(var(--center-channel-color-rgb), 0.48);
+
+    &:hover,
+    &--done {
+        color: var(--online-indicator);
+    }
+}
+
+.TaskLabel {
+    display: inline-block;
+    overflow: hidden;
+    max-width: 100%;
+    padding: 1px 8px;
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--task-label-color) 22%, var(--center-channel-bg));
+    color: var(--center-channel-color);
+    font-size: 11px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.TaskDue {
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    font-size: 12px;
+    white-space: nowrap;
+
+    &--overdue {
+        color: var(--error-text);
+    }
+}
+
+.TaskStatusPill {
+    padding: 2px 8px;
+    border: none;
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--task-status-color) 22%, var(--center-channel-bg));
+    color: var(--center-channel-color);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+// Board
+
+.TaskBoard {
+    display: flex;
+    min-height: 100%;
+    align-items: flex-start;
+    padding: 16px 20px;
+    gap: 16px;
+
+    &__column {
+        display: flex;
+        width: 300px;
+        max-height: 100%;
+        flex-direction: column;
+        flex-shrink: 0;
+        padding: 8px;
+        border-radius: 12px;
+        background: rgba(var(--center-channel-color-rgb), 0.04);
+    }
+
+    &__columnHeader {
+        display: flex;
+        align-items: center;
+        padding: 4px 6px 10px;
+        gap: 8px;
+
+        h2 {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 600;
+        }
+    }
+
+    &__count {
+        color: rgba(var(--center-channel-color-rgb), 0.56);
+        font-size: 12px;
+    }
+
+    &__cards {
+        display: flex;
+        min-height: 40px;
+        flex-direction: column;
+        padding: 2px;
+        border-radius: 8px;
+        gap: 8px;
+        transition: background 0.15s;
+
+        &--over {
+            background: color-mix(in srgb, var(--task-status-color) 14%, transparent);
+        }
+    }
+
+    &__add {
+        width: 100%;
+        padding: 8px 6px;
+        border: none;
+        border-radius: 8px;
+        margin-top: 6px;
+        background: transparent;
+        color: var(--center-channel-color);
+
+        &::placeholder {
+            color: rgba(var(--center-channel-color-rgb), 0.56);
+        }
+
+        &:hover,
+        &:focus {
+            background: rgba(var(--center-channel-color-rgb), 0.08);
+        }
+    }
+}
+
+.TaskCard {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 12px;
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+    border-radius: 8px;
+    border-left: 4px solid var(--task-status-color);
+    background: color-mix(in srgb, var(--task-status-color) 8%, var(--center-channel-bg));
+    cursor: grab;
+    gap: 8px;
+    transition: background 0.15s, border-color 0.15s;
+
+    &:hover {
+        box-shadow: var(--elevation-1);
+    }
+
+    &--selected {
+        border-color: var(--button-bg);
+        border-left-color: var(--task-status-color);
+    }
+
+    &--dragging {
+        box-shadow: var(--elevation-4);
+        cursor: grabbing;
+    }
+
+    &__title {
+        display: flex;
+        align-items: flex-start;
+        font-size: 14px;
+        gap: 6px;
+        overflow-wrap: anywhere;
+    }
+
+    &.TaskStatus--done &__title span {
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+        text-decoration: line-through;
+    }
+
+    &__footer {
+        display: flex;
+        min-height: 20px;
+        align-items: center;
+        gap: 8px;
+
+        &:empty {
+            display: none;
+        }
+    }
+}
+
+// List
+
+.TaskList {
+    min-width: 820px;
+    padding: 8px 20px 40px;
+
+    &__row {
+        display: grid;
+        min-height: 38px;
+        align-items: center;
+        padding: 0 8px;
+        border-bottom: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+        background: var(--center-channel-bg);
+        gap: 12px;
+        grid-template-columns: minmax(240px, 1fr) 200px 110px 150px 130px;
+
+        &:not(&--head):hover,
+        &--selected {
+            background: rgba(var(--center-channel-color-rgb), 0.04);
+        }
+
+        &--head {
+            color: rgba(var(--center-channel-color-rgb), 0.64);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        &--dragging {
+            border-left: 4px solid var(--task-status-color);
+            box-shadow: var(--elevation-3);
+        }
+
+        &.TaskStatus--done .TaskList__name span {
+            color: rgba(var(--center-channel-color-rgb), 0.64);
+            text-decoration: line-through;
+        }
+    }
+
+    &__group {
+        margin-top: 16px;
+    }
+
+    &__groupHeader {
+        display: flex;
+        align-items: center;
+        padding: 4px 0;
+        border: none;
+        background: transparent;
+        color: var(--center-channel-color);
+        gap: 8px;
+
+        h2 {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 600;
+        }
+    }
+
+    &__rows {
+        min-height: 4px;
+        border-radius: 4px;
+
+        &--over {
+            background: color-mix(in srgb, var(--task-status-color) 10%, transparent);
+        }
+    }
+
+    &__name,
+    &__assignee {
+        display: flex;
+        overflow: hidden;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+
+        span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    }
+
+    &__add {
+        width: 100%;
+        padding: 8px 8px 8px 32px;
+        border: none;
+        background: transparent;
+        color: var(--center-channel-color);
+
+        &::placeholder {
+            color: rgba(var(--center-channel-color-rgb), 0.56);
+        }
+    }
+}
+
+// Timeline
+
+.TaskTimeline {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+
+    &__note {
+        padding: 8px 20px;
+        border-bottom: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+        font-size: 12px;
+    }
+
+    &__scroll {
+        overflow: auto;
+        flex: 1;
+    }
+
+    &__row {
+        display: flex;
+        width: max-content;
+        min-width: 100%;
+        border-bottom: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+
+        &--head {
+            position: sticky;
+            z-index: 3;
+            top: 0;
+            background: var(--center-channel-bg);
+        }
+    }
+
+    &__sectionCell {
+        position: sticky;
+        z-index: 2;
+        left: 0;
+        display: flex;
+        width: 220px;
+        flex-shrink: 0;
+        align-items: flex-start;
+        padding: 6px 8px 6px 20px;
+        border-right: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+        background: var(--center-channel-bg);
+        font-weight: 600;
+        gap: 4px;
+    }
+
+    &__sectionName,
+    &__addSection {
+        min-width: 0;
+        flex: 1;
+        padding: 4px;
+        border: none;
+        background: transparent;
+        color: var(--center-channel-color);
+        font-weight: 600;
+    }
+
+    &__addSection::placeholder {
+        color: rgba(var(--center-channel-color-rgb), 0.56);
+    }
+
+    &__days {
+        position: relative;
+        display: flex;
+    }
+
+    &__day {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 4px 0;
+        font-size: 11px;
+    }
+
+    &__month {
+        height: 16px;
+        align-self: flex-start;
+        padding-left: 4px;
+        color: rgba(var(--center-channel-color-rgb), 0.72);
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    &__dayNum {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+        line-height: 22px;
+        text-align: center;
+
+        &--today {
+            background: var(--button-bg);
+            color: var(--button-color);
+        }
+    }
+
+    &__lane {
+        position: relative;
+        background-image: linear-gradient(to right, rgba(var(--center-channel-color-rgb), 0.06) 1px, transparent 1px);
+    }
+
+    &__today {
+        position: absolute;
+        z-index: 1;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--button-bg);
+        pointer-events: none;
+    }
+}
+
+.TaskBar {
+    position: absolute;
+    display: flex;
+    height: 26px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--task-status-color) 70%, var(--center-channel-bg));
+
+    &:hover,
+    &--resizing {
+        box-shadow: var(--elevation-2);
+    }
+
+    &__title {
+        overflow: hidden;
+        min-width: 0;
+        flex: 1;
+        padding: 0 2px;
+        border: none;
+        background: transparent;
+        color: var(--center-channel-color);
+        font-size: 12px;
+        font-weight: 600;
+        text-align: left;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &__handle {
+        width: 8px;
+        flex-shrink: 0;
+        border-radius: 6px;
+        cursor: ew-resize;
+        touch-action: none;
+
+        &:hover {
+            background: rgba(var(--center-channel-color-rgb), 0.16);
+        }
+    }
+}
+
+// Detail panel
+
+.TaskDetail {
+    display: flex;
+    width: 360px;
+    flex-direction: column;
+    flex-shrink: 0;
+    padding: 16px;
+    border-left: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+    gap: 14px;
+    overflow-y: auto;
+
+    &__header {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    &__status {
+        flex: 1;
+    }
+
+    &__title {
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    &__dates {
+        display: flex;
+        gap: 12px;
+
+        > * {
+            flex: 1;
+        }
+    }
+
+    &__field {
+        display: flex;
+        flex-direction: column;
+        margin: 0;
+        font-size: 12px;
+        font-weight: 600;
+        gap: 4px;
+
+        textarea {
+            min-height: 140px;
+            resize: vertical;
+        }
+    }
+}
+
+// Comments in the detail panel
+
+.TaskComments {
+    display: flex;
+    flex-direction: column;
+    padding-top: 14px;
+    border-top: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+    gap: 12px;
+
+    &__title {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    &__composer {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+
+        textarea {
+            min-height: 64px;
+            resize: vertical;
+        }
+    }
+
+    &__pending {
+        padding-left: 16px;
+        margin: 0;
+        font-size: 12px;
+    }
+
+    &__error {
+        color: var(--error-text);
+        font-size: 12px;
+    }
+
+    &__actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        label {
+            margin: 0;
+            cursor: pointer;
+        }
+    }
+}
+
+.TaskComment {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+
+    &__body {
+        display: flex;
+        min-width: 0;
+        flex: 1;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    &__header {
+        display: flex;
+        align-items: center;
+        font-size: 13px;
+        gap: 6px;
+    }
+
+    &__time {
+        flex: 1;
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+        font-size: 12px;
+    }
+
+    &__message {
+        margin: 0;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+    }
+
+    &__image {
+        max-width: 100%;
+        max-height: 200px;
+        border-radius: 4px;
+    }
+
+    &__file {
+        display: inline-flex;
+        align-items: center;
+        font-size: 13px;
+        gap: 4px;
+    }
+}
+
+// Messages | Revisions tabs of a revision channel
+
+.RevisionTabs {
+    display: flex;
+    flex: 0 0 auto;
+    padding: 0 20px;
+    border-bottom: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+    gap: 4px;
+
+    &__tab {
+        padding: 8px 10px;
+        border: none;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+        font-weight: 600;
+
+        &:hover {
+            color: var(--center-channel-color);
+        }
+
+        &--active {
+            border-bottom-color: var(--button-bg);
+            color: var(--button-bg);
+        }
+    }
+
+    &__panel {
+        display: flex;
+        overflow: hidden;
+        min-height: 0;
+        flex: 1;
+    }
+
+    &__main {
+        overflow: auto;
+        flex: 1;
+    }
+}
+
+// Revisions: a revision channel's video with its revisions below
+
+.TaskRevisions {
+    display: flex;
+    max-width: 960px;
+    flex-direction: column;
+    padding: 16px 24px;
+    gap: 10px;
+
+    &__video {
+        width: 100%;
+        max-height: 55vh;
+        border-radius: 4px;
+        background: #000;
+    }
+
+    &__hint {
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+        font-size: 12px;
+    }
+
+    &__add {
+        display: flex;
+        gap: 8px;
+    }
+
+    &__list {
+        display: grid;
+        padding: 0;
+        margin: 4px 0 0;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        list-style: none;
+    }
+
+    &__card {
+        display: flex;
+        overflow: hidden;
+        flex-direction: column;
+        border: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+        border-radius: 8px;
+        background: var(--center-channel-bg);
+
+        &--selected {
+            border-color: var(--button-bg);
+            box-shadow: 0 0 0 1px var(--button-bg);
+        }
+    }
+
+    // The frame is the point of a revision, so it leads the card.
+    &__still {
+        position: relative;
+        width: 100%;
+        padding: 0;
+        border: none;
+        aspect-ratio: 16 / 9;
+        background: #000;
+
+        img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        &:hover img {
+            opacity: 0.85;
+        }
+    }
+
+    &__time {
+        position: absolute;
+        bottom: 6px;
+        left: 6px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.72);
+        color: #fff;
+        font-family: monospace;
+        font-size: 12px;
+    }
+
+    &__name {
+        padding: 8px 10px 4px;
+        border: none;
+        background: none;
+        color: inherit;
+        font-weight: 600;
+        text-align: left;
+    }
+
+    &__meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 10px 10px;
+        gap: 8px;
+    }
+
+    &__empty {
+        padding: 16px 0;
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+        grid-column: 1 / -1;
+    }
+}
+
+.RevisionChannelModal__body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    label {
+        margin: 8px 0 0;
+    }
+}
+
+.TaskAssigneeLabel {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    font-size: 12px;
+    gap: 6px;
+
+    span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+// A revision's card in the chat; its edge and tint follow the revision's status.
+.RevisionPost {
+    display: flex;
+    max-width: 480px;
+    flex-direction: column;
+    padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, var(--task-status-color) 40%, transparent);
+    border-radius: 8px;
+    border-left: 4px solid var(--task-status-color);
+    margin-top: 4px;
+    background: color-mix(in srgb, var(--task-status-color) 10%, var(--center-channel-bg));
+    gap: 6px;
+    transition: background 0.2s, border-color 0.2s;
+
+    &__label {
+        display: flex;
+        align-items: center;
+        color: rgba(var(--center-channel-color-rgb), 0.72);
+        font-size: 12px;
+        font-weight: 600;
+        gap: 8px;
+        text-transform: uppercase;
+    }
+
+    &__time {
+        padding: 1px 6px;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.72);
+        color: #fff;
+        font-family: monospace;
+        text-transform: none;
+    }
+
+    &__title {
+        color: var(--center-channel-color);
+        font-size: 15px;
+        font-weight: 600;
+    }
+
+    &.TaskStatus--done &__title {
+        text-decoration: line-through;
+    }
+
+    &__meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+}

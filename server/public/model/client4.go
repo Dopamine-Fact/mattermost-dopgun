@@ -735,10 +735,6 @@ func (c *Client4) dialogsRoute() clientRoute {
 	return c.actionsRoute().Join("dialogs")
 }
 
-func (c *Client4) trialLicenseRoute() clientRoute {
-	return newClientRoute("trial-license")
-}
-
 func (c *Client4) integrityRoute() clientRoute {
 	return newClientRoute("integrity")
 }
@@ -7225,28 +7221,6 @@ func (c *Client4) GetChannelMemberCountsByGroup(ctx context.Context, channelID s
 	}
 	defer closeBody(r)
 	return DecodeJSONFromResponse[[]*ChannelMemberCountByGroup](r)
-}
-
-func (c *Client4) RequestTrialLicenseWithExtraFields(ctx context.Context, trialRequest *TrialLicenseRequest) (*Response, error) {
-	r, err := c.doAPIPostJSON(ctx, c.trialLicenseRoute(), trialRequest)
-	if err != nil {
-		return BuildResponse(r), err
-	}
-
-	defer closeBody(r)
-	return BuildResponse(r), nil
-}
-
-// RequestTrialLicense will request a trial license and install it in the server
-// DEPRECATED - USE RequestTrialLicenseWithExtraFields (this method remains for backwards compatibility)
-func (c *Client4) RequestTrialLicense(ctx context.Context, users int) (*Response, error) {
-	reqData := map[string]any{"users": users, "terms_accepted": true}
-	r, err := c.doAPIPostJSON(ctx, c.trialLicenseRoute(), reqData)
-	if err != nil {
-		return BuildResponse(r), err
-	}
-	defer closeBody(r)
-	return BuildResponse(r), nil
 }
 
 // GetGroupStats retrieves stats for a Mattermost Group

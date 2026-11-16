@@ -39,7 +39,6 @@ import TeamMembersModal from 'components/team_members_modal';
 import TeamSettingsModal from 'components/team_settings_modal';
 import RestrictedIndicator from 'components/widgets/menu/menu_items/restricted_indicator';
 
-import {FREEMIUM_TO_ENTERPRISE_TRIAL_LENGTH_DAYS} from 'utils/cloud_utils';
 import {LicenseSkus, ModalIdentifiers, MattermostFeatures} from 'utils/constants';
 import {isCloudLicense} from 'utils/license_utils';
 
@@ -420,18 +419,6 @@ function RestrictedIndicatorForCreateTeam() {
                 id: 'navbar_dropdown.create.tooltip.cloudFreeTrial',
                 defaultMessage: 'During your trial you are able to create multiple teams. These teams will be archived after your trial.',
             })}
-            titleAdminPreTrial={formatMessage({
-                id: 'navbar_dropdown.create.modal.titleAdminPreTrial',
-                defaultMessage: 'Try unlimited teams with a free trial',
-            })}
-            messageAdminPreTrial={formatMessage({
-                id: 'navbar_dropdown.create.modal.messageAdminPreTrial',
-                defaultMessage: 'Create unlimited teams with one of our paid plans. Get the full experience of Enterprise when you start a free, {trialLength} day trial.',
-            },
-            {
-                trialLength: FREEMIUM_TO_ENTERPRISE_TRIAL_LENGTH_DAYS,
-            },
-            )}
             titleAdminPostTrial={formatMessage({
                 id: 'navbar_dropdown.create.modal.titleAdminPostTrial',
                 defaultMessage: 'Upgrade to create unlimited teams',

@@ -1748,16 +1748,9 @@ func (api *PluginAPI) GetClusterNodes() ([]*model.ClusterInfo, error) {
 	return nodes, nil
 }
 
-// RequestTrialLicense requests a trial license and installs it in the server
+// RequestTrialLicense is kept for plugin API compatibility; Dopaminefact does not offer trial licenses.
 func (api *PluginAPI) RequestTrialLicense(requesterID string, users int, termsAccepted bool, receiveEmailsAccepted bool) *model.AppError {
-	// Normally, plugins are unrestricted in their abilities, but to maintain backwards compatbilibity with plugins
-	// that were unaware of the nuances of ExperimentalSettings.RestrictSystemAdmin, we restrict the trial license
-	// unconditionally.
-	if *api.app.Config().ExperimentalSettings.RestrictSystemAdmin {
-		return model.NewAppError("RequestTrialLicense", "api.restricted_system_admin", nil, "", http.StatusForbidden)
-	}
-
-	return api.app.Channels().RequestTrialLicense(api.ctx, requesterID, users, termsAccepted, receiveEmailsAccepted)
+	return model.NewAppError("RequestTrialLicense", "api.license.request_trial_license.app_error", nil, "trial licenses are disabled", http.StatusForbidden)
 }
 
 // GetCloudLimits returns any limits associated with the cloud instance

@@ -123,7 +123,7 @@ describe('components/TeamSettings', () => {
         await userEvent.click(saveButton);
 
         expect(patchTeam).toHaveBeenCalledTimes(1);
-        expect(patchTeam).toHaveBeenCalledWith({id: defaultProps.team?.id, display_name: 'new_team_name', description: defaultProps.team?.description});
+        expect(patchTeam).toHaveBeenCalledWith({id: defaultProps.team?.id, display_name: 'new_team_name', description: defaultProps.team?.description, tasks_enabled: false, revisions_enabled: false});
     });
 
     test('should call patchTeam when team description is changed and clicked saved', async () => {
@@ -135,7 +135,7 @@ describe('components/TeamSettings', () => {
         await userEvent.click(saveButton);
 
         expect(patchTeam).toHaveBeenCalledTimes(1);
-        expect(patchTeam).toHaveBeenCalledWith({id: defaultProps.team?.id, display_name: defaultProps.team?.display_name, description: 'new_team_description'});
+        expect(patchTeam).toHaveBeenCalledWith({id: defaultProps.team?.id, display_name: defaultProps.team?.display_name, description: 'new_team_description', tasks_enabled: false, revisions_enabled: false});
     });
 
     test('should call patchTeam when team name and description are change and clicked saved', async () => {
@@ -150,6 +150,17 @@ describe('components/TeamSettings', () => {
         await userEvent.click(saveButton);
 
         expect(patchTeam).toHaveBeenCalledTimes(1);
-        expect(patchTeam).toHaveBeenCalledWith({id: defaultProps.team?.id, display_name: 'new_team_name', description: 'new_team_description'});
+        expect(patchTeam).toHaveBeenCalledWith({id: defaultProps.team?.id, display_name: 'new_team_name', description: 'new_team_description', tasks_enabled: false, revisions_enabled: false});
+    });
+
+    test('revision channels can be turned on only together with tasks', async () => {
+        renderWithContext(<InfoTab {...defaultProps}/>);
+        expect(screen.queryByTestId('revisionsEnabledCheckbox')).not.toBeInTheDocument();
+
+        await userEvent.click(screen.getByTestId('tasksEnabledCheckbox'));
+        await userEvent.click(screen.getByTestId('revisionsEnabledCheckbox'));
+        await userEvent.click(screen.getByTestId('SaveChangesPanel__save-btn'));
+
+        expect(patchTeam).toHaveBeenCalledWith(expect.objectContaining({tasks_enabled: true, revisions_enabled: true}));
     });
 });

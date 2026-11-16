@@ -45,7 +45,7 @@ describe('ProductBranding', () => {
         jest.restoreAllMocks();
     });
 
-    test('should render TEAM EDITION for unlicensed users', () => {
+    test('should not render an edition badge for unlicensed users', () => {
         const state = {
             entities: {
                 general: {
@@ -59,7 +59,7 @@ describe('ProductBranding', () => {
 
         renderWithContext(<ProductBranding/>, state);
 
-        expect(screen.getByText('TEAM EDITION')).toBeInTheDocument();
+        expect(screen.queryByText('TEAM EDITION')).not.toBeInTheDocument();
     });
 
     test('should render ENTRY EDITION for Entry license', () => {
@@ -243,7 +243,7 @@ describe('ProductBranding', () => {
         expect(screen.queryByText('Channels')).not.toBeInTheDocument();
     });
 
-    test('should fall back to Mattermost when no site name is set', () => {
+    test('should fall back to Dopaminefact when no site name is set', () => {
         const state = {
             entities: {
                 general: {
@@ -256,7 +256,7 @@ describe('ProductBranding', () => {
 
         renderWithContext(<ProductBranding/>, state);
 
-        expect(screen.getByText('Mattermost')).toBeInTheDocument();
+        expect(screen.getByText('Dopaminefact')).toBeInTheDocument();
     });
 
     test('should keep the product name while the rail is hidden, as on mobile', () => {

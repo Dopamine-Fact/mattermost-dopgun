@@ -9,16 +9,16 @@ export interface TeamEditionProps {
 }
 
 const TeamEdition: React.FC<TeamEditionProps> = ({openEELicenseModal}: TeamEditionProps) => {
-    const title = 'Team Edition';
+    const title = 'Dopaminefact';
     return (
         <div className='TeamEditionLeftPanel'>
             <div className='TeamEditionLeftPanel__Header'>
                 <div className='TeamEditionLeftPanel__Title'>{title}</div>
             </div>
             <div className='TeamEditionLeftPanel__LicenseNotices'>
-                <p>{'When using Mattermost Team Edition, the software is offered under a Mattermost MIT Compiled License. See MIT-COMPILED-LICENSE.md in your root install directory for details.'}</p>
+                <p>{'When using Dopaminefact, the software is offered under a Dopaminefact MIT Compiled License. See MIT-COMPILED-LICENSE.md in your root install directory for details.'}</p>
                 <p>
-                    {'When using Mattermost Enterprise Edition, the software is offered under a commercial license. See '}
+                    {'When using Dopaminefact Enterprise Edition, the software is offered under a commercial license. See '}
                     <a
                         role='button'
                         onClick={openEELicenseModal}

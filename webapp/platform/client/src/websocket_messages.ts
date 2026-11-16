@@ -18,6 +18,7 @@ import type {PropertyField, PropertyValue} from '@mattermost/types/properties';
 import type {Reaction} from '@mattermost/types/reactions';
 import type {Role} from '@mattermost/types/roles';
 import type {ScheduledPost as ScheduledPostType} from '@mattermost/types/schedule_post';
+import type {Task as TaskType, TaskSection as TaskSectionType} from '@mattermost/types/tasks';
 import type {Team as TeamType, TeamMembership} from '@mattermost/types/teams';
 import type {UserThread} from '@mattermost/types/threads';
 import type {UserProfile, UserStatus} from '@mattermost/types/users';
@@ -136,6 +137,28 @@ export type ScheduledPost =
     BaseWebSocketMessage<WebSocketEvents.ScheduledPostCreated | WebSocketEvents.ScheduledPostUpdated | WebSocketEvents.ScheduledPostDeleted, {
         scheduledPost: JsonEncodedValue<ScheduledPostType>;
     }>;
+
+// Task messages
+
+export type TaskUpserted = BaseWebSocketMessage<WebSocketEvents.TaskUpserted, {
+    task: JsonEncodedValue<TaskType>;
+    team_id: string;
+}>;
+
+export type TaskDeleted = BaseWebSocketMessage<WebSocketEvents.TaskDeleted, {
+    task_id: string;
+    team_id: string;
+}>;
+
+export type TaskSectionUpserted = BaseWebSocketMessage<WebSocketEvents.TaskSectionUpserted, {
+    section: JsonEncodedValue<TaskSectionType>;
+    team_id: string;
+}>;
+
+export type TaskSectionDeleted = BaseWebSocketMessage<WebSocketEvents.TaskSectionDeleted, {
+    section_id: string;
+    team_id: string;
+}>;
 
 // Thread messages
 

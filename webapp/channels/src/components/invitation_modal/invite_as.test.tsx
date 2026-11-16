@@ -16,7 +16,6 @@ jest.mock('mattermost-redux/selectors/entities/users', () => ({
 
 jest.mock('mattermost-redux/actions/admin', () => ({
     ...jest.requireActual('mattermost-redux/actions/admin') as typeof import('mattermost-redux/actions/admin'),
-    getPrevTrialLicense: () => ({type: 'MOCK_GET_PREV_TRIAL_LICENSE'}),
 }));
 
 describe('components/cloud_start_trial_btn/cloud_start_trial_btn', () => {
@@ -33,11 +32,7 @@ describe('components/cloud_start_trial_btn/cloud_start_trial_btn', () => {
 
     const state = {
         entities: {
-            admin: {
-                prevTrialLicense: {
-                    IsLicensed: 'true',
-                },
-            },
+            admin: {},
             general: {
                 config: {
                     BuildEnterpriseReady: 'true',
@@ -74,11 +69,7 @@ describe('components/cloud_start_trial_btn/cloud_start_trial_btn', () => {
     test('restricted badge shows "Upgrade" for post trial', () => {
         const testState = {
             entities: {
-                admin: {
-                    prevTrialLicense: {
-                        IsLicensed: 'false',
-                    },
-                },
+                admin: {},
                 general: {
                     config: {
                         BuildEnterpriseReady: 'true',
@@ -116,11 +107,7 @@ describe('components/cloud_start_trial_btn/cloud_start_trial_btn', () => {
     test('guest radio-button is disabled and shows the badge guest restricted feature to invite guest when is NOT free trial for self hosted starter', () => {
         const testState = {
             entities: {
-                admin: {
-                    prevTrialLicense: {
-                        IsLicensed: 'false',
-                    },
-                },
+                admin: {},
                 general: {
                     config: {
                         BuildEnterpriseReady: 'true',
@@ -147,17 +134,13 @@ describe('components/cloud_start_trial_btn/cloud_start_trial_btn', () => {
         const guestRadioButton = screen.getByDisplayValue('GUEST');
         expect(guestRadioButton).toBeDisabled();
 
-        expect(screen.getByText('Professional feature - try it out free')).toBeInTheDocument();
+        expect(screen.getByText('Upgrade')).toBeInTheDocument();
     });
 
     test('restricted badge shows "Upgrade" for self hosted starter post trial', () => {
         const testState = {
             entities: {
-                admin: {
-                    prevTrialLicense: {
-                        IsLicensed: 'true',
-                    },
-                },
+                admin: {},
                 general: {
                     config: {
                         BuildEnterpriseReady: 'true',
@@ -190,11 +173,7 @@ describe('components/cloud_start_trial_btn/cloud_start_trial_btn', () => {
     test('shows the badge guest highligh feature to invite guest when IS FREE trial for cloud', () => {
         const testState = {
             entities: {
-                admin: {
-                    prevTrialLicense: {
-                        IsLicensed: 'false',
-                    },
-                },
+                admin: {},
                 general: {
                     config: {
                         BuildEnterpriseReady: 'true',
@@ -234,11 +213,7 @@ describe('components/cloud_start_trial_btn/cloud_start_trial_btn', () => {
     test('shows the badge guest highligh feature to invite guest when IS FREE trial for self hosted starter', () => {
         const testState = {
             entities: {
-                admin: {
-                    prevTrialLicense: {
-                        IsLicensed: 'false',
-                    },
-                },
+                admin: {},
                 general: {
                     config: {
                         BuildEnterpriseReady: 'true',
@@ -278,11 +253,7 @@ describe('components/cloud_start_trial_btn/cloud_start_trial_btn', () => {
         // Use a state where normally guests would be allowed (paid subscription)
         const paidState = {
             entities: {
-                admin: {
-                    prevTrialLicense: {
-                        IsLicensed: 'true',
-                    },
-                },
+                admin: {},
                 general: {
                     config: {
                         BuildEnterpriseReady: 'true',
@@ -333,11 +304,7 @@ describe('components/cloud_start_trial_btn/cloud_start_trial_btn', () => {
         // Use a state where guests would be allowed (paid subscription)
         const paidState = {
             entities: {
-                admin: {
-                    prevTrialLicense: {
-                        IsLicensed: 'true',
-                    },
-                },
+                admin: {},
                 general: {
                     config: {
                         BuildEnterpriseReady: 'true',
@@ -383,11 +350,7 @@ describe('components/cloud_start_trial_btn/cloud_start_trial_btn', () => {
         // Test with self-hosted starter where guests should be disabled by default
         const testState = {
             entities: {
-                admin: {
-                    prevTrialLicense: {
-                        IsLicensed: 'false',
-                    },
-                },
+                admin: {},
                 general: {
                     config: {
                         BuildEnterpriseReady: 'true',

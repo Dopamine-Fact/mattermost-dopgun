@@ -23,7 +23,7 @@ export default function NotificationPermissionUnsupportedSectionNotice() {
                 })}
                 description={intl.formatMessage({
                     id: 'user.settings.notifications.desktopAndMobile.notificationSection.permissionUnsupported.message',
-                    defaultMessage: 'You\'re missing important message and call notifications from Mattermost. To start receiving notifications, please update to a supported browser.',
+                    defaultMessage: 'You\'re missing important message and call notifications from Dopaminefact. To start receiving notifications, please update to a supported browser.',
                 })}
                 primaryButtonLabel={intl.formatMessage({
                     id: 'user.settings.notifications.desktopAndMobile.notificationSection.permissionUnsupported.button',

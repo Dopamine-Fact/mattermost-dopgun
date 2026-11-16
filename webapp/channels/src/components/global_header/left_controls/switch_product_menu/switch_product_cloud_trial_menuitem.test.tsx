@@ -52,11 +52,7 @@ describe('ProductSwitcherCloudTrialMenuItem', () => {
                     } as Product,
                 },
             },
-            admin: {
-                prevTrialLicense: {
-                    IsLicensed: 'false',
-                },
-            },
+            admin: {},
             general: {
                 license: {},
                 config: {},

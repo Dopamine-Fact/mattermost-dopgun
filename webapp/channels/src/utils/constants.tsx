@@ -148,7 +148,6 @@ export const Preferences = {
     SHOW_BOARDS_IN_CHANNELS: 'show_boards_in_channels',
     CLOUD_UPGRADE_BANNER: 'cloud_upgrade_banner',
     CLOUD_TRIAL_BANNER: 'cloud_trial_banner',
-    START_TRIAL_MODAL: 'start_trial_modal',
     ADMIN_CLOUD_UPGRADE_PANEL: 'admin_cloud_upgrade_panel',
     CATEGORY_EMOJI: 'emoji',
     EMOJI_SKINTONE: 'emoji_skintone',
@@ -415,11 +414,11 @@ export const ModalIdentifiers = {
     DELETE_CATEGORY: 'delete_category',
     SIDEBAR_WHATS_NEW_MODAL: 'sidebar_whats_new_modal',
     TRIAL_BENEFITS_MODAL: 'trial_benefits_modal',
-    LEARN_MORE_TRIAL_MODAL: 'learn_more_trial_modal',
     ENTERPRISE_EDITION_LICENSE: 'enterprise_edition_license',
     REMOVE_NEXT_STEPS_MODAL: 'remove_next_steps_modal',
     MORE_CHANNELS: 'more_channels',
     NEW_CHANNEL_MODAL: 'new_channel_modal',
+    REVISION_CHANNEL_MODAL: 'revision_channel_modal',
     DND_CUSTOM_TIME_PICKER: 'dnd_custom_time_picker',
     POST_REMINDER_CUSTOM_TIME_PICKER: 'post_reminder_custom_time_picker',
     POST_ATTRIBUTES: 'post_attributes',
@@ -455,8 +454,6 @@ export const ModalIdentifiers = {
     MARK_ALL_THREADS_AS_READ: 'mark_all_threads_as_read_modal',
     PERSIST_NOTIFICATION_CONFIRM_MODAL: 'persist_notification_confirm_modal',
     FEEDBACK: 'feedback',
-    START_TRIAL_FORM_MODAL: 'start_trial_form_modal',
-    START_TRIAL_FORM_MODAL_RESULT: 'start_trial_form_modal_result',
     MOVE_THREAD_MODAL: 'move_thread_modal',
     CONVERT_GM_TO_CHANNEL: 'convert_gm_to_channel',
     IP_FILTERING_ADD_EDIT_MODAL: 'ip_filtering_add_edit_modal',
@@ -674,12 +671,8 @@ export const TutorialSteps = {
     MENU_POPOVER: 3,
     PRODUCT_SWITCHER: 4,
     SETTINGS: 5,
-    START_TRIAL: 6,
     FINISHED: 999,
 };
-
-// note: add steps in same order as the keys in TutorialSteps above
-export const AdminTutorialSteps = ['START_TRIAL'];
 
 export const TopLevelProducts = {
     BOARDS: 'Boards',
@@ -769,6 +762,7 @@ export const PostTypes = {
     CUSTOM_CALLS: 'custom_calls',
     CUSTOM_CALLS_RECORDING: 'custom_calls_recording',
     CUSTOM_DATA_SPILLAGE_REPORT: 'custom_spillage_report',
+    CUSTOM_REVISION: 'custom_revision',
     AUTO_TRANSLATION_CHANGE: 'system_autotranslation',
     BURN_ON_READ: 'burn_on_read',
     SHARED_CHANNEL_STATE: 'system_shared_chan_state',
@@ -928,7 +922,7 @@ defineMessages({
     },
     socketError: {
         id: 'channel_loader.socketError',
-        defaultMessage: 'Please check connection, Mattermost unreachable. If issue persists, ask administrator to [check WebSocket port](!https://docs.mattermost.com/install/troubleshooting.html#please-check-connection-mattermost-unreachable-if-issue-persists-ask-administrator-to-check-websocket-port).',
+        defaultMessage: 'Please check connection, Dopaminefact unreachable. If issue persists, ask administrator to [check WebSocket port](!https://docs.mattermost.com/install/troubleshooting.html#please-check-connection-mattermost-unreachable-if-issue-persists-ask-administrator-to-check-websocket-port).',
     },
     trialLicenseExpiring: {
         id: 'announcement_bar.error.trial_license_expiring',
@@ -1163,6 +1157,7 @@ export const PermissionsScope = {
     [Permissions.ASSIGN_SYSTEM_ADMIN_ROLE]: 'system_scope',
     [Permissions.MANAGE_ROLES]: 'system_scope',
     [Permissions.MANAGE_TEAM_ROLES]: 'team_scope',
+    [Permissions.MANAGE_TEAM_TASKS]: 'team_scope',
     [Permissions.MANAGE_CHANNEL_ROLES]: 'chanel_scope',
     [Permissions.MANAGE_SYSTEM]: 'system_scope',
     [Permissions.CREATE_DIRECT_CHANNEL]: 'system_scope',
@@ -1469,7 +1464,6 @@ export const Constants = {
     ActionTypes,
     UserStatuses,
     TutorialSteps,
-    AdminTutorialSteps,
     PostTypes,
     ErrorPageTypes,
     AnnouncementBarTypes,

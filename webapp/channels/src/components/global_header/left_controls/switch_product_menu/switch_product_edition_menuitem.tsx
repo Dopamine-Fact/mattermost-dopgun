@@ -17,21 +17,16 @@ export default function ProductSwitcherEditionFooter() {
     const isLicensedVersion = license?.IsLicensed === 'true';
     const isEntrySKU = license?.SkuShortName === LicenseSkus.Entry;
 
-    if (isLicensedVersion && !isEntrySKU) {
+    if (!isLicensedVersion || !isEntrySKU) {
         return null;
     }
 
-    const isEntryLicense = isLicensedVersion && isEntrySKU;
+    const badgeLabel = 'ENTRY EDITION';
 
-    let badgeLabel = 'TEAM EDITION';
-    if (isEntryLicense) {
-        badgeLabel = 'ENTRY EDITION';
-    }
-
-    let label = (
+    const label = (
         <FormattedMessage
-            id='globalHeader.productSwitcherMenu.editionMenuitem.unsupported'
-            defaultMessage='This is the free <b>unsupported</b> edition of Mattermost. See pricing.'
+            id='globalHeader.productSwitcherMenu.editionMenuitem.entry'
+            defaultMessage='Entry offers Enterprise Advanced capabilities <b>with limits</b> designed to support evaluation. Learn more.'
             values={{
                 b: (msg: React.ReactNode) => (
                     <b>
@@ -41,28 +36,9 @@ export default function ProductSwitcherEditionFooter() {
             }}
         />
     );
-    if (isEntryLicense) {
-        label = (
-            <FormattedMessage
-                id='globalHeader.productSwitcherMenu.editionMenuitem.entry'
-                defaultMessage='Entry offers Enterprise Advanced capabilities <b>with limits</b> designed to support evaluation. Learn more.'
-                values={{
-                    b: (msg: React.ReactNode) => (
-                        <b>
-                            {msg}
-                        </b>
-                    ),
-                }}
-            />
-        );
-    }
 
     function handleClick() {
-        if (isEntryLicense) {
-            window.open(LicenseLinks.ENTRY_LIMITS_INFO, '_blank', 'noopener,noreferrer');
-        } else {
-            window.open(LicenseLinks.UNSUPPORTED, '_blank', 'noopener,noreferrer');
-        }
+        window.open(LicenseLinks.ENTRY_LIMITS_INFO, '_blank', 'noopener,noreferrer');
     }
 
     return (

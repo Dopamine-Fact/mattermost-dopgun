@@ -31,11 +31,7 @@ describe('onboarding tasks manager', () => {
 
     const initialState = {
         entities: {
-            admin: {
-                prevTrialLicense: {
-                    IsLicensed: 'false',
-                },
-            },
+            admin: {},
             general: {
                 license: {
                     IsLicensed: 'false',
@@ -54,20 +50,17 @@ describe('onboarding tasks manager', () => {
         },
     };
 
-    it('Places all the elements (6 ignoring plugins) when user is first admin or admin', () => {
+    it('Places all the elements (5 ignoring plugins) when user is first admin or admin', () => {
         renderWithContext(
             <WrapperComponent/>,
             initialState,
         );
 
-        expect(screen.getAllByRole('listitem')).toHaveLength(6);
-
-        // find the visit system console and start_trial
+        expect(screen.getAllByRole('listitem')).toHaveLength(5);
         expect(screen.getByText('visit_system_console')).toBeInTheDocument();
-        expect(screen.getByText('start_trial')).toBeInTheDocument();
     });
 
-    it('Removes start_trial and visit_system_console when user is end user', () => {
+    it('Removes visit_system_console when user is end user', () => {
         const endUserState = {...initialState, entities: {...initialState.entities, users: {...initialState.entities.users, currentUserId: user2}}};
 
         renderWithContext(
@@ -77,9 +70,7 @@ describe('onboarding tasks manager', () => {
 
         expect(screen.getAllByRole('listitem')).toHaveLength(4);
 
-        // verify visit_system_console and start_trial were removed
         expect(screen.queryByText('visit_system_console')).not.toBeInTheDocument();
-        expect(screen.queryByText('start_trial')).not.toBeInTheDocument();
     });
 
     it('Removes invite people task item when user is GUEST user', () => {
@@ -92,7 +83,6 @@ describe('onboarding tasks manager', () => {
 
         expect(screen.getAllByRole('listitem')).toHaveLength(3);
 
-        // verify visit_system_console and start_trial were removed
         expect(screen.queryByText('invite_people')).not.toBeInTheDocument();
     });
 
@@ -103,7 +93,7 @@ describe('onboarding tasks manager', () => {
             initialState,
         );
 
-        expect(screen.getAllByRole('listitem')).toHaveLength(5);
+        expect(screen.getAllByRole('listitem')).toHaveLength(4);
         expect(screen.queryByText('download_app')).not.toBeInTheDocument();
         isDesktopAppMock.mockReturnValue(false);
     });

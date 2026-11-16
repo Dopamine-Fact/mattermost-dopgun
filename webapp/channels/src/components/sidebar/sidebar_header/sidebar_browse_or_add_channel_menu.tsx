@@ -3,7 +3,7 @@
 
 import React, {type JSX} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
-import {useSelector} from 'react-redux';
+import {useDispatch, useSelector} from 'react-redux';
 
 import {
     PlusIcon,
@@ -12,17 +12,25 @@ import {
     AccountMultiplePlusOutlineIcon,
     GlobeIcon,
     AccountOutlineIcon,
+    PlayBoxMultipleOutlineIcon,
 } from '@mattermost/compass-icons/components';
 import {Icon} from '@mattermost/compass-ui/components/icon';
 
-import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
+import {Permissions} from 'mattermost-redux/constants';
+import {haveICurrentTeamPermission} from 'mattermost-redux/selectors/entities/roles';
+import {getCurrentTeam, getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 
+import {openModal} from 'actions/views/modals';
 import {getSidebarBrowseOrAddChannelMenuPluginComponents} from 'selectors/plugins';
 
 import * as Menu from 'components/menu';
+import RevisionChannelModal from 'components/tasks/revision_channel_modal';
 import {OnboardingTourSteps} from 'components/tours';
 import {useShowOnboardingTutorialStep, CreateAndJoinChannelsTour, InvitePeopleTour} from 'components/tours/onboarding_tour';
 
+import {ModalIdentifiers} from 'utils/constants';
+
+import type {GlobalState} from 'types/store';
 import type {SidebarBrowseOrAddChannelMenuAction} from 'types/store/plugins';
 
 export const ELEMENT_ID_FOR_BROWSE_OR_ADD_CHANNEL_MENU = 'browserOrAddChannelMenu';
@@ -52,6 +60,9 @@ export default function SidebarBrowserOrAddChannelMenu(props: Props) {
     const {formatMessage} = useIntl();
     const currentTeamId = useSelector(getCurrentTeamId);
     const pluginMenuItems = useSelector(getSidebarBrowseOrAddChannelMenuPluginComponents);
+    const dispatch = useDispatch();
+    const team = useSelector(getCurrentTeam);
+    const canManageTasks = useSelector((state: GlobalState) => haveICurrentTeamPermission(state, Permissions.MANAGE_TEAM_TASKS));
 
     const showCreateAndJoinChannelsTutorialTip = useShowOnboardingTutorialStep(OnboardingTourSteps.CREATE_AND_JOIN_CHANNELS);
     const showInvitePeopleTutorialTip = useShowOnboardingTutorialStep(OnboardingTourSteps.INVITE_PEOPLE);
@@ -70,6 +81,24 @@ export default function SidebarBrowserOrAddChannelMenu(props: Props) {
                     />
                 )}
                 trailingElements={showCreateAndJoinChannelsTutorialTip && <CreateAndJoinChannelsTour/>}
+                aria-haspopup='true'
+            />
+        );
+    }
+
+    let createRevisionChannelMenuItem: JSX.Element | null = null;
+    if (team?.tasks_enabled && team.revisions_enabled && canManageTasks) {
+        createRevisionChannelMenuItem = (
+            <Menu.Item
+                id='createRevisionChannelMenuItem'
+                onClick={() => dispatch(openModal({modalId: ModalIdentifiers.REVISION_CHANNEL_MODAL, dialogType: RevisionChannelModal}))}
+                leadingElement={<PlayBoxMultipleOutlineIcon size={18}/>}
+                labels={(
+                    <FormattedMessage
+                        id='sidebarLeft.browserOrCreateChannelMenu.createRevisionChannelMenuItem.primaryLabel'
+                        defaultMessage='Create revision channel'
+                    />
+                )}
                 aria-haspopup='true'
             />
         );
@@ -210,6 +239,7 @@ export default function SidebarBrowserOrAddChannelMenu(props: Props) {
             }}
         >
             {createNewChannelMenuItem}
+            {createRevisionChannelMenuItem}
             {afterCreateChannelMenuItems}
             {browseChannelsMenuItem}
             {createDirectMessageMenuItem}

@@ -6,6 +6,7 @@ import type {HTMLAttributes} from 'react';
 
 import type {Channel} from '@mattermost/types/channels';
 
+import {channelIconUrl} from './channel_icon_url';
 import {useChannelIconClassName} from './useChannelIconClassName';
 
 type Props = {
@@ -23,6 +24,20 @@ type Props = {
  */
 const ChannelTypeIcon = ({channel, className, ...rest}: Props) => {
     const iconClassName = useChannelIconClassName(channel);
+
+    // Archived channels keep the archive glyph so their state stays visible.
+    const customIconUrl = channel?.delete_at ? null : channelIconUrl(channel);
+    if (customIconUrl) {
+        return (
+            <img
+                src={customIconUrl}
+                alt=''
+                className={`channel-custom-icon${className ? ` ${className}` : ''}`}
+                {...rest}
+            />
+        );
+    }
+
     return (
         <i
             className={`icon ${iconClassName}${className ? ` ${className}` : ''}`}

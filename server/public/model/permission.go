@@ -43,6 +43,7 @@ var PermissionManageRoles *Permission
 var PermissionManageTeamRoles *Permission
 var PermissionManageChannelRoles *Permission
 var PermissionManageTeamAccessRules *Permission
+var PermissionManageTeamTasks *Permission
 var PermissionCreateDirectChannel *Permission
 var PermissionCreateGroupChannel *Permission
 var PermissionManagePublicChannelProperties *Permission
@@ -519,6 +520,13 @@ func initializePermissions() {
 	}
 	PermissionManageTeamAccessRules = &Permission{
 		"manage_team_access_rules",
+		"",
+		"",
+		PermissionScopeTeam,
+	}
+	// PermissionManageTeamTasks gates creating, assigning and deleting tasks and task sections.
+	PermissionManageTeamTasks = &Permission{
+		"manage_team_tasks",
 		"",
 		"",
 		PermissionScopeTeam,
@@ -2591,6 +2599,7 @@ func initializePermissions() {
 		PermissionCreatePrivateChannel,
 		PermissionManageTeamRoles,
 		PermissionManageTeamAccessRules,
+		PermissionManageTeamTasks,
 		PermissionListTeamChannels,
 		PermissionJoinPublicChannels,
 		PermissionReadPublicChannel,

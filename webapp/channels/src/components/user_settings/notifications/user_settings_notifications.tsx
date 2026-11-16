@@ -833,17 +833,9 @@ class NotificationsTab extends React.PureComponent<Props, State> {
                     defaultMessage:
                     'This feature is available on the Professional plan',
                 })}
-                titleAdminPreTrial={this.props.intl.formatMessage({
-                    id: 'user.settings.notifications.keywordsWithHighlight.userModal.titleAdminPreTrial',
-                    defaultMessage: 'Highlight keywords without notifications with Mattermost Professional',
-                })}
-                messageAdminPreTrial={this.props.intl.formatMessage({
-                    id: 'user.settings.notifications.keywordsWithHighlight.userModal.messageAdminPreTrial',
-                    defaultMessage: 'Get the ability to passively highlight keywords that you care about. Upgrade to Professional plan to unlock this feature.',
-                })}
                 titleAdminPostTrial={this.props.intl.formatMessage({
                     id: 'user.settings.notifications.keywordsWithHighlight.userModal.titleAdminPostTrial',
-                    defaultMessage: 'Highlight keywords without notifications with Mattermost Professional',
+                    defaultMessage: 'Highlight keywords without notifications with Dopaminefact Professional',
                 })}
                 messageAdminPostTrial={this.props.intl.formatMessage({
                     id: 'user.settings.notifications.keywordsWithHighlight.userModal.messageAdminPostTrial',
@@ -852,12 +844,12 @@ class NotificationsTab extends React.PureComponent<Props, State> {
                 )}
                 titleEndUser={this.props.intl.formatMessage({
                     id: 'user.settings.notifications.keywordsWithHighlight.userModal.titleEndUser',
-                    defaultMessage: 'Highlight keywords without notifications with Mattermost Professional',
+                    defaultMessage: 'Highlight keywords without notifications with Dopaminefact Professional',
                 })}
                 messageEndUser={this.props.intl.formatMessage(
                     {
                         id: 'user.settings.notifications.keywordsWithHighlight.userModal.messageEndUser',
-                        defaultMessage: 'Get the ability to passively highlight keywords that you care about.{br}{br}Request your admin to upgrade to Mattermost Professional to access this feature.',
+                        defaultMessage: 'Get the ability to passively highlight keywords that you care about.{br}{br}Request your admin to upgrade to Dopaminefact Professional to access this feature.',
                     },
                     {
                         br: <br/>,

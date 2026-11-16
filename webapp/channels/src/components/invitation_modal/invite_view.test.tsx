@@ -82,11 +82,7 @@ let props = defaultProps;
 describe('InviteView', () => {
     const state = {
         entities: {
-            admin: {
-                prevTrialLicense: {
-                    IsLicensed: 'true',
-                },
-            },
+            admin: {},
             general: {
                 config: {
                     BuildEnterpriseReady: 'true',

@@ -17,15 +17,12 @@ jest.mock('../index', () => {
             <FeatureDiscovery
                 {...props}
                 stats={{TOTAL_USERS: 20}}
-                prevTrialLicense={{IsLicensed: 'true'}}
                 isCloud={false}
                 isCloudTrial={false}
                 hadPrevCloudTrial={false}
                 isSubscriptionLoaded={true}
                 isPaidSubscription={false}
-                isEnterpriseReady={true}
                 actions={{
-                    getPrevTrialLicense: jest.fn(),
                     getCloudSubscription: jest.fn(),
                     openModal: jest.fn(),
                 }}
@@ -38,7 +35,7 @@ describe('components/admin_console/feature_discovery/features/ClassificationMark
     it('renders the Classification Markings discovery card', () => {
         renderWithContext(<ClassificationMarkingsFeatureDiscovery/>);
 
-        expect(screen.getByText('Apply classification markings with Mattermost Enterprise Advanced')).toBeInTheDocument();
+        expect(screen.getByText('Apply classification markings with Dopaminefact Enterprise Advanced')).toBeInTheDocument();
         expect(screen.getByText(
             'Set up global and channel-specific classification banners with built-in presets or custom levels, ensuring that users consistently view the appropriate classification level for their workspace.',
         )).toBeInTheDocument();

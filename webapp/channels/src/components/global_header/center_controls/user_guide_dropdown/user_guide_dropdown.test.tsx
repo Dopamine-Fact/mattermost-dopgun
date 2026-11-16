@@ -88,7 +88,7 @@ describe('components/channel_header/components/UserGuideDropdown', () => {
         expect(screen.queryByText('Report a problem')).not.toBeInTheDocument();
     });
 
-    test('links Mattermost documentation to bundled docs on a root SiteURL', () => {
+    test('links Dopaminefact documentation to bundled docs on a root SiteURL', () => {
         renderWithContext(
             <UserGuideDropdown
                 {...baseProps}
@@ -97,13 +97,13 @@ describe('components/channel_header/components/UserGuideDropdown', () => {
         );
 
         openMenu();
-        expect(screen.getByRole('link', {name: 'Mattermost documentation'})).toHaveAttribute(
+        expect(screen.getByRole('link', {name: 'Dopaminefact documentation'})).toHaveAttribute(
             'href',
             'https://chat.example.com/_documentation/',
         );
     });
 
-    test('links Mattermost documentation to the public docs site when SiteURL has a subpath', () => {
+    test('links Dopaminefact documentation to the public docs site when SiteURL has a subpath', () => {
         renderWithContext(
             <UserGuideDropdown
                 {...baseProps}
@@ -112,7 +112,7 @@ describe('components/channel_header/components/UserGuideDropdown', () => {
         );
 
         openMenu();
-        const link = screen.getByRole('link', {name: 'Mattermost documentation'});
+        const link = screen.getByRole('link', {name: 'Dopaminefact documentation'});
         expect(link).toHaveAttribute('href', expect.stringContaining(MATTERMOST_DOCS_URL));
         expect(link).not.toHaveAttribute('href', expect.stringContaining('/_documentation/'));
     });

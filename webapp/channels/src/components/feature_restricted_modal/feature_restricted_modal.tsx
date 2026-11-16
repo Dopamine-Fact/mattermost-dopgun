@@ -1,15 +1,12 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import classNames from 'classnames';
-import React, {useEffect} from 'react';
-import {useIntl, FormattedMessage} from 'react-intl';
+import React from 'react';
+import {useIntl} from 'react-intl';
 import {useSelector, useDispatch} from 'react-redux';
 
 import {GenericModal} from '@mattermost/components';
 
-import {getPrevTrialLicense} from 'mattermost-redux/actions/admin';
-import {getLicense} from 'mattermost-redux/selectors/entities/general';
 import {isCurrentUserSystemAdmin} from 'mattermost-redux/selectors/entities/users';
 
 import {closeModal} from 'actions/views/modals';
@@ -17,20 +14,15 @@ import {isModalOpen} from 'selectors/views/modals';
 
 import {NotifyStatus} from 'components/common/hooks/useGetNotifyAdmin';
 import useOpenPricingModal from 'components/common/hooks/useOpenPricingModal';
-import ExternalLink from 'components/external_link';
-import StartTrialBtn from 'components/learn_more_trial_modal/start_trial_btn';
 import {useNotifyAdmin} from 'components/notify_admin_cta/notify_admin_cta';
 
-import {FREEMIUM_TO_ENTERPRISE_TRIAL_LENGTH_DAYS} from 'utils/cloud_utils';
-import {ModalIdentifiers, AboutLinks, LicenseLinks} from 'utils/constants';
+import {ModalIdentifiers} from 'utils/constants';
 
 import type {GlobalState} from 'types/store';
 
 import './feature_restricted_modal.scss';
 
 type FeatureRestrictedModalProps = {
-    titleAdminPreTrial: string;
-    messageAdminPreTrial: string;
     titleAdminPostTrial?: string;
     messageAdminPostTrial?: string;
     titleEndUser?: string;
@@ -41,8 +33,6 @@ type FeatureRestrictedModalProps = {
 };
 
 const FeatureRestrictedModal = ({
-    titleAdminPreTrial,
-    messageAdminPreTrial,
     titleAdminPostTrial,
     messageAdminPostTrial,
     titleEndUser,
@@ -54,18 +44,8 @@ const FeatureRestrictedModal = ({
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
 
-    useEffect(() => {
-        dispatch(getPrevTrialLicense());
-    }, []);
-
-    const prevTrialLicense = useSelector((state: GlobalState) => state.entities.admin.prevTrialLicense);
-    const hasSelfHostedPriorTrial = prevTrialLicense.IsLicensed === 'true';
-
-    const hasPriorTrial = hasSelfHostedPriorTrial;
     const isSystemAdmin = useSelector(isCurrentUserSystemAdmin);
     const show = useSelector((state: GlobalState) => isModalOpen(state, ModalIdentifiers.FEATURE_RESTRICTED_MODAL));
-    const license = useSelector(getLicense);
-    const isCloud = license?.Cloud === 'true';
     const {openPricingModal, isAirGapped} = useOpenPricingModal();
 
     const [notifyAdminBtnText, notifyAdmin, notifyRequestStatus] = useNotifyAdmin({
@@ -98,7 +78,7 @@ const FeatureRestrictedModal = ({
 
     const getTitle = () => {
         if (isSystemAdmin) {
-            return (hasPriorTrial) ? titleAdminPostTrial : titleAdminPreTrial;
+            return titleAdminPostTrial;
         }
 
         return titleEndUser;
@@ -106,13 +86,11 @@ const FeatureRestrictedModal = ({
 
     const getMessage = () => {
         if (isSystemAdmin) {
-            return (hasPriorTrial) ? messageAdminPostTrial : messageAdminPreTrial;
+            return messageAdminPostTrial;
         }
 
         return messageEndUser;
     };
-
-    const showStartTrial = isSystemAdmin && !hasPriorTrial && !isCloud;
 
     // define what is the secondary button text and action, by default will be the View Plan button
     let secondaryBtnMsg = formatMessage({id: 'feature_restricted_modal.button.plans', defaultMessage: 'View plans'});
@@ -128,13 +106,6 @@ const FeatureRestrictedModal = ({
     // Hide view plans button for admins if air-gapped
     const showSecondaryButton = !isAirGapped || !isSystemAdmin || customSecondaryButton;
 
-    const trialBtn = (
-        <StartTrialBtn
-            onClick={dismissAction}
-            renderAsButton={true}
-        />
-    );
-
     return (
         <GenericModal
             id='FeatureRestrictedModal'
@@ -147,37 +118,7 @@ const FeatureRestrictedModal = ({
                 <p className='FeatureRestrictedModal__description'>
                     {getMessage()}
                 </p>
-                {showStartTrial && (
-                    <p className='FeatureRestrictedModal__terms'>
-                        <FormattedMessage
-                            id='feature_restricted_modal.agreement'
-                            defaultMessage='By selecting <highlight>Try free for {trialLength} days</highlight>, I agree to the <linkEvaluation>Mattermost Software Evaluation Agreement</linkEvaluation>, <linkPrivacy>Privacy Policy</linkPrivacy>, and receiving product emails.'
-                            values={{
-                                trialLength: FREEMIUM_TO_ENTERPRISE_TRIAL_LENGTH_DAYS,
-                                highlight: (msg: React.ReactNode) => (
-                                    <strong>{msg}</strong>
-                                ),
-                                linkEvaluation: (msg: React.ReactNode) => (
-                                    <ExternalLink
-                                        href={LicenseLinks.SOFTWARE_SERVICES_LICENSE_AGREEMENT}
-                                        location='feature_restricted_modal'
-                                    >
-                                        {msg}
-                                    </ExternalLink>
-                                ),
-                                linkPrivacy: (msg: React.ReactNode) => (
-                                    <ExternalLink
-                                        href={AboutLinks.PRIVACY_POLICY}
-                                        location='feature_restricted_modal'
-                                    >
-                                        {msg}
-                                    </ExternalLink>
-                                ),
-                            }}
-                        />
-                    </p>
-                )}
-                <div className={classNames('FeatureRestrictedModal__buttons', {single: !showStartTrial})}>
+                <div className='FeatureRestrictedModal__buttons single'>
                     {showSecondaryButton && (
                         <button
                             id='button-plans'
@@ -187,9 +128,6 @@ const FeatureRestrictedModal = ({
                         >
                             {secondaryBtnMsg}
                         </button>
-                    )}
-                    {showStartTrial && (
-                        trialBtn
                     )}
                 </div>
             </div>

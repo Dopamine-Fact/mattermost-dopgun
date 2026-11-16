@@ -4,10 +4,9 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {useSelector} from 'react-redux';
 
-import {Preferences} from 'mattermost-redux/constants';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 
-import {applyTheme} from 'utils/utils';
+import {applyTheme, loggedOutTheme} from 'utils/utils';
 
 import type {GlobalState} from 'types/store';
 
@@ -24,7 +23,7 @@ export default function ThemeProvider({children}: {children: React.ReactNode}) {
             return getTheme(state);
         }
 
-        return Preferences.THEMES.denim;
+        return loggedOutTheme;
     });
 
     useEffect(() => {

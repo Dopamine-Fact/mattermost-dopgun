@@ -1,0 +1,28 @@
+ALTER TABLE Teams ADD COLUMN IF NOT EXISTS TasksEnabled boolean NOT NULL DEFAULT false;
+
+CREATE TABLE IF NOT EXISTS TaskSections (
+	Id VARCHAR(26) PRIMARY KEY,
+	TeamId VARCHAR(26) NOT NULL,
+	Name VARCHAR(64) NOT NULL,
+	SortOrder bigint NOT NULL DEFAULT 0,
+	CreateAt bigint NOT NULL,
+	UpdateAt bigint NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasksections_teamid ON TaskSections (TeamId);
+
+CREATE TABLE IF NOT EXISTS Tasks (
+	Id VARCHAR(26) PRIMARY KEY,
+	TeamId VARCHAR(26) NOT NULL,
+	SectionId VARCHAR(26) NOT NULL DEFAULT '',
+	Title VARCHAR(512) NOT NULL,
+	Description VARCHAR(16000) NOT NULL DEFAULT '',
+	AssigneeId VARCHAR(26) NOT NULL DEFAULT '',
+	DueAt bigint NOT NULL DEFAULT 0,
+	Done boolean NOT NULL DEFAULT false,
+	CreatorId VARCHAR(26) NOT NULL,
+	CreateAt bigint NOT NULL,
+	UpdateAt bigint NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_teamid ON Tasks (TeamId);

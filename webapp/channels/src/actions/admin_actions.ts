@@ -3,7 +3,7 @@
 
 import type {ClusterInfo} from '@mattermost/types/admin';
 import type {StatusOK} from '@mattermost/types/client4';
-import type {AdminConfig, AllowedIPRange, FetchIPResponse, RequestLicenseBody} from '@mattermost/types/config';
+import type {AdminConfig, AllowedIPRange, FetchIPResponse} from '@mattermost/types/config';
 import type {Job, JobTypeBase} from '@mattermost/types/jobs';
 import type {SamlCertificateStatus, SamlMetadataResponse} from '@mattermost/types/saml';
 import type {AuthChangeResponse, UserProfile} from '@mattermost/types/users';
@@ -632,17 +632,5 @@ export function ping(getServerStatus?: boolean, deviceId?: string) {
     return async () => {
         const data = await Client4.ping(getServerStatus, deviceId);
         return data;
-    };
-}
-
-export function requestTrialLicense(requestLicenseBody: RequestLicenseBody) {
-    return async () => {
-        try {
-            const response = await Client4.requestTrialLicense(requestLicenseBody);
-            return {data: response};
-        } catch (e) {
-            // In the event that the status code returned is 451, this request has been blocked because it originated from an embargoed country_dropdown
-            return {error: e.message, data: {status: e.status_code}};
-        }
     };
 }

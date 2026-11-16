@@ -2,6 +2,22 @@
 @use "utils/mixins";
 @use "utils/variables";
 
+// Uploaded channel icon drawn wherever the channel type glyph would be; sized like a compass glyph.
+.channel-custom-icon {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    flex: 0 0 auto;
+    margin: 0 0.2em;
+    border-radius: 3px;
+    object-fit: cover;
+    vertical-align: middle;
+
+    &--svg {
+        margin: 0;
+    }
+}
+
 .channel-header {
     position: relative;
     z-index: variables.$z-index-channel-header;
@@ -15,6 +31,14 @@
 
     #channelHeaderDropdownButton {
         display: flex;
+    }
+
+    .channel-header__channel-icon {
+        width: 20px;
+        height: 20px;
+        flex: 0 0 auto;
+        border-radius: 4px;
+        margin-right: 6px;
     }
 
     .channel-header__trigger {

@@ -41,14 +41,10 @@ const MenuStartTrial = (props: Props): JSX.Element | null => {
     const isCurrentLicensed = license?.IsLicensed;
     const skuShortName = license?.SkuShortName;
 
-    // If licensed and NOT Entry, return null
-    if (isCurrentLicensed === 'true' && skuShortName !== LicenseSkus.Entry) {
+    // Only the Entry license shows an edition note
+    if (isCurrentLicensed !== 'true' || skuShortName !== LicenseSkus.Entry) {
         return null;
     }
-
-    // Determine badge text and description based on license type
-    const isEntryLicense = isCurrentLicensed === 'true' && skuShortName === LicenseSkus.Entry;
-    const badgeText = isEntryLicense ? 'ENTRY EDITION' : 'TEAM EDITION';
 
     return (
         <li
@@ -56,41 +52,22 @@ const MenuStartTrial = (props: Props): JSX.Element | null => {
             role='menuitem'
             id={props.id}
         >
-            <FreeVersionBadge>{badgeText}</FreeVersionBadge>
+            <FreeVersionBadge>{'ENTRY EDITION'}</FreeVersionBadge>
             <div className='editionText'>
-                {isEntryLicense ? (
-                    formatMessage({
-                        id: 'navbar_dropdown.entryVersionText',
-                        defaultMessage: 'Entry offers Enterprise Advanced capabilities <link>with limits</link> designed to support evaluation.',
-                    },
-                    {
-                        link: (msg: React.ReactNode) => (
-                            <ExternalLink
-                                location='menu_start_trial.entry-link'
-                                href={LicenseLinks.ENTRY_LIMITS_INFO}
-                            >
-                                {msg}
-                            </ExternalLink>
-                        ),
-                    })
-                ) : (
-                    formatMessage(
-                        {
-                            id: 'navbar_dropdown.versionText',
-                            defaultMessage: 'This is the free <link>unsupported</link> edition of Mattermost.',
-                        },
-                        {
-                            link: (msg: React.ReactNode) => (
-                                <ExternalLink
-                                    location='menu_start_trial.unsupported-link'
-                                    href={LicenseLinks.UNSUPPORTED}
-                                >
-                                    {msg}
-                                </ExternalLink>
-                            ),
-                        },
-                    )
-                )}
+                {formatMessage({
+                    id: 'navbar_dropdown.entryVersionText',
+                    defaultMessage: 'Entry offers Enterprise Advanced capabilities <link>with limits</link> designed to support evaluation.',
+                },
+                {
+                    link: (msg: React.ReactNode) => (
+                        <ExternalLink
+                            location='menu_start_trial.entry-link'
+                            href={LicenseLinks.ENTRY_LIMITS_INFO}
+                        >
+                            {msg}
+                        </ExternalLink>
+                    ),
+                })}
             </div>
         </li>
     );

@@ -1,0 +1,1 @@
+ALTER TABLE channels ADD COLUMN IF NOT EXISTS LastIconUpdate bigint NOT NULL DEFAULT 0;

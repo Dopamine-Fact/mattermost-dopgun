@@ -113,7 +113,7 @@ export default function DeliveryTrackingSection({
                         <div className='helpText'>
                             <FormattedMessage
                                 id='admin.dataSpillage.deliveryTracking.enable.help'
-                                defaultMessage='When true, an audit log entry is recorded each time a message is delivered to a user. These records are written to the audit log only and are not surfaced anywhere in the Mattermost interface.'
+                                defaultMessage='When true, an audit log entry is recorded each time a message is delivered to a user. These records are written to the audit log only and are not surfaced anywhere in the Dopaminefact interface.'
                             />
                         </div>
                     </div>

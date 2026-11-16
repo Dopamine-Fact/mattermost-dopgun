@@ -17,7 +17,7 @@ const DataSpillageFeatureDiscovery: React.FC = () => {
             minimumSKURequiredForFeature={LicenseSkus.EnterpriseAdvanced}
             title={defineMessage({
                 id: 'admin.data_spillage_feature_discovery.title',
-                defaultMessage: 'Handle data spillage with Mattermost Enterprise Advanced',
+                defaultMessage: 'Handle data spillage with Dopaminefact Enterprise Advanced',
             })}
             copy={defineMessage({
                 id: 'admin.data_spillage_feature_discovery.desc',

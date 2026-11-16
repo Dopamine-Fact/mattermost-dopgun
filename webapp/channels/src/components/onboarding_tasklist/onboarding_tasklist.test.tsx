@@ -13,7 +13,6 @@ import OnBoardingTaskList from './onboarding_tasklist';
 
 jest.mock('mattermost-redux/actions/admin', () => ({
     ...jest.requireActual('mattermost-redux/actions/admin'),
-    getPrevTrialLicense: jest.fn(() => ({type: 'MOCK_GET_PREV_TRIAL_LICENSE'})),
 }));
 
 // Isolate the ServiceSettings.EnableOnboardingFlow gate from the unrelated
@@ -39,9 +38,7 @@ describe('components/onboarding_tasklist - EnableOnboardingFlow effect', () => {
                 config: enableOnboardingFlow === undefined ? {} : {EnableOnboardingFlow: enableOnboardingFlow},
                 license: {IsLicensed: 'false', Cloud: 'false'},
             },
-            admin: {
-                prevTrialLicense: {IsLicensed: 'false'},
-            },
+            admin: {},
             cloud: {
                 subscription: {},
             },

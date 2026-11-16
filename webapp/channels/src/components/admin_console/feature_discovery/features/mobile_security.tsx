@@ -17,7 +17,7 @@ const MobileSecurityFeatureDiscovery = () => {
             minimumSKURequiredForFeature={LicenseSkus.Enterprise}
             title={defineMessage({
                 id: 'admin.mobile_security_feature_discovery.title',
-                defaultMessage: 'Enhance mobile app security with Mattermost Enterprise',
+                defaultMessage: 'Enhance mobile app security with Dopaminefact Enterprise',
             })}
             copy={defineMessage({
                 id: 'admin.mobile_security_feature_discovery.copy',

@@ -935,7 +935,7 @@ export default class PluginRegistry {
         if (!this.warnedAboutRegisterPostDropdownMenuComponent) {
             // eslint-disable-next-line no-console
             console.warn(
-                `${this.id}: This plugin is using registerPostDropdownMenuComponent which is deprecated in Mattermost ` +
+                `${this.id}: This plugin is using registerPostDropdownMenuComponent which is deprecated in Dopaminefact ` +
                 'v11.0. That API will be removed in a future release, and plugins that use it may not work correctly. ' +
                 'Please update the plugin to use registerPostDropdownMenuAction instead. See ' +
                 'https://forum.mattermost.com/t/deprecating-a-post-dropdown-menu-component-plugin-api-v11/25001 for ' +

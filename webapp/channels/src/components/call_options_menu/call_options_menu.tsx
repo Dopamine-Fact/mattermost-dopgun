@@ -75,14 +75,14 @@ const CallOptionsMenu = ({
                             <FormattedMessage
                                 id='call_options.audio'
                                 defaultMessage='Start an Audio Call'
-                                description='Call options menu item that starts a voice call through the Mattermost Calls plugin.'
+                                description='Call options menu item that starts a voice call through the Dopaminefact Calls plugin.'
                             />
                         </span>
                         <span>
                             <FormattedMessage
                                 id='call_options.audio_sub'
-                                defaultMessage='Mattermost Call'
-                                description='Secondary line under the call options menu item that starts an audio call, naming it as a call made within Mattermost rather than a phone call.'
+                                defaultMessage='Dopaminefact Call'
+                                description='Secondary line under the call options menu item that starts an audio call, naming it as a call made within Dopaminefact rather than a phone call.'
                             />
                         </span>
                     </>

@@ -24,7 +24,7 @@ describe('components/LinkingLandingPage', () => {
     const baseProps = {
         desktopAppLink: 'https://mattermost.com/download/',
         siteUrl,
-        siteName: 'Mattermost',
+        siteName: 'Dopaminefact',
         enableCustomBrand: false,
         enableDesktopLandingPage: true,
     };
@@ -66,7 +66,7 @@ describe('components/LinkingLandingPage', () => {
             renderWithContext(<LinkingLandingPage {...baseProps}/>);
 
             expect(navigateTo).toHaveBeenCalledWith(nativeUrl);
-            expect(screen.getByText('Opening link in Mattermost...')).toBeVisible();
+            expect(screen.getByText('Opening link in Dopaminefact...')).toBeVisible();
         });
     });
 

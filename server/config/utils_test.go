@@ -216,7 +216,7 @@ func TestFixInvalidLocales(t *testing.T) {
 	assert.Equal(t, "en", *cfg.LocalizationSettings.DefaultServerLocale)
 
 	*cfg.LocalizationSettings.AvailableLocales = "en"
-	*cfg.LocalizationSettings.DefaultServerLocale = "de"
+	*cfg.LocalizationSettings.DefaultServerLocale = "tr"
 	changed = fixInvalidLocales(cfg)
 	assert.False(t, changed)
 	assert.NotContains(t, *cfg.LocalizationSettings.AvailableLocales, *cfg.LocalizationSettings.DefaultServerLocale, "DefaultServerLocale should not be added to AvailableLocales")
@@ -233,7 +233,7 @@ func TestFixInvalidLocales(t *testing.T) {
 	assert.Equal(t, "en", *cfg.LocalizationSettings.DefaultClientLocale)
 
 	*cfg.LocalizationSettings.AvailableLocales = "en"
-	*cfg.LocalizationSettings.DefaultClientLocale = "de"
+	*cfg.LocalizationSettings.DefaultClientLocale = "tr"
 	changed = fixInvalidLocales(cfg)
 	assert.True(t, changed)
 	assert.Contains(t, *cfg.LocalizationSettings.AvailableLocales, *cfg.LocalizationSettings.DefaultServerLocale, "DefaultClientLocale should have been added to AvailableLocales")
@@ -246,17 +246,16 @@ func TestFixInvalidLocales(t *testing.T) {
 	assert.True(t, changed)
 	assert.Equal(t, "", *cfg.LocalizationSettings.AvailableLocales)
 
-	*cfg.LocalizationSettings.AvailableLocales = "en,de,junk"
+	*cfg.LocalizationSettings.AvailableLocales = "en,tr,junk"
 	changed = fixInvalidLocales(cfg)
 	assert.True(t, changed)
 	assert.Equal(t, "", *cfg.LocalizationSettings.AvailableLocales)
 
-	*cfg.LocalizationSettings.DefaultServerLocale = "fr"
-	*cfg.LocalizationSettings.DefaultClientLocale = "de"
+	*cfg.LocalizationSettings.DefaultServerLocale = "tr"
+	*cfg.LocalizationSettings.DefaultClientLocale = "tr"
 	*cfg.LocalizationSettings.AvailableLocales = "en"
 	changed = fixInvalidLocales(cfg)
 	assert.True(t, changed)
-	assert.NotContains(t, *cfg.LocalizationSettings.AvailableLocales, *cfg.LocalizationSettings.DefaultServerLocale, "DefaultServerLocale should not be added to AvailableLocales")
 	assert.Contains(t, *cfg.LocalizationSettings.AvailableLocales, *cfg.LocalizationSettings.DefaultClientLocale, "DefaultClientLocale should have been added to AvailableLocales")
 }
 

@@ -70,7 +70,7 @@ describe('ThemeUtils', () => {
     describe('setThemeDefaults', () => {
         it('blank theme', () => {
             const input = {};
-            const expected = {...Preferences.THEMES.denim};
+            const expected = {...Preferences.THEMES.dopaminefact};
             delete expected.type;
 
             expect(ThemeUtils.setThemeDefaults(input)).toEqual(expected);

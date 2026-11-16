@@ -8,6 +8,7 @@ import type {Channel} from '@mattermost/types/channels';
 
 import {getChannelIconComponent} from 'utils/channel_utils';
 
+import {channelIconUrl} from './channel_icon_url';
 import {compassIconForName} from './compass_icon_resolver';
 import {useChannelIconOverrideName} from './useChannelIconOverrideName';
 
@@ -34,6 +35,20 @@ export default function ChannelIcon({channel, size, className, 'data-testid': te
     const OverrideIcon = overrideName ? compassIconForName(overrideName) : null;
     const IconComponent = OverrideIcon ?? getChannelIconComponent(channel);
     const channelIsArchived = Boolean(channel?.delete_at);
+
+    const customIconUrl = channelIsArchived ? null : channelIconUrl(channel);
+    if (customIconUrl) {
+        return (
+            <img
+                src={customIconUrl}
+                alt=''
+                width={size || '1em'}
+                height={size || '1em'}
+                className={['channel-custom-icon channel-custom-icon--svg', className].filter(Boolean).join(' ')}
+                {...(testId !== undefined && {'data-testid': testId})}
+            />
+        );
+    }
 
     const resolvedClassName = (OverrideIcon && channelIsArchived) ?
         ['svg-text-color', className].filter(Boolean).join(' ') :

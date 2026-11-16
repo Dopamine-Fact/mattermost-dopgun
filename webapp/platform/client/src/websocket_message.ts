@@ -22,6 +22,10 @@ export type WebSocketMessage = (
     Messages.PostDraft |
     Messages.PersistentNotificationTriggered |
     Messages.ScheduledPost |
+    Messages.TaskUpserted |
+    Messages.TaskDeleted |
+    Messages.TaskSectionUpserted |
+    Messages.TaskSectionDeleted |
     Messages.PostTranslationUpdated |
 
     Messages.ThreadUpdated |

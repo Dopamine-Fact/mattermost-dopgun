@@ -52,7 +52,6 @@ import type {
     License,
     AdminConfig,
     EnvironmentConfig,
-    RequestLicenseBody,
     AllowedIPRanges,
     AllowedIPRange,
     FetchIPResponse,
@@ -132,6 +131,7 @@ import type {Scheme} from '@mattermost/types/schemes';
 import type {Session} from '@mattermost/types/sessions';
 import type {CompleteOnboardingRequest} from '@mattermost/types/setup';
 import type {RemoteClusterInfo, SharedChannelRemote} from '@mattermost/types/shared_channels';
+import type {Task, TaskComment, TaskPatch, TaskSection, TaskSectionCreate, TaskSectionPatch} from '@mattermost/types/tasks';
 import type {
     GetTeamMembersOpts,
     MemberInviteProfile,
@@ -1715,6 +1715,27 @@ export default class Client4 {
         }
 
         return `${this.getTeamRoute(teamId)}/image${buildQueryString(params)}`;
+    };
+
+    getChannelIconUrl = (channelId: string, lastIconUpdate: number) => {
+        return `${this.getChannelRoute(channelId)}/image${buildQueryString({_: lastIconUpdate})}`;
+    };
+
+    setChannelIcon = (channelId: string, imageData: File) => {
+        const formData = new FormData();
+        formData.append('image', imageData);
+
+        return this.doFetch<StatusOK>(
+            `${this.getChannelRoute(channelId)}/image`,
+            {method: 'post', body: formData},
+        );
+    };
+
+    removeChannelIcon = (channelId: string) => {
+        return this.doFetch<StatusOK>(
+            `${this.getChannelRoute(channelId)}/image`,
+            {method: 'delete'},
+        );
     };
 
     setTeamIcon = (teamId: string, imageData: File) => {
@@ -4224,24 +4245,10 @@ export default class Client4 {
         );
     };
 
-    requestTrialLicense = (body: RequestLicenseBody) => {
-        return this.doFetchWithResponse<ClientLicense>(
-            `${this.getBaseRoute()}/trial-license`,
-            {method: 'POST', body: JSON.stringify(body)},
-        );
-    };
-
     removeLicense = () => {
         return this.doFetch<StatusOK>(
             `${this.getBaseRoute()}/license`,
             {method: 'delete'},
-        );
-    };
-
-    getPrevTrialLicense = () => {
-        return this.doFetch<ClientLicense>(
-            `${this.getBaseRoute()}/trial-license/prev`,
-            {method: 'get'},
         );
     };
 
@@ -5110,6 +5117,89 @@ export default class Client4 {
             `${this.getPostsRoute()}/schedule/${schedulePostId}`,
             {method: 'delete', headers: {'Connection-Id': connectionId}},
         );
+    };
+
+    // Task methods
+    getTeamTasks = (teamId: string) => {
+        return this.doFetch<Task[]>(`${this.getTeamRoute(teamId)}/tasks`, {method: 'get'});
+    };
+
+    createTask = (task: Pick<Task, 'team_id' | 'title'> & TaskPatch, connectionId: string) => {
+        return this.doFetch<Task>(
+            `${this.getTeamRoute(task.team_id)}/tasks`,
+            {method: 'post', body: JSON.stringify(task), headers: {'Connection-Id': connectionId}},
+        );
+    };
+
+    patchTask = (taskId: string, patch: TaskPatch, connectionId: string) => {
+        return this.doFetch<Task>(
+            `${this.getBaseRoute()}/tasks/${taskId}`,
+            {method: 'PATCH', body: JSON.stringify(patch), headers: {'Connection-Id': connectionId}},
+        );
+    };
+
+    deleteTask = (taskId: string, connectionId: string) => {
+        return this.doFetch<StatusOK>(
+            `${this.getBaseRoute()}/tasks/${taskId}`,
+            {method: 'delete', headers: {'Connection-Id': connectionId}},
+        );
+    };
+
+    getTeamTaskSections = (teamId: string) => {
+        return this.doFetch<TaskSection[]>(`${this.getTeamRoute(teamId)}/task_sections`, {method: 'get'});
+    };
+
+    createTaskSection = (section: TaskSectionCreate, connectionId: string) => {
+        return this.doFetch<TaskSection>(
+            `${this.getTeamRoute(section.team_id)}/task_sections`,
+            {method: 'post', body: JSON.stringify(section), headers: {'Connection-Id': connectionId}},
+        );
+    };
+
+    patchTaskSection = (sectionId: string, patch: TaskSectionPatch, connectionId: string) => {
+        return this.doFetch<TaskSection>(
+            `${this.getBaseRoute()}/task_sections/${sectionId}`,
+            {method: 'PATCH', body: JSON.stringify(patch), headers: {'Connection-Id': connectionId}},
+        );
+    };
+
+    deleteTaskSection = (sectionId: string, connectionId: string) => {
+        return this.doFetch<StatusOK>(
+            `${this.getBaseRoute()}/task_sections/${sectionId}`,
+            {method: 'delete', headers: {'Connection-Id': connectionId}},
+        );
+    };
+
+    setTaskSectionVideo = (sectionId: string, video: File, connectionId: string) => {
+        const formData = new FormData();
+        formData.append('video', video, video.name);
+        return this.doFetch<TaskSection>(
+            `${this.getBaseRoute()}/task_sections/${sectionId}/video`,
+            {method: 'post', body: formData, headers: {'Connection-Id': connectionId}},
+        );
+    };
+
+    getTaskSectionVideoUrl = (sectionId: string) => {
+        return `${this.getBaseRoute()}/task_sections/${sectionId}/video`;
+    };
+
+    getTaskComments = (taskId: string) => {
+        return this.doFetch<TaskComment[]>(`${this.getBaseRoute()}/tasks/${taskId}/comments`, {method: 'get'});
+    };
+
+    createTaskComment = (taskId: string, message: string, files: File[]) => {
+        const formData = new FormData();
+        formData.append('message', message);
+        files.forEach((file) => formData.append('files', file, file.name));
+        return this.doFetch<TaskComment>(`${this.getBaseRoute()}/tasks/${taskId}/comments`, {method: 'post', body: formData});
+    };
+
+    deleteTaskComment = (commentId: string) => {
+        return this.doFetch<StatusOK>(`${this.getBaseRoute()}/task_comments/${commentId}`, {method: 'delete'});
+    };
+
+    getTaskCommentFileUrl = (commentId: string, fileId: string) => {
+        return `${this.getBaseRoute()}/task_comments/${commentId}/files/${fileId}`;
     };
 
     restorePostVersion = (postId: string, restoreVersionId: string, connectionId: string) => {

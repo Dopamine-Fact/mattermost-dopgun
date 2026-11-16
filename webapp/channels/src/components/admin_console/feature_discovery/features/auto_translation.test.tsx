@@ -17,15 +17,12 @@ jest.mock('../index', () => {
             <FeatureDiscovery
                 {...props}
                 stats={{TOTAL_USERS: 20}}
-                prevTrialLicense={{IsLicensed: 'true'}}
                 isCloud={false}
                 isCloudTrial={false}
                 hadPrevCloudTrial={false}
                 isSubscriptionLoaded={true}
                 isPaidSubscription={false}
-                isEnterpriseReady={true}
                 actions={{
-                    getPrevTrialLicense: jest.fn(),
                     getCloudSubscription: jest.fn(),
                     openModal: jest.fn(),
                 }}

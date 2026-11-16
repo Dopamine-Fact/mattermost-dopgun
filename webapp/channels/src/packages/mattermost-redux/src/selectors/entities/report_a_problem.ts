@@ -54,7 +54,7 @@ export const getDefaultReportAProblemMailtoLink = createSelector(
             logsInstructions = 'browser console logs (https://support.mattermost.com/hc/en-us/articles/35971622382484)';
         }
 
-        const subject = 'Problem with Mattermost app';
+        const subject = 'Problem with Dopaminefact app';
         const body =
             `Please share a description of the problem with reproduction steps:
 
@@ -84,7 +84,7 @@ export const getSystemInfoMailtoLink = createSelector(
         const {browser, browserVersion} = getBrowserInfo();
         const platformName = getPlatformInfo();
 
-        const subject = `Problem with ${siteName || 'Mattermost'} app`;
+        const subject = `Problem with ${siteName || 'Dopaminefact'} app`;
         const body = `
 System Information:
 - User ID: ${currentUserId}

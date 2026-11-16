@@ -72,7 +72,7 @@ describe('SwitchProductMenu', () => {
 
         await userEvent.click(screen.getByRole('button', {name: 'Open product menu'}));
 
-        await userEvent.click(screen.getByText('About Mattermost'));
+        await userEvent.click(screen.getByText('About Dopaminefact'));
 
         // The menu defers item actions until its close animation finishes.
         await waitFor(() => {

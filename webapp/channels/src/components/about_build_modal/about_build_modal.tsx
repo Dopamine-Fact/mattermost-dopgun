@@ -84,12 +84,7 @@ export default function AboutBuildModal(props: Props) {
         );
     }
 
-    let title = (
-        <FormattedMessage
-            id='about.teamEditiont0'
-            defaultMessage='Team Edition'
-        />
-    );
+    let title: React.ReactNode = null;
 
     let subTitle = (
         <FormattedMessage
@@ -102,7 +97,7 @@ export default function AboutBuildModal(props: Props) {
         <div>
             <FormattedMessage
                 id='about.teamEditionLearn'
-                defaultMessage='Join the Mattermost community at '
+                defaultMessage='Join the Dopaminefact community at '
             />
             <ExternalLink
                 location='about_build_modal'
@@ -137,7 +132,7 @@ export default function AboutBuildModal(props: Props) {
                 <div>
                     <FormattedMessage
                         id='about.planNameLearn'
-                        defaultMessage='Learn more about Mattermost {planName} at {link}'
+                        defaultMessage='Learn more about Dopaminefact {planName} at {link}'
                         values={{
                             planName: skuName,
                             link: (
@@ -318,7 +313,7 @@ export default function AboutBuildModal(props: Props) {
                     <FormattedMessage
                         id='about.title'
                         values={{
-                            appTitle: config.SiteName || 'Mattermost',
+                            appTitle: config.SiteName || 'Dopaminefact',
                         }}
                         defaultMessage='About {appTitle}'
                     />
@@ -332,7 +327,7 @@ export default function AboutBuildModal(props: Props) {
                     <div>
                         <h3 className='about-modal__title'>
                             <strong>
-                                {'Mattermost'} {title}
+                                {'Dopaminefact'} {title}
                             </strong>
                         </h3>
                         <p className='about-modal__subtitle pb-2'>
@@ -391,7 +386,7 @@ export default function AboutBuildModal(props: Props) {
                     <p>
                         <FormattedMessage
                             id='about.notice'
-                            defaultMessage='Mattermost is made possible by the open source software used in our <linkServer>server</linkServer>, <linkDesktop>desktop</linkDesktop> and <linkMobile>mobile</linkMobile> apps.'
+                            defaultMessage='Dopaminefact is made possible by the open source software used in our <linkServer>server</linkServer>, <linkDesktop>desktop</linkDesktop> and <linkMobile>mobile</linkMobile> apps.'
                             values={{
                                 linkServer: (msg: React.ReactNode) => (
                                     <ExternalLink

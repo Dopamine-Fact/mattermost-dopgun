@@ -14,7 +14,7 @@ import ProductBrandingLicensedEdition from './product_branding_licensed_edition'
 export function ProductBranding() {
     const isFreeEdition = useSelector(isFreeEditionSelector);
     const productRailShown = useProductRailShown();
-    const siteName = useSelector(getConfig).SiteName || 'Mattermost';
+    const siteName = useSelector(getConfig).SiteName || 'Dopaminefact';
 
     if (isFreeEdition) {
         return <ProductBrandingFreeEdition/>;

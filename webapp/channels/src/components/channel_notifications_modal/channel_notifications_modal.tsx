@@ -377,7 +377,7 @@ export default function ChannelNotificationsModal(props: Props) {
                 }
                 description={formatMessage({
                     id: 'channel_notifications.desktopNotificationsDesc',
-                    defaultMessage: 'Available on Chrome, Edge, Firefox, and the Mattermost Desktop App.',
+                    defaultMessage: 'Available on Chrome, Edge, Firefox, and the Dopaminefact Desktop App.',
                 })}
                 content={desktopNotificationsSectionContent}
             />
@@ -397,7 +397,7 @@ export default function ChannelNotificationsModal(props: Props) {
                 }
                 description={formatMessage({
                     id: 'channel_notifications.mobileNotificationsDesc',
-                    defaultMessage: 'Notification alerts are pushed to your mobile device when there is activity in Mattermost.',
+                    defaultMessage: 'Notification alerts are pushed to your mobile device when there is activity in Dopaminefact.',
                 })}
                 content={mobileNotificationsSectionContent}
             />

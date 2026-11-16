@@ -1375,6 +1375,26 @@ func (_m *Store) System() store.SystemStore {
 	return r0
 }
 
+// Task provides a mock function with no fields
+func (_m *Store) Task() store.TaskStore {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Task")
+	}
+
+	var r0 store.TaskStore
+	if rf, ok := ret.Get(0).(func() store.TaskStore); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.TaskStore)
+		}
+	}
+
+	return r0
+}
+
 // Team provides a mock function with no fields
 func (_m *Store) Team() store.TeamStore {
 	ret := _m.Called()

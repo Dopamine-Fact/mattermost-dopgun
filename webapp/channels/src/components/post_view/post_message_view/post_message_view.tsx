@@ -13,6 +13,7 @@ import {isPostEphemeral} from 'mattermost-redux/utils/post_utils';
 import PostMarkdown from 'components/post_markdown';
 import ShowMore from 'components/post_view/show_more';
 import type {AttachmentTextOverflowType} from 'components/post_view/show_more/show_more';
+import RevisionPost from 'components/tasks/revision_post';
 
 import Pluggable from 'plugins/pluggable';
 import PluggableErrorBoundary from 'plugins/pluggable/error_boundary';
@@ -151,6 +152,10 @@ export default class PostMessageView extends React.PureComponent<Props, State> {
                     />
                 </PluggableErrorBoundary>
             );
+        }
+
+        if (postType === PostTypes.CUSTOM_REVISION) {
+            return <RevisionPost post={post}/>;
         }
 
         let message = post.message;

@@ -4,7 +4,7 @@
 import React from 'react';
 import {createIntl, useIntl} from 'react-intl';
 
-import esMessages from 'i18n/es.json';
+import trMessages from 'i18n/tr.json';
 import {renderWithContext, screen} from 'tests/react_testing_utils';
 import {TestHelper} from 'utils/test_helper';
 
@@ -67,11 +67,12 @@ describe('LatestPostReader', () => {
         expect(prevMessage).toBeInTheDocument();
         expect(prevMessage).toHaveClass('sr-only');
 
-        (useIntl as jest.Mock).mockImplementation(() => createIntl({locale: 'es', messages: esMessages, defaultLocale: 'es'}));
+        (useIntl as jest.Mock).mockImplementation(() => createIntl({locale: 'tr', messages: trMessages, defaultLocale: 'tr'}));
 
         rerender(<LatestPostReader {...baseProps}/>);
-        const januaryInSpanish = 'enero';
-        const message = screen.getByText(`${januaryInSpanish}, ${author.username} wrote, This is a test`, {exact: false});
+
+        // Turkish puts the weekday after the month: "1 Ocak Perşembe, some_user wrote, ..."
+        const message = screen.getByText(new RegExp(`Ocak \\S+, ${author.username} wrote, This is a test`));
 
         expect(message).toBeInTheDocument();
         expect(message).toHaveClass('sr-only');

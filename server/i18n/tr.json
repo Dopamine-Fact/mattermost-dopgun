@@ -85,7 +85,7 @@
   },
   {
     "id": "api.admin.test_email.body",
-    "translation": "Mattermost e-posta ayarları doğru görünüyor!"
+    "translation": "Dopaminefact e-posta ayarları doğru görünüyor!"
   },
   {
     "id": "api.admin.test_email.missing_server",
@@ -97,7 +97,7 @@
   },
   {
     "id": "api.admin.test_email.subject",
-    "translation": "Mattermost - E-posta ayarları sınanıyor"
+    "translation": "Dopaminefact - E-posta ayarları sınanıyor"
   },
   {
     "id": "api.admin.test_s3.missing_s3_bucket",
@@ -146,6 +146,30 @@
   {
     "id": "api.channel.change_channel_privacy.public_to_private",
     "translation": "Bu kanal özel kanala dönüştürüldü."
+  },
+  {
+    "id": "api.channel.channel_icon.invalid_image.app_error",
+    "translation": "Kanal simgesi yüklenemedi. Görsel geçersiz veya çözünürlüğü çok yüksek."
+  },
+  {
+    "id": "api.channel.channel_icon.no_file.app_error",
+    "translation": "Kanal simgesi için görsel dosyası gönderilmedi."
+  },
+  {
+    "id": "api.channel.channel_icon.read_file.app_error",
+    "translation": "Bu kanalın simgesi yok."
+  },
+  {
+    "id": "api.channel.channel_icon.storage.app_error",
+    "translation": "Kanal simgeleri kaydedilemiyor. Dosya depolama yapılandırılmamış."
+  },
+  {
+    "id": "api.channel.channel_icon.too_large.app_error",
+    "translation": "Kanal simgesi yüklenemedi. Dosya çok büyük."
+  },
+  {
+    "id": "api.channel.channel_icon.write_file.app_error",
+    "translation": "Kanal simgesi kaydedilemedi."
   },
   {
     "id": "api.channel.create_channel.direct_channel.app_error",
@@ -341,7 +365,7 @@
   },
   {
     "id": "api.command.invite_people.desc",
-    "translation": "Mattermost takımınıza bir e-posta daveti gönderir"
+    "translation": "Dopaminefact takımınıza bir e-posta daveti gönderir"
   },
   {
     "id": "api.command.invite_people.email_invitations_off",
@@ -616,7 +640,7 @@
   },
   {
     "id": "api.command_help.desc",
-    "translation": "Mattermost yardım iletisini görüntüle"
+    "translation": "Dopaminefact yardım iletisini görüntüle"
   },
   {
     "id": "api.command_help.name",
@@ -723,7 +747,7 @@
   },
   {
     "id": "api.command_logout.desc",
-    "translation": "Mattermost oturumunu kapatır"
+    "translation": "Dopaminefact oturumunu kapatır"
   },
   {
     "id": "api.command_logout.name",
@@ -1423,10 +1447,6 @@
     "translation": "Başka bir kullanıcı için tepki kaydedemezsiniz."
   },
   {
-    "id": "api.restricted_system_admin",
-    "translation": "Bu işlemi kısıtlı yetkileri olan bir sistem yöneticisi yapamaz."
-  },
-  {
     "id": "api.roles.patch_roles.license.error",
     "translation": "Lisansınızda gelişmiş özellikleri kullanma özelliği bulunmuyor."
   },
@@ -1720,7 +1740,7 @@
   },
   {
     "id": "api.templates.post_body.button",
-    "translation": "Mattermost içinde yanıtla"
+    "translation": "Dopaminefact içinde yanıtla"
   },
   {
     "id": "api.templates.reset_body.button",
@@ -1780,7 +1800,7 @@
   },
   {
     "id": "api.templates.verify_body.info",
-    "translation": "Bu e-posta adresi ile açılmış bir Mattermost hesabı var."
+    "translation": "Bu e-posta adresi ile açılmış bir Dopaminefact hesabı var."
   },
   {
     "id": "api.templates.verify_body.title",
@@ -1800,7 +1820,7 @@
   },
   {
     "id": "api.templates.welcome_body.info",
-    "translation": "Bu e-posta adresi ile açılmış bir Mattermost hesabı var."
+    "translation": "Bu e-posta adresi ile açılmış bir Dopaminefact hesabı var."
   },
   {
     "id": "api.templates.welcome_body.title",
@@ -2940,7 +2960,7 @@
   },
   {
     "id": "ent.elasticsearch.test_config.license.error",
-    "translation": "Mattermost lisansınızda dizin kullanan arama özelliği bulunmuyor."
+    "translation": "Dopaminefact lisansınızda dizin kullanan arama özelliği bulunmuyor."
   },
   {
     "id": "ent.elasticsearch.test_config.reenter_password",
@@ -2984,7 +3004,7 @@
   },
   {
     "id": "ent.ldap.do_login.user_filtered.app_error",
-    "translation": "AD/LDAP hesabınızın bu Mattermost sunucusunu kullanma izni yok. Lütfen sistem yöneticinizden AD/LDAP kullanıcı süzgecini denetlemesini isteyin."
+    "translation": "AD/LDAP hesabınızın bu Dopaminefact sunucusunu kullanma izni yok. Lütfen sistem yöneticinizden AD/LDAP kullanıcı süzgecini denetlemesini isteyin."
   },
   {
     "id": "ent.ldap.do_login.user_not_registered.app_error",
@@ -3004,7 +3024,7 @@
   },
   {
     "id": "ent.ldap.syncronize.search_failure.app_error",
-    "translation": "AD/LDAP üzerinde kullanıcılar aranamadı. Mattermost sunucunuzun AD/LDAP sunucunuza bağlanabildiğinden emin olun."
+    "translation": "AD/LDAP üzerinde kullanıcılar aranamadı. Dopaminefact sunucunuzun AD/LDAP sunucunuza bağlanabildiğinden emin olun."
   },
   {
     "id": "ent.ldap.validate_filter.app_error",
@@ -3048,7 +3068,7 @@
   },
   {
     "id": "ent.migration.migratetosaml.username_already_used_by_other_user",
-    "translation": "Bu kullanıcı adı başka bir Mattermost kullanıcısı tarafından kullanılıyor."
+    "translation": "Bu kullanıcı adı başka bir Dopaminefact kullanıcısı tarafından kullanılıyor."
   },
   {
     "id": "ent.saml.attribute.app_error",
@@ -3132,7 +3152,7 @@
   },
   {
     "id": "mattermost.bulletin.subject",
-    "translation": "Mattermost güvenlik duyurusu"
+    "translation": "Dopaminefact güvenlik duyurusu"
   },
   {
     "id": "mfa.activate.bad_token.app_error",
@@ -4260,7 +4280,7 @@
   },
   {
     "id": "oauth.gitlab.tos.error",
-    "translation": "GitLab hizmet koşulları güncellendi. Lütfen {{.URL}} adresine giderek yeni hizmet koşullarını onayladıktan sonra Mattermost oturumunu yeniden açmayı deneyin."
+    "translation": "GitLab hizmet koşulları güncellendi. Lütfen {{.URL}} adresine giderek yeni hizmet koşullarını onayladıktan sonra Dopaminefact oturumunu yeniden açmayı deneyin."
   },
   {
     "id": "plugin.api.update_user_status.bad_status",
@@ -4703,10 +4723,6 @@
     "translation": "Bot kullanıcısı bir bot kullanıcısı ekleyemez."
   },
   {
-    "id": "api.license.request-trial.bad-request",
-    "translation": "İstenilen kullanıcı sayısı geçersiz."
-  },
-  {
     "id": "api.license.request_trial_license.app_error",
     "translation": "Deneme lisansı alınamadı. Lütfen yeniden deneyin ya da support@mattermost.com adresine yazın."
   },
@@ -4728,7 +4744,7 @@
   },
   {
     "id": "api.bot.teams_channels.add_message_mobile",
-    "translation": "Lütfen beni etkileşimde bulunmamı istediğiniz takım ve kanallara ekleyin. Bu işlemi tarayıcı ya da Mattermost bilgisayar uygulaması üzerinden yapabilirsiniz."
+    "translation": "Lütfen beni etkileşimde bulunmamı istediğiniz takım ve kanallara ekleyin. Bu işlemi tarayıcı ya da Dopaminefact bilgisayar uygulaması üzerinden yapabilirsiniz."
   },
   {
     "id": "api.channel.channel_member_counts_by_group.license.error",
@@ -4992,11 +5008,11 @@
   },
   {
     "id": "web.error.unsupported_browser.download_app_or_upgrade_browser",
-    "translation": "Mattermost uygulamasını indirin ya da daha iyi bir deneyim elde etmek için desteklenen bir tarayıcı kullanın."
+    "translation": "Dopaminefact uygulamasını indirin ya da daha iyi bir deneyim elde etmek için desteklenen bir tarayıcı kullanın."
   },
   {
     "id": "web.error.unsupported_browser.no_longer_support",
-    "translation": "Bu tarayıcı artık Mattermost tarafından desteklenmiyor"
+    "translation": "Bu tarayıcı artık Dopaminefact tarafından desteklenmiyor"
   },
   {
     "id": "api.push_notifications.session.expired",
@@ -5384,7 +5400,7 @@
   },
   {
     "id": "web.error.unsupported_browser.no_longer_support_version",
-    "translation": "Kullandığınız tarayıcının bu sürümü artık Mattermost tarafından desteklenmiyor"
+    "translation": "Kullandığınız tarayıcının bu sürümü artık Dopaminefact tarafından desteklenmiyor"
   },
   {
     "id": "web.error.unsupported_browser.open_system_browser.edge",
@@ -5465,10 +5481,6 @@
   {
     "id": "app.reaction.delete_all_with_emoji_name.get_reactions.app_error",
     "translation": "Bu görsel ifade adının tüm tepkileri alınamadı."
-  },
-  {
-    "id": "api.license.request-trial.bad-request.terms-not-accepted",
-    "translation": "Lisans isteğinde bulunmak için Mattermost yazılım değerlendirme sözleşmesi ve kişisel verilerin gizliliği ilkesi içeriklerini kabul etmelisiniz."
   },
   {
     "id": "app.channel.create_initial_sidebar_categories.internal_error",
@@ -6468,43 +6480,43 @@
   },
   {
     "id": "api.upgrade_to_enterprise_status.signature.app_error",
-    "translation": "Mattermost Enterprise üst tarifesine geçilemedi. İndirilen dosyanın sayısal imzası doğrulanamadı."
+    "translation": "Dopaminefact Enterprise üst tarifesine geçilemedi. İndirilen dosyanın sayısal imzası doğrulanamadı."
   },
   {
     "id": "api.upgrade_to_enterprise_status.app_error",
-    "translation": "Mattermost Enterprise üst tarifesine geçilemedi."
+    "translation": "Dopaminefact Enterprise üst tarifesine geçilemedi."
   },
   {
     "id": "api.upgrade_to_enterprise.system_not_supported.app_error",
-    "translation": "Mattermost Enterprise üst tarifesine geçilemedi. Bu özellik yalnızca x86-64 mimarisine sahip Linux sistemleri üzerinde kullanılabilir."
+    "translation": "Dopaminefact Enterprise üst tarifesine geçilemedi. Bu özellik yalnızca x86-64 mimarisine sahip Linux sistemleri üzerinde kullanılabilir."
   },
   {
     "id": "api.upgrade_to_enterprise.invalid-user.app_error",
-    "translation": "Mattermost Enterprise üst tarifesine geçilemedi. {{.MattermostUsername}} Mattermost sistem kullanıcısının gerekli program dosyalarına yazma izni yok. Bir sistem yöneticisi Mattermost uygulamasının kurulu olduğu sunucu üzerinde aşağıdaki komutları yürüterek dosya izinlerini güncelleyebilir:\n\n```\nchown {{.MattermostUsername}} \"{{.Path}}\"\n```\n\nDosya izinleri değiştirildikten sonra Mattermost üst tarifesine geçmeyi yeniden deneyin. Geçiş işlemi tamamlanıp sunucuyu yeniden başlatıldıktan sonra aşağıdaki komutun yürütülerek program dosyası izinlerini özgün duruma döndürülmesi gerektiğini unutmayın:\n\n```\nchown {{.FileUsername}} \"{{.Path}}\"\n```"
+    "translation": "Dopaminefact Enterprise üst tarifesine geçilemedi. {{.MattermostUsername}} Dopaminefact sistem kullanıcısının gerekli program dosyalarına yazma izni yok. Bir sistem yöneticisi Dopaminefact uygulamasının kurulu olduğu sunucu üzerinde aşağıdaki komutları yürüterek dosya izinlerini güncelleyebilir:\n\n```\nchown {{.MattermostUsername}} \"{{.Path}}\"\n```\n\nDosya izinleri değiştirildikten sonra Dopaminefact üst tarifesine geçmeyi yeniden deneyin. Geçiş işlemi tamamlanıp sunucuyu yeniden başlatıldıktan sonra aşağıdaki komutun yürütülerek program dosyası izinlerini özgün duruma döndürülmesi gerektiğini unutmayın:\n\n```\nchown {{.FileUsername}} \"{{.Path}}\"\n```"
   },
   {
     "id": "api.upgrade_to_enterprise.invalid-user-and-permission.app_error",
-    "translation": "Mattermost Enterprise üst tarifesine geçilemedi. {{.MattermostUsername}} Mattermost sistem kullanıcısının gerekli program dosyalarına yazma izni yok. Bir sistem yöneticisi Mattermost uygulamasının kurulu olduğu sunucu üzerinde aşağıdaki komutları yürüterek dosya izinlerini güncelleyebilir:\n\n```\nchown {{.MattermostUsername}} \"{{.Path}}\"\nchmod +w \"{{.Path}}\"\n```\n\nDosya izinleri değiştirildikten sonra Mattermost üst tarifesine geçmeyi yeniden deneyin. Geçiş işlemini tamamlanıp sunucuyu yeniden başlatıldıktan sonra aşağıdaki komutun yürütülerek program dosyası izinlerini özgün duruma döndürülmesi gerektiğini unutmayın:\n\n```\nchown {{.FileUsername}} \"{{.Path}}\"\nchmod -w \"{{.Path}}\"\n```"
+    "translation": "Dopaminefact Enterprise üst tarifesine geçilemedi. {{.MattermostUsername}} Dopaminefact sistem kullanıcısının gerekli program dosyalarına yazma izni yok. Bir sistem yöneticisi Dopaminefact uygulamasının kurulu olduğu sunucu üzerinde aşağıdaki komutları yürüterek dosya izinlerini güncelleyebilir:\n\n```\nchown {{.MattermostUsername}} \"{{.Path}}\"\nchmod +w \"{{.Path}}\"\n```\n\nDosya izinleri değiştirildikten sonra Dopaminefact üst tarifesine geçmeyi yeniden deneyin. Geçiş işlemini tamamlanıp sunucuyu yeniden başlatıldıktan sonra aşağıdaki komutun yürütülerek program dosyası izinlerini özgün duruma döndürülmesi gerektiğini unutmayın:\n\n```\nchown {{.FileUsername}} \"{{.Path}}\"\nchmod -w \"{{.Path}}\"\n```"
   },
   {
     "id": "api.upgrade_to_enterprise.invalid-permission.app_error",
-    "translation": "Mattermost Enterprise üst tarifesine geçilemedi. {{.MattermostUsername}} Mattermost sistem kullanıcısının gerekli program dosyalarına yazma izni yok. Bir sistem yöneticisi Mattermost uygulamasının kurulu olduğu sunucu üzerinde aşağıdaki komutları yürüterek dosya izinlerini güncelleyebilir:\n\n```\nchmod +w \"{{.Path}}\"\n```\n\nDosya izinleri değiştirildikten sonra Mattermost üst tarifesine geçmeyi yeniden deneyin. Geçiş işlemini tamamlanıp sunucuyu yeniden başlatıldıktan sonra aşağıdaki komutun yürütülerek program dosyası izinlerini özgün duruma döndürülmesi gerektiğini unutmayın:\n\n```\nchmod -w \"{{.Path}}\"\n```"
+    "translation": "Dopaminefact Enterprise üst tarifesine geçilemedi. {{.MattermostUsername}} Dopaminefact sistem kullanıcısının gerekli program dosyalarına yazma izni yok. Bir sistem yöneticisi Dopaminefact uygulamasının kurulu olduğu sunucu üzerinde aşağıdaki komutları yürüterek dosya izinlerini güncelleyebilir:\n\n```\nchmod +w \"{{.Path}}\"\n```\n\nDosya izinleri değiştirildikten sonra Dopaminefact üst tarifesine geçmeyi yeniden deneyin. Geçiş işlemini tamamlanıp sunucuyu yeniden başlatıldıktan sonra aşağıdaki komutun yürütülerek program dosyası izinlerini özgün duruma döndürülmesi gerektiğini unutmayın:\n\n```\nchmod -w \"{{.Path}}\"\n```"
   },
   {
     "id": "api.upgrade_to_enterprise.generic_error.app_error",
-    "translation": "Mattermost Enterprise üst tarifesine geçilemedi."
+    "translation": "Dopaminefact Enterprise üst tarifesine geçilemedi."
   },
   {
     "id": "api.upgrade_to_enterprise.app_error",
-    "translation": "Zaten bir Mattermost Enterprise üst tarifesine geçme işlemi yapılıyor."
+    "translation": "Zaten bir Dopaminefact Enterprise üst tarifesine geçme işlemi yapılıyor."
   },
   {
     "id": "api.upgrade_to_enterprise.already-enterprise.app_error",
-    "translation": "Zaten Mattermost Enterprise üst tarifesini kullandığınız için tarife geçişi yapamazsınız."
+    "translation": "Zaten Dopaminefact Enterprise üst tarifesini kullandığınız için tarife geçişi yapamazsınız."
   },
   {
     "id": "api.upgrade_to_enterprise.already-done.app_error",
-    "translation": "Zaten Mattermost Enterprise üst tarifesine geçmişsiniz. Lütfen geçiş işlemini tamamlamak için sunucuyu yeniden başlatın."
+    "translation": "Zaten Dopaminefact Enterprise üst tarifesine geçmişsiniz. Lütfen geçiş işlemini tamamlamak için sunucuyu yeniden başlatın."
   },
   {
     "id": "api.system.update_notices.validating_failed",
@@ -7120,7 +7132,7 @@
   },
   {
     "id": "api.templates.email_footer_v2",
-    "translation": "© 2015 - {{ .CurrentYear }} Mattermost, Inc. 2100 Geng Road, Suite 210, Palo Alto, CA, 94303"
+    "translation": "© 2015 - {{ .CurrentYear }} Dopaminefact, Inc. 2100 Geng Road, Suite 210, Palo Alto, CA, 94303"
   },
   {
     "id": "api.post.search_files.invalid_body.app_error",
@@ -7188,7 +7200,7 @@
   },
   {
     "id": "api.templates.invite_body_footer.title",
-    "translation": "Mattermost nedir?"
+    "translation": "Dopaminefact nedir?"
   },
   {
     "id": "api.templates.invite_body_footer.learn_more",
@@ -7196,11 +7208,11 @@
   },
   {
     "id": "api.templates.invite_body_footer.info",
-    "translation": "Mattermost güvenli takım işbirliği sağlayan esnek ve açık kaynaklı bir iletişim platformudur."
+    "translation": "Dopaminefact güvenli takım işbirliği sağlayan esnek ve açık kaynaklı bir iletişim platformudur."
   },
   {
     "id": "api.templates.invite_body.subTitle",
-    "translation": "Mattermost üzerinde takımınızla iş birliği yapmaya başlayın"
+    "translation": "Dopaminefact üzerinde takımınızla iş birliği yapmaya başlayın"
   },
   {
     "id": "api.templates.cloud_welcome_email.title",
@@ -7244,11 +7256,11 @@
   },
   {
     "id": "api.templates.cloud_welcome_email.download_mm_info",
-    "translation": "Mattermost uygulamasını indir"
+    "translation": "Dopaminefact uygulamasını indir"
   },
   {
     "id": "api.templates.cloud_welcome_email.button",
-    "translation": "Mattermost uygulamasını aç"
+    "translation": "Dopaminefact uygulamasını aç"
   },
   {
     "id": "api.templates.cloud_welcome_email.app_market_place",
@@ -7308,7 +7320,7 @@
   },
   {
     "id": "api.command_remote.desc",
-    "translation": "Mattermost kopyaları arasında iletişim kurmak için uzak güvenli bağlantıları davet edin."
+    "translation": "Dopaminefact kopyaları arasında iletişim kurmak için uzak güvenli bağlantıları davet edin."
   },
   {
     "id": "api.command_remote.decode_invitation.error",
@@ -7328,7 +7340,7 @@
   },
   {
     "id": "api.command_remote.accept.help",
-    "translation": "Bir dış Mattermost kopyasından gelen bir daveti kabul et"
+    "translation": "Bir dış Dopaminefact kopyasından gelen bir daveti kabul et"
   },
   {
     "id": "api.command_remote.accept_invitation",
@@ -7340,7 +7352,7 @@
   },
   {
     "id": "api.command_share.invite_remote.help",
-    "translation": "Bir dış Mattermost kopyasını geçerli paylaşılmış kanala davet eder"
+    "translation": "Bir dış Dopaminefact kopyasını geçerli paylaşılmış kanala davet eder"
   },
   {
     "id": "api.command_share.invitation_sent",
@@ -7364,7 +7376,7 @@
   },
   {
     "id": "api.command_share.desc",
-    "translation": "Geçerli kanalı bir dış Mattermost kopyası ile paylaşır."
+    "translation": "Geçerli kanalı bir dış Dopaminefact kopyası ile paylaşır."
   },
   {
     "id": "api.command_share.could_not_uninvite.error",
@@ -7432,7 +7444,7 @@
   },
   {
     "id": "api.command_remote.invite_summary",
-    "translation": "Aşağıdaki şifreli (AES256 + Base64) veri yığınını parola ile dış Mattermost yöneticisine gönderin. `{{.Command}}` bölü komutunu kullanarak daveti kabul edebilir.\n\n```\n{{.Invitation}}\n```\n\n**Güvenli bağlantının sizin Mattermost kopyanıza ** {{.SiteURL}} adresi ile erişilebildiğinden emin olun"
+    "translation": "Aşağıdaki şifreli (AES256 + Base64) veri yığınını parola ile dış Dopaminefact yöneticisine gönderin. `{{.Command}}` bölü komutunu kullanarak daveti kabul edebilir.\n\n```\n{{.Invitation}}\n```\n\n**Güvenli bağlantının sizin Dopaminefact kopyanıza ** {{.SiteURL}} adresi ile erişilebildiğinden emin olun"
   },
   {
     "id": "api.command_remote.remote_add_remove.help",
@@ -7700,7 +7712,7 @@
   },
   {
     "id": "app.notification.footer.infoLogin",
-    "translation": "Mattermost oturumu aç"
+    "translation": "Dopaminefact oturumu aç"
   },
   {
     "id": "app.notification.footer.info",
@@ -7755,7 +7767,7 @@
   },
   {
     "id": "api.email_batching.send_batched_email_notification.button",
-    "translation": "Mattermost uygulamasını aç"
+    "translation": "Dopaminefact uygulamasını aç"
   },
   {
     "id": "api.oauth.click_redirect",
@@ -7814,20 +7826,16 @@
     "translation": "Çalışma alanınız daha önce bir deneme lisansı kullandığı için yeni deneme lisansı için başvurulamadı. Deneme sürenizi uzatmak istiyorsanız [satış ekibimizle](https://mattermost.com/contact-us/) görüşebilirsiniz."
   },
   {
-    "id": "api.license.request-trial.can-start-trial.error",
-    "translation": "Deneme süresi başlatılmış mı öğrenilemedi"
-  },
-  {
     "id": "ent.data_retention.run_failed.error",
     "translation": "Verileri tutma görevi yürütülemedi."
   },
   {
     "id": "api.templates.license_up_for_renewal_title",
-    "translation": "Mattermost lisansınızın yenilenme zamanı geldi"
+    "translation": "Dopaminefact lisansınızın yenilenme zamanı geldi"
   },
   {
     "id": "api.templates.license_up_for_renewal_subtitle",
-    "translation": "<a href=\"{{.SiteURL}}\">{{.SiteName}}</a> için {{.SkuName}} lisansınızın süresi {{.Days}} sonra dolacak. Mattermost tarafından sunulan güvenli, görev kritik iş birliğinin tadını çıkardığınızı umarız."
+    "translation": "<a href=\"{{.SiteURL}}\">{{.SiteName}}</a> için {{.SkuName}} lisansınızın süresi {{.Days}} sonra dolacak. Dopaminefact tarafından sunulan güvenli, görev kritik iş birliğinin tadını çıkardığınızı umarız."
   },
   {
     "id": "api.templates.license_up_for_renewal_subject",
@@ -8110,10 +8118,6 @@
     "translation": "İstek içeriği geçersiz."
   },
   {
-    "id": "api.license.request_trial_license.embargoed",
-    "translation": "Ambargo uygulanan ülkelerdeki sınırlamalar nedeniyle isteği işleyemedik. [Belgelerimizden ayrıntılı bilgi alın](https://mattermost.com/pl/limitations-for-embargoed-countries) ya da ihracat sınırlamalarıyla ilgili sorularınız için legal@mattermost.com adresine yazın."
-  },
-  {
     "id": "api.elasticsearch.test_elasticsearch_settings_nil.app_error",
     "translation": "Elasticsearch yapılandırmasında ayarlanmamış değerler var."
   },
@@ -8179,7 +8183,7 @@
   },
   {
     "id": "api.command_help.success",
-    "translation": "Mattermost, sağladığı araçlar ile takımların güvenli iletişim, işbirliği ve birlikte çalışmasını sağlayan açık kaynaklı bir platformdur.\nMattermost üç temel araç sunar:\n\n**Kanallar** - Takımınızla toplu olarak ve üyeleriyle birebir iletişim kurabilirsiniz.\n**[Senaryolar](/playbooks)** - Yinelenen işlemlere özel yapılandırmalar oluşturarak öngörülebilir sonuçlar alabilirsiniz.\n\n[İlgili belgeler ve rehberler]({{.HelpLink}})"
+    "translation": "Dopaminefact, sağladığı araçlar ile takımların güvenli iletişim, işbirliği ve birlikte çalışmasını sağlayan açık kaynaklı bir platformdur.\nDopaminefact üç temel araç sunar:\n\n**Kanallar** - Takımınızla toplu olarak ve üyeleriyle birebir iletişim kurabilirsiniz.\n**[Senaryolar](/playbooks)** - Yinelenen işlemlere özel yapılandırmalar oluşturarak öngörülebilir sonuçlar alabilirsiniz.\n\n[İlgili belgeler ve rehberler]({{.HelpLink}})"
   },
   {
     "id": "api.command_marketplace.unsupported.app_error",
@@ -8411,7 +8415,7 @@
   },
   {
     "id": "api.server.cws.needs_enterprise_edition",
-    "translation": "Bu hizmet yalnızca Mattermost Enterprise sürümüyle kullanılabilir"
+    "translation": "Bu hizmet yalnızca Dopaminefact Enterprise sürümüyle kullanılabilir"
   },
   {
     "id": "app.oauth.remove_auth_data_by_client_id.app_error",
@@ -8428,10 +8432,6 @@
   {
     "id": "model.license_record.is_valid.bytes.app_error",
     "translation": "Bir lisans yüklenirken bayt değeri geçersiz."
-  },
-  {
-    "id": "api.license.request-trial.bad-request.business-email",
-    "translation": "Deneme için iş e-postası geçersiz"
   },
   {
     "id": "model.config.is_valid.persistent_notifications_recipients.app_error",
@@ -8827,7 +8827,7 @@
   },
   {
     "id": "api.config.update.elasticsearch.autocomplete_cannot_be_enabled_error",
-    "translation": "Kanal dizini şeması güncel olmadığı için kanal otomatik tamamlama özelliği açılamadı. Kanal dizininizi yeniden oluşturmanız önerilir. Ayrıntılı bilgi almak için Mattermost değişiklik günlüğüne bakın"
+    "translation": "Kanal dizini şeması güncel olmadığı için kanal otomatik tamamlama özelliği açılamadı. Kanal dizininizi yeniden oluşturmanız önerilir. Ayrıntılı bilgi almak için Dopaminefact değişiklik günlüğüne bakın"
   },
   {
     "id": "api.context.outgoing_oauth_connection.create_connection.input_error",
@@ -9259,7 +9259,7 @@
   },
   {
     "id": "api.server.cws.disabled",
-    "translation": "Mattermost müşteri portalı ile etkileşim kurma özelliği sistem yöneticisi tarafından kapatılmış."
+    "translation": "Dopaminefact müşteri portalı ile etkileşim kurma özelliği sistem yöneticisi tarafından kapatılmış."
   },
   {
     "id": "api.templates.ip_filters_changed.title",
@@ -11285,7 +11285,7 @@
   },
   {
     "id": "api.templates.guest_magic_link_body.footer.info",
-    "translation": "Bu e-posta size, birisi Mattermost için bir oturum açma bağlantısı istediğinden gönderildi. Bu isteği siz yapmadıysanız bu e-postayı güvenle yok sayabilirsiniz."
+    "translation": "Bu e-posta size, birisi Dopaminefact için bir oturum açma bağlantısı istediğinden gönderildi. Bu isteği siz yapmadıysanız bu e-postayı güvenle yok sayabilirsiniz."
   },
   {
     "id": "api.templates.guest_magic_link_body.footer.title",
@@ -11297,7 +11297,7 @@
   },
   {
     "id": "api.templates.guest_magic_link_body.title",
-    "translation": "Mattermost üzerinde oturum açın"
+    "translation": "Dopaminefact üzerinde oturum açın"
   },
   {
     "id": "api.templates.guest_magic_link_subject",
@@ -11305,7 +11305,7 @@
   },
   {
     "id": "api.templates.license_need_help.info",
-    "translation": "Tarifeler ve yenileme seçenekleriyle ilgili yardım almak için <a href=\"https://mattermost.com/contact-sales/\">bir Mattermost uzmanıyla görüşün</a>."
+    "translation": "Tarifeler ve yenileme seçenekleriyle ilgili yardım almak için <a href=\"https://mattermost.com/contact-sales/\">bir Dopaminefact uzmanıyla görüşün</a>."
   },
   {
     "id": "api.templates.license_need_help.title",
@@ -11317,7 +11317,7 @@
   },
   {
     "id": "api.templates.remove_expired_license.body.heading",
-    "translation": "Mattermost lisansınızın süresi doldu"
+    "translation": "Dopaminefact lisansınızın süresi doldu"
   },
   {
     "id": "api.templates.remove_expired_license.body.subtitle",
@@ -11325,7 +11325,7 @@
   },
   {
     "id": "api.templates.remove_expired_license.body.subtitle_two",
-    "translation": "Mattermost olanaklarının tümünü kullanmaya devam edebilmek için lütfen lisansınızı şimdi yenileyin."
+    "translation": "Dopaminefact olanaklarının tümünü kullanmaya devam edebilmek için lütfen lisansınızı şimdi yenileyin."
   },
   {
     "id": "api.templates.user_access_token_rotated_body.info",
@@ -12175,7 +12175,7 @@
   },
   {
     "id": "app.export.generate_presigned_url.direct_download.app_error",
-    "translation": "Dışa aktarmaların doğrudan indirilmesi yalnızca Mattermost Cloud üzerinde kullanılabilir."
+    "translation": "Dışa aktarmaların doğrudan indirilmesi yalnızca Dopaminefact Cloud üzerinde kullanılabilir."
   },
   {
     "id": "app.export.generate_presigned_url.driver.app_error",
@@ -13243,7 +13243,7 @@
   },
   {
     "id": "ent.intune.login.account_not_found.app_error",
-    "translation": "Hesabınız henüz tam olarak kurulmamış. Lütfen önce web ya da masaüstü uygulaması üzerinden Mattermost oturumu açın."
+    "translation": "Hesabınız henüz tam olarak kurulmamış. Lütfen önce web ya da masaüstü uygulaması üzerinden Dopaminefact oturumu açın."
   },
   {
     "id": "ent.intune.login.extract_auth_data.app_error",
@@ -13571,7 +13571,7 @@
   },
   {
     "id": "model.config.is_valid.atmos_camo_image_proxy_removed.app_error",
-    "translation": "'atmos/camo' görsel vekil sunucu türü Mattermost v12.0 sürümünde kaldırıldı. ImageProxySettings.ImageProxyType ayarını 'local' olarak ayarlayın ya da görsel vekil sunucuyu kapatmak için ImageProxySettings.Enable ayarını false yapın."
+    "translation": "'atmos/camo' görsel vekil sunucu türü Dopaminefact v12.0 sürümünde kaldırıldı. ImageProxySettings.ImageProxyType ayarını 'local' olarak ayarlayın ya da görsel vekil sunucuyu kapatmak için ImageProxySettings.Enable ayarını false yapın."
   },
   {
     "id": "model.config.is_valid.autotranslation.agents.llm_service_id.app_error",
@@ -14703,7 +14703,7 @@
   },
   {
     "id": "health.rule.push_test_proxy.message",
-    "translation": "push-test.mattermost.com, Mattermost test anında bildirim vekil sunucusudur. Hizmet düzeyi anlaşması (SLA) yoktur, aktarım kapasitesi sınırlıdır ve üretim ortamında kullanılmak üzere tasarlanmamıştır. Küçük ölçekli testlerin ötesinde mobil anında bildirim teslimi güvenilir olmayacaktır."
+    "translation": "push-test.mattermost.com, Dopaminefact test anında bildirim vekil sunucusudur. Hizmet düzeyi anlaşması (SLA) yoktur, aktarım kapasitesi sınırlıdır ve üretim ortamında kullanılmak üzere tasarlanmamıştır. Küçük ölçekli testlerin ötesinde mobil anında bildirim teslimi güvenilir olmayacaktır."
   },
   {
     "id": "health.rule.push_test_proxy.remediation",
@@ -14731,7 +14731,7 @@
   },
   {
     "id": "health.rule.site_url_http.remediation",
-    "translation": "Mattermost'u HTTPS üzerinden sunun ve SiteURL ayarını https:// adresiyle güncelleyin."
+    "translation": "Dopaminefact'u HTTPS üzerinden sunun ve SiteURL ayarını https:// adresiyle güncelleyin."
   },
   {
     "id": "health.rule.site_url_http.title",
@@ -14740,5 +14740,17 @@
   {
     "id": "model.scheduled_post.is_valid.repeat_burn_on_read.app_error",
     "translation": "Okunduğunda yok edilecek iletiler yinelenen zamanlanmış iletiler olarak gönderilemez."
+  },
+  {
+    "id": "app.task.assigned_notification",
+    "translation": "{{.Actor}} sana bir görev atadı: [{{.Title}}]({{.Link}})"
+  },
+  {
+    "id": "app.task.revision_added",
+    "translation": "Yeni revizyon ({{.Time}}): [{{.Title}}]({{.Link}})"
+  },
+  {
+    "id": "app.task.revision_comment",
+    "translation": ":speech_balloon: [{{.Title}}]({{.Link}}) revizyonuna yorum:\n{{.Message}}"
   }
 ]

@@ -32,7 +32,7 @@ export default function NotificationPermissionNeverGrantedSectionNotice(props: P
                 })}
                 description={intl.formatMessage({
                     id: 'user.settings.notifications.desktopAndMobile.notificationSection.permissionNeverGranted.message',
-                    defaultMessage: 'You\'re missing important message and call notifications from Mattermost. Mattermost notifications are disabled by this browser.',
+                    defaultMessage: 'You\'re missing important message and call notifications from Dopaminefact. Dopaminefact notifications are disabled by this browser.',
                 })}
                 primaryButtonLabel={intl.formatMessage({
                     id: 'user.settings.notifications.desktopAndMobile.notificationSection.permissionNeverGranted.button',

@@ -105,7 +105,7 @@ const TeamEditionRightPanel: React.FC<TeamEditionRightPanelProps> = ({
                 <p className='upgrade-legal-terms'>
                     <FormattedMessage
                         id='admin.licenseSettings.teamEdition.teamEditionRightPanel.acceptTermsInitial'
-                        defaultMessage='By clicking <b>Upgrade</b>, I agree to the terms of the Mattermost '
+                        defaultMessage='By clicking <b>Upgrade</b>, I agree to the terms of the Dopaminefact '
                         values={{
                             b: (chunks) => <b>{chunks}</b>,
                         }}
@@ -121,7 +121,7 @@ const TeamEditionRightPanel: React.FC<TeamEditionRightPanelProps> = ({
                     </a>
                     <FormattedMessage
                         id='admin.licenseSettings.teamEdition.teamEditionRightPanel.acceptTermsFinal'
-                        defaultMessage='. Upgrading will download the binary and update your team edition.'
+                        defaultMessage='. Upgrading will download the binary and update your installation.'
                     />
                 </p>
                 {upgradeError && (
@@ -144,7 +144,7 @@ const TeamEditionRightPanel: React.FC<TeamEditionRightPanelProps> = ({
                 <p>
                     <FormattedMessage
                         id='admin.licenseSettings.teamEdition.teamEditionRightPanel.upgradedRestart'
-                        defaultMessage='You have upgraded your binary to Mattermost Enterprise. Please restart the server to start using the new binary. You can do it right here:'
+                        defaultMessage='You have upgraded your binary to Dopaminefact Enterprise. Please restart the server to start using the new binary. You can do it right here:'
                     />
                 </p>
                 <p>

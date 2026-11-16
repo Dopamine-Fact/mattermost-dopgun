@@ -50,7 +50,7 @@ describe('ProductSwitcherEditionFooter', () => {
         expect(screen.queryByText('ENTRY EDITION')).not.toBeInTheDocument();
     });
 
-    test("should show when it's unlicensed", () => {
+    test("should not show when it's unlicensed", () => {
         const state = {
             entities: {
                 ...initialState.entities,
@@ -60,8 +60,8 @@ describe('ProductSwitcherEditionFooter', () => {
 
         renderWithContext(<ProductSwitcherEditionFooter/>, state);
 
-        expect(screen.getByText('TEAM EDITION')).toBeInTheDocument();
-        expect(screen.getByText(/unsupported/)).toBeInTheDocument();
+        expect(screen.queryByText('TEAM EDITION')).not.toBeInTheDocument();
+        expect(screen.queryByText(/unsupported/)).not.toBeInTheDocument();
     });
 
     test("should show when it's licensed with entry SKU", () => {

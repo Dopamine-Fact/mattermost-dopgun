@@ -411,6 +411,7 @@ func Init(srv *app.Server) (*API, error) {
 	api.InitOutgoingOAuthConnection()
 	api.InitClientPerformanceMetrics()
 	api.InitScheduledPost()
+	api.InitTasks()
 	api.InitCustomProfileAttributes()
 	api.InitAuditLogging()
 	api.InitAccessControlPolicy()

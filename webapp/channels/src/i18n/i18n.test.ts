@@ -28,13 +28,13 @@ describe('i18n', () => {
             entities: {
                 general: {
                     config: {
-                        AvailableLocales: 'de,fr',
+                        AvailableLocales: 'tr,en',
                     },
                 },
             },
         } as GlobalState;
 
-        expect(Object.keys(getLanguages(state))).toEqual(['de', 'fr']);
+        expect(Object.keys(getLanguages(state))).toEqual(['tr', 'en']);
     });
 
     test('getLanguages ignores unsupported codes in AvailableLocales', () => {
@@ -42,19 +42,19 @@ describe('i18n', () => {
             entities: {
                 general: {
                     config: {
-                        AvailableLocales: 'de,fy',
+                        AvailableLocales: 'tr,fy',
                     },
                 },
             },
         } as GlobalState;
 
-        expect(Object.keys(getLanguages(state))).toEqual(['de']);
+        expect(Object.keys(getLanguages(state))).toEqual(['tr']);
     });
 
     test('getLanguageInfo', () => {
         expect(getLanguageInfo('en')).toStrictEqual({
             name: 'English (US)',
-            order: 1,
+            order: 0,
             url: '',
             value: 'en',
         });
@@ -74,7 +74,7 @@ describe('i18n', () => {
             },
         } as GlobalState;
 
-        expect(isLanguageAvailable(state, 'de')).toBe(true);
+        expect(isLanguageAvailable(state, 'tr')).toBe(true);
         expect(isLanguageAvailable(state, 'fy')).toBe(false);
     });
 });

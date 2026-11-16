@@ -34,6 +34,8 @@ import Constants from 'utils/constants';
 
 import type {GlobalState} from 'types/store';
 
+import ChannelIconSection from './channel_icon_section';
+
 type ChannelSettingsInfoTabProps = {
     channel: Channel;
     onCancel?: () => void;
@@ -635,6 +637,13 @@ function ChannelSettingsInfoTab({
                 readOnly={!canManageChannelProperties}
                 name={formatMessage(messages.headerLabel[channelKind])}
             />
+
+            {!isDMorGroupChannel && (
+                <ChannelIconSection
+                    channel={channel}
+                    disabled={!canManageChannelProperties}
+                />
+            )}
 
             {/* Same attribute editor as Channel Info RHS, but staged here: edits
                 flush together with the rest of this tab on Save, through the

@@ -379,7 +379,7 @@ describe('CloudPreviewModal', () => {
         expect(screen.getByTestId('preview-modal-controller')).toBeInTheDocument();
         const missionOpsContent = modalContent.filter((content) => content.useCase === 'mission-ops');
         expect(lastContentData).toHaveLength(missionOpsContent.length);
-        expect(lastContentData[0].title.defaultMessage).toBe('Welcome to your Mattermost preview');
+        expect(lastContentData[0].title.defaultMessage).toBe('Welcome to your Dopaminefact preview');
     });
 
     it('should fallback to hardcoded content when dynamic content is empty', () => {
@@ -400,7 +400,7 @@ describe('CloudPreviewModal', () => {
         expect(screen.getByTestId('preview-modal-controller')).toBeInTheDocument();
         const missionOpsContent = modalContent.filter((content) => content.useCase === 'mission-ops');
         expect(lastContentData).toHaveLength(missionOpsContent.length);
-        expect(lastContentData[0].title.defaultMessage).toBe('Welcome to your Mattermost preview');
+        expect(lastContentData[0].title.defaultMessage).toBe('Welcome to your Dopaminefact preview');
     });
 
     it('should show the mission-ops content for a team without its own content', () => {
@@ -456,6 +456,6 @@ describe('CloudPreviewModal', () => {
         expect(screen.getByTestId('preview-modal-controller')).toBeInTheDocument();
         const missionOpsContent = modalContent.filter((content) => content.useCase === 'mission-ops');
         expect(lastContentData).toHaveLength(missionOpsContent.length);
-        expect(lastContentData[0].title.defaultMessage).toBe('Welcome to your Mattermost preview');
+        expect(lastContentData[0].title.defaultMessage).toBe('Welcome to your Dopaminefact preview');
     });
 });

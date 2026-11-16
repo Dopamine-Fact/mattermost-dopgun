@@ -13,12 +13,7 @@ import {LicenseSkus} from 'utils/constants';
 const ProductBrandingFreeEdition = (): JSX.Element => {
     const license = useSelector(getLicense);
 
-    let badgeText = '';
-    if (license?.SkuShortName === LicenseSkus.Entry) {
-        badgeText = 'ENTRY EDITION';
-    } else if (license?.IsLicensed === 'false') {
-        badgeText = 'TEAM EDITION';
-    }
+    const isEntry = license?.SkuShortName === LicenseSkus.Entry;
 
     return (
         <span className='globalHeader-leftControls-productBranding-freeEdition'>
@@ -27,9 +22,11 @@ const ProductBrandingFreeEdition = (): JSX.Element => {
                 width={116}
                 height={20}
             />
-            <span className='globalHeader-leftControls-productBranding-freeEdition-badge'>
-                {badgeText}
-            </span>
+            {isEntry && (
+                <span className='globalHeader-leftControls-productBranding-freeEdition-badge'>
+                    {'ENTRY EDITION'}
+                </span>
+            )}
         </span>
     );
 };

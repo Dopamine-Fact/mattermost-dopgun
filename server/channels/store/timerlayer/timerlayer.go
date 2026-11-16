@@ -70,6 +70,7 @@ type TimerLayer struct {
 	SharedChannelStore              store.SharedChannelStore
 	StatusStore                     store.StatusStore
 	SystemStore                     store.SystemStore
+	TaskStore                       store.TaskStore
 	TeamStore                       store.TeamStore
 	TemporaryPostStore              store.TemporaryPostStore
 	TermsOfServiceStore             store.TermsOfServiceStore
@@ -289,6 +290,10 @@ func (s *TimerLayer) Status() store.StatusStore {
 
 func (s *TimerLayer) System() store.SystemStore {
 	return s.SystemStore
+}
+
+func (s *TimerLayer) Task() store.TaskStore {
+	return s.TaskStore
 }
 
 func (s *TimerLayer) Team() store.TeamStore {
@@ -592,6 +597,11 @@ type TimerLayerStatusStore struct {
 
 type TimerLayerSystemStore struct {
 	store.SystemStore
+	Root *TimerLayer
+}
+
+type TimerLayerTaskStore struct {
+	store.TaskStore
 	Root *TimerLayer
 }
 
@@ -12655,6 +12665,230 @@ func (s *TimerLayerSystemStore) Update(system *model.System) error {
 	return err
 }
 
+func (s *TimerLayerTaskStore) Delete(id string) error {
+	start := time.Now()
+
+	err := s.TaskStore.Delete(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.Delete", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerTaskStore) DeleteComment(id string) error {
+	start := time.Now()
+
+	err := s.TaskStore.DeleteComment(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.DeleteComment", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerTaskStore) DeleteSection(id string) error {
+	start := time.Now()
+
+	err := s.TaskStore.DeleteSection(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.DeleteSection", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerTaskStore) Get(id string) (*model.Task, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.Get(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.Get", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerTaskStore) GetComment(id string) (*model.TaskComment, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.GetComment(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.GetComment", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerTaskStore) GetCommentsForTask(taskId string) ([]*model.TaskComment, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.GetCommentsForTask(taskId)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.GetCommentsForTask", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerTaskStore) GetForTeam(teamId string) ([]*model.Task, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.GetForTeam(teamId)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.GetForTeam", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerTaskStore) GetSection(id string) (*model.TaskSection, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.GetSection(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.GetSection", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerTaskStore) GetSectionsForTeam(teamId string) ([]*model.TaskSection, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.GetSectionsForTeam(teamId)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.GetSectionsForTeam", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerTaskStore) Save(task *model.Task) (*model.Task, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.Save(task)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.Save", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerTaskStore) SaveComment(comment *model.TaskComment) (*model.TaskComment, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.SaveComment(comment)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.SaveComment", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerTaskStore) SaveSection(section *model.TaskSection) (*model.TaskSection, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.SaveSection(section)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.SaveSection", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerTaskStore) Update(task *model.Task) (*model.Task, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.Update(task)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.Update", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerTaskStore) UpdateSection(section *model.TaskSection) (*model.TaskSection, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.UpdateSection(section)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.UpdateSection", success, elapsed)
+	}
+	return result, err
+}
+
 func (s *TimerLayerTeamStore) AnalyticsGetTeamCountForScheme(schemeID string) (int64, error) {
 	start := time.Now()
 
@@ -16719,6 +16953,7 @@ func New(childStore store.Store, metrics einterfaces.MetricsInterface) *TimerLay
 	newStore.SharedChannelStore = &TimerLayerSharedChannelStore{SharedChannelStore: childStore.SharedChannel(), Root: &newStore}
 	newStore.StatusStore = &TimerLayerStatusStore{StatusStore: childStore.Status(), Root: &newStore}
 	newStore.SystemStore = &TimerLayerSystemStore{SystemStore: childStore.System(), Root: &newStore}
+	newStore.TaskStore = &TimerLayerTaskStore{TaskStore: childStore.Task(), Root: &newStore}
 	newStore.TeamStore = &TimerLayerTeamStore{TeamStore: childStore.Team(), Root: &newStore}
 	newStore.TemporaryPostStore = &TimerLayerTemporaryPostStore{TemporaryPostStore: childStore.TemporaryPost(), Root: &newStore}
 	newStore.TermsOfServiceStore = &TimerLayerTermsOfServiceStore{TermsOfServiceStore: childStore.TermsOfService(), Root: &newStore}

@@ -23,7 +23,7 @@ export default function NotificationPermissionDeniedSectionNotice() {
                 })}
                 description={intl.formatMessage({
                     id: 'user.settings.notifications.desktopAndMobile.notificationSection.permissionDenied.message',
-                    defaultMessage: 'You\'re missing important message and call notifications from Mattermost. To start receiving notifications, please enable notifications for Mattermost in your browser settings.',
+                    defaultMessage: 'You\'re missing important message and call notifications from Dopaminefact. To start receiving notifications, please enable notifications for Dopaminefact in your browser settings.',
                 })}
                 primaryButtonLabel={intl.formatMessage({
                     id: 'user.settings.notifications.desktopAndMobile.notificationSection.permissionDenied.button',

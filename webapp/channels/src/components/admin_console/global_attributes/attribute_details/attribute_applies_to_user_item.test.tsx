@@ -91,7 +91,7 @@ describe('AttributeAppliesToUserItem', () => {
         // Label, value and helper text in one assertion, so dropping or
         // reordering any of the three fails.
         expect(managedBy.closest('.AttributeAppliesToItem__row')).toHaveTextContent(
-            new RegExp(`^Managed by${sourceLabel.replace('/', '\\/')}Not editable in Mattermost\\.$`),
+            new RegExp(`^Managed by${sourceLabel.replace('/', '\\/')}Not editable in Dopaminefact\\.$`),
         );
 
         const body = screen.getByTestId('attributeAppliesToRow-user-body');
@@ -115,7 +115,7 @@ describe('AttributeAppliesToUserItem', () => {
 
         expect(screen.queryByTestId('attributeAppliesToUserManagedBy')).not.toBeInTheDocument();
         expect(screen.queryByText('Managed by')).not.toBeInTheDocument();
-        expect(screen.queryByText('Not editable in Mattermost.')).not.toBeInTheDocument();
+        expect(screen.queryByText('Not editable in Dopaminefact.')).not.toBeInTheDocument();
     });
 
     it('Managed by: leaves the editable settings untouched, so a synced attribute still configures its own display and permission', async () => {

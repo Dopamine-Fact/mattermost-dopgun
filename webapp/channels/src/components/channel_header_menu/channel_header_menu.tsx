@@ -25,6 +25,7 @@ import {
 import {getChannelHeaderMenuPluginComponents} from 'selectors/plugins';
 
 import {getIsChannelBookmarksEnabled} from 'components/channel_bookmarks/utils';
+import {channelIconUrl} from 'components/channel_type_icon';
 import * as Menu from 'components/menu';
 
 import {useChannelKind} from 'hooks/useChannelKind';
@@ -85,6 +86,8 @@ export default function ChannelHeaderMenu({dmUser, gmMembers, isMobile, archived
     const isDirect = (channel.type === Constants.DM_CHANNEL);
     const isGroup = (channel.type === Constants.GM_CHANNEL);
 
+    const channelIconSrc = isDirect || isGroup ? null : channelIconUrl(channel);
+
     let channelTitle: ReactNode = channel.display_name;
     let ariaLabel = intl.formatMessage(menuAriaLabels[channelKind], {
         displayName: channel.display_name,
@@ -131,6 +134,13 @@ export default function ChannelHeaderMenu({dmUser, gmMembers, isMobile, archived
                 children: (
                     <>
                         {archivedIcon}
+                        {channelIconSrc && (
+                            <img
+                                className='channel-header__channel-icon'
+                                src={channelIconSrc}
+                                alt=''
+                            />
+                        )}
                         <strong
                             id='channelHeaderTitle'
                             className='heading'

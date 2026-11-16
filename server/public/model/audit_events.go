@@ -111,6 +111,8 @@ const (
 	AuditEventLocalUpdateChannelPrivacy          = "localUpdateChannelPrivacy"          // update channel privacy locally
 	AuditEventMoveChannel                        = "moveChannel"                        // move channel to different team
 	AuditEventPatchChannel                       = "patchChannel"                       // update channel properties
+	AuditEventSetChannelIcon                     = "setChannelIcon"                     // set custom icon for channel
+	AuditEventRemoveChannelIcon                  = "removeChannelIcon"                  // remove custom icon from channel
 	AuditEventPatchChannelModerations            = "patchChannelModerations"            // update channel moderation settings
 	AuditEventRemoveChannelMember                = "removeChannelMember"                // remove member from channel
 	AuditEventRestoreChannel                     = "restoreChannel"                     // restore previously deleted channel
@@ -288,11 +290,10 @@ const (
 
 // Licensing
 const (
-	AuditEventAddLicense          = "addLicense"          // add license
-	AuditEventLocalAddLicense     = "localAddLicense"     // add license locally
-	AuditEventLocalRemoveLicense  = "localRemoveLicense"  // remove license locally
-	AuditEventRemoveLicense       = "removeLicense"       // remove license
-	AuditEventRequestTrialLicense = "requestTrialLicense" // request trial license
+	AuditEventAddLicense         = "addLicense"         // add license
+	AuditEventLocalAddLicense    = "localAddLicense"    // add license locally
+	AuditEventLocalRemoveLicense = "localRemoveLicense" // remove license locally
+	AuditEventRemoveLicense      = "removeLicense"      // remove license
 )
 
 // OAuth
@@ -420,6 +421,19 @@ const (
 	AuditEventCreateSchedulePost  = "createSchedulePost"  // create post scheduled for future delivery
 	AuditEventDeleteScheduledPost = "deleteScheduledPost" // delete scheduled post before delivery
 	AuditEventUpdateScheduledPost = "updateScheduledPost" // update scheduled post
+)
+
+// Tasks
+const (
+	AuditEventCreateTask          = "createTask"          // create task on a team task list
+	AuditEventPatchTask           = "patchTask"           // update task
+	AuditEventDeleteTask          = "deleteTask"          // delete task
+	AuditEventCreateTaskSection   = "createTaskSection"   // create task list section
+	AuditEventPatchTaskSection    = "patchTaskSection"    // update task list section
+	AuditEventDeleteTaskSection   = "deleteTaskSection"   // delete task list section and unassign its tasks
+	AuditEventCreateTaskComment   = "createTaskComment"   // comment on a task, with optional file attachments
+	AuditEventDeleteTaskComment   = "deleteTaskComment"   // delete task comment and its attachments
+	AuditEventSetTaskSectionVideo = "setTaskSectionVideo" // upload the video of a revision channel
 )
 
 // Schemes

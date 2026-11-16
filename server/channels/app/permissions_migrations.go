@@ -1366,6 +1366,15 @@ func (a *App) getAddAIRecapsPermissionsMigration() (permissionsMap, error) {
 	}, nil
 }
 
+func (a *App) getAddManageTeamTasksPermissionMigration() (permissionsMap, error) {
+	return permissionsMap{
+		permissionTransformation{
+			On:  permissionOr(isRole(model.TeamAdminRoleId), isRole(model.SystemAdminRoleId)),
+			Add: []string{model.PermissionManageTeamTasks.Id},
+		},
+	}, nil
+}
+
 // DoPermissionsMigrations execute all the permissions migrations need by the current version.
 func (a *App) DoPermissionsMigrations() error {
 	return a.Srv().doPermissionsMigrations()
@@ -1431,6 +1440,7 @@ func (s *Server) doPermissionsMigrations() error {
 		{Key: model.MigrationKeyAddDiscoverableChannelPermissions, Migration: a.getAddDiscoverableChannelPermissionsMigration},
 		{Key: model.MigrationRemoveImportTeamPermission, Migration: a.removeImportTeamPermissionMigration},
 		{Key: model.MigrationKeyAddAIRecapsPermissions, Migration: a.getAddAIRecapsPermissionsMigration},
+		{Key: model.MigrationKeyAddManageTeamTasksPermission, Migration: a.getAddManageTeamTasksPermissionMigration},
 	}
 
 	roles, err := s.Store().Role().GetAll()

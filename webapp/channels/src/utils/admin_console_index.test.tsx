@@ -9,8 +9,6 @@ import {samplePlugin1, samplePlugin2} from 'tests/helpers/admin_console_plugin_i
 
 import {generateIndex} from './admin_console_index';
 
-const esMessages = require('../i18n/es');
-
 describe('AdminConsoleIndex.generateIndex', () => {
     it('should generate an index where I can search', () => {
         const intl = createIntl({locale: 'en', messages: {}, defaultLocale: 'en'});
@@ -64,34 +62,6 @@ describe('AdminConsoleIndex.generateIndex', () => {
             'site_config/posts',
         ]);
         expect(idx.search('caracteres')).toEqual([]);
-        expect(idx.search('notexistingword')).toEqual([]);
-    });
-
-    xit('should generate a index where I can search in other language', () => {
-        const intl = createIntl({locale: 'es', messages: esMessages, defaultLocale: 'es'});
-
-        const idx = generateIndex(AdminDefinition, intl, {});
-        expect(idx.search('ldap').sort()).toEqual([
-            'authentication/mfa',
-            'authentication/ldap',
-            'authentication/saml',
-            'authentication/email',
-            'environment/session_lengths',
-            'authentication/guest_access',
-        ].sort());
-        expect(idx.search('saml').sort()).toEqual([
-            'authentication/saml',
-            'environment/session_lengths',
-            'authentication/email',
-        ].sort());
-        expect(idx.search('nginx')).toEqual([
-            'environment/rate_limiting',
-        ]);
-        expect(idx.search('caracteres').sort()).toEqual([
-            'site_config/customization',
-            'authentication/password',
-        ].sort());
-        expect(idx.search('characters')).toEqual([]);
         expect(idx.search('notexistingword')).toEqual([]);
     });
 

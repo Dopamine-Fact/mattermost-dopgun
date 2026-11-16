@@ -375,6 +375,16 @@ export const permissionRolesStrings: Record<string, Record<string, MessageDescri
             defaultMessage: 'Manage team roles',
         },
     }),
+    manage_team_tasks: defineMessages({
+        name: {
+            id: 'admin.permissions.permission.manage_team_tasks.name',
+            defaultMessage: 'Manage tasks',
+        },
+        description: {
+            id: 'admin.permissions.permission.manage_team_tasks.description',
+            defaultMessage: 'Create, assign and delete tasks, and manage task sections. Other members can still update status, dates and descriptions.',
+        },
+    }),
     manage_incoming_webhooks: defineMessages({
         name: {
             id: 'admin.permissions.permission.manage_incoming_webhooks.name',

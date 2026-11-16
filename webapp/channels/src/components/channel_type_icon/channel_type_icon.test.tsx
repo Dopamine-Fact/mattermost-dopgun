@@ -24,6 +24,24 @@ function makeState(overrides: any[] = []) {
 }
 
 describe('components/ChannelTypeIcon', () => {
+    it('renders the uploaded channel icon instead of the type glyph', () => {
+        const {container} = renderWithContext(
+            <ChannelTypeIcon channel={makeChannel({last_icon_update: 42})}/>,
+            makeState(),
+        );
+        expect(container.querySelector('i')).toBeNull();
+        expect(container.querySelector('img')).toHaveAttribute('src', expect.stringContaining('/channels/channel-1/image?_=42'));
+    });
+
+    it('keeps the archive glyph for an archived channel with an uploaded icon', () => {
+        const {container} = renderWithContext(
+            <ChannelTypeIcon channel={makeChannel({last_icon_update: 42, delete_at: 1234})}/>,
+            makeState(),
+        );
+        expect(container.querySelector('img')).toBeNull();
+        expect(container.querySelector('i')).toHaveClass('icon-archive-outline');
+    });
+
     it('renders icon-globe for an open channel', () => {
         const {container} = renderWithContext(
             <ChannelTypeIcon channel={makeChannel({type: 'O'})}/>,

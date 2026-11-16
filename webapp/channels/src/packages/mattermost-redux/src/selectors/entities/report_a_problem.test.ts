@@ -107,7 +107,7 @@ describe('getReportAProblemLink', () => {
 
         const link = getReportAProblemLink(state);
         expect(link).toContain('mailto:reportaproblem@mattermost.com');
-        expect(link).toContain(encodeURIComponent('Problem with Mattermost app'));
+        expect(link).toContain(encodeURIComponent('Problem with Dopaminefact app'));
         expect(link).toContain(encodeURIComponent('Current User Id: user1'));
         expect(link).toContain(encodeURIComponent('Current Team Id: team1'));
         expect(link).toContain(encodeURIComponent('Server Version: 10.0.0 (Build 99999)'));
@@ -175,7 +175,7 @@ describe('getDefaultReportAProblemMailtoLink', () => {
     it('should include correct metadata in the email body', () => {
         const link = getDefaultReportAProblemMailtoLink(baseState);
         expect(link).toContain('mailto:reportaproblem@mattermost.com');
-        expect(link).toContain(encodeURIComponent('Problem with Mattermost app'));
+        expect(link).toContain(encodeURIComponent('Problem with Dopaminefact app'));
         expect(link).toContain(encodeURIComponent('Current User Id: user1'));
         expect(link).toContain(encodeURIComponent('Current Team Id: team1'));
         expect(link).toContain(encodeURIComponent('Server Version: 10.0.0 (Build 99999)'));

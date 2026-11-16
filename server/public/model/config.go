@@ -144,7 +144,7 @@ const (
 	ServiceSettingsDefaultMaxURLLength           = 2048
 	ServiceSettingsMaxUniqueReactionsPerPost     = 500
 
-	TeamSettingsDefaultSiteName              = "Mattermost"
+	TeamSettingsDefaultSiteName              = "Dopaminefact"
 	TeamSettingsDefaultMaxUsersPerTeam       = 0
 	TeamSettingsDefaultMaxChannelsPerTeam    = 0
 	TeamSettingsDefaultCustomBrandText       = ""

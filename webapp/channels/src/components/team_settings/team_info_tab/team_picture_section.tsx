@@ -5,7 +5,6 @@ import React, {type ChangeEvent, useRef, useState, useEffect, useCallback} from 
 import {useIntl} from 'react-intl';
 
 import {TrashCanOutlineIcon} from '@mattermost/compass-icons/components';
-import type {Team} from '@mattermost/types/teams';
 
 import EditIcon from 'components/widgets/icons/fa_edit_icon';
 import BaseSettingItem from 'components/widgets/modals/components/base_setting_item';
@@ -13,12 +12,12 @@ import type {BaseSettingItemProps} from 'components/widgets/modals/components/ba
 
 import Constants from 'utils/constants';
 import * as FileUtils from 'utils/file_utils';
-import {imageURLForTeam} from 'utils/utils';
 
 import './team_picture_section.scss';
 
 type Props = {
-    team: Team;
+    imageSrc?: string | null;
+    title?: string;
     file?: File | null;
     teamName: string;
     disabled: boolean;
@@ -27,13 +26,13 @@ type Props = {
     clientError?: BaseSettingItemProps['error'];
 };
 
-const TeamPictureSection = ({team, file, teamName, disabled, onFileChange, onRemove, clientError}: Props) => {
+const TeamPictureSection = ({imageSrc, title, file, teamName, disabled, onFileChange, onRemove, clientError}: Props) => {
     const selectInput = useRef<HTMLInputElement>(null);
     const [image, setImage] = useState<string>('');
     const [orientationStyles, setOrientationStyles] = useState<{transform: string; transformOrigin: string}>();
     const {formatMessage} = useIntl();
 
-    const teamImageSource = imageURLForTeam(team);
+    const teamImageSource = imageSrc;
 
     const handleInputFile = useCallback(() => {
         if (selectInput.current) {
@@ -156,7 +155,7 @@ const TeamPictureSection = ({team, file, teamName, disabled, onFileChange, onRem
 
     return (
         <BaseSettingItem
-            title={formatMessage({
+            title={title ?? formatMessage({
                 id: 'setting_picture.title',
                 defaultMessage: 'Team Icon',
             })}

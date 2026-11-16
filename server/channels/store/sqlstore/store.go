@@ -107,6 +107,7 @@ type SqlStoreStores struct {
 	channelBookmarks           store.ChannelBookmarkStore
 	channelGuard               store.ChannelGuardStore
 	scheduledPost              store.ScheduledPostStore
+	task                       store.TaskStore
 	view                       store.ViewStore
 	propertyGroup              store.PropertyGroupStore
 	propertyField              store.PropertyFieldStore
@@ -303,6 +304,7 @@ func New(settings model.SqlSettings, logger mlog.LoggerIFace, metrics einterface
 	store.stores.channelBookmarks = newSqlChannelBookmarkStore(store)
 	store.stores.channelGuard = newSqlChannelGuardStore(store)
 	store.stores.scheduledPost = newScheduledPostStore(store)
+	store.stores.task = newSqlTaskStore(store)
 	store.stores.view = newSqlViewStore(store)
 	store.stores.propertyGroup = newPropertyGroupStore(store)
 	store.stores.propertyField = newPropertyFieldStore(store)
@@ -1163,6 +1165,10 @@ func (ss *SqlStore) determineMaxColumnSize(tableName, columnName string) (int, e
 
 func (ss *SqlStore) ScheduledPost() store.ScheduledPostStore {
 	return ss.stores.scheduledPost
+}
+
+func (ss *SqlStore) Task() store.TaskStore {
+	return ss.stores.task
 }
 
 func (ss *SqlStore) ContentFlagging() store.ContentFlaggingStore {

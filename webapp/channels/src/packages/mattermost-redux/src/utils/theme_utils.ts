@@ -125,6 +125,7 @@ const themeTypeMap: ThemeTypeMap = {
     Organization: 'sapphire',
     'Mattermost Dark': 'indigo',
     'Windows Dark': 'onyx',
+    Dopaminefact: 'dopaminefact',
     Denim: 'denim',
     Sapphire: 'sapphire',
     Quartz: 'quartz',
@@ -134,7 +135,7 @@ const themeTypeMap: ThemeTypeMap = {
 
 // setThemeDefaults will set defaults on the theme for any unset properties.
 export function setThemeDefaults(theme: Partial<Theme>): Theme {
-    const defaultTheme = Preferences.THEMES.denim;
+    const defaultTheme = Preferences.THEMES.dopaminefact;
 
     const processedTheme = {...theme};
 

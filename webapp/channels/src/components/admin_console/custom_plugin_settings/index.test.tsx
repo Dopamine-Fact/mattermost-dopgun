@@ -1062,7 +1062,7 @@ describe('custom plugin sections and settings', () => {
     });
 
     describe('licensed add-on plugins', () => {
-        const addOnBannerText = 'This plugin is a licensed add-on. Your license does not include it, so it cannot be enabled. Contact your Mattermost account team to purchase it.';
+        const addOnBannerText = 'This plugin is a licensed add-on. Your license does not include it, so it cannot be enabled. Contact your Dopaminefact account team to purchase it.';
 
         const addOnPlugin = {
             ...plugin,

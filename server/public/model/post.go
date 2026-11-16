@@ -65,6 +65,7 @@ const (
 	PostTypeMe                        = "me"
 	PostCustomTypePrefix              = "custom_"
 	PostTypeReminder                  = "reminder"
+	PostTypeRevision                  = PostCustomTypePrefix + "revision" // a revision channel's card for one revision; props.task_id names it
 	PostTypeBurnOnRead                = "burn_on_read"
 	PostTypeCard                      = "card"
 	// PostTypeSharedChannelState is a system post for share/unshare events; the client translates using props.

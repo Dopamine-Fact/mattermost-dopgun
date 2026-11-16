@@ -21,8 +21,6 @@ import {getLicense, getServerVersion} from 'mattermost-redux/selectors/entities/
 
 import useOpenSalesLink from 'components/common/hooks/useOpenSalesLink';
 
-import {ConsolePages} from 'utils/constants';
-
 import {ItemStatus} from './dashboard.type';
 import type {DataModel, Options} from './dashboard.type';
 import {runAccessChecks} from './dashboard_checks/access';
@@ -100,7 +98,7 @@ const getAccessData = async (
     }),
     description: formatMessage({
         id: 'admin.reporting.workspace_optimization.access.description',
-        defaultMessage: 'Web server configuration may be affecting access to your Mattermost workspace.',
+        defaultMessage: 'Web server configuration may be affecting access to your Dopaminefact workspace.',
     }),
     hide: options.isCloud,
     descriptionOk: formatMessage({
@@ -171,7 +169,7 @@ const getEaseOfManagementData = async (
     }),
     description: formatMessage({
         id: 'admin.reporting.workspace_optimization.ease_of_management.description',
-        defaultMessage: 'Make it easier to manage your Mattermost workspace.',
+        defaultMessage: 'Make it easier to manage your Dopaminefact workspace.',
     }),
     descriptionOk: formatMessage({
         id: 'admin.reporting.workspace_optimization.ease_of_management.descriptionOk',
@@ -190,14 +188,12 @@ const useMetricsData = (
     const [data, setData] = useState<DataModel | undefined>(undefined);
 
     const {formatMessage} = useIntl();
-    const prevTrialLicense = useSelector((state: GlobalState) => state.entities.admin.prevTrialLicense);
     const license = useSelector(getLicense);
 
     // get the currently installed server version
     const installedVersion = useSelector((state: GlobalState) => getServerVersion(state));
     const analytics = useSelector((state: GlobalState) => state.entities.admin.analytics) as unknown as Options['analytics'];
 
-    const canStartTrial = license?.IsLicensed !== 'true' && prevTrialLicense?.IsLicensed !== 'true';
     const daysUntilExpiration = daysToLicenseExpire(license) || -1;
 
     const isLicensed = license?.IsLicensed === 'true' && daysUntilExpiration >= 0;
@@ -209,9 +205,9 @@ const useMetricsData = (
     const [, contactSalesLink] = useOpenSalesLink();
 
     const trialOrEnterpriseCtaConfig = useMemo(() => ({
-        configUrl: canStartTrial ? ConsolePages.LICENSE : contactSalesLink,
-        configText: canStartTrial ? formatMessage({id: 'admin.reporting.workspace_optimization.cta.startTrial', defaultMessage: 'Start trial'}) : formatMessage({id: 'admin.reporting.workspace_optimization.cta.upgradeLicense', defaultMessage: 'Contact sales'}),
-    }), [canStartTrial, contactSalesLink, formatMessage]);
+        configUrl: contactSalesLink,
+        configText: formatMessage({id: 'admin.reporting.workspace_optimization.cta.upgradeLicense', defaultMessage: 'Contact sales'}),
+    }), [contactSalesLink, formatMessage]);
 
     const options: Options = useMemo(() => ({
         isLicensed,

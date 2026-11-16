@@ -29,10 +29,6 @@ jest.mock('components/notify_admin_cta/notify_admin_cta', () => ({
     },
 }));
 
-jest.mock('components/learn_more_trial_modal/start_trial_btn', () => (props: {onClick: () => void}) => (
-    <button onClick={props.onClick}>{'Try free for 30 days'}</button>
-));
-
 jest.mock('@mattermost/components', () => ({
     GenericModal: ({children, modalHeaderText}: {children: React.ReactNode; modalHeaderText?: string}) => (
         <div>
@@ -44,8 +40,6 @@ jest.mock('@mattermost/components', () => ({
 
 describe('components/global/product_switcher_menu', () => {
     const defaultProps = {
-        titleAdminPreTrial: 'Title admin pre trial',
-        messageAdminPreTrial: 'Message admin pre trial',
         titleAdminPostTrial: 'Title admin post trial',
         messageAdminPostTrial: 'Message admin post trial',
         titleEndUser: 'Title end user',
@@ -65,11 +59,7 @@ describe('components/global/product_switcher_menu', () => {
                         },
                     },
                 },
-                admin: {
-                    prevTrialLicense: {
-                        IsLicensed: 'false',
-                    },
-                },
+                admin: {},
                 general: {
                     license: {
                         IsLicensed: 'false',
@@ -102,7 +92,7 @@ describe('components/global/product_switcher_menu', () => {
         };
     });
 
-    test('should show with end user pre trial', () => {
+    test('should show with end user', () => {
         const {container} = renderWithContext(<FeatureRestrictedModal {...defaultProps}/>);
 
         expect(screen.getByText(defaultProps.messageEndUser)).toBeInTheDocument();
@@ -112,25 +102,14 @@ describe('components/global/product_switcher_menu', () => {
         expect(screen.queryByRole('button', {name: /try free/i})).not.toBeInTheDocument();
     });
 
-    test('should show with end user post trial', () => {
-        const {container} = renderWithContext(<FeatureRestrictedModal {...defaultProps}/>);
-
-        expect(screen.getByText(defaultProps.messageEndUser)).toBeInTheDocument();
-        expect(container.querySelector('.FeatureRestrictedModal__terms')).not.toBeInTheDocument();
-        expect(container.querySelector('.FeatureRestrictedModal__buttons')).toHaveClass('single');
-        expect(screen.getByRole('button', {name: /notify admin/i})).toBeInTheDocument();
-        expect(screen.queryByRole('button', {name: /try free/i})).not.toBeInTheDocument();
-    });
-
-    test('should show with system admin pre trial for self hosted', () => {
+    test('should never offer a trial to a system admin', () => {
         mockState.entities.users.profiles.user1.roles = 'system_admin';
 
         const {container} = renderWithContext(<FeatureRestrictedModal {...defaultProps}/>);
 
-        expect(screen.getByText(defaultProps.messageAdminPreTrial)).toBeInTheDocument();
-        expect(container.querySelector('.FeatureRestrictedModal__terms')).toBeInTheDocument();
-        expect(container.querySelector('.FeatureRestrictedModal__buttons')).not.toHaveClass('single');
+        expect(screen.getByText(defaultProps.messageAdminPostTrial)).toBeInTheDocument();
+        expect(container.querySelector('.FeatureRestrictedModal__buttons')).toHaveClass('single');
         expect(screen.getByRole('button', {name: /view plans/i})).toBeInTheDocument();
-        expect(screen.getByRole('button', {name: /try free/i})).toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: /try free/i})).not.toBeInTheDocument();
     });
 });

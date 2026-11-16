@@ -25,6 +25,7 @@ import type {Reaction} from '@mattermost/types/reactions';
 import type {Role} from '@mattermost/types/roles';
 import type {ScheduledPost} from '@mattermost/types/schedule_post';
 import type {GlobalState} from '@mattermost/types/store';
+import type {Task, TaskSection} from '@mattermost/types/tasks';
 import type {Team, TeamMembership} from '@mattermost/types/teams';
 import type {UserThread} from '@mattermost/types/threads';
 
@@ -48,6 +49,7 @@ import {
     PropertyTypes,
     ScheduledPostTypes,
     ContentFlaggingTypes,
+    TaskTypes,
 } from 'mattermost-redux/action_types';
 import {getStandardAnalytics} from 'mattermost-redux/actions/admin';
 import {fetchAppBindings, fetchRHSAppsBindings} from 'mattermost-redux/actions/apps';
@@ -774,6 +776,18 @@ export function handleEvent(msg: WebSocketMessage) {
         break;
     case WebSocketEvents.ScheduledPostDeleted:
         dispatch(handleDeleteScheduledPostEvent(msg));
+        break;
+    case WebSocketEvents.TaskUpserted:
+        dispatch({type: TaskTypes.TASK_RECEIVED, data: JSON.parse(msg.data.task) as Task});
+        break;
+    case WebSocketEvents.TaskDeleted:
+        dispatch({type: TaskTypes.TASK_DELETED, data: {id: msg.data.task_id}});
+        break;
+    case WebSocketEvents.TaskSectionUpserted:
+        dispatch({type: TaskTypes.TASK_SECTION_RECEIVED, data: JSON.parse(msg.data.section) as TaskSection});
+        break;
+    case WebSocketEvents.TaskSectionDeleted:
+        dispatch({type: TaskTypes.TASK_SECTION_DELETED, data: {id: msg.data.section_id}});
         break;
     case WebSocketEvents.PersistentNotificationTriggered:
         dispatch(handlePersistentNotification(msg));

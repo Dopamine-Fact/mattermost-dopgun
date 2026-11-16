@@ -193,7 +193,7 @@ describe('CoreMenuOptions Component', () => {
                     ...initialState.entities.users,
                     profiles: {
                         currentUserId: {
-                            locale: 'fr',
+                            locale: 'tr',
                         },
                     },
                 },

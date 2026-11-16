@@ -15,32 +15,16 @@ jest.mock('@mattermost/shared/utils/user_agent', () => ({
     isDesktopApp: jest.fn(() => false),
 }));
 
-jest.mock('mattermost-redux/actions/admin', () => ({
-    ...jest.requireActual('mattermost-redux/actions/admin'),
-    getPrevTrialLicense: () => ({type: 'MOCK_GET_PREV_TRIAL_LICENSE'}),
-}));
-
-jest.mock('components/common/hooks/useOpenStartTrialFormModal', () => ({
-    __esModule: true,
-    default: () => jest.fn(),
-}));
-
 const dismissMockFn = jest.fn();
 
 describe('components/onboarding_tasklist/onboarding_tasklist_completed.tsx', () => {
     const props = {
         dismissAction: dismissMockFn,
-        isCurrentUserSystemAdmin: true,
-        isFirstAdmin: true,
     };
 
     const initialState = {
         entities: {
-            admin: {
-                prevTrialLicense: {
-                    IsLicensed: 'false',
-                },
-            },
+            admin: {},
             general: {
                 license: {
                     IsLicensed: 'false',
@@ -61,13 +45,12 @@ describe('components/onboarding_tasklist/onboarding_tasklist_completed.tsx', () 
         expect(container.querySelectorAll('.completed-subtitle')).toHaveLength(1);
     });
 
-    test('displays the no thanks option to close the onboarding list', async () => {
+    test('dismisses the onboarding list with the got it button', async () => {
         const {container} = renderWithContext(<Completed {...props}/>, initialState);
-        const noThanksLink = container.querySelectorAll('.no-thanks-link');
-        expect(noThanksLink).toHaveLength(1);
+        const gotItButton = container.querySelectorAll('.got-it-button');
+        expect(gotItButton).toHaveLength(1);
 
-        // calls the dissmiss function on click
-        await userEvent.click(noThanksLink[0]);
+        await userEvent.click(gotItButton[0]);
         expect(dismissMockFn).toHaveBeenCalledTimes(1);
     });
 

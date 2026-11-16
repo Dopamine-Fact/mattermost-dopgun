@@ -71,6 +71,7 @@ type RetryLayer struct {
 	SharedChannelStore              store.SharedChannelStore
 	StatusStore                     store.StatusStore
 	SystemStore                     store.SystemStore
+	TaskStore                       store.TaskStore
 	TeamStore                       store.TeamStore
 	TemporaryPostStore              store.TemporaryPostStore
 	TermsOfServiceStore             store.TermsOfServiceStore
@@ -290,6 +291,10 @@ func (s *RetryLayer) Status() store.StatusStore {
 
 func (s *RetryLayer) System() store.SystemStore {
 	return s.SystemStore
+}
+
+func (s *RetryLayer) Task() store.TaskStore {
+	return s.TaskStore
 }
 
 func (s *RetryLayer) Team() store.TeamStore {
@@ -593,6 +598,11 @@ type RetryLayerStatusStore struct {
 
 type RetryLayerSystemStore struct {
 	store.SystemStore
+	Root *RetryLayer
+}
+
+type RetryLayerTaskStore struct {
+	store.TaskStore
 	Root *RetryLayer
 }
 
@@ -15989,6 +15999,300 @@ func (s *RetryLayerSystemStore) Update(system *model.System) error {
 
 }
 
+func (s *RetryLayerTaskStore) Delete(id string) error {
+
+	tries := 0
+	for {
+		err := s.TaskStore.Delete(id)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTaskStore) DeleteComment(id string) error {
+
+	tries := 0
+	for {
+		err := s.TaskStore.DeleteComment(id)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTaskStore) DeleteSection(id string) error {
+
+	tries := 0
+	for {
+		err := s.TaskStore.DeleteSection(id)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTaskStore) Get(id string) (*model.Task, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.Get(id)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTaskStore) GetComment(id string) (*model.TaskComment, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.GetComment(id)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTaskStore) GetCommentsForTask(taskId string) ([]*model.TaskComment, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.GetCommentsForTask(taskId)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTaskStore) GetForTeam(teamId string) ([]*model.Task, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.GetForTeam(teamId)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTaskStore) GetSection(id string) (*model.TaskSection, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.GetSection(id)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTaskStore) GetSectionsForTeam(teamId string) ([]*model.TaskSection, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.GetSectionsForTeam(teamId)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTaskStore) Save(task *model.Task) (*model.Task, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.Save(task)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTaskStore) SaveComment(comment *model.TaskComment) (*model.TaskComment, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.SaveComment(comment)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTaskStore) SaveSection(section *model.TaskSection) (*model.TaskSection, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.SaveSection(section)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTaskStore) Update(task *model.Task) (*model.Task, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.Update(task)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTaskStore) UpdateSection(section *model.TaskSection) (*model.TaskSection, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.UpdateSection(section)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
 func (s *RetryLayerTeamStore) AnalyticsGetTeamCountForScheme(schemeID string) (int64, error) {
 
 	tries := 0
@@ -21112,6 +21416,7 @@ func New(childStore store.Store) *RetryLayer {
 	newStore.SharedChannelStore = &RetryLayerSharedChannelStore{SharedChannelStore: childStore.SharedChannel(), Root: &newStore}
 	newStore.StatusStore = &RetryLayerStatusStore{StatusStore: childStore.Status(), Root: &newStore}
 	newStore.SystemStore = &RetryLayerSystemStore{SystemStore: childStore.System(), Root: &newStore}
+	newStore.TaskStore = &RetryLayerTaskStore{TaskStore: childStore.Task(), Root: &newStore}
 	newStore.TeamStore = &RetryLayerTeamStore{TeamStore: childStore.Team(), Root: &newStore}
 	newStore.TemporaryPostStore = &RetryLayerTemporaryPostStore{TemporaryPostStore: childStore.TemporaryPost(), Root: &newStore}
 	newStore.TermsOfServiceStore = &RetryLayerTermsOfServiceStore{TermsOfServiceStore: childStore.TermsOfService(), Root: &newStore}

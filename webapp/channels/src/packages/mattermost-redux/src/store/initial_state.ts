@@ -138,7 +138,6 @@ const state: GlobalState = {
             teamAnalytics: {},
             dataRetentionCustomPolicies: {},
             dataRetentionCustomPoliciesCount: 0,
-            prevTrialLicense: {},
             accessControlPolicies: {},
             channelsForAccessControlPolicy: {},
         },
@@ -237,6 +236,10 @@ const state: GlobalState = {
             byTeamId: {},
             errorsByTeamId: {},
             byChannelOrThreadId: {},
+        },
+        tasks: {
+            byId: {},
+            sectionsById: {},
         },
         contentFlagging: {},
         properties: {

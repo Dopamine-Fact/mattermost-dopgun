@@ -31,7 +31,7 @@ describe('components/user_settings/display/manage_languages/manage_languages', (
     test('renders the language help text without external links', () => {
         renderWithContext(<ManageLanguage {...requiredProps}/>);
 
-        expect(screen.getByText('Select which language Mattermost displays in the user interface.')).toBeInTheDocument();
+        expect(screen.getByText('Select which language Dopaminefact displays in the user interface.')).toBeInTheDocument();
         expect(screen.queryByRole('link')).not.toBeInTheDocument();
     });
 

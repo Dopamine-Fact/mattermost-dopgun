@@ -1,0 +1,523 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+package api4
+
+import (
+	"encoding/json"
+	"io"
+	"net/http"
+	"time"
+
+	"github.com/gorilla/mux"
+
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/shared/mlog"
+	"github.com/mattermost/mattermost/server/v8/channels/app"
+	"github.com/mattermost/mattermost/server/v8/platform/shared/web"
+)
+
+func (api *API) InitTasks() {
+	api.BaseRoutes.Team.Handle("/tasks", api.APISessionRequired(getTeamTasks)).Methods(http.MethodGet)
+	api.BaseRoutes.Team.Handle("/tasks", api.APISessionRequired(createTask)).Methods(http.MethodPost)
+	api.BaseRoutes.APIRoot.Handle("/tasks/{task_id:[A-Za-z0-9]+}", api.APISessionRequired(patchTask)).Methods(http.MethodPatch)
+	api.BaseRoutes.APIRoot.Handle("/tasks/{task_id:[A-Za-z0-9]+}", api.APISessionRequired(deleteTask)).Methods(http.MethodDelete)
+
+	api.BaseRoutes.Team.Handle("/task_sections", api.APISessionRequired(getTeamTaskSections)).Methods(http.MethodGet)
+	api.BaseRoutes.Team.Handle("/task_sections", api.APISessionRequired(createTaskSection)).Methods(http.MethodPost)
+	api.BaseRoutes.APIRoot.Handle("/task_sections/{section_id:[A-Za-z0-9]+}", api.APISessionRequired(patchTaskSection)).Methods(http.MethodPatch)
+	api.BaseRoutes.APIRoot.Handle("/task_sections/{section_id:[A-Za-z0-9]+}", api.APISessionRequired(deleteTaskSection)).Methods(http.MethodDelete)
+	api.BaseRoutes.APIRoot.Handle("/task_sections/{section_id:[A-Za-z0-9]+}/video", api.APISessionRequired(setTaskSectionVideo, handlerParamFileAPI)).Methods(http.MethodPost)
+	api.BaseRoutes.APIRoot.Handle("/task_sections/{section_id:[A-Za-z0-9]+}/video", api.APISessionRequiredTrustRequester(getTaskSectionVideo)).Methods(http.MethodGet)
+
+	api.BaseRoutes.APIRoot.Handle("/tasks/{task_id:[A-Za-z0-9]+}/comments", api.APISessionRequired(getTaskComments)).Methods(http.MethodGet)
+	api.BaseRoutes.APIRoot.Handle("/tasks/{task_id:[A-Za-z0-9]+}/comments", api.APISessionRequired(createTaskComment, handlerParamFileAPI)).Methods(http.MethodPost)
+	api.BaseRoutes.APIRoot.Handle("/task_comments/{comment_id:[A-Za-z0-9]+}", api.APISessionRequired(deleteTaskComment)).Methods(http.MethodDelete)
+	api.BaseRoutes.APIRoot.Handle("/task_comments/{comment_id:[A-Za-z0-9]+}/files/{file_id:[A-Za-z0-9]+}", api.APISessionRequiredTrustRequester(getTaskCommentFile)).Methods(http.MethodGet)
+}
+
+// requireTaskTeamMember: any team member may read and edit the team's tasks.
+func requireTaskTeamMember(c *Context, teamID string) {
+	if !c.App.SessionHasPermissionToTeam(*c.AppContext.Session(), teamID, model.PermissionViewTeam) {
+		c.SetPermissionError(model.PermissionViewTeam)
+	}
+}
+
+// requireManageTasks: creating, assigning and deleting tasks, and editing sections, need manage_team_tasks.
+func requireManageTasks(c *Context, teamID string) {
+	if !c.App.SessionHasPermissionToTeam(*c.AppContext.Session(), teamID, model.PermissionManageTeamTasks) {
+		c.SetPermissionError(model.PermissionManageTeamTasks)
+	}
+}
+
+func writeTaskJSON(w http.ResponseWriter, status int, v any) {
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		mlog.Error("failed to encode task API response", mlog.Err(err))
+	}
+}
+
+// loadTask resolves {task_id} and checks the caller belongs to the task's team.
+func loadTask(c *Context, r *http.Request) *model.Task {
+	task, appErr := c.App.GetTask(mux.Vars(r)["task_id"])
+	if appErr != nil {
+		c.Err = appErr
+		return nil
+	}
+	if requireTaskTeamMember(c, task.TeamId); c.Err != nil {
+		return nil
+	}
+	return task
+}
+
+func loadTaskSection(c *Context, r *http.Request) *model.TaskSection {
+	section, appErr := c.App.GetTaskSection(mux.Vars(r)["section_id"])
+	if appErr != nil {
+		c.Err = appErr
+		return nil
+	}
+	if requireTaskTeamMember(c, section.TeamId); c.Err != nil {
+		return nil
+	}
+	return section
+}
+
+func getTeamTasks(c *Context, w http.ResponseWriter, r *http.Request) {
+	if c.RequireTeamId(); c.Err != nil {
+		return
+	}
+	if requireTaskTeamMember(c, c.Params.TeamId); c.Err != nil {
+		return
+	}
+	tasks, appErr := c.App.GetTasksForTeam(c.Params.TeamId)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	writeTaskJSON(w, http.StatusOK, tasks)
+}
+
+func createTask(c *Context, w http.ResponseWriter, r *http.Request) {
+	if c.RequireTeamId(); c.Err != nil {
+		return
+	}
+	if requireTaskTeamMember(c, c.Params.TeamId); c.Err != nil {
+		return
+	}
+	if requireManageTasks(c, c.Params.TeamId); c.Err != nil {
+		return
+	}
+
+	var task model.Task
+	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
+		c.SetInvalidParamWithErr("task", err)
+		return
+	}
+	task.Id = ""
+	task.TeamId = c.Params.TeamId
+	task.CreatorId = c.AppContext.Session().UserId
+
+	auditRec := c.MakeAuditRecord(model.AuditEventCreateTask, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	model.AddEventParameterAuditableToAuditRec(auditRec, "task", &task)
+
+	created, appErr := c.App.CreateTask(c.AppContext, &task, r.Header.Get(model.ConnectionId))
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	auditRec.Success()
+	auditRec.AddEventResultState(created)
+	auditRec.AddEventObjectType("task")
+	writeTaskJSON(w, http.StatusCreated, created)
+}
+
+func patchTask(c *Context, w http.ResponseWriter, r *http.Request) {
+	task := loadTask(c, r)
+	if c.Err != nil {
+		return
+	}
+
+	var patch model.TaskPatch
+	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
+		c.SetInvalidParamWithErr("task", err)
+		return
+	}
+	if patch.AssigneeId != nil && *patch.AssigneeId != task.AssigneeId {
+		if requireManageTasks(c, task.TeamId); c.Err != nil {
+			return
+		}
+	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventPatchTask, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	auditRec.AddEventPriorState(task)
+
+	updated, appErr := c.App.PatchTask(c.AppContext, task, &patch, r.Header.Get(model.ConnectionId))
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	auditRec.Success()
+	auditRec.AddEventResultState(updated)
+	auditRec.AddEventObjectType("task")
+	writeTaskJSON(w, http.StatusOK, updated)
+}
+
+func deleteTask(c *Context, w http.ResponseWriter, r *http.Request) {
+	task := loadTask(c, r)
+	if c.Err != nil {
+		return
+	}
+	if requireManageTasks(c, task.TeamId); c.Err != nil {
+		return
+	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventDeleteTask, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	auditRec.AddEventPriorState(task)
+
+	if appErr := c.App.DeleteTask(c.AppContext, task, r.Header.Get(model.ConnectionId)); appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	auditRec.Success()
+	ReturnStatusOK(w)
+}
+
+func getTeamTaskSections(c *Context, w http.ResponseWriter, r *http.Request) {
+	if c.RequireTeamId(); c.Err != nil {
+		return
+	}
+	if requireTaskTeamMember(c, c.Params.TeamId); c.Err != nil {
+		return
+	}
+	sections, appErr := c.App.GetTaskSectionsForTeam(c.Params.TeamId)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	writeTaskJSON(w, http.StatusOK, sections)
+}
+
+func createTaskSection(c *Context, w http.ResponseWriter, r *http.Request) {
+	if c.RequireTeamId(); c.Err != nil {
+		return
+	}
+	if requireTaskTeamMember(c, c.Params.TeamId); c.Err != nil {
+		return
+	}
+	if requireManageTasks(c, c.Params.TeamId); c.Err != nil {
+		return
+	}
+
+	var section model.TaskSection
+	if err := json.NewDecoder(r.Body).Decode(&section); err != nil {
+		c.SetInvalidParamWithErr("task_section", err)
+		return
+	}
+	section.Id = ""
+	section.TeamId = c.Params.TeamId
+	section.VideoFileId = "" // set only by uploading through /video
+	if section.ChannelId != "" {
+		if ok, _ := c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), section.ChannelId, model.PermissionReadChannel); !ok {
+			c.SetPermissionError(model.PermissionReadChannel)
+			return
+		}
+	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventCreateTaskSection, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	model.AddEventParameterAuditableToAuditRec(auditRec, "task_section", &section)
+
+	created, appErr := c.App.CreateTaskSection(c.AppContext, &section, r.Header.Get(model.ConnectionId))
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	auditRec.Success()
+	auditRec.AddEventResultState(created)
+	auditRec.AddEventObjectType("task_section")
+	writeTaskJSON(w, http.StatusCreated, created)
+}
+
+func patchTaskSection(c *Context, w http.ResponseWriter, r *http.Request) {
+	section := loadTaskSection(c, r)
+	if c.Err != nil {
+		return
+	}
+	if requireManageTasks(c, section.TeamId); c.Err != nil {
+		return
+	}
+
+	var patch model.TaskSectionPatch
+	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
+		c.SetInvalidParamWithErr("task_section", err)
+		return
+	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventPatchTaskSection, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	auditRec.AddEventPriorState(section)
+
+	updated, appErr := c.App.PatchTaskSection(c.AppContext, section, &patch, r.Header.Get(model.ConnectionId))
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	auditRec.Success()
+	auditRec.AddEventResultState(updated)
+	auditRec.AddEventObjectType("task_section")
+	writeTaskJSON(w, http.StatusOK, updated)
+}
+
+func deleteTaskSection(c *Context, w http.ResponseWriter, r *http.Request) {
+	section := loadTaskSection(c, r)
+	if c.Err != nil {
+		return
+	}
+	if requireManageTasks(c, section.TeamId); c.Err != nil {
+		return
+	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventDeleteTaskSection, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	auditRec.AddEventPriorState(section)
+
+	if appErr := c.App.DeleteTaskSection(c.AppContext, section, r.Header.Get(model.ConnectionId)); appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	auditRec.Success()
+	ReturnStatusOK(w)
+}
+
+// readUploadedFile reads one multipart file field, enforcing attachments being on and MaxFileSize.
+func readUploadedFile(c *Context, r *http.Request, field string) (string, []byte) {
+	if !*c.App.Config().FileSettings.EnableFileAttachments {
+		c.Err = model.NewAppError("readUploadedFile", "api.file.attachments.disabled.app_error", nil, "", http.StatusForbidden)
+		return "", nil
+	}
+	if err := r.ParseMultipartForm(32 * 1024 * 1024); err != nil {
+		c.Err = model.NewAppError("readUploadedFile", "api.file.upload_file.read_request.app_error", nil, "", http.StatusBadRequest).Wrap(err)
+		return "", nil
+	}
+	defer func() {
+		if err := r.MultipartForm.RemoveAll(); err != nil {
+			c.Logger.Warn("readUploadedFile: failed to remove temporary files", mlog.Err(err))
+		}
+	}()
+	f, header, err := r.FormFile(field)
+	if err != nil {
+		c.SetInvalidParamWithErr(field, err)
+		return "", nil
+	}
+	defer f.Close()
+	data, err := io.ReadAll(f)
+	if err != nil {
+		c.Err = model.NewAppError("readUploadedFile", "api.file.upload_file.read_request.app_error", nil, "", http.StatusBadRequest).Wrap(err)
+		return "", nil
+	}
+	return header.Filename, data
+}
+
+// setTaskSectionVideo uploads the video that makes a section a revision channel.
+func setTaskSectionVideo(c *Context, w http.ResponseWriter, r *http.Request) {
+	section := loadTaskSection(c, r)
+	if c.Err != nil {
+		return
+	}
+	if requireManageTasks(c, section.TeamId); c.Err != nil {
+		return
+	}
+	name, data := readUploadedFile(c, r, "video")
+	if c.Err != nil {
+		return
+	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventSetTaskSectionVideo, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	auditRec.AddEventPriorState(section)
+
+	updated, appErr := c.App.SetTaskSectionVideo(c.AppContext, section, c.AppContext.Session().UserId, name, data, r.Header.Get(model.ConnectionId))
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	auditRec.Success()
+	auditRec.AddEventResultState(updated)
+	auditRec.AddEventObjectType("task_section")
+	writeTaskJSON(w, http.StatusOK, updated)
+}
+
+// getTaskSectionVideo streams the video with range support so the player can seek.
+func getTaskSectionVideo(c *Context, w http.ResponseWriter, r *http.Request) {
+	section := loadTaskSection(c, r)
+	if c.Err != nil {
+		return
+	}
+	info, appErr := c.App.GetTaskSectionVideo(c.AppContext, section)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	fileReader, appErr := c.App.FileReader(info.Path)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	defer fileReader.Close()
+	web.WriteFileResponse(info.Name, model.TaskVideoContentType(info.Name), info.Size, time.UnixMilli(info.UpdateAt), *c.App.Config().ServiceSettings.WebserverMode, fileReader, false, w, r)
+}
+
+// loadTaskComment resolves {comment_id} with its task and checks the caller belongs to the task's team.
+func loadTaskComment(c *Context, r *http.Request) (*model.Task, *model.TaskComment) {
+	comment, appErr := c.App.GetTaskComment(mux.Vars(r)["comment_id"])
+	if appErr != nil {
+		c.Err = appErr
+		return nil, nil
+	}
+	task, appErr := c.App.GetTask(comment.TaskId)
+	if appErr != nil {
+		c.Err = appErr
+		return nil, nil
+	}
+	if requireTaskTeamMember(c, task.TeamId); c.Err != nil {
+		return nil, nil
+	}
+	return task, comment
+}
+
+func getTaskComments(c *Context, w http.ResponseWriter, r *http.Request) {
+	task := loadTask(c, r)
+	if c.Err != nil {
+		return
+	}
+	comments, appErr := c.App.GetTaskComments(task)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	writeTaskJSON(w, http.StatusOK, comments)
+}
+
+// createTaskComment takes multipart form data: a "message" field and any number of "files" parts.
+func createTaskComment(c *Context, w http.ResponseWriter, r *http.Request) {
+	task := loadTask(c, r)
+	if c.Err != nil {
+		return
+	}
+
+	// shortcut: handlerParamFileAPI caps the whole request at MaxFileSize, so all files of one comment share that limit; stream parts instead if that is too tight.
+	maxFileSize := *c.App.Config().FileSettings.MaxFileSize
+	if err := r.ParseMultipartForm(32 * 1024 * 1024); err != nil {
+		c.Err = model.NewAppError("createTaskComment", "api.file.upload_file.read_request.app_error", nil, "", http.StatusBadRequest).Wrap(err)
+		return
+	}
+	defer func() {
+		if err := r.MultipartForm.RemoveAll(); err != nil {
+			c.Logger.Warn("createTaskComment: failed to remove temporary files", mlog.Err(err))
+		}
+	}()
+
+	headers := r.MultipartForm.File["files"]
+	if len(headers) > 0 && !*c.App.Config().FileSettings.EnableFileAttachments {
+		c.Err = model.NewAppError("createTaskComment", "api.file.attachments.disabled.app_error", nil, "", http.StatusForbidden)
+		return
+	}
+	message := r.FormValue("message")
+	if appErr := model.ValidateTaskCommentContent(message, len(headers)); appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	files := make([]app.TaskCommentFile, 0, len(headers))
+	for _, header := range headers {
+		if header.Size > maxFileSize {
+			c.Err = model.NewAppError("createTaskComment", "api.file.upload_file.too_large_detailed.app_error",
+				map[string]any{"Filename": header.Filename, "Length": header.Size, "Limit": maxFileSize}, "", http.StatusRequestEntityTooLarge)
+			return
+		}
+		f, err := header.Open()
+		if err != nil {
+			c.Err = model.NewAppError("createTaskComment", "api.file.upload_file.read_request.app_error", nil, "", http.StatusBadRequest).Wrap(err)
+			return
+		}
+		data, err := io.ReadAll(f)
+		f.Close()
+		if err != nil {
+			c.Err = model.NewAppError("createTaskComment", "api.file.upload_file.read_request.app_error", nil, "", http.StatusBadRequest).Wrap(err)
+			return
+		}
+		files = append(files, app.TaskCommentFile{Name: header.Filename, Data: data})
+	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventCreateTaskComment, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	model.AddEventParameterToAuditRec(auditRec, "task_id", task.Id)
+
+	comment, appErr := c.App.CreateTaskComment(c.AppContext, task, c.AppContext.Session().UserId, message, files)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	auditRec.Success()
+	auditRec.AddEventResultState(comment)
+	auditRec.AddEventObjectType("task_comment")
+	writeTaskJSON(w, http.StatusCreated, comment)
+}
+
+// deleteTaskComment: authors delete their own comments; task managers delete any.
+func deleteTaskComment(c *Context, w http.ResponseWriter, r *http.Request) {
+	task, comment := loadTaskComment(c, r)
+	if c.Err != nil {
+		return
+	}
+	if comment.UserId != c.AppContext.Session().UserId {
+		if requireManageTasks(c, task.TeamId); c.Err != nil {
+			return
+		}
+	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventDeleteTaskComment, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	auditRec.AddEventPriorState(comment)
+
+	if appErr := c.App.DeleteTaskComment(c.AppContext, task, comment); appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	auditRec.Success()
+	ReturnStatusOK(w)
+}
+
+// getTaskCommentFile streams an attachment; the files have no channel, so /files/{id} cannot serve them.
+func getTaskCommentFile(c *Context, w http.ResponseWriter, r *http.Request) {
+	task, comment := loadTaskComment(c, r)
+	if c.Err != nil {
+		return
+	}
+	info, appErr := c.App.GetTaskCommentFile(c.AppContext, task, comment, mux.Vars(r)["file_id"])
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	fileReader, appErr := c.App.FileReader(info.Path)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	defer fileReader.Close()
+
+	forceDownload := r.URL.Query().Get("download") == "1"
+	web.WriteFileResponse(info.Name, info.MimeType, info.Size, time.UnixMilli(info.UpdateAt), *c.App.Config().ServiceSettings.WebserverMode, fileReader, forceDownload, w, r)
+}

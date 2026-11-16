@@ -34,6 +34,7 @@ import type {ScheduledPostsState} from './schedule_post';
 import type {SchemesState} from './schemes';
 import type {SearchState} from './search';
 import type {RemoteClusterInfo} from './shared_channels';
+import type {TasksState} from './tasks';
 import type {TeamsState} from './teams';
 import type {ThreadsState} from './threads';
 import type {Typing} from './typing';
@@ -99,6 +100,7 @@ export type GlobalState = {
         cloud: CloudState;
         usage: CloudUsage;
         scheduledPosts: ScheduledPostsState;
+        tasks: TasksState;
         sharedChannels?: {
             remotes?: Record<string, RemoteClusterInfo[]>;
             remotesByRemoteId?: Record<string, RemoteClusterInfo>;

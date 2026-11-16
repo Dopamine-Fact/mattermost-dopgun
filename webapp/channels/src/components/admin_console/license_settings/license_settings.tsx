@@ -31,7 +31,6 @@ import StarterLeftPanel, {messages as licenseSettingsStarterEditionMessages} fro
 import StarterRightPanel from './starter_edition/starter_right_panel';
 import TeamEditionLeftPanel from './team_edition/team_edition_left_panel';
 import TeamEditionRightPanel from './team_edition/team_edition_right_panel';
-import TrialBanner from './trial_banner/trial_banner';
 import TrialLicenseCard from './trial_license_card/trial_license_card';
 import UserSeatAlertBanner from './user_seat_alert_banner';
 
@@ -43,13 +42,11 @@ type Props = {
     upgradedFromTE: boolean;
     totalUsers: number;
     isDisabled: boolean;
-    prevTrialLicense: ClientLicense;
     environmentConfig: Partial<EnvironmentConfig>;
     actions: {
         getLicenseConfig: () => void;
         uploadLicense: (file: File) => Promise<ActionResult>;
         removeLicense: () => Promise<ActionResult<boolean, ServerError>>;
-        getPrevTrialLicense: () => void;
         upgradeToE0: () => Promise<StatusOK>;
         upgradeToE0Status: () => Promise<{percentage: number; error: string | JSX.Element | null}>;
         isAllowedToUpgradeToEnterprise: () => Promise<ActionResult>;
@@ -78,9 +75,6 @@ type State = {
     fileSelected: boolean;
     file: File | null;
     serverError: string | null;
-    gettingTrialError: string | null;
-    gettingTrialResponseCode: number | null;
-    gettingTrial: boolean;
     removing: boolean;
     upgradingPercentage: number;
     upgradeError: string | null;
@@ -100,9 +94,6 @@ export default class LicenseSettings extends React.PureComponent<Props, State> {
             fileSelected: false,
             file: null,
             serverError: null,
-            gettingTrialResponseCode: null,
-            gettingTrialError: null,
-            gettingTrial: false,
             removing: false,
             upgradingPercentage: 0,
             upgradeError: null,
@@ -115,9 +106,7 @@ export default class LicenseSettings extends React.PureComponent<Props, State> {
     }
 
     componentDidMount() {
-        if (this.props.enterpriseReady) {
-            this.props.actions.getPrevTrialLicense();
-        } else {
+        if (!this.props.enterpriseReady) {
             this.props.actions.isAllowedToUpgradeToEnterprise().then(({error}) => {
                 this.setState({upgradeDisabled: Boolean(error?.message), upgradeError: error?.message});
                 if (!error?.message) {
@@ -198,10 +187,7 @@ export default class LicenseSettings extends React.PureComponent<Props, State> {
             return;
         }
 
-        await Promise.all([
-            this.props.actions.getPrevTrialLicense(),
-            this.props.actions.getLicenseConfig(),
-        ]);
+        await this.props.actions.getLicenseConfig();
 
         await this.props.actions.getServerLimits();
 
@@ -366,24 +352,6 @@ export default class LicenseSettings extends React.PureComponent<Props, State> {
                                 totalUsers={this.props.totalUsers}
                                 location='license_settings'
                             />
-                            {!this.state.clickNormalUpgradeBtn && (license.IsLicensed !== 'true') &&
-                                this.props.prevTrialLicense?.IsLicensed !== 'true' &&
-                                <TrialBanner
-                                    isDisabled={isDisabled}
-                                    gettingTrialResponseCode={this.state.gettingTrialResponseCode}
-                                    gettingTrialError={this.state.gettingTrialError}
-                                    gettingTrial={this.state.gettingTrial}
-                                    enterpriseReady={this.props.enterpriseReady}
-                                    upgradingPercentage={this.state.upgradingPercentage}
-                                    handleUpgrade={this.handleUpgrade}
-                                    upgradeError={this.state.upgradeError}
-                                    restartError={this.state.restartError}
-                                    handleRestart={this.handleRestart}
-                                    restarting={this.state.restarting}
-                                    openEEModal={this.openEELicenseModal}
-                                    upgradeDisabled={this.state.upgradeDisabled}
-                                />
-                            }
                             {this.renewLicenseCard()}
                         </div>
                         <div className='top-wrapper'>

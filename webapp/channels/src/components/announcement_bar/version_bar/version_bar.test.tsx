@@ -12,11 +12,11 @@ describe('components/VersionBar', () => {
         const {rerender} = renderWithContext(
             <VersionBar buildHash='844f70a08ead47f06232ecb6fcad63d2'/>,
         );
-        expect(screen.queryByText('A new version of Mattermost is available.', {exact: false})).not.toBeInTheDocument();
+        expect(screen.queryByText('A new version of Dopaminefact is available.', {exact: false})).not.toBeInTheDocument();
 
         rerender(
             <VersionBar buildHash='83ea110da12da84442f92b4634a1e0e2'/>,
         );
-        expect(screen.getByText('A new version of Mattermost is available.', {exact: false})).toBeInTheDocument();
+        expect(screen.getByText('A new version of Dopaminefact is available.', {exact: false})).toBeInTheDocument();
     });
 });

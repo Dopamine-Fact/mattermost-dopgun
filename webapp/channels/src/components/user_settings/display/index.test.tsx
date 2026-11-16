@@ -42,7 +42,7 @@ describe('components/user_settings/display/index', () => {
     }
 
     test('keeps a supported user locale', () => {
-        expect(userLocaleFor(baseState, 'de')).toBe('de');
+        expect(userLocaleFor(baseState, 'tr')).toBe('tr');
     });
 
     test('falls back to DefaultClientLocale when the user locale is not supported', () => {

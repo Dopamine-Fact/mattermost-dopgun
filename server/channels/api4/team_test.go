@@ -131,7 +131,7 @@ func TestCreateTeam(t *testing.T) {
 		c := th.SystemAdminClient
 		cfg, _, err := c.GetConfig(context.Background())
 		require.NoError(t, err)
-		newServerLang := "de"
+		newServerLang := "tr"
 		cfg.LocalizationSettings.DefaultServerLocale = &newServerLang
 		translateFunc := i18n.GetUserTranslations(newServerLang)
 
