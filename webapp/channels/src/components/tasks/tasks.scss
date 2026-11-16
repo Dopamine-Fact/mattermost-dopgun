@@ -720,8 +720,21 @@
     }
 
     &__hint {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         color: rgba(var(--center-channel-color-rgb), 0.64);
         font-size: 12px;
+    }
+
+    &__replace {
+        margin: 0;
+        cursor: pointer;
+
+        // global form styles show file inputs even when [hidden]
+        input {
+            display: none;
+        }
     }
 
     &__add {

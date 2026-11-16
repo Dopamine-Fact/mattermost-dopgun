@@ -5,7 +5,7 @@ import React from 'react';
 
 import type {Task, TaskSection} from '@mattermost/types/tasks';
 
-import {createTask} from 'actions/tasks';
+import {createTask, setTaskSectionVideo} from 'actions/tasks';
 
 import {fireEvent, renderWithContext, screen, waitFor} from 'tests/react_testing_utils';
 
@@ -15,6 +15,7 @@ import {formatVideoTime} from './task_utils';
 jest.mock('actions/tasks', () => ({
     ...jest.requireActual('actions/tasks'),
     createTask: jest.fn(() => () => Promise.resolve({data: {id: 'new'}})),
+    setTaskSectionVideo: jest.fn(() => () => Promise.resolve({data: {}})),
 }));
 jest.mock('./use_frame_thumbnails', () => ({
     useFrameThumbnails: () => ({1200: 'data:image/jpeg;base64,early'}),
@@ -74,7 +75,7 @@ describe('Revisions', () => {
 
     test('lists only the channel\'s revisions in video order and seeks to them', () => {
         const {time} = renderRevisions();
-        expect(document.querySelector('video')).toHaveAttribute('src', expect.stringContaining('/task_sections/sec1/video'));
+        expect(document.querySelector('video')).toHaveAttribute('src', expect.stringContaining('/task_sections/sec1/video?v=file1'));
 
         const names = screen.getAllByRole('button', {name: /^Revision /}).map((b) => b.textContent);
         expect(names).toEqual(['Revision early', 'Revision late']);
@@ -127,5 +128,16 @@ describe('Revisions', () => {
         renderRevisions(false);
         expect(screen.queryByRole('textbox', {name: 'Revision'})).not.toBeInTheDocument();
         expect(screen.getByRole('button', {name: 'Revision late'})).toBeInTheDocument();
+    });
+    test('managers can replace the video; others cannot', async () => {
+        renderRevisions();
+        const file = new File(['x'], 'cut2.mp4', {type: 'video/mp4'});
+        fireEvent.change(screen.getByLabelText('Replace video'), {target: {files: [file]}});
+        await waitFor(() => expect(setTaskSectionVideo).toHaveBeenCalledWith('sec1', file));
+    });
+
+    test('viewers get no replace control', () => {
+        renderRevisions(false);
+        expect(screen.queryByLabelText('Replace video')).toBeNull();
     });
 });

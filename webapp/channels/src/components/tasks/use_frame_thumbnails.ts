@@ -10,6 +10,13 @@ const THUMB_WIDTH = 320;
 // shortcut: stills are redrawn on every visit; store them on the server if long videos make this slow.
 export function useFrameThumbnails(src: string, times: number[]): Record<number, string> {
     const [thumbs, setThumbs] = useState<Record<number, string>>({});
+
+    // A replaced video (new src) starts over: the old stills show the old cut.
+    const [shownSrc, setShownSrc] = useState(src);
+    if (shownSrc !== src) {
+        setShownSrc(src);
+        setThumbs({});
+    }
     const done = useRef(thumbs);
     done.current = thumbs;
     const key = [...new Set(times)].sort((a, b) => a - b).join(',');
