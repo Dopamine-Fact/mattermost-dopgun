@@ -28,15 +28,37 @@ func TestDailyReportsAPI(t *testing.T) {
 		CheckForbiddenStatus(t, resp)
 	})
 
-	_, _, err := th.SystemAdminClient.PatchTeam(ctx, teamID, &model.TeamPatch{
-		TasksEnabled: new(true), DailyReportsEnabled: new(true),
-		DailyReportTime: new("18:00"), DailyReportTimezone: new("Europe/Istanbul"),
-	})
-	require.NoError(t, err)
+	enableTeam := func(id string) {
+		_, _, err := th.SystemAdminClient.PatchTeam(ctx, id, &model.TeamPatch{
+			TasksEnabled: new(true), DailyReportsEnabled: new(true),
+			DailyReportTime: new("18:00"), DailyReportTimezone: new("Europe/Istanbul"),
+		})
+		require.NoError(t, err)
+	}
+	enableTeam(teamID)
+
+	// teamAdminClient returns a client for a fresh non-sysadmin user who is team admin of the team.
+	teamAdminClient := func(team *model.Team) (*model.Client4, *model.User) {
+		u := th.CreateUser(t)
+		th.LinkUserToTeam(t, u, team)
+		_, appErr := th.App.UpdateTeamMemberRoles(th.Context, team.Id, u.Id, model.TeamUserRoleId+" "+model.TeamAdminRoleId)
+		require.Nil(t, appErr)
+		client := th.CreateClient()
+		_, _, err := client.Login(ctx, u.Email, u.Password)
+		require.NoError(t, err)
+		return client, u
+	}
 
 	t.Run("non-member gets 403", func(t *testing.T) {
 		other := th.CreateTeamWithClient(t, th.SystemAdminClient)
+		enableTeam(other.Id) // enabled, so 403 can only come from the membership check
 		_, resp, err := th.Client.GetDailyReports(ctx, other.Id, "", "", "")
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		_, resp, err = th.Client.SubmitDailyReport(ctx, other.Id, "x")
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		_, resp, err = th.Client.ExportDailyReports(ctx, other.Id, "", "")
 		require.Error(t, err)
 		CheckForbiddenStatus(t, resp)
 	})
@@ -76,9 +98,23 @@ func TestDailyReportsAPI(t *testing.T) {
 		require.Error(t, err)
 		CheckForbiddenStatus(t, resp)
 
-		approved, _, err := th.SystemAdminClient.ApproveDailyReport(ctx, report.Id)
+		// A team admin of a different daily-reports team cannot approve it.
+		otherTeam := th.CreateTeamWithClient(t, th.SystemAdminClient)
+		enableTeam(otherTeam.Id)
+		outsiderClient, _ := teamAdminClient(otherTeam)
+		_, resp, err = outsiderClient.ApproveDailyReport(ctx, report.Id)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		still, appErr := th.App.GetDailyReport(report.Id)
+		require.Nil(t, appErr)
+		require.Equal(t, model.DailyReportStatusPending, still.Status)
+
+		// A non-sysadmin team admin of the report's team can.
+		adminClient, admin := teamAdminClient(th.BasicTeam)
+		approved, _, err := adminClient.ApproveDailyReport(ctx, report.Id)
 		require.NoError(t, err)
 		require.Equal(t, model.DailyReportStatusApproved, approved.Status)
+		require.Equal(t, admin.Id, approved.ApprovedBy)
 
 		_, resp, err = th.Client.SubmitDailyReport(ctx, teamID, "late edit")
 		require.Error(t, err)
