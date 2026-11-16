@@ -412,6 +412,7 @@ func Init(srv *app.Server) (*API, error) {
 	api.InitClientPerformanceMetrics()
 	api.InitScheduledPost()
 	api.InitTasks()
+	api.InitDailyReports()
 	api.InitCustomProfileAttributes()
 	api.InitAuditLogging()
 	api.InitAccessControlPolicy()

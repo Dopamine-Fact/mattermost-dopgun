@@ -423,6 +423,9 @@ const (
 	AuditEventUpdateScheduledPost = "updateScheduledPost" // update scheduled post
 )
 
+// Daily reports
+const AuditEventApproveDailyReport = "approveDailyReport" // approve a daily report
+
 // Tasks
 const (
 	AuditEventCreateTask          = "createTask"          // create task on a team task list
