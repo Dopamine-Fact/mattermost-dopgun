@@ -1,8 +1,26 @@
 .modal-info-tab-content {
     display: flex;
+    flex-direction: column;
+
+    .team-info-top-row {
+        display: flex;
+    }
 
     .name-description-container {
         flex: 2;
+    }
+
+    .team-features-container {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        padding-top: 24px;
+        margin-top: 24px;
+        border-top: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+    }
+
+    .daily-report-time-item input[type='time'] {
+        width: 160px;
     }
 
     .description-section-input {

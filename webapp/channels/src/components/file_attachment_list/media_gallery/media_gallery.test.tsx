@@ -97,6 +97,24 @@ describe('MediaGallery', () => {
         expect(screen.getByTestId('media-gallery-tile')).toBeInTheDocument();
     });
 
+    it('plays a video inline instead of opening the preview modal', async () => {
+        const onClick = jest.fn();
+        renderWithContext(
+            <MediaGallery
+                fileInfos={[fileInfo({id: 'v', name: 'clip.mp4', extension: 'mp4', mime_type: 'video/mp4'})]}
+                postId='p1'
+                onItemClick={onClick}
+            />,
+            baseState,
+        );
+        await userEvent.click(screen.getByTestId('media-gallery-tile'));
+
+        const player = screen.getByTestId('media-gallery-video-player');
+        expect(player).toHaveAttribute('src', expect.stringContaining('/files/v'));
+        expect(player).toHaveAttribute('controls');
+        expect(onClick).not.toHaveBeenCalled();
+    });
+
     it('renders a collapse toggle header for multi-image galleries when a toggle handler is provided', async () => {
         const onClick = jest.fn();
         const onToggle = jest.fn();

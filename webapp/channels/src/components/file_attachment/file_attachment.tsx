@@ -331,11 +331,13 @@ export default function FileAttachment(props: Props) {
         );
     }
 
+    const showAudioPlayer = !compactDisplay && !props.disablePreview && getFileType(fileInfo.extension) === FileTypes.AUDIO;
+
     return (
         <div
             className={classNames([
                 'post-image__column',
-                {'keep-open': keepOpen},
+                {'keep-open': keepOpen, 'post-image__column--audio': showAudioPlayer},
             ])}
         >
             {fileThumbnail}
@@ -344,6 +346,16 @@ export default function FileAttachment(props: Props) {
                 {fileActions}
                 {filenameOverlay}
             </div>
+            {showAudioPlayer && (
+                <audio
+                    className='post-image__audio'
+                    src={getFileUrl(fileInfo.id)}
+                    controls={true}
+                    preload='metadata'
+                    aria-label={fileInfo.name}
+                    data-testid='fileAttachmentAudioPlayer'
+                />
+            )}
         </div>
     );
 }

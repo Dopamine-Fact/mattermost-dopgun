@@ -4,16 +4,19 @@
 import {flip, offset, shift} from '@floating-ui/react';
 import React, {useCallback, useState} from 'react';
 import {useIntl} from 'react-intl';
-import {useSelector} from 'react-redux';
+import {useDispatch, useSelector} from 'react-redux';
 
 import {EmoticonHappyOutlineIcon} from '@mattermost/compass-icons/components';
 import {Icon} from '@mattermost/compass-ui/components/icon';
 import {IconButton} from '@mattermost/compass-ui/components/icon-button';
 import {WithTooltip} from '@mattermost/shared/components/tooltip';
-import type {Emoji, SystemEmoji} from '@mattermost/types/emojis';
+import type {CustomEmoji, Emoji, SystemEmoji} from '@mattermost/types/emojis';
 
+import {getCustomEmojisEnabled} from 'mattermost-redux/selectors/entities/emojis';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getEmojiName, isSystemEmoji} from 'mattermost-redux/utils/emoji_utils';
+
+import {submitPost} from 'actions/views/create_comment';
 
 import useEmojiPicker, {useEmojiPickerOffset} from 'components/emoji_picker/use_emoji_picker';
 import KeyboardShortcutSequence, {KEYBOARD_SHORTCUTS} from 'components/keyboard_shortcuts/keyboard_shortcuts_sequence';
@@ -29,11 +32,16 @@ const useEditorEmojiPicker = (
     isDisabled: boolean,
     shouldShowPreview: boolean,
     insertWysiwygText?: (text: string) => void,
+
+    // Stickers post immediately, so they are only offered when the composer can create a new post.
+    stickerTarget?: {channelId: string; rootId: string},
 ) => {
     const intl = useIntl();
 
     const enableEmojiPicker = useSelector((state: GlobalState) => getConfig(state).EnableEmojiPicker === 'true');
     const enableGifPicker = useSelector((state: GlobalState) => getConfig(state).EnableGifPicker === 'true');
+    const enableStickers = useSelector(getCustomEmojisEnabled) && Boolean(stickerTarget);
+    const dispatch = useDispatch();
 
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
@@ -79,6 +87,27 @@ const useEditorEmojiPicker = (
         setShowEmojiPicker(false);
     }, [insertTextAtCaret]);
 
+    const stickerChannelId = stickerTarget?.channelId;
+    const stickerRootId = stickerTarget?.rootId;
+    const handleStickerClick = useCallback((emoji: CustomEmoji) => {
+        if (!stickerChannelId) {
+            return;
+        }
+        const now = Date.now();
+        dispatch(submitPost(stickerChannelId, stickerRootId ?? '', {
+            message: `:${emoji.name}:`,
+            props: {sticker: true},
+            fileInfos: [],
+            uploadsInProgress: [],
+            channelId: stickerChannelId,
+            rootId: stickerRootId ?? '',
+            createAt: now,
+            updateAt: now,
+        }, undefined, undefined, {keepDraft: true}));
+
+        setShowEmojiPicker(false);
+    }, [dispatch, stickerChannelId, stickerRootId]);
+
     const {
         emojiPicker,
         getReferenceProps,
@@ -90,6 +119,7 @@ const useEditorEmojiPicker = (
         enableGifPicker,
         onGifClick: handleGifClick,
         onEmojiClick: handleEmojiClick,
+        onStickerClick: enableStickers ? handleStickerClick : undefined,
 
         overrideMiddleware: [
             offset(useEmojiPickerOffset),

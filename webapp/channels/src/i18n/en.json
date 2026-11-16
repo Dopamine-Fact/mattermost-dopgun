@@ -23791,6 +23791,10 @@
     "defaultMessage": "GIF Picker",
     "description": "Accessibility label (aria-label) for the GIF picker popup dialog; not visible on screen."
   },
+  "emoji_gif_picker.dialog.stickers": {
+    "defaultMessage": "Sticker Picker",
+    "description": ""
+  },
   "emoji_gif_picker.tabs.emojis": {
     "defaultMessage": "Emojis",
     "description": "Tab label in the combined emoji/GIF picker for the emoji tab; compact space."
@@ -23798,6 +23802,10 @@
   "emoji_gif_picker.tabs.gifs": {
     "defaultMessage": "GIFs",
     "description": "Tab label in the combined emoji/GIF picker for the GIF tab; compact space."
+  },
+  "emoji_gif_picker.tabs.stickers": {
+    "defaultMessage": "Stickers",
+    "description": ""
   },
   "emoji_list.actions": {
     "defaultMessage": "Actions",
@@ -24563,14 +24571,6 @@
     "defaultMessage": "Invite Code",
     "description": "Title of the Invite Code section in team settings; the code is part of the team invitation link."
   },
-  "general_tab.dailyReportTime": {
-    "defaultMessage": "Report deadline",
-    "description": "Label of the time input in Team Settings > Info that sets the daily report deadline; reminders are sent 10 and 5 minutes before it."
-  },
-  "general_tab.dailyReportTimezone": {
-    "defaultMessage": "Timezone: {timezone}",
-    "description": "Help text under the daily report deadline input in Team Settings > Info; {timezone} is the team's saved timezone, e.g. Europe/Istanbul."
-  },
   "general_tab.dailyReportsEnabled": {
     "defaultMessage": "Enable daily reports for this team",
     "description": "Checkbox label of the daily reports setting in Team Settings > Info."
@@ -24582,6 +24582,14 @@
   "general_tab.dailyReportsTitle": {
     "defaultMessage": "Daily reports",
     "description": "Section title in Team Settings > Info for the setting that turns daily reports on or off for the team."
+  },
+  "general_tab.dailyReportTime": {
+    "defaultMessage": "Report deadline",
+    "description": "Label of the time input in Team Settings > Info that sets the daily report deadline; reminders are sent 10 and 5 minutes before it."
+  },
+  "general_tab.dailyReportTimezone": {
+    "defaultMessage": "Timezone: {timezone}",
+    "description": "Help text under the daily report deadline input in Team Settings > Info; {timezone} is the team's saved timezone, e.g. Europe/Istanbul."
   },
   "general_tab.regenerate": {
     "defaultMessage": "Regenerate",
@@ -32294,6 +32302,10 @@
   "slash_commands.header": {
     "defaultMessage": "Slash Commands",
     "description": "Breadcrumb link on the slash command setup confirmation page; navigates back to the Slash Commands list."
+  },
+  "sticker_picker.empty": {
+    "defaultMessage": "No stickers yet. Add custom emojis to use them as stickers.",
+    "description": ""
   },
   "suggestion.all": {
     "defaultMessage": "All channel types",

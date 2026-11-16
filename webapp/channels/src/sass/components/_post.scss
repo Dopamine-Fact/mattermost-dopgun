@@ -2281,3 +2281,13 @@
         background-position: -200% 0;
     }
 }
+
+// Stickers are custom emoji sent alone with props.sticker; must stay after the jumbo-emoji rules above.
+.post-message__text.post-message__text--sticker .all-emoji .emoticon {
+    width: 128px;
+    min-width: 128px;
+    height: 128px;
+    min-height: 128px;
+    color: transparent;
+    vertical-align: top;
+}

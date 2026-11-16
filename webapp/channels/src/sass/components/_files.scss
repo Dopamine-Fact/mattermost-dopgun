@@ -352,6 +352,25 @@
     cursor: pointer;
     transition: box-shadow 0.15s ease;
 
+    &--audio {
+        height: auto;
+        min-height: 6.4rem;
+        flex-wrap: wrap;
+
+        > .post-image__thumbnail,
+        > .post-image__details {
+            height: 6.4rem;
+        }
+
+        .post-image__audio {
+            width: 100%;
+            height: 36px;
+            box-sizing: content-box;
+            padding: 0 8px 8px;
+            cursor: default;
+        }
+    }
+
     &:hover,
     &:focus-within,
     &.keep-open {

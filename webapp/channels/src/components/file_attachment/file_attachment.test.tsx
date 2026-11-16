@@ -72,4 +72,22 @@ describe('FileAttachment', () => {
         await userEvent.click(link);
         expect(blur).toHaveBeenCalled();
     });
+
+    test('should render an inline audio player for audio files', () => {
+        const fileInfo = {...baseFileInfo, id: 'audio_id', extension: 'mp3', name: 'song.mp3'};
+        renderWithContext(<FileAttachment {...{...baseProps, fileInfo}}/>);
+
+        const player = screen.getByTestId('fileAttachmentAudioPlayer');
+        expect(player).toHaveAttribute('src', expect.stringContaining('/files/audio_id'));
+        expect(player).toHaveAttribute('controls');
+    });
+
+    test('should not render an audio player for deleted or compact audio files', () => {
+        const fileInfo = {...baseFileInfo, extension: 'mp3', name: 'song.mp3'};
+        const {rerender} = renderWithContext(<FileAttachment {...{...baseProps, fileInfo, disablePreview: true}}/>);
+        expect(screen.queryByTestId('fileAttachmentAudioPlayer')).not.toBeInTheDocument();
+
+        rerender(<FileAttachment {...{...baseProps, fileInfo, compactDisplay: true}}/>);
+        expect(screen.queryByTestId('fileAttachmentAudioPlayer')).not.toBeInTheDocument();
+    });
 });

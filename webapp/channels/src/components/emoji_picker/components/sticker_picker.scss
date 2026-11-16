@@ -1,0 +1,33 @@
+.sticker-picker {
+    display: grid;
+    max-height: 340px;
+    padding: 8px;
+    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    overflow-y: auto;
+
+    &__item {
+        display: flex;
+        height: 72px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+
+        &:hover,
+        &:focus-visible {
+            background: rgba(var(--center-channel-color-rgb), 0.08);
+        }
+
+        img {
+            max-width: 64px;
+            max-height: 64px;
+            object-fit: contain;
+        }
+    }
+
+    &__empty {
+        padding: 24px 16px;
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+        text-align: center;
+    }
+}
