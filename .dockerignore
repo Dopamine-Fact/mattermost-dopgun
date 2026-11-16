@@ -1,0 +1,24 @@
+.git
+**/node_modules
+e2e-tests
+api
+docs
+tools
+webapp/channels/dist
+webapp/**/.parcel-cache
+server/bin
+server/dist
+server/data
+server/logs
+server/plugins
+server/client
+server/prepackaged_plugins
+server/tmpprepackaged
+server/go.work
+server/go.work.sum
+# Local dev config may hold secrets/licenses; the image generates its own.
+server/config/config*.json
+server/config/*.dat
+server/config/*.crt
+server/config/*.key
+**/*.mattermost-license
