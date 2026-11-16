@@ -7890,6 +7890,46 @@
     "description": "Internal API error converting a generic property field into a User Attribute field; 'User Attribute' is the custom profile attributes feature name."
   },
   {
+    "id": "app.daily_report.approved.app_error",
+    "translation": "This report is already approved and can no longer be changed.",
+    "description": "Error returned when a user tries to submit or edit today's daily report after it has been approved."
+  },
+  {
+    "id": "app.daily_report.conflict.app_error",
+    "translation": "A report for this day already exists.",
+    "description": "Error returned when two submissions for the same user and day race and the second one is rejected as a duplicate."
+  },
+  {
+    "id": "app.daily_report.disabled.app_error",
+    "translation": "Daily reports are not enabled for this team.",
+    "description": "Error returned when a daily report action is attempted on a team that has daily reports turned off or is archived."
+  },
+  {
+    "id": "app.daily_report.export.app_error",
+    "translation": "Unable to export the daily reports.",
+    "description": "Error returned when writing the daily reports CSV export fails."
+  },
+  {
+    "id": "app.daily_report.invalid_date.app_error",
+    "translation": "Invalid report date.",
+    "description": "Error returned when the day used to collect a report's finished tasks is not a valid YYYY-MM-DD date."
+  },
+  {
+    "id": "app.daily_report.not_found.app_error",
+    "translation": "Unable to find the daily report.",
+    "description": "Error returned when a daily report id does not exist."
+  },
+  {
+    "id": "app.daily_report.reminder",
+    "translation": "Your daily report is due in {{.Minutes}} minutes, at {{.Time}}. [Write it now]({{.Link}})",
+    "description": "Direct message the system bot sends to a team member who has not yet submitted today's daily report, 10 and 5 minutes before the deadline. Minutes is the time left, Time the team's deadline (HH:MM) and Link opens the daily reports page."
+  },
+  {
+    "id": "app.daily_report.store.app_error",
+    "translation": "Unable to access the daily reports.",
+    "description": "Error returned when the database fails while reading or writing daily reports."
+  },
+  {
     "id": "app.data_spillage.assign_reviewer.no_reviewer_field.app_error",
     "translation": "No Reviewer ID property field found.",
     "description": "Internal API error in content flagging when the 'Reviewer ID' property field is missing from the system's property schema."

@@ -79,6 +79,14 @@ func TestTeamIsValidDailyReport(t *testing.T) {
 	o.DailyReportTimezone = "Mars/Phobos"
 	require.NotNil(t, o.IsValid())
 
+	// Oversized values are rejected even while disabled, so they never reach the DB column limit.
+	o = newTeam()
+	o.DailyReportTime = "123456"
+	require.NotNil(t, o.IsValid())
+	o = newTeam()
+	o.DailyReportTimezone = strings.Repeat("a", 65)
+	require.NotNil(t, o.IsValid())
+
 	o = newTeam()
 	o.DailyReportsEnabled = false
 	o.DailyReportTime = ""

@@ -216,6 +216,13 @@ func (o *Team) IsValid() *AppError {
 		return NewAppError("Team.IsValid", "model.team.is_valid.domains.app_error", nil, "id="+o.Id, http.StatusBadRequest)
 	}
 
+	if len(o.DailyReportTime) > 5 {
+		return NewAppError("Team.IsValid", "model.team.is_valid.daily_report_time.app_error", nil, "id="+o.Id, http.StatusBadRequest)
+	}
+	if len(o.DailyReportTimezone) > 64 {
+		return NewAppError("Team.IsValid", "model.team.is_valid.daily_report_timezone.app_error", nil, "id="+o.Id, http.StatusBadRequest)
+	}
+
 	if o.DailyReportsEnabled {
 		if _, _, ok := ParseDailyReportTime(o.DailyReportTime); !ok {
 			return NewAppError("Team.IsValid", "model.team.is_valid.daily_report_time.app_error", nil, "id="+o.Id, http.StatusBadRequest)

@@ -2092,6 +2092,11 @@ func runLeaderTasks(a *App) {
 		return model.CreateRecurringTaskFromNextIntervalTime("Check Post reminders", fn, 5*time.Minute)
 	})
 
+	a.ch.dailyReportTask.runOnLeader(a, "Daily report tick", func() *model.ScheduledTask {
+		fn := func() { a.RunDailyReportTick(rctx, time.Now()) }
+		return model.CreateRecurringTaskFromNextIntervalTime("Daily report tick", fn, time.Minute)
+	})
+
 	a.ch.scheduledPostTask.runOnLeader(a, "Process Scheduled Posts", func() *model.ScheduledTask {
 		jobInterval := scheduledPostJobInterval
 		if *a.Config().ServiceSettings.EnableTesting {

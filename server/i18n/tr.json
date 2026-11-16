@@ -2219,6 +2219,38 @@
     "translation": "%s kanal amacını %s olarak güncelledi"
   },
   {
+    "id": "app.daily_report.approved.app_error",
+    "translation": "Bu rapor zaten onaylandı ve artık değiştirilemez."
+  },
+  {
+    "id": "app.daily_report.conflict.app_error",
+    "translation": "Bu gün için zaten bir rapor var."
+  },
+  {
+    "id": "app.daily_report.disabled.app_error",
+    "translation": "Bu ekip için günlük raporlar etkin değil."
+  },
+  {
+    "id": "app.daily_report.export.app_error",
+    "translation": "Günlük raporlar dışa aktarılamadı."
+  },
+  {
+    "id": "app.daily_report.invalid_date.app_error",
+    "translation": "Geçersiz rapor tarihi."
+  },
+  {
+    "id": "app.daily_report.not_found.app_error",
+    "translation": "Günlük rapor bulunamadı."
+  },
+  {
+    "id": "app.daily_report.reminder",
+    "translation": "Günlük raporunun teslim saatine {{.Minutes}} dakika kaldı (saat {{.Time}}). [Şimdi yaz]({{.Link}})"
+  },
+  {
+    "id": "app.daily_report.store.app_error",
+    "translation": "Günlük raporlara erişilemedi."
+  },
+  {
     "id": "app.export.export_write_line.io_writer.error",
     "translation": "Dışa aktarma verileri yazılırken bir sorun çıktı."
   },
@@ -3747,6 +3779,34 @@
     "translation": "Yazma zaman aşımı değeri geçersiz."
   },
   {
+    "id": "model.daily_report.is_valid.create_at.app_error",
+    "translation": "Oluşturma zamanı geçerli bir zaman olmalıdır."
+  },
+  {
+    "id": "model.daily_report.is_valid.date.app_error",
+    "translation": "Geçersiz rapor tarihi."
+  },
+  {
+    "id": "model.daily_report.is_valid.id.app_error",
+    "translation": "Geçersiz günlük rapor kimliği."
+  },
+  {
+    "id": "model.daily_report.is_valid.message.app_error",
+    "translation": "Rapor mesajı çok uzun."
+  },
+  {
+    "id": "model.daily_report.is_valid.status.app_error",
+    "translation": "Geçersiz rapor durumu."
+  },
+  {
+    "id": "model.daily_report.is_valid.team_id.app_error",
+    "translation": "Geçersiz ekip kimliği."
+  },
+  {
+    "id": "model.daily_report.is_valid.user_id.app_error",
+    "translation": "Geçersiz kullanıcı kimliği."
+  },
+  {
     "id": "model.emoji.create_at.app_error",
     "translation": "Eklenme zamanı geçerli bir zaman olmalıdır."
   },
@@ -4133,6 +4193,14 @@
   {
     "id": "model.team.is_valid.create_at.app_error",
     "translation": "Eklenme zamanı geçerli bir zaman olmalıdır."
+  },
+  {
+    "id": "model.team.is_valid.daily_report_time.app_error",
+    "translation": "Günlük rapor saati SS:DD biçiminde olmalıdır."
+  },
+  {
+    "id": "model.team.is_valid.daily_report_timezone.app_error",
+    "translation": "Günlük rapor saat dilimi geçersiz."
   },
   {
     "id": "model.team.is_valid.description.app_error",
