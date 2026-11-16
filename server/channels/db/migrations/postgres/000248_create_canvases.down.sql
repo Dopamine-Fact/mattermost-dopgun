@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS canvasupdates;
+DROP TABLE IF EXISTS canvases;
+ALTER TABLE teams DROP COLUMN IF EXISTS canvasenabled;

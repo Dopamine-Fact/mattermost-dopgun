@@ -1,0 +1,216 @@
+.CanvasBoard {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    flex: 1 1 auto;
+    background: #fff;
+    outline: none;
+    touch-action: none;
+    user-select: none;
+
+    &--pan .CanvasBoard__surface {
+        cursor: grab;
+    }
+
+    &--pan .CanvasBoard__surface:active {
+        cursor: grabbing;
+    }
+
+    &--pen,
+    &--rect,
+    &--ellipse,
+    &--line,
+    &--arrow {
+        .CanvasBoard__surface {
+            cursor: crosshair;
+        }
+    }
+
+    &--text .CanvasBoard__surface {
+        cursor: text;
+    }
+
+    &--eraser .CanvasBoard__surface {
+        cursor: cell;
+    }
+}
+
+.CanvasBoard__surface {
+    position: absolute;
+    inset: 0;
+
+    canvas {
+        display: block;
+    }
+}
+
+.CanvasBoard__toolbar,
+.CanvasBoard__group {
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+    border-radius: 8px;
+    background: var(--center-channel-bg);
+    box-shadow: var(--elevation-2);
+    gap: 2px;
+}
+
+.CanvasBoard__toolbar {
+    position: absolute;
+    z-index: 2;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.CanvasBoard__toolSlot {
+    position: relative;
+    display: inline-flex;
+}
+
+.CanvasBoard__key {
+    position: absolute;
+    right: 2px;
+    bottom: 0;
+    color: rgba(var(--center-channel-color-rgb), 0.48);
+    font-size: 9px;
+    line-height: 1;
+    pointer-events: none;
+}
+
+.CanvasBoard__footer {
+    position: absolute;
+    z-index: 2;
+    bottom: 12px;
+    left: 12px;
+    display: flex;
+    gap: 8px;
+}
+
+.CanvasBoard__zoom {
+    min-width: 56px;
+    justify-content: center;
+}
+
+.CanvasBoard__status {
+    position: absolute;
+    z-index: 2;
+    top: 12px;
+    right: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: rgba(var(--center-channel-color-rgb), 0.08);
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    font-size: 12px;
+
+    &--offline,
+    &--error {
+        background: rgba(var(--error-text-color-rgb), 0.12);
+        color: var(--error-text);
+    }
+}
+
+.CanvasBoard__text {
+    position: absolute;
+    z-index: 1;
+    overflow: hidden;
+    min-width: 8px;
+    padding: 0;
+    border: none;
+    margin: 0;
+    background: transparent;
+    line-height: 1.25;
+    outline: 1px dashed #1c58d9;
+    resize: none;
+    transform-origin: 0 0;
+    white-space: pre;
+}
+
+.CanvasBoard__props {
+    position: absolute;
+    z-index: 2;
+    top: 60px;
+    left: 12px;
+    display: flex;
+    width: 208px;
+    max-height: calc(100% - 130px);
+    flex-direction: column;
+    padding: 8px;
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+    border-radius: 8px;
+    background: var(--center-channel-bg);
+    box-shadow: var(--elevation-2);
+    gap: 10px;
+    overflow-y: auto;
+}
+
+.CanvasBoard__propsLabel {
+    display: block;
+    margin-bottom: 4px;
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.CanvasBoard__propsRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.CanvasBoard__propsButton {
+    padding: 2px 8px;
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--center-channel-color);
+    font-size: 12px;
+
+    &:hover {
+        background: rgba(var(--center-channel-color-rgb), 0.08);
+    }
+
+    &[aria-pressed="true"] {
+        border-color: var(--button-bg);
+        background: rgba(var(--button-bg-rgb), 0.12);
+        color: var(--button-bg);
+    }
+}
+
+.CanvasBoard__swatch {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.24);
+    border-radius: 4px;
+
+    &[aria-pressed="true"] {
+        outline: 2px solid var(--button-bg);
+        outline-offset: 1px;
+    }
+
+    &--none {
+        background: repeating-conic-gradient(#ccc 0 25%, #fff 0 50%) 0 0 / 8px 8px !important;
+    }
+}
+
+.CanvasBoard__colorInput {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    background: none;
+}
+
+.CanvasBoard__opacity {
+    display: block;
+    width: 100%;
+}
+
+.CanvasTabs__panel {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+}

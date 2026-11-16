@@ -23,6 +23,7 @@ type TimerLayer struct {
 	AuditStore                      store.AuditStore
 	AutoTranslationStore            store.AutoTranslationStore
 	BotStore                        store.BotStore
+	CanvasStore                     store.CanvasStore
 	ChannelStore                    store.ChannelStore
 	ChannelBookmarkStore            store.ChannelBookmarkStore
 	ChannelGuardStore               store.ChannelGuardStore
@@ -103,6 +104,10 @@ func (s *TimerLayer) AutoTranslation() store.AutoTranslationStore {
 
 func (s *TimerLayer) Bot() store.BotStore {
 	return s.BotStore
+}
+
+func (s *TimerLayer) Canvas() store.CanvasStore {
+	return s.CanvasStore
 }
 
 func (s *TimerLayer) Channel() store.ChannelStore {
@@ -367,6 +372,11 @@ type TimerLayerAutoTranslationStore struct {
 
 type TimerLayerBotStore struct {
 	store.BotStore
+	Root *TimerLayer
+}
+
+type TimerLayerCanvasStore struct {
+	store.CanvasStore
 	Root *TimerLayer
 }
 
@@ -1376,6 +1386,86 @@ func (s *TimerLayerBotStore) Update(bot *model.Bot) (*model.Bot, error) {
 			success = "true"
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("BotStore.Update", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerCanvasStore) AppendUpdate(channelID string, userID string, data []byte) (int64, error) {
+	start := time.Now()
+
+	result, err := s.CanvasStore.AppendUpdate(channelID, userID, data)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("CanvasStore.AppendUpdate", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerCanvasStore) Get(channelID string) (*model.Canvas, error) {
+	start := time.Now()
+
+	result, err := s.CanvasStore.Get(channelID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("CanvasStore.Get", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerCanvasStore) GetState(channelID string, afterSeq int64) (*model.CanvasState, error) {
+	start := time.Now()
+
+	result, err := s.CanvasStore.GetState(channelID, afterSeq)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("CanvasStore.GetState", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerCanvasStore) Save(canvas *model.Canvas) (*model.Canvas, error) {
+	start := time.Now()
+
+	result, err := s.CanvasStore.Save(canvas)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("CanvasStore.Save", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerCanvasStore) SaveSnapshot(channelID string, data []byte, uptoSeq int64) (bool, error) {
+	start := time.Now()
+
+	result, err := s.CanvasStore.SaveSnapshot(channelID, data, uptoSeq)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("CanvasStore.SaveSnapshot", success, elapsed)
 	}
 	return result, err
 }
@@ -17028,6 +17118,7 @@ func New(childStore store.Store, metrics einterfaces.MetricsInterface) *TimerLay
 	newStore.AuditStore = &TimerLayerAuditStore{AuditStore: childStore.Audit(), Root: &newStore}
 	newStore.AutoTranslationStore = &TimerLayerAutoTranslationStore{AutoTranslationStore: childStore.AutoTranslation(), Root: &newStore}
 	newStore.BotStore = &TimerLayerBotStore{BotStore: childStore.Bot(), Root: &newStore}
+	newStore.CanvasStore = &TimerLayerCanvasStore{CanvasStore: childStore.Canvas(), Root: &newStore}
 	newStore.ChannelStore = &TimerLayerChannelStore{ChannelStore: childStore.Channel(), Root: &newStore}
 	newStore.ChannelBookmarkStore = &TimerLayerChannelBookmarkStore{ChannelBookmarkStore: childStore.ChannelBookmark(), Root: &newStore}
 	newStore.ChannelGuardStore = &TimerLayerChannelGuardStore{ChannelGuardStore: childStore.ChannelGuard(), Root: &newStore}

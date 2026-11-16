@@ -19291,6 +19291,338 @@
     "defaultMessage": "{number} • Phone call",
     "description": "Secondary line under a call options menu item that phones the user; {number} is the phone number that will be dialed."
   },
+  "canvas.board": {
+    "defaultMessage": "Canvas",
+    "description": "Accessible name of the canvas (whiteboard) drawing area in a canvas channel."
+  },
+  "canvas.channelModal.create": {
+    "defaultMessage": "Create",
+    "description": "Confirm button of the Create canvas channel dialog; creates the channel."
+  },
+  "canvas.channelModal.name": {
+    "defaultMessage": "Name",
+    "description": "Label of the name field in the Create canvas channel dialog."
+  },
+  "canvas.channelModal.title": {
+    "defaultMessage": "Create canvas channel",
+    "description": "Title of the dialog that creates a canvas (whiteboard) channel."
+  },
+  "canvas.props.actions": {
+    "defaultMessage": "Actions",
+    "description": "Canvas properties: group of buttons that act on the selected elements"
+  },
+  "canvas.props.align": {
+    "defaultMessage": "Align",
+    "description": "Canvas properties: group of buttons that align the selected elements with each other"
+  },
+  "canvas.props.alignBottom": {
+    "defaultMessage": "Align bottom",
+    "description": "Line up the bottom edges of the selected elements"
+  },
+  "canvas.props.alignCenter": {
+    "defaultMessage": "Align center",
+    "description": "Line up the horizontal centres of the selected elements"
+  },
+  "canvas.props.alignLeft": {
+    "defaultMessage": "Align left",
+    "description": "Line up the left edges of the selected elements"
+  },
+  "canvas.props.alignMiddle": {
+    "defaultMessage": "Align middle",
+    "description": "Line up the vertical centres of the selected elements"
+  },
+  "canvas.props.alignRight": {
+    "defaultMessage": "Align right",
+    "description": "Line up the right edges of the selected elements"
+  },
+  "canvas.props.alignTop": {
+    "defaultMessage": "Align top",
+    "description": "Line up the top edges of the selected elements"
+  },
+  "canvas.props.architect": {
+    "defaultMessage": "Architect",
+    "description": "Canvas properties: precise, straight sloppiness option"
+  },
+  "canvas.props.artist": {
+    "defaultMessage": "Artist",
+    "description": "Canvas properties: slightly hand-drawn sloppiness option"
+  },
+  "canvas.props.background": {
+    "defaultMessage": "Background",
+    "description": "Canvas properties: fill colour of a rectangle or ellipse"
+  },
+  "canvas.props.backward": {
+    "defaultMessage": "Send backward",
+    "description": "Move the selected elements one step back"
+  },
+  "canvas.props.bold": {
+    "defaultMessage": "Bold",
+    "description": "Canvas properties: medium stroke width"
+  },
+  "canvas.props.cartoonist": {
+    "defaultMessage": "Cartoonist",
+    "description": "Canvas properties: very hand-drawn sloppiness option"
+  },
+  "canvas.props.crossHatch": {
+    "defaultMessage": "Cross-hatch",
+    "description": "Canvas properties: fill with crossing hand-drawn lines"
+  },
+  "canvas.props.customColor": {
+    "defaultMessage": "Custom colour",
+    "description": "Canvas properties: opens the browser colour picker"
+  },
+  "canvas.props.dashed": {
+    "defaultMessage": "Dashed",
+    "description": "Canvas properties: dashed stroke option"
+  },
+  "canvas.props.delete": {
+    "defaultMessage": "Delete",
+    "description": "Remove the selected elements"
+  },
+  "canvas.props.dotted": {
+    "defaultMessage": "Dotted",
+    "description": "Canvas properties: dotted stroke option"
+  },
+  "canvas.props.duplicate": {
+    "defaultMessage": "Duplicate",
+    "description": "Copy the selected elements"
+  },
+  "canvas.props.edges": {
+    "defaultMessage": "Edges",
+    "description": "Canvas properties: corners of a rectangle"
+  },
+  "canvas.props.endArrow": {
+    "defaultMessage": "End arrowhead",
+    "description": "Canvas properties: head at the end of a line or arrow"
+  },
+  "canvas.props.extraBold": {
+    "defaultMessage": "Extra bold",
+    "description": "Canvas properties: thickest stroke width"
+  },
+  "canvas.props.extraLarge": {
+    "defaultMessage": "Extra large",
+    "description": "Canvas properties: largest font size"
+  },
+  "canvas.props.fillStyle": {
+    "defaultMessage": "Fill",
+    "description": "Canvas properties: how the background of a shape is painted"
+  },
+  "canvas.props.fontCode": {
+    "defaultMessage": "Code",
+    "description": "Canvas properties: monospace typeface option"
+  },
+  "canvas.props.fontFamily": {
+    "defaultMessage": "Font",
+    "description": "Canvas properties: typeface of text"
+  },
+  "canvas.props.fontNormal": {
+    "defaultMessage": "Normal",
+    "description": "Canvas properties: regular typeface option"
+  },
+  "canvas.props.fontSize": {
+    "defaultMessage": "Font size",
+    "description": "Canvas properties: size of text"
+  },
+  "canvas.props.forward": {
+    "defaultMessage": "Bring forward",
+    "description": "Move the selected elements one step forward"
+  },
+  "canvas.props.hachure": {
+    "defaultMessage": "Hachure",
+    "description": "Canvas properties: fill with parallel hand-drawn lines"
+  },
+  "canvas.props.headArrow": {
+    "defaultMessage": "Arrow",
+    "description": "Canvas properties: open arrowhead option"
+  },
+  "canvas.props.headBar": {
+    "defaultMessage": "Bar",
+    "description": "Canvas properties: flat bar arrowhead option"
+  },
+  "canvas.props.headNone": {
+    "defaultMessage": "None",
+    "description": "Canvas properties: no arrowhead option"
+  },
+  "canvas.props.headTriangle": {
+    "defaultMessage": "Triangle",
+    "description": "Canvas properties: filled triangle arrowhead option"
+  },
+  "canvas.props.large": {
+    "defaultMessage": "Large",
+    "description": "Canvas properties: large font size"
+  },
+  "canvas.props.layers": {
+    "defaultMessage": "Layers",
+    "description": "Canvas properties: group of buttons that change the stacking order of the selected elements"
+  },
+  "canvas.props.medium": {
+    "defaultMessage": "Medium",
+    "description": "Canvas properties: medium font size"
+  },
+  "canvas.props.opacity": {
+    "defaultMessage": "Opacity",
+    "description": "Canvas properties: slider for how see-through elements are"
+  },
+  "canvas.props.panel": {
+    "defaultMessage": "Properties",
+    "description": "Label of the canvas side panel that edits the style of the selected elements or of the next element drawn"
+  },
+  "canvas.props.round": {
+    "defaultMessage": "Round",
+    "description": "Canvas properties: rounded corners option"
+  },
+  "canvas.props.sharp": {
+    "defaultMessage": "Sharp",
+    "description": "Canvas properties: square corners option"
+  },
+  "canvas.props.sloppiness": {
+    "defaultMessage": "Sloppiness",
+    "description": "Canvas properties: how hand-drawn shapes look"
+  },
+  "canvas.props.small": {
+    "defaultMessage": "Small",
+    "description": "Canvas properties: smallest font size"
+  },
+  "canvas.props.solid": {
+    "defaultMessage": "Solid",
+    "description": "Canvas properties: solid fill or solid stroke option"
+  },
+  "canvas.props.startArrow": {
+    "defaultMessage": "Start arrowhead",
+    "description": "Canvas properties: head at the start of a line or arrow"
+  },
+  "canvas.props.stroke": {
+    "defaultMessage": "Stroke",
+    "description": "Canvas properties: colour of lines and text"
+  },
+  "canvas.props.strokeStyle": {
+    "defaultMessage": "Stroke style",
+    "description": "Canvas properties: solid, dashed or dotted lines"
+  },
+  "canvas.props.strokeWidth": {
+    "defaultMessage": "Stroke width",
+    "description": "Canvas properties: thickness of lines"
+  },
+  "canvas.props.textAlign": {
+    "defaultMessage": "Text align",
+    "description": "Canvas properties: horizontal alignment of text inside its box"
+  },
+  "canvas.props.textCenter": {
+    "defaultMessage": "Center",
+    "description": "Canvas properties: centred text option"
+  },
+  "canvas.props.textLeft": {
+    "defaultMessage": "Left",
+    "description": "Canvas properties: left-aligned text option"
+  },
+  "canvas.props.textRight": {
+    "defaultMessage": "Right",
+    "description": "Canvas properties: right-aligned text option"
+  },
+  "canvas.props.thin": {
+    "defaultMessage": "Thin",
+    "description": "Canvas properties: thinnest stroke width"
+  },
+  "canvas.props.toBack": {
+    "defaultMessage": "Send to back",
+    "description": "Move the selected elements behind all others"
+  },
+  "canvas.props.toFront": {
+    "defaultMessage": "Bring to front",
+    "description": "Move the selected elements in front of all others"
+  },
+  "canvas.props.transparent": {
+    "defaultMessage": "Transparent",
+    "description": "Canvas properties: the no-fill background option"
+  },
+  "canvas.redo": {
+    "defaultMessage": "Redo",
+    "description": "Tooltip and accessible name of the canvas footer button that redoes the last undone change."
+  },
+  "canvas.status.error": {
+    "defaultMessage": "Changes not saved — retrying",
+    "description": "Status chip on a canvas when the latest changes failed to save to the server and are being retried."
+  },
+  "canvas.status.loading": {
+    "defaultMessage": "Loading…",
+    "description": "Small status chip on a canvas while its content is loading from the server."
+  },
+  "canvas.status.offline": {
+    "defaultMessage": "Offline",
+    "description": "Status chip on a canvas when the connection to the server is lost."
+  },
+  "canvas.tabs.canvas": {
+    "defaultMessage": "Canvas",
+    "description": "Tab in a canvas channel that shows the whiteboard instead of the chat."
+  },
+  "canvas.tabs.messages": {
+    "defaultMessage": "Messages",
+    "description": "Tab in a canvas channel that shows the chat messages."
+  },
+  "canvas.textInput": {
+    "defaultMessage": "Text",
+    "description": "Accessible name of the text box used to type or edit a text element on the canvas."
+  },
+  "canvas.tool.arrow": {
+    "defaultMessage": "Arrow",
+    "description": "Tooltip and accessible name of a tool button in the canvas channel toolbar; picks the arrow drawing tool."
+  },
+  "canvas.tool.ellipse": {
+    "defaultMessage": "Ellipse",
+    "description": "Tooltip and accessible name of a tool button in the canvas channel toolbar; picks the ellipse drawing tool."
+  },
+  "canvas.tool.eraser": {
+    "defaultMessage": "Eraser",
+    "description": "Tooltip and accessible name of a tool button in the canvas channel toolbar; picks the eraser, which deletes elements it touches."
+  },
+  "canvas.tool.hand": {
+    "defaultMessage": "Hand (pan)",
+    "description": "Tooltip and accessible name of a tool button in the canvas channel toolbar; picks the hand tool, which pans (scrolls) the canvas by dragging."
+  },
+  "canvas.tool.line": {
+    "defaultMessage": "Line",
+    "description": "Tooltip and accessible name of a tool button in the canvas channel toolbar; picks the straight line drawing tool."
+  },
+  "canvas.tool.pen": {
+    "defaultMessage": "Pen",
+    "description": "Tooltip and accessible name of a tool button in the canvas channel toolbar; picks the freehand pen drawing tool."
+  },
+  "canvas.tool.rect": {
+    "defaultMessage": "Rectangle",
+    "description": "Tooltip and accessible name of a tool button in the canvas channel toolbar; picks the rectangle drawing tool."
+  },
+  "canvas.tool.select": {
+    "defaultMessage": "Select",
+    "description": "Tooltip and accessible name of a tool button in the canvas channel toolbar; picks the selection tool, for selecting, moving and resizing elements."
+  },
+  "canvas.tool.text": {
+    "defaultMessage": "Text",
+    "description": "Tooltip and accessible name of a tool button in the canvas channel toolbar; picks the text tool, for adding text to the canvas."
+  },
+  "canvas.toolbar": {
+    "defaultMessage": "Canvas tools",
+    "description": "Accessible name of the toolbar of drawing tools at the top of a canvas channel."
+  },
+  "canvas.undo": {
+    "defaultMessage": "Undo",
+    "description": "Tooltip and accessible name of the canvas footer button that undoes the last change."
+  },
+  "canvas.unsupported": {
+    "defaultMessage": "This browser can’t display the canvas.",
+    "description": "Shown on a canvas channel when the browser cannot start the canvas renderer (for example, WebGL is unavailable)."
+  },
+  "canvas.zoomIn": {
+    "defaultMessage": "Zoom in",
+    "description": "Tooltip and accessible name of the canvas footer button that zooms in."
+  },
+  "canvas.zoomOut": {
+    "defaultMessage": "Zoom out",
+    "description": "Tooltip and accessible name of the canvas footer button that zooms out."
+  },
+  "canvas.zoomReset": {
+    "defaultMessage": "Reset zoom",
+    "description": "Tooltip of the canvas footer button showing the zoom percentage; clicking it resets the zoom to 100%."
+  },
   "carousel.nextButton": {
     "defaultMessage": "Next",
     "description": "Label of the button that moves to the next slide in a carousel (e.g. trial benefits carousel)."
@@ -24134,6 +24466,18 @@
   "general_tab.AllowedDomainsTitle": {
     "defaultMessage": "Users with a specific email domain",
     "description": "Title of the team settings checkbox section for restricting membership by email domain."
+  },
+  "general_tab.canvasEnabled": {
+    "defaultMessage": "Enable canvas channels",
+    "description": "Label of the checkbox in team settings that turns canvas (whiteboard) channels on for the team."
+  },
+  "general_tab.canvasInfo": {
+    "defaultMessage": "When enabled, team members can create canvas channels: chat channels with a shared whiteboard for drawing and diagrams.",
+    "description": "Explanation under the canvas channels checkbox in team settings."
+  },
+  "general_tab.canvasTitle": {
+    "defaultMessage": "Canvas channels",
+    "description": "Title of the team settings section for canvas (whiteboard) channels."
   },
   "general_tab.codeLongDesc": {
     "defaultMessage": "The Invite Code is part of the unique team invitation link which is sent to members you’re inviting to this team. Regenerating the code creates a new invitation link and invalidates the previous link.",
@@ -31638,6 +31982,10 @@
   "sidebarLeft.browserOrCreateChannelMenu.browseChannelsMenuItem.primaryLabel": {
     "defaultMessage": "Browse channels",
     "description": "Menu item in the sidebar's + (browse or create channels) menu that opens the channel browser."
+  },
+  "sidebarLeft.browserOrCreateChannelMenu.createCanvasChannelMenuItem.primaryLabel": {
+    "defaultMessage": "Create canvas channel",
+    "description": "Item in the sidebar's plus menu that opens the dialog to create a canvas (whiteboard) channel."
   },
   "sidebarLeft.browserOrCreateChannelMenu.createCategoryMenuItem.primaryLabel": {
     "defaultMessage": "Create new category",

@@ -15,7 +15,7 @@
 - Canvas is on only when `team.canvas_enabled`; independent of `tasks_enabled`.
 - New migration `000248_create_canvases` (247 is taken); add both files to `server/channels/db/migrations/migrations.list`.
 - After changing a store interface run `make store-layers` and `make store-mocks` (never hand-edit retrylayer/timerlayer/mocks). Never `go mod tidy`.
-- Limits (in `model/canvas.go`): `CanvasUpdateMaxBytes = 512 * 1024`, `CanvasSnapshotMaxBytes = 20 * 1024 * 1024`, `CanvasAwarenessMaxBytes = 64 * 1024` (decoded bytes).
+- Limits (in `model/canvas.go`): `CanvasUpdateMaxBytes = 512 * 1024`, `CanvasSnapshotMaxBytes = 20 * 1024 * 1024`, `CanvasAwarenessMaxBytes = 4 * 1024` (decoded bytes; the platform websocket read limit is 8 KB per frame — larger frames drop the connection; clients cap awareness `selection` at 50 ids).
 - Client timings: update flush ≤ every 50 ms, awareness send ≤ every 50 ms, gap refetch after 2 s, compaction after 200 updates past the snapshot, POST retry backoff 1 s doubling to 30 s.
 - npm packages installed with `--save-exact`, latest stable at install time within the majors above.
 - Pixi and Rough.js must not be in the main bundle: the board is loaded with `React.lazy(() => import('./canvas_board'))`.
@@ -29,7 +29,7 @@
 
 - Two clients edit concurrently, one goes offline mid-drag, comes back: both end with identical elements and nothing typed during the outage is lost (unsent updates stay queued and retry).
 - Updates committed out of order or missed while the websocket was down: a client must never compact while it has a seq gap, and compaction must never drop an update the snapshot doesn't contain.
-- A non-member, a member of another team, or anyone when `canvas_enabled` is false must not read or write a canvas (403); an archived channel refuses writes.
+- A non-member or a member of another team must not read or write a canvas (403); when `canvas_enabled` is false, writes are refused (403) and reads stay allowed (spec: "server refuses canvas writes"); an archived channel refuses writes.
 - Oversized update / snapshot / awareness payloads are refused (413/400) without crashing the board.
 - Channels that are not canvases render exactly as before (no tab bar, no extra requests when the team flag is off).
 - A mixed selection (e.g. a pen stroke and a rectangle) in the side panel: only shared sections appear, a property with differing values highlights no option, and changing it sets it on every selected element in one undo step.
@@ -245,3 +245,15 @@
 - [ ] Draw > 200 strokes → reload → board identical (compaction happened: `CanvasUpdates` row count dropped).
 - [ ] Check the main bundle doesn't contain Pixi (network tab: Pixi chunk loads only when the Canvas tab opens).
 - [ ] Turn the flag off → tab and menu item gone, a write returns 403.
+
+## Follow-ups (deferred minors from reviews)
+
+- Board: paste position stale after wheel pan; doc/undo not destroyed on unmount; unmount mid pen stroke drops unflushed points; wheel scroll paused during a gesture.
+- Board: cancelGesture's single `undo.undo()` can pop an unrelated earlier action if a peer invalidated the gesture's writes.
+- Board: an ellipse stays selected after switching to the pen tool (panel keeps showing it).
+- Panel: style change while the text editor is open doesn't reach the edited text; Space-hold remounts the panel while panning; Layers/Align/Actions use `role='radiogroup'` for plain buttons; opacity slider has no pointercancel commit; a colour picker dismissed without blur keeps the live undo group open.
+- Tabs: RHS-expanded composer's keydown listener can steal focus on the Canvas tab; re-opening `?canvas=1` after clicking Messages doesn't switch back; the Canvas tab unmounts PostView (scroll lost).
+- Create modal: fails silently with an empty message; `createCanvasChannel` ignores the `deleteChannel` result (orphan channel if cleanup fails).
+- Sync: an in-flight post at destroy carries the live Connection-Id, so a same-connection remount may miss that broadcast until the next gap refetch.
+- Tests: no board tests for panel hiding on hand/eraser or align/layer actions; no test for canvas→normal channel switch; the `pixi.js/unsafe-eval` import (CSP fix found in the browser check) has no test.
+- Ops: canvas updates up to 8 MB are broadcast over the websocket; HA cluster message limits are unverified.

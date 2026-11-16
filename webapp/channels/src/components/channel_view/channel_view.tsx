@@ -8,6 +8,7 @@ import type {RouteComponentProps} from 'react-router-dom';
 import {Button} from '@mattermost/compass-ui/components/button';
 
 import AdvancedCreatePost from 'components/advanced_create_post';
+import CanvasTabs from 'components/canvas/canvas_tabs';
 import ChannelBanner from 'components/channel_banner/channel_banner';
 import ChannelBookmarks from 'components/channel_bookmarks';
 import ChannelHeader from 'components/channel_header';
@@ -280,9 +281,11 @@ export default class ChannelView extends React.PureComponent<Props, State> {
                         channelId={this.props.channelId}
                     />
                 )}
-                <RevisionTabs channelId={this.props.channelId}>
-                    {center}
-                </RevisionTabs>
+                <CanvasTabs channelId={this.props.channelId}>
+                    <RevisionTabs channelId={this.props.channelId}>
+                        {center}
+                    </RevisionTabs>
+                </CanvasTabs>
             </div>
         );
     }

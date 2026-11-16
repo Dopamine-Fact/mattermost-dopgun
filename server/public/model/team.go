@@ -45,6 +45,7 @@ type Team struct {
 	CloudLimitsArchived bool    `json:"cloud_limits_archived"`
 	TasksEnabled        bool    `json:"tasks_enabled"`
 	RevisionsEnabled    bool    `json:"revisions_enabled"` // revision channels; only effective with TasksEnabled
+	CanvasEnabled       bool    `json:"canvas_enabled"`
 	DailyReportsEnabled bool    `json:"daily_reports_enabled"`
 	DailyReportTime     string  `json:"daily_report_time"` // "HH:MM" in DailyReportTimezone
 	DailyReportTimezone string  `json:"daily_report_timezone"`
@@ -95,6 +96,7 @@ func (o *Team) Auditable() map[string]any {
 		"cloud_limits_archived": o.CloudLimitsArchived,
 		"tasks_enabled":         o.TasksEnabled,
 		"revisions_enabled":     o.RevisionsEnabled,
+		"canvas_enabled":        o.CanvasEnabled,
 		"daily_reports_enabled": o.DailyReportsEnabled,
 		"daily_report_time":     o.DailyReportTime,
 		"daily_report_timezone": o.DailyReportTimezone,
@@ -115,6 +117,7 @@ type TeamPatch struct {
 	CloudLimitsArchived *bool   `json:"cloud_limits_archived"`
 	TasksEnabled        *bool   `json:"tasks_enabled"`
 	RevisionsEnabled    *bool   `json:"revisions_enabled"`
+	CanvasEnabled       *bool   `json:"canvas_enabled"`
 	DailyReportsEnabled *bool   `json:"daily_reports_enabled"`
 	DailyReportTime     *string `json:"daily_report_time"`
 	DailyReportTimezone *string `json:"daily_report_timezone"`
@@ -127,6 +130,7 @@ func (o *TeamPatch) Auditable() map[string]any {
 		"cloud_limits_archived": o.CloudLimitsArchived,
 		"tasks_enabled":         o.TasksEnabled,
 		"revisions_enabled":     o.RevisionsEnabled,
+		"canvas_enabled":        o.CanvasEnabled,
 		"daily_reports_enabled": o.DailyReportsEnabled,
 		"daily_report_time":     o.DailyReportTime,
 		"daily_report_timezone": o.DailyReportTimezone,
@@ -362,6 +366,10 @@ func (o *Team) Patch(patch *TeamPatch) {
 
 	if patch.RevisionsEnabled != nil {
 		o.RevisionsEnabled = *patch.RevisionsEnabled
+	}
+
+	if patch.CanvasEnabled != nil {
+		o.CanvasEnabled = *patch.CanvasEnabled
 	}
 
 	if patch.DailyReportsEnabled != nil {

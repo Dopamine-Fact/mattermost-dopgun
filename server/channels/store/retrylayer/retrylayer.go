@@ -24,6 +24,7 @@ type RetryLayer struct {
 	AuditStore                      store.AuditStore
 	AutoTranslationStore            store.AutoTranslationStore
 	BotStore                        store.BotStore
+	CanvasStore                     store.CanvasStore
 	ChannelStore                    store.ChannelStore
 	ChannelBookmarkStore            store.ChannelBookmarkStore
 	ChannelGuardStore               store.ChannelGuardStore
@@ -104,6 +105,10 @@ func (s *RetryLayer) AutoTranslation() store.AutoTranslationStore {
 
 func (s *RetryLayer) Bot() store.BotStore {
 	return s.BotStore
+}
+
+func (s *RetryLayer) Canvas() store.CanvasStore {
+	return s.CanvasStore
 }
 
 func (s *RetryLayer) Channel() store.ChannelStore {
@@ -368,6 +373,11 @@ type RetryLayerAutoTranslationStore struct {
 
 type RetryLayerBotStore struct {
 	store.BotStore
+	Root *RetryLayer
+}
+
+type RetryLayerCanvasStore struct {
+	store.CanvasStore
 	Root *RetryLayer
 }
 
@@ -1461,6 +1471,111 @@ func (s *RetryLayerBotStore) Update(bot *model.Bot) (*model.Bot, error) {
 	tries := 0
 	for {
 		result, err := s.BotStore.Update(bot)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerCanvasStore) AppendUpdate(channelID string, userID string, data []byte) (int64, error) {
+
+	tries := 0
+	for {
+		result, err := s.CanvasStore.AppendUpdate(channelID, userID, data)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerCanvasStore) Get(channelID string) (*model.Canvas, error) {
+
+	tries := 0
+	for {
+		result, err := s.CanvasStore.Get(channelID)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerCanvasStore) GetState(channelID string, afterSeq int64) (*model.CanvasState, error) {
+
+	tries := 0
+	for {
+		result, err := s.CanvasStore.GetState(channelID, afterSeq)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerCanvasStore) Save(canvas *model.Canvas) (*model.Canvas, error) {
+
+	tries := 0
+	for {
+		result, err := s.CanvasStore.Save(canvas)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerCanvasStore) SaveSnapshot(channelID string, data []byte, uptoSeq int64) (bool, error) {
+
+	tries := 0
+	for {
+		result, err := s.CanvasStore.SaveSnapshot(channelID, data, uptoSeq)
 		if err == nil {
 			return result, nil
 		}
@@ -21526,6 +21641,7 @@ func New(childStore store.Store) *RetryLayer {
 	newStore.AuditStore = &RetryLayerAuditStore{AuditStore: childStore.Audit(), Root: &newStore}
 	newStore.AutoTranslationStore = &RetryLayerAutoTranslationStore{AutoTranslationStore: childStore.AutoTranslation(), Root: &newStore}
 	newStore.BotStore = &RetryLayerBotStore{BotStore: childStore.Bot(), Root: &newStore}
+	newStore.CanvasStore = &RetryLayerCanvasStore{CanvasStore: childStore.Canvas(), Root: &newStore}
 	newStore.ChannelStore = &RetryLayerChannelStore{ChannelStore: childStore.Channel(), Root: &newStore}
 	newStore.ChannelBookmarkStore = &RetryLayerChannelBookmarkStore{ChannelBookmarkStore: childStore.ChannelBookmark(), Root: &newStore}
 	newStore.ChannelGuardStore = &RetryLayerChannelGuardStore{ChannelGuardStore: childStore.ChannelGuard(), Root: &newStore}

@@ -7120,6 +7120,36 @@
     "description": "Internal error when updating the read receipt record while burning a burn-on-read post fails."
   },
   {
+    "id": "app.canvas.archived.app_error",
+    "translation": "The channel is archived.",
+    "description": "API error when someone creates a canvas in, or writes to the canvas of, an archived channel."
+  },
+  {
+    "id": "app.canvas.disabled.app_error",
+    "translation": "Canvases are not enabled for this team.",
+    "description": "API error when a canvas endpoint is used for a team whose admin has not turned on canvas channels in Team Settings."
+  },
+  {
+    "id": "app.canvas.invalid_channel.app_error",
+    "translation": "A canvas cannot be created for this channel.",
+    "description": "API validation error when creating a canvas for a channel that belongs to another team, is a direct message, or already has a canvas."
+  },
+  {
+    "id": "app.canvas.not_found.app_error",
+    "translation": "This channel has no canvas.",
+    "description": "API error when the canvas of a channel is requested but the channel is not a canvas channel."
+  },
+  {
+    "id": "app.canvas.store.app_error",
+    "translation": "Unable to save or load the canvas.",
+    "description": "Internal server error when the database fails to read or write a canvas."
+  },
+  {
+    "id": "app.canvas.too_large.app_error",
+    "translation": "The canvas data is too large.",
+    "description": "API error when a canvas update or snapshot sent by the client is bigger than the server allows."
+  },
+  {
     "id": "app.channel.add_member.deleted_user.app_error",
     "translation": "Unable to add the user as a member of the channel.",
     "description": "API error returned when a user could not be added as a channel member (e.g. the account is deactivated)."

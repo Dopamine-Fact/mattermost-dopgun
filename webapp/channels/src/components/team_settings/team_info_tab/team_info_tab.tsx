@@ -57,6 +57,7 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
     const [description, setDescription] = useState<Team['description']>(team.description);
     const [tasksEnabled, setTasksEnabled] = useState<boolean>(Boolean(team.tasks_enabled));
     const [revisionsEnabled, setRevisionsEnabled] = useState<boolean>(Boolean(team.revisions_enabled));
+    const [canvasEnabled, setCanvasEnabled] = useState<boolean>(Boolean(team.canvas_enabled));
     const [dailyReportsEnabled, setDailyReportsEnabled] = useState<boolean>(Boolean(team.daily_reports_enabled));
     const [dailyReportTime, setDailyReportTime] = useState<string>(team.daily_report_time || DEFAULT_DAILY_REPORT_TIME);
     const [teamIconFile, setTeamIconFile] = useState<File | undefined>();
@@ -66,7 +67,7 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
     const [saveChangesPanelState, setSaveChangesPanelState] = useState<SaveChangesPanelState>();
 
     const handleNameDescriptionSubmit = useCallback(async (): Promise<boolean> => {
-        if (name.trim() === team.display_name && description === team.description && tasksEnabled === Boolean(team.tasks_enabled) && revisionsEnabled === Boolean(team.revisions_enabled) && dailyReportsEnabled === Boolean(team.daily_reports_enabled) && dailyReportTime === (team.daily_report_time || DEFAULT_DAILY_REPORT_TIME)) {
+        if (name.trim() === team.display_name && description === team.description && tasksEnabled === Boolean(team.tasks_enabled) && revisionsEnabled === Boolean(team.revisions_enabled) && canvasEnabled === Boolean(team.canvas_enabled) && dailyReportsEnabled === Boolean(team.daily_reports_enabled) && dailyReportTime === (team.daily_report_time || DEFAULT_DAILY_REPORT_TIME)) {
             return true;
         }
 
@@ -87,6 +88,7 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
             description,
             tasks_enabled: tasksEnabled,
             revisions_enabled: revisionsEnabled,
+            canvas_enabled: canvasEnabled,
             ...(dailyReportsChanged && {
                 daily_reports_enabled: dailyReportsEnabled,
                 daily_report_time: dailyReportTime,
@@ -97,7 +99,7 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
             return false;
         }
         return true;
-    }, [actions, description, name, tasksEnabled, revisionsEnabled, dailyReportsEnabled, dailyReportTime, team.description, team.display_name, team.id, team.tasks_enabled, team.revisions_enabled, team.daily_reports_enabled, team.daily_report_time]);
+    }, [actions, description, name, tasksEnabled, revisionsEnabled, canvasEnabled, dailyReportsEnabled, dailyReportTime, team.description, team.display_name, team.id, team.tasks_enabled, team.revisions_enabled, team.canvas_enabled, team.daily_reports_enabled, team.daily_report_time]);
 
     const handleTeamIconSubmit = useCallback(async (): Promise<boolean> => {
         if (!teamIconFile) {
@@ -137,13 +139,14 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
         setDescription(team.description);
         setTasksEnabled(Boolean(team.tasks_enabled));
         setRevisionsEnabled(Boolean(team.revisions_enabled));
+        setCanvasEnabled(Boolean(team.canvas_enabled));
         setDailyReportsEnabled(Boolean(team.daily_reports_enabled));
         setDailyReportTime(team.daily_report_time || DEFAULT_DAILY_REPORT_TIME);
         setTeamIconFile(undefined);
         setImageClientError(undefined);
         setNameClientError(undefined);
         handleClose();
-    }, [handleClose, team.description, team.display_name, team.name, team.tasks_enabled, team.revisions_enabled, team.daily_reports_enabled, team.daily_report_time]);
+    }, [handleClose, team.description, team.display_name, team.name, team.tasks_enabled, team.revisions_enabled, team.canvas_enabled, team.daily_reports_enabled, team.daily_report_time]);
 
     const handleTeamIconRemove = useCallback(async () => {
         setLoading(true);
@@ -204,6 +207,12 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
         setRevisionsEnabled(enabled);
     }, [setAreThereUnsavedChanges]);
 
+    const handleCanvasEnabledChange = useCallback((enabled: boolean) => {
+        setAreThereUnsavedChanges(true);
+        setSaveChangesPanelState('editing');
+        setCanvasEnabled(enabled);
+    }, [setAreThereUnsavedChanges]);
+
     const handleDailyReportsEnabledChange = useCallback((enabled: boolean) => {
         setAreThereUnsavedChanges(true);
         setSaveChangesPanelState('editing');
@@ -248,6 +257,8 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
                 handleTasksEnabledChange={handleTasksEnabledChange}
                 revisionsEnabled={revisionsEnabled}
                 handleRevisionsEnabledChange={handleRevisionsEnabledChange}
+                canvasEnabled={canvasEnabled}
+                handleCanvasEnabledChange={handleCanvasEnabledChange}
             />
             <TeamDailyReportsSection
                 dailyReportsEnabled={dailyReportsEnabled}

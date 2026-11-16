@@ -108,6 +108,7 @@ type SqlStoreStores struct {
 	channelGuard               store.ChannelGuardStore
 	scheduledPost              store.ScheduledPostStore
 	task                       store.TaskStore
+	canvas                     store.CanvasStore
 	dailyReport                store.DailyReportStore
 	view                       store.ViewStore
 	propertyGroup              store.PropertyGroupStore
@@ -306,6 +307,7 @@ func New(settings model.SqlSettings, logger mlog.LoggerIFace, metrics einterface
 	store.stores.channelGuard = newSqlChannelGuardStore(store)
 	store.stores.scheduledPost = newScheduledPostStore(store)
 	store.stores.task = newSqlTaskStore(store)
+	store.stores.canvas = newSqlCanvasStore(store)
 	store.stores.dailyReport = newSqlDailyReportStore(store)
 	store.stores.view = newSqlViewStore(store)
 	store.stores.propertyGroup = newPropertyGroupStore(store)
@@ -1171,6 +1173,10 @@ func (ss *SqlStore) ScheduledPost() store.ScheduledPostStore {
 
 func (ss *SqlStore) Task() store.TaskStore {
 	return ss.stores.task
+}
+
+func (ss *SqlStore) Canvas() store.CanvasStore {
+	return ss.stores.canvas
 }
 
 func (ss *SqlStore) DailyReport() store.DailyReportStore {

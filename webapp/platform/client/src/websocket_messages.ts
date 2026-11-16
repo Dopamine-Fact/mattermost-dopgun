@@ -160,6 +160,24 @@ export type TaskSectionDeleted = BaseWebSocketMessage<WebSocketEvents.TaskSectio
     team_id: string;
 }>;
 
+// Canvas messages
+
+export type CanvasUpdated = BaseWebSocketMessage<WebSocketEvents.CanvasUpdated, {
+    channel_id: string;
+    seq: number;
+
+    /** base64 Yjs update */
+    data: string;
+}>;
+
+export type CanvasAwareness = BaseWebSocketMessage<WebSocketEvents.CanvasAwareness, {
+    channel_id: string;
+    user_id: string;
+
+    /** base64 y-protocols awareness update */
+    data: string;
+}>;
+
 // Thread messages
 
 export type ThreadUpdated = BaseWebSocketMessage<WebSocketEvents.ThreadUpdated, {
