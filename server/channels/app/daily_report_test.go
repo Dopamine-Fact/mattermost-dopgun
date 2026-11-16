@@ -139,8 +139,14 @@ func TestRunDailyReportTick(t *testing.T) {
 	th.App.RunDailyReportTick(th.Context, deadline.AddDate(0, 0, 5).Add(-10*time.Minute)) // Saturday
 	assert.Equal(t, 0, reminders(th.BasicUser2), "no reminders on weekends")
 
-	th.App.RunDailyReportTick(th.Context, deadline.Add(-10*time.Minute))
+	// Real ticks land a few ms after the minute boundary; that must not shift the slot.
+	th.App.RunDailyReportTick(th.Context, deadline.Add(-11*time.Minute+50*time.Millisecond))
+	assert.Equal(t, 0, reminders(th.BasicUser2), "11 minutes before is not a reminder slot")
+
+	th.App.RunDailyReportTick(th.Context, deadline.Add(-10*time.Minute+50*time.Millisecond))
 	assert.Equal(t, 1, reminders(th.BasicUser2))
+	th.App.RunDailyReportTick(th.Context, deadline.Add(-5*time.Minute+50*time.Millisecond))
+	assert.Equal(t, 2, reminders(th.BasicUser2))
 	assert.Equal(t, 0, reminders(th.BasicUser), "a user with a report that day is not reminded")
 	assert.Contains(t, strings.Join(systemBotDMTexts(t, th, th.BasicUser2), "\n"), "/"+team.Name+"/daily_reports")
 }
@@ -176,11 +182,12 @@ func TestExportDailyReportsCSV(t *testing.T) {
 		Date: "2026-11-16", UserId: th.BasicUser.Id, Message: "line one, \"quoted\"\nline two",
 		Tasks:  []model.DailyReportTask{{Title: "A"}, {Title: "B"}},
 		Status: model.DailyReportStatusApproved, ApprovedBy: th.BasicUser2.Id, ApprovedAt: 1000, CreateAt: 2000,
-	}}
+	}, {Date: "2026-11-17", UserId: th.BasicUser.Id, Message: "=cmd|' /c calc", Status: model.DailyReportStatusPending, CreateAt: 3000}}
 	var sb strings.Builder
 	require.Nil(t, th.App.ExportDailyReportsCSV(&sb, reports))
 
 	assert.True(t, strings.HasPrefix(sb.String(), "date,user,message,finished_tasks,status,auto_approved,approved_by,approved_at,submitted_at\n"))
 	assert.Contains(t, sb.String(), `2026-11-16,`+th.BasicUser.Username+`,"line one, ""quoted""`)
+	assert.Contains(t, sb.String(), `'=cmd|' /c calc`)
 	assert.Contains(t, sb.String(), `A; B,approved,false,`+th.BasicUser2.Username+`,1970-01-01T00:00:01Z,1970-01-01T00:00:02Z`)
 }

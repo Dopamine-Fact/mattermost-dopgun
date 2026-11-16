@@ -1223,7 +1223,11 @@ type TaskStore interface {
 type DailyReportStore interface {
 	// Save returns *store.ErrConflict when the user already has a report for that team and date.
 	Save(r *model.DailyReport) (*model.DailyReport, error)
+	// Update only writes while the stored report is still pending: *store.ErrConflict when it has been approved,
+	// *store.ErrNotFound when it does not exist.
 	Update(r *model.DailyReport) (*model.DailyReport, error)
+	// Approve marks a pending report approved, leaving its content alone; same errors as Update.
+	Approve(id, approverID string, auto bool, approvedAt int64) error
 	Get(id string) (*model.DailyReport, error)
 	GetForUserDate(teamID, userID, date string) (*model.DailyReport, error)
 	// GetForTeam lists reports with fromDate <= Date <= toDate; an empty userID means every user.

@@ -5287,6 +5287,27 @@ func (s *RetryLayerContentFlaggingStore) SaveReviewerSettings(reviewerSettings m
 
 }
 
+func (s *RetryLayerDailyReportStore) Approve(id string, approverID string, auto bool, approvedAt int64) error {
+
+	tries := 0
+	for {
+		err := s.DailyReportStore.Approve(id, approverID, auto, approvedAt)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
 func (s *RetryLayerDailyReportStore) Get(id string) (*model.DailyReport, error) {
 
 	tries := 0

@@ -97,14 +97,45 @@ func (s *SqlDailyReportStore) Update(r *model.DailyReport) (*model.DailyReport, 
 		Set("ApprovedBy", r.ApprovedBy).
 		Set("ApprovedAt", r.ApprovedAt).
 		Set("UpdateAt", r.UpdateAt).
-		Where(sq.Eq{"Id": r.Id}))
+		Where(sq.Eq{"Id": r.Id, "Status": model.DailyReportStatusPending}))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to update DailyReport with id=%s", r.Id)
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
-		return nil, store.NewErrNotFound("DailyReport", r.Id)
+		return nil, s.missOrConflict(r.Id)
 	}
 	return r, nil
+}
+
+// Approve approves a pending report without touching its content; see DailyReportStore.Approve.
+func (s *SqlDailyReportStore) Approve(id, approverID string, auto bool, approvedAt int64) error {
+	res, err := s.GetMaster().ExecBuilder(s.getQueryBuilder().
+		Update("DailyReports").
+		Set("Status", model.DailyReportStatusApproved).
+		Set("AutoApproved", auto).
+		Set("ApprovedBy", approverID).
+		Set("ApprovedAt", approvedAt).
+		Set("UpdateAt", model.GetMillis()).
+		Where(sq.Eq{"Id": id, "Status": model.DailyReportStatusPending}))
+	if err != nil {
+		return errors.Wrapf(err, "failed to approve DailyReport with id=%s", id)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return s.missOrConflict(id)
+	}
+	return nil
+}
+
+// missOrConflict explains a guarded write that matched no row: the report is gone, or it is no longer pending.
+func (s *SqlDailyReportStore) missOrConflict(id string) error {
+	var n int
+	if err := s.GetMaster().GetBuilder(&n, s.getQueryBuilder().Select("COUNT(*)").From("DailyReports").Where(sq.Eq{"Id": id})); err != nil {
+		return errors.Wrapf(err, "failed to look up DailyReport with id=%s", id)
+	}
+	if n == 0 {
+		return store.NewErrNotFound("DailyReport", id)
+	}
+	return store.NewErrConflict("DailyReport", errors.New("report is no longer pending"), "id="+id)
 }
 
 func (s *SqlDailyReportStore) Get(id string) (*model.DailyReport, error) {

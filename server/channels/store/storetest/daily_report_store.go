@@ -68,6 +68,29 @@ func testDailyReportSaveGetUpdate(t *testing.T, ss store.Store) {
 	var nfErr *store.ErrNotFound
 	require.ErrorAs(t, err, &nfErr)
 
+	// An approved report is frozen: neither Update nor Approve may change it.
+	var conflictErr *store.ErrConflict
+	stale := *again
+	stale.Message = "late edit"
+	_, err = ss.DailyReport().Update(&stale)
+	require.ErrorAs(t, err, &conflictErr)
+	require.ErrorAs(t, ss.DailyReport().Approve(again.Id, model.NewId(), false, 1), &conflictErr)
+	frozen, err := ss.DailyReport().Get(again.Id)
+	require.NoError(t, err)
+	require.Equal(t, again, frozen)
+	require.ErrorAs(t, ss.DailyReport().Approve(model.NewId(), model.NewId(), false, 1), &nfErr)
+
+	pending, err := ss.DailyReport().Save(newDailyReport(teamID, userID, "2026-11-19"))
+	require.NoError(t, err)
+	require.NoError(t, ss.DailyReport().Approve(pending.Id, "approver", true, 42))
+	approved, err := ss.DailyReport().Get(pending.Id)
+	require.NoError(t, err)
+	require.Equal(t, model.DailyReportStatusApproved, approved.Status)
+	require.True(t, approved.AutoApproved)
+	require.Equal(t, "approver", approved.ApprovedBy)
+	require.EqualValues(t, 42, approved.ApprovedAt)
+	require.Equal(t, pending.Message, approved.Message)
+
 	_, err = ss.DailyReport().GetForUserDate(teamID, userID, "2030-01-01")
 	require.ErrorAs(t, err, &nfErr)
 

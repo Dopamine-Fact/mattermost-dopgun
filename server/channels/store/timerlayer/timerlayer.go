@@ -4409,6 +4409,22 @@ func (s *TimerLayerContentFlaggingStore) SaveReviewerSettings(reviewerSettings m
 	return err
 }
 
+func (s *TimerLayerDailyReportStore) Approve(id string, approverID string, auto bool, approvedAt int64) error {
+	start := time.Now()
+
+	err := s.DailyReportStore.Approve(id, approverID, auto, approvedAt)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.Approve", success, elapsed)
+	}
+	return err
+}
+
 func (s *TimerLayerDailyReportStore) Get(id string) (*model.DailyReport, error) {
 	start := time.Now()
 

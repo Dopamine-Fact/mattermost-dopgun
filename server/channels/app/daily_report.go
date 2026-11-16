@@ -122,6 +122,10 @@ func (a *App) SubmitDailyReport(rctx request.CTX, teamID, userID, message string
 		existing.Message = message
 		existing.Tasks = tasks
 		saved, err = a.Srv().Store().DailyReport().Update(existing)
+		var conflictErr *store.ErrConflict
+		if errors.As(err, &conflictErr) { // approved between the read and the write
+			return nil, model.NewAppError("SubmitDailyReport", "app.daily_report.approved.app_error", nil, "id="+existing.Id, http.StatusBadRequest)
+		}
 	case errors.As(err, &nfErr):
 		saved, err = a.Srv().Store().DailyReport().Save(&model.DailyReport{TeamId: teamID, UserId: userID, Date: date, Message: message, Tasks: tasks})
 	}
@@ -163,18 +167,25 @@ func (a *App) ApproveDailyReport(rctx request.CTX, reportID, approverID string) 
 	if report.Status == model.DailyReportStatusApproved {
 		return report, nil
 	}
-	report.Status = model.DailyReportStatusApproved
-	report.ApprovedBy = approverID
-	report.ApprovedAt = model.GetMillis()
-	updated, err := a.Srv().Store().DailyReport().Update(report)
+	err := a.Srv().Store().DailyReport().Approve(reportID, approverID, false, model.GetMillis())
+	var conflictErr *store.ErrConflict
+	if errors.As(err, &conflictErr) {
+		// Someone approved it first; their approval stands.
+		return a.GetDailyReport(reportID)
+	}
 	if err != nil {
 		return nil, dailyReportStoreError("ApproveDailyReport", reportID, err)
+	}
+	updated, appErr := a.GetDailyReport(reportID)
+	if appErr != nil {
+		return nil, appErr
 	}
 	a.publishDailyReport(rctx, updated)
 	return updated, nil
 }
 
-// ExportDailyReportsCSV writes the reports as CSV; csv.Writer quotes cells, so message text cannot break out of its column.
+// ExportDailyReportsCSV writes the reports as CSV. csv.Writer quotes cells, so text cannot break out of its column,
+// and csvSafe stops spreadsheets from reading user-written cells as formulas.
 func (a *App) ExportDailyReportsCSV(w io.Writer, reports []*model.DailyReport) *model.AppError {
 	names := map[string]string{}
 	name := func(id string) string {
@@ -204,7 +215,7 @@ func (a *App) ExportDailyReportsCSV(w io.Writer, reports []*model.DailyReport) *
 			approvedAt = time.UnixMilli(r.ApprovedAt).UTC().Format(time.RFC3339)
 		}
 		_ = cw.Write([]string{
-			r.Date, name(r.UserId), r.Message, strings.Join(titles, "; "), r.Status,
+			r.Date, csvSafe(name(r.UserId)), csvSafe(r.Message), csvSafe(strings.Join(titles, "; ")), r.Status,
 			strconv.FormatBool(r.AutoApproved), name(r.ApprovedBy), approvedAt,
 			time.UnixMilli(r.CreateAt).UTC().Format(time.RFC3339),
 		})
@@ -214,6 +225,14 @@ func (a *App) ExportDailyReportsCSV(w io.Writer, reports []*model.DailyReport) *
 		return model.NewAppError("ExportDailyReportsCSV", "app.daily_report.export.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
 	}
 	return nil
+}
+
+// csvSafe prefixes cells a spreadsheet would run as a formula with a single quote.
+func csvSafe(s string) string {
+	if s != "" && strings.ContainsRune("=+-@\t\r", rune(s[0])) {
+		return "'" + s
+	}
+	return s
 }
 
 // RunDailyReportTick sends the 10 and 5 minute reminders and auto-approves reports left pending for 30 minutes.
@@ -235,12 +254,20 @@ func (a *App) RunDailyReportTick(rctx request.CTX, now time.Time) {
 		return
 	}
 	for _, report := range pending {
-		report.Status = model.DailyReportStatusApproved
-		report.AutoApproved = true
-		report.ApprovedAt = now.UnixMilli()
-		updated, err := a.Srv().Store().DailyReport().Update(report)
+		err := a.Srv().Store().DailyReport().Approve(report.Id, "", true, now.UnixMilli())
+		var conflictErr *store.ErrConflict
+		var nfErr *store.ErrNotFound
+		if errors.As(err, &conflictErr) || errors.As(err, &nfErr) {
+			rctx.Logger().Debug("RunDailyReportTick: report changed before auto-approval, skipping", mlog.String("report_id", report.Id))
+			continue
+		}
 		if err != nil {
 			rctx.Logger().Error("RunDailyReportTick: failed to auto-approve", mlog.String("report_id", report.Id), mlog.Err(err))
+			continue
+		}
+		updated, appErr := a.GetDailyReport(report.Id)
+		if appErr != nil {
+			rctx.Logger().Error("RunDailyReportTick: failed to reload the approved report", mlog.String("report_id", report.Id), mlog.Err(appErr))
 			continue
 		}
 		a.publishDailyReport(rctx, updated)
@@ -260,7 +287,8 @@ func (a *App) sendDailyReportReminders(rctx request.CTX, team *model.Team, now t
 		return
 	}
 	deadline := time.Date(local.Year(), local.Month(), local.Day(), hour, minute, 0, 0, loc)
-	minutes := int(deadline.Sub(now).Truncate(time.Minute) / time.Minute)
+	// Measure from the wall-clock minute, so a tick landing a few ms late still counts as its own minute.
+	minutes := int(deadline.Sub(local.Truncate(time.Minute)) / time.Minute)
 	if minutes != 10 && minutes != 5 {
 		return
 	}
