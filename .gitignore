@@ -218,3 +218,5 @@ server/docs/*.pdf
 server/docs/*.md
 server/data_dest/
 server/import/
+
+.superpowers/
