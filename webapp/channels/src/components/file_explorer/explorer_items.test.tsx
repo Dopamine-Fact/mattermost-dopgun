@@ -27,6 +27,8 @@ const renderItems = (view: 'icons' | 'details', onSort = jest.fn()) => renderWit
         onSort={onSort}
         onSelect={jest.fn()}
         onOpen={jest.fn()}
+        onContextMenu={jest.fn()}
+        onRenameDone={jest.fn()}
         getUserName={() => 'me'}
     />,
 );

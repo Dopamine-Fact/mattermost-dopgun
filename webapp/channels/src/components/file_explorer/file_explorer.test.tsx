@@ -16,6 +16,7 @@ import WebSocketClient from 'client/web_websocket_client';
 import {act, fireEvent, renderWithContext, screen, waitFor, within} from 'tests/react_testing_utils';
 import {TestHelper} from 'utils/test_helper';
 
+import {clearClipboard} from './explorer_actions';
 import FileExplorer from './file_explorer';
 
 jest.mock('client/web_websocket_client', () => ({
@@ -93,6 +94,7 @@ describe('FileExplorer', () => {
         jest.restoreAllMocks();
         (openModal as jest.Mock).mockClear();
         (WebSocketClient.addMessageListener as jest.Mock).mockClear();
+        clearClipboard();
     });
 
     test('root lists only open and private channels I belong to', async () => {
@@ -152,5 +154,124 @@ describe('FileExplorer', () => {
         });
 
         await waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(before));
+    });
+    describe('file operations', () => {
+        const mine = fileItem('i1', fileInfo('f1', 'a.txt', 10));
+        const theirs = {...fileItem('i2', fileInfo('f2', 'b.txt', 10)), creator_id: 'u2'};
+        const lastModal = () => (openModal as jest.Mock).mock.calls.at(-1)[0];
+
+        beforeEach(() => {
+            jest.spyOn(Client4, 'getDriveFolder').mockImplementation(async (_c, parentId = '') => (
+                parentId ? {items: [], path: [folder('d1', 'Docs')]} : {items: [folder('d1', 'Docs'), mine, theirs], path: []}
+            ));
+        });
+
+        test('Ctrl+X then Ctrl+V in another folder moves the item', async () => {
+            const move = jest.spyOn(Client4, 'moveDriveItems').mockResolvedValue({status: 'OK'});
+            const first = renderAt('/team/files/town');
+            const cell = await screen.findByRole('gridcell', {name: 'a.txt'});
+            fireEvent.click(cell);
+            fireEvent.keyDown(cell, {key: 'x', ctrlKey: true});
+            first.unmount();
+
+            // useHistory is mocked in unit tests, so open the other folder directly.
+            renderAt('/team/files/town/d1');
+            await screen.findByText('This folder is empty. Drop files here or use Upload.');
+            fireEvent.keyDown(screen.getByRole('main'), {key: 'v', ctrlKey: true});
+
+            await waitFor(() => expect(move).toHaveBeenCalledWith('c1', ['i1'], 'c1', 'd1'));
+        });
+
+        test('a chat attachment copied with Ctrl+C is pasted as a file id', async () => {
+            jest.spyOn(Client4, 'getDriveChatFiles').mockResolvedValue([fileInfo('f9', 'chat.png', 10)]);
+            const copy = jest.spyOn(Client4, 'copyDriveItems').mockResolvedValue({status: 'OK'});
+            const first = renderAt('/team/files/town/chat');
+            const cell = await screen.findByRole('gridcell', {name: 'chat.png'});
+            fireEvent.click(cell);
+            fireEvent.keyDown(cell, {key: 'c', ctrlKey: true});
+            first.unmount();
+
+            renderAt('/team/files/town');
+            const docs = await screen.findByRole('gridcell', {name: 'Docs'});
+            fireEvent.keyDown(docs, {key: 'v', ctrlKey: true});
+
+            await waitFor(() => expect(copy).toHaveBeenCalledWith('c1', [], ['f9'], 'c1', ''));
+        });
+
+        test('Delete moves to the Recycle Bin and the toast can undo it', async () => {
+            const del = jest.spyOn(Client4, 'deleteDriveItems').mockResolvedValue({status: 'OK'});
+            const restore = jest.spyOn(Client4, 'restoreDriveItems').mockResolvedValue({status: 'OK'});
+            renderAt('/team/files/town');
+            const cell = await screen.findByRole('gridcell', {name: 'a.txt'});
+            fireEvent.click(cell);
+            fireEvent.keyDown(cell, {key: 'Delete'});
+
+            await waitFor(() => expect(del).toHaveBeenCalledWith('c1', ['i1'], false));
+            await waitFor(() => expect(lastModal().dialogProps.content.message).toBe('Moved 1 item to the Recycle Bin'));
+            await act(async () => lastModal().dialogProps.content.undo());
+            expect(restore).toHaveBeenCalledWith('c1', ['i1']);
+        });
+
+        test('Shift+Delete deletes permanently only after confirming', async () => {
+            const del = jest.spyOn(Client4, 'deleteDriveItems').mockResolvedValue({status: 'OK'});
+            renderAt('/team/files/town');
+            const cell = await screen.findByRole('gridcell', {name: 'a.txt'});
+            fireEvent.click(cell);
+            fireEvent.keyDown(cell, {key: 'Delete', shiftKey: true});
+
+            expect(del).not.toHaveBeenCalled();
+            await act(async () => lastModal().dialogProps.onConfirm());
+            expect(del).toHaveBeenCalledWith('c1', ['i1'], true);
+        });
+
+        test('a server error is shown as a toast', async () => {
+            jest.spyOn(Client4, 'deleteDriveItems').mockRejectedValue(new Error('nope from server'));
+            renderAt('/team/files/town');
+            const cell = await screen.findByRole('gridcell', {name: 'a.txt'});
+            fireEvent.click(cell);
+            fireEvent.keyDown(cell, {key: 'Delete'});
+            await waitFor(() => expect(lastModal().dialogProps.content.message).toBe('nope from server'));
+        });
+
+        test('context menu Rename is only enabled for items I may change', async () => {
+            renderAt('/team/files/town');
+            fireEvent.contextMenu(await screen.findByRole('gridcell', {name: 'b.txt'}));
+            expect(screen.getByRole('menuitem', {name: 'Rename'})).toBeDisabled();
+
+            fireEvent.keyDown(screen.getByRole('menu'), {key: 'Escape'});
+            fireEvent.contextMenu(screen.getByRole('gridcell', {name: 'a.txt'}));
+            expect(screen.getByRole('menuitem', {name: 'Rename'})).toBeEnabled();
+        });
+
+        test('context menu Rename is disabled for a chat attachment', async () => {
+            jest.spyOn(Client4, 'getDriveChatFiles').mockResolvedValue([fileInfo('f9', 'chat.png', 10)]);
+            renderAt('/team/files/town/chat');
+            fireEvent.contextMenu(await screen.findByRole('gridcell', {name: 'chat.png'}));
+            expect(screen.getByRole('menuitem', {name: 'Rename'})).toBeDisabled();
+            expect(screen.getByRole('menuitem', {name: 'Copy'})).toBeEnabled();
+        });
+
+        test('F2 then Enter renames the item', async () => {
+            const rename = jest.spyOn(Client4, 'renameDriveItem').mockResolvedValue(mine);
+            renderAt('/team/files/town');
+            const cell = await screen.findByRole('gridcell', {name: 'a.txt'});
+            fireEvent.click(cell);
+            fireEvent.keyDown(cell, {key: 'F2'});
+
+            const input = screen.getByRole('textbox', {name: 'Name'});
+            fireEvent.change(input, {target: {value: 'new.txt'}});
+            fireEvent.keyDown(input, {key: 'Enter'});
+
+            await waitFor(() => expect(rename).toHaveBeenCalledWith('c1', 'i1', 'new.txt'));
+        });
+
+        test('Ctrl+A selects everything and Escape clears it', async () => {
+            renderAt('/team/files/town');
+            const cell = await screen.findByRole('gridcell', {name: 'a.txt'});
+            fireEvent.keyDown(cell, {key: 'a', ctrlKey: true});
+            await waitFor(() => expect(screen.getAllByRole('gridcell', {selected: true})).toHaveLength(4));
+            fireEvent.keyDown(cell, {key: 'Escape'});
+            await waitFor(() => expect(screen.queryAllByRole('gridcell', {selected: true})).toHaveLength(0));
+        });
     });
 });

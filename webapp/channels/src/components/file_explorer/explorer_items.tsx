@@ -12,11 +12,17 @@ import {getFileThumbnailUrl} from 'mattermost-redux/utils/file_utils';
 
 import {fileSizeToString, getFileType, getIconClassName} from 'utils/utils';
 
+import ExplorerRenameInput from './explorer_rename_input';
 import type {ExplorerEntry} from './use_explorer_data';
 
 export type ExplorerView = 'icons' | 'details';
-export type SortKey = 'name' | 'modified' | 'type' | 'size' | 'creator';
+
+/** name, modified, type, size, creator, or a key of a custom column (e.g. the Recycle Bin's). */
+export type SortKey = string;
 export type ExplorerSort = {by: SortKey; desc: boolean};
+
+/** A Details view column after Name. */
+export type ExplorerColumn = {key: SortKey; label: string; render: (entry: ExplorerEntry) => React.ReactNode};
 
 type Props = {
     entries: ExplorerEntry[];
@@ -27,7 +33,15 @@ type Props = {
     onSort: (by: SortKey) => void;
     onSelect: (entry: ExplorerEntry, event: React.MouseEvent | React.KeyboardEvent) => void;
     onOpen: (entry: ExplorerEntry) => void;
+    onContextMenu: (entry: ExplorerEntry, event: React.MouseEvent) => void;
     getUserName: (userId: string) => string;
+
+    /** Columns after Name in the Details view; the default ones when omitted. */
+    columns?: ExplorerColumn[];
+
+    /** The entry whose name is being edited, and what to do with the result. */
+    renamingKey?: string;
+    onRenameDone: (entry: ExplorerEntry, name?: string) => void;
 };
 
 export function entryModified(entry: ExplorerEntry): number {
@@ -79,16 +93,20 @@ export function EntryIcon({entry, large}: {entry: ExplorerEntry; large?: boolean
     return <div className={classNames('file-icon', getIconClassName(getFileType(info?.extension || '')), {small: !large})}/>;
 }
 
-const COLUMNS: Array<{key: SortKey; id: string; defaultMessage: string}> = [
-    {key: 'name', id: 'file_explorer.column.name', defaultMessage: 'Name'},
-    {key: 'modified', id: 'file_explorer.column.modified', defaultMessage: 'Date modified'},
-    {key: 'type', id: 'file_explorer.column.type', defaultMessage: 'Type'},
-    {key: 'size', id: 'file_explorer.column.size', defaultMessage: 'Size'},
-    {key: 'creator', id: 'file_explorer.column.creator', defaultMessage: 'Uploaded by'},
-];
+export function formatDate(intl: IntlShape, time: number) {
+    return time ? intl.formatDate(time, {dateStyle: 'medium', timeStyle: 'short'}) : '';
+}
 
-const ExplorerItems = ({entries, view, selected, sort, sortable = () => true, onSort, onSelect, onOpen, getUserName}: Props) => {
+const ExplorerItems = ({entries, view, selected, sort, sortable = () => true, onSort, onSelect, onOpen, onContextMenu, getUserName, columns, renamingKey, onRenameDone}: Props) => {
     const intl = useIntl();
+    const nameColumn: ExplorerColumn = {key: 'name', label: intl.formatMessage({id: 'file_explorer.column.name', defaultMessage: 'Name'}), render: () => null};
+    const allColumns = [nameColumn, ...(columns ?? [
+        {key: 'modified', label: intl.formatMessage({id: 'file_explorer.column.modified', defaultMessage: 'Date modified'}), render: (e) => formatDate(intl, entryModified(e))},
+        {key: 'type', label: intl.formatMessage({id: 'file_explorer.column.type', defaultMessage: 'Type'}), render: (e) => entryType(e, intl)},
+        {key: 'size', label: intl.formatMessage({id: 'file_explorer.column.size', defaultMessage: 'Size'}), render: (e) => (e.fileInfo ? fileSizeToString(e.fileInfo.size) : '')},
+        {key: 'creator', label: intl.formatMessage({id: 'file_explorer.column.creator', defaultMessage: 'Uploaded by'}), render: (e) => getUserName(entryCreator(e))},
+    ] as ExplorerColumn[])];
+    const gridTemplateColumns = `minmax(200px, 3fr) repeat(${allColumns.length - 1}, minmax(100px, 1fr))`;
     const [focusKey, setFocusKey] = useState<string>();
     const refs = useRef(new Map<string, HTMLElement>());
     const moved = useRef(false);
@@ -103,6 +121,9 @@ const ExplorerItems = ({entries, view, selected, sort, sortable = () => true, on
     }, [focusKey]);
 
     const handleKeyDown = (event: React.KeyboardEvent, index: number) => {
+        if (event.altKey) {
+            return; // Alt+arrows navigate history
+        }
         const step = {ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1}[event.key];
         if (step) {
             event.preventDefault();
@@ -132,6 +153,13 @@ const ExplorerItems = ({entries, view, selected, sort, sortable = () => true, on
     });
 
     const mouseProps = (entry: ExplorerEntry) => ({
+        'data-entry-key': entry.key,
+        onContextMenu: (event: React.MouseEvent) => {
+            event.preventDefault();
+            moved.current = true;
+            setFocusKey(entry.key);
+            onContextMenu(entry, event);
+        },
         onClick: (event: React.MouseEvent) => {
             moved.current = true;
             setFocusKey(entry.key);
@@ -139,6 +167,14 @@ const ExplorerItems = ({entries, view, selected, sort, sortable = () => true, on
         },
         onDoubleClick: () => onOpen(entry),
     });
+
+    const renameInput = (entry: ExplorerEntry) => (
+        <ExplorerRenameInput
+            name={entry.name}
+            keepExtension={entry.kind === 'file'}
+            onDone={(name) => onRenameDone(entry, name)}
+        />
+    );
 
     if (view === 'icons') {
         return (
@@ -165,7 +201,7 @@ const ExplorerItems = ({entries, view, selected, sort, sortable = () => true, on
                                     large={true}
                                 />
                             </span>
-                            <span className='ExplorerItems__tileName'>{entry.name}</span>
+                            {renamingKey === entry.key ? renameInput(entry) : <span className='ExplorerItems__tileName'>{entry.name}</span>}
                         </div>
                     ))}
                 </div>
@@ -182,8 +218,9 @@ const ExplorerItems = ({entries, view, selected, sort, sortable = () => true, on
             <div
                 role='row'
                 className='ExplorerItems__row ExplorerItems__header'
+                style={{gridTemplateColumns}}
             >
-                {COLUMNS.map((col) => {
+                {allColumns.map((col) => {
                     let ariaSort: 'ascending' | 'descending' | undefined;
                     if (sort.by === col.key) {
                         ariaSort = sort.desc ? 'descending' : 'ascending';
@@ -199,36 +236,38 @@ const ExplorerItems = ({entries, view, selected, sort, sortable = () => true, on
                                 disabled={!sortable(col.key)}
                                 onClick={() => onSort(col.key)}
                             >
-                                {intl.formatMessage({id: col.id, defaultMessage: col.defaultMessage})}
+                                {col.label}
                                 {ariaSort && <span aria-hidden={true}>{sort.desc ? ' ▾' : ' ▴'}</span>}
                             </button>
                         </div>
                     );
                 })}
             </div>
-            {entries.map((entry, index) => {
-                const modified = entryModified(entry);
-                return (
+            {entries.map((entry, index) => (
+                <div
+                    key={entry.key}
+                    role='row'
+                    className={classNames('ExplorerItems__row', {selected: selected.has(entry.key)})}
+                    style={{gridTemplateColumns}}
+                    {...mouseProps(entry)}
+                >
                     <div
-                        key={entry.key}
-                        role='row'
-                        className={classNames('ExplorerItems__row', {selected: selected.has(entry.key)})}
-                        {...mouseProps(entry)}
+                        className='ExplorerItems__name'
+                        {...cellProps(entry, index)}
                     >
-                        <div
-                            className='ExplorerItems__name'
-                            {...cellProps(entry, index)}
-                        >
-                            <EntryIcon entry={entry}/>
-                            <span>{entry.name}</span>
-                        </div>
-                        <div role='gridcell'>{modified ? intl.formatDate(modified, {dateStyle: 'medium', timeStyle: 'short'}) : ''}</div>
-                        <div role='gridcell'>{entryType(entry, intl)}</div>
-                        <div role='gridcell'>{entry.fileInfo ? fileSizeToString(entry.fileInfo.size) : ''}</div>
-                        <div role='gridcell'>{getUserName(entryCreator(entry))}</div>
+                        <EntryIcon entry={entry}/>
+                        {renamingKey === entry.key ? renameInput(entry) : <span>{entry.name}</span>}
                     </div>
-                );
-            })}
+                    {allColumns.slice(1).map((col) => (
+                        <div
+                            key={col.key}
+                            role='gridcell'
+                        >
+                            {col.render(entry)}
+                        </div>
+                    ))}
+                </div>
+            ))}
         </div>
     );
 };

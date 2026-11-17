@@ -24363,6 +24363,18 @@
     "defaultMessage": "Uploaded by",
     "description": "File explorer Details view column header and preview pane label: the user who uploaded the file."
   },
+  "file_explorer.column.deleted": {
+    "defaultMessage": "Date deleted",
+    "description": "File explorer Recycle Bin column header: when the item was moved to the Recycle Bin."
+  },
+  "file_explorer.column.deletedBy": {
+    "defaultMessage": "Deleted by",
+    "description": "File explorer Recycle Bin column header: the user who deleted the item."
+  },
+  "file_explorer.column.location": {
+    "defaultMessage": "Original location",
+    "description": "File explorer Recycle Bin column header: the folder path the item was deleted from, e.g. Town / Docs."
+  },
   "file_explorer.column.modified": {
     "defaultMessage": "Date modified",
     "description": "File explorer Details view column header and preview pane label: when the item last changed."
@@ -24378,6 +24390,22 @@
   "file_explorer.column.type": {
     "defaultMessage": "Type",
     "description": "File explorer Details view column header and preview pane label for the item type."
+  },
+  "file_explorer.copy": {
+    "defaultMessage": "Copy",
+    "description": "File explorer toolbar and context menu action that copies the selected items to the explorer clipboard (Ctrl+C)."
+  },
+  "file_explorer.cut": {
+    "defaultMessage": "Cut",
+    "description": "File explorer toolbar and context menu action that marks the selected items to be moved by the next Paste (Ctrl+X)."
+  },
+  "file_explorer.delete": {
+    "defaultMessage": "Delete",
+    "description": "File explorer toolbar and context menu action that moves the selected items to the channel's Recycle Bin."
+  },
+  "file_explorer.deleted": {
+    "defaultMessage": "Moved {count, plural, one {# item} other {# items}} to the Recycle Bin",
+    "description": "File explorer toast after deleting items; it has an Undo button that restores them."
   },
   "file_explorer.dimensions": {
     "defaultMessage": "Dimensions",
@@ -24395,6 +24423,10 @@
     "defaultMessage": "No files have been shared in this channel yet.",
     "description": "File explorer empty state of the Chat attachments folder."
   },
+  "file_explorer.empty.confirm": {
+    "defaultMessage": "Everything in the Recycle Bin that you can delete will be gone for good. This can't be undone.",
+    "description": "File explorer confirmation text before emptying the Recycle Bin; only the user's own items (or all, for channel admins) are removed."
+  },
   "file_explorer.empty.folder": {
     "defaultMessage": "This folder is empty. Drop files here or use Upload.",
     "description": "File explorer empty state of a channel folder; Upload is the toolbar button."
@@ -24406,6 +24438,10 @@
   "file_explorer.empty.trash": {
     "defaultMessage": "The Recycle Bin is empty.",
     "description": "File explorer empty state of a channel's Recycle Bin."
+  },
+  "file_explorer.emptyTrash": {
+    "defaultMessage": "Empty Recycle Bin",
+    "description": "File explorer Recycle Bin action that permanently deletes everything in it the user may delete."
   },
   "file_explorer.forward": {
     "defaultMessage": "Forward",
@@ -24423,9 +24459,25 @@
     "defaultMessage": "Location",
     "description": "Accessible name of the file explorer breadcrumb showing the current folder path."
   },
+  "file_explorer.menu": {
+    "defaultMessage": "Item actions",
+    "description": "Accessible name of the file explorer right-click menu."
+  },
+  "file_explorer.newFolder": {
+    "defaultMessage": "New folder",
+    "description": "File explorer toolbar and context menu action that creates a folder in the open folder (Ctrl+Shift+N)."
+  },
+  "file_explorer.newFolder.name": {
+    "defaultMessage": "New folder",
+    "description": "Default name of a folder just created in the file explorer; a number is added if taken, e.g. New folder (2)."
+  },
   "file_explorer.open": {
     "defaultMessage": "Open",
     "description": "File explorer button that opens the selected item (file preview or folder)."
+  },
+  "file_explorer.paste": {
+    "defaultMessage": "Paste",
+    "description": "File explorer toolbar and context menu action that moves or copies the cut or copied items into the open folder (Ctrl+V)."
   },
   "file_explorer.preview": {
     "defaultMessage": "Preview",
@@ -24443,6 +24495,22 @@
     "defaultMessage": "Preview pane",
     "description": "File explorer toolbar toggle that shows or hides the preview pane."
   },
+  "file_explorer.purge": {
+    "defaultMessage": "Delete permanently",
+    "description": "File explorer Recycle Bin action that deletes the selected items for good."
+  },
+  "file_explorer.purge.confirm": {
+    "defaultMessage": "Delete",
+    "description": "Confirm button of the file explorer dialog that permanently deletes items."
+  },
+  "file_explorer.purge.message": {
+    "defaultMessage": "{count, plural, one {This item} other {These # items}} will be gone for good. This can't be undone.",
+    "description": "File explorer confirmation text before permanently deleting the selected items."
+  },
+  "file_explorer.purge.title": {
+    "defaultMessage": "Delete permanently?",
+    "description": "Title of the file explorer dialog that confirms a permanent delete or emptying the Recycle Bin."
+  },
   "file_explorer.recycleBin": {
     "defaultMessage": "Recycle Bin",
     "description": "Name of a channel's Recycle Bin folder in the file explorer, holding deleted items for 30 days."
@@ -24450,6 +24518,14 @@
   "file_explorer.refresh": {
     "defaultMessage": "Refresh",
     "description": "File explorer toolbar button that reloads the current folder."
+  },
+  "file_explorer.rename": {
+    "defaultMessage": "Rename",
+    "description": "File explorer toolbar and context menu action that edits the selected item's name in place (F2)."
+  },
+  "file_explorer.restore": {
+    "defaultMessage": "Restore",
+    "description": "File explorer Recycle Bin action that puts the selected items back where they were deleted from."
   },
   "file_explorer.retry": {
     "defaultMessage": "Retry",
