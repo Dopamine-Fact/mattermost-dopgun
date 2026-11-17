@@ -145,17 +145,20 @@ func uploadFileAndCreatePost(t *testing.T, th *TestHelper, client *model.Client4
 func TestRequireContentFlaggingEnabled(t *testing.T) {
 	th := Setup(t).InitBasic(t)
 
-	t.Run("Should set error when license is not valid", func(t *testing.T) {
+	t.Run("Should not require a license", func(t *testing.T) {
 		th.RemoveLicense(t)
+		th.App.UpdateConfig(func(config *model.Config) {
+			config.ContentFlaggingSettings.EnableContentFlagging = new(true)
+			config.ContentFlaggingSettings.SetDefaults()
+		})
+
 		c := &Context{
 			App:    th.App,
 			Logger: th.App.Log(),
 		}
 
 		requireContentFlaggingEnabled(c)
-		require.NotNil(t, c.Err)
-		require.Equal(t, "api.data_spillage.error.license", c.Err.Id)
-		require.Equal(t, http.StatusNotImplemented, c.Err.StatusCode)
+		require.Nil(t, c.Err)
 	})
 
 	t.Run("Should set error when feature is disabled in config", func(t *testing.T) {

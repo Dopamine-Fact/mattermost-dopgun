@@ -94,15 +94,4 @@ describe('useChannelAttributes', () => {
 
         await waitFor(() => expect(result.current.failed).toBe(true));
     });
-
-    test('does not fetch or report anything without an enterprise licence', async () => {
-        const state = stateWith({groupResolved: true}) as {entities: {general: {license: {SkuShortName: string}}}};
-        state.entities.general.license.SkuShortName = 'professional';
-
-        const {result} = renderHookWithContext(() => useChannelAttributes(), state as PartialState);
-
-        expect(result.current.enabled).toBe(false);
-        expect(result.current.fields).toEqual([]);
-        expect(mockedFetch).not.toHaveBeenCalled();
-    });
 });

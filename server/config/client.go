@@ -192,6 +192,13 @@ func GenerateClientConfig(c *model.Config, telemetryID string, license *model.Li
 	props["WranglerMoveThreadFromDirectMessageChannelEnable"] = strconv.FormatBool(*c.WranglerSettings.MoveThreadFromDirectMessageChannelEnable)
 	props["WranglerMoveThreadFromGroupMessageChannelEnable"] = strconv.FormatBool(*c.WranglerSettings.MoveThreadFromGroupMessageChannelEnable)
 
+	props["EnableBanner"] = strconv.FormatBool(*c.AnnouncementSettings.EnableBanner)
+	props["BannerText"] = *c.AnnouncementSettings.BannerText
+	props["BannerColor"] = *c.AnnouncementSettings.BannerColor
+	props["BannerTextColor"] = *c.AnnouncementSettings.BannerTextColor
+	props["AllowBannerDismissal"] = strconv.FormatBool(*c.AnnouncementSettings.AllowBannerDismissal)
+	props["ContentFlaggingEnabled"] = strconv.FormatBool(c.FeatureFlags.ContentFlagging && *c.ContentFlaggingSettings.EnableContentFlagging)
+
 	if license != nil {
 		props["ExperimentalEnableAuthenticationTransfer"] = strconv.FormatBool(*c.ServiceSettings.ExperimentalEnableAuthenticationTransfer)
 
@@ -226,14 +233,6 @@ func GenerateClientConfig(c *model.Config, telemetryID string, license *model.Li
 			props["EnableNotificationMetrics"] = strconv.FormatBool(*c.MetricsSettings.EnableNotificationMetrics)
 		}
 
-		if *license.Features.Announcement {
-			props["EnableBanner"] = strconv.FormatBool(*c.AnnouncementSettings.EnableBanner)
-			props["BannerText"] = *c.AnnouncementSettings.BannerText
-			props["BannerColor"] = *c.AnnouncementSettings.BannerColor
-			props["BannerTextColor"] = *c.AnnouncementSettings.BannerTextColor
-			props["AllowBannerDismissal"] = strconv.FormatBool(*c.AnnouncementSettings.AllowBannerDismissal)
-		}
-
 		if *license.Features.ThemeManagement {
 			props["EnableThemeSelection"] = strconv.FormatBool(*c.ThemeSettings.EnableThemeSelection)
 			props["DefaultTheme"] = *c.ThemeSettings.DefaultTheme
@@ -265,7 +264,6 @@ func GenerateClientConfig(c *model.Config, telemetryID string, license *model.Li
 		}
 
 		if model.MinimumEnterpriseAdvancedLicense(license) {
-			props["ContentFlaggingEnabled"] = strconv.FormatBool(c.FeatureFlags.ContentFlagging && *c.ContentFlaggingSettings.EnableContentFlagging)
 			props["EnableAutoTranslation"] = strconv.FormatBool(c.FeatureFlags.AutoTranslation && *c.AutoTranslationSettings.Enable)
 			if c.FeatureFlags.AutoTranslation {
 				props["AutoTranslationLanguages"] = strings.Join(*c.AutoTranslationSettings.TargetLanguages, ",")

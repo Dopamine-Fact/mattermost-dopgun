@@ -112,62 +112,12 @@ describe('components/channel_banner', () => {
         },
     };
 
-    test('should not render when license is professional', () => {
-        const nonEnterpriseLicenseState = {
-            ...baseState,
-            entities: {
-                ...baseState.entities,
-                general: {
-                    license: {
-                        IsLicensed: 'true',
-                        SkuShortName: LicenseSkus.Professional,
-                    },
-                },
-            },
-        };
-
+    test('should render without a license', () => {
         renderWithContext(
             <ChannelBanner channelId={'channel_id_1'}/>,
-            nonEnterpriseLicenseState,
+            {...baseState, entities: {...baseState.entities, general: {}}},
         );
-        expect(screen.queryByTestId('channel_banner_container')).not.toBeInTheDocument();
-    });
-
-    test('should not render when license is enterprise', () => {
-        const nonEnterpriseLicenseState = {
-            ...baseState,
-            entities: {
-                ...baseState.entities,
-                general: {
-                    license: {
-                        IsLicensed: 'true',
-                        SkuShortName: LicenseSkus.Enterprise,
-                    },
-                },
-            },
-        };
-
-        renderWithContext(
-            <ChannelBanner channelId={'channel_id_1'}/>,
-            nonEnterpriseLicenseState,
-        );
-        expect(screen.queryByTestId('channel_banner_container')).not.toBeInTheDocument();
-    });
-
-    test('should not render when there is no license', () => {
-        const noLicenseState = {
-            ...baseState,
-            entities: {
-                ...baseState.entities,
-                general: {},
-            },
-        };
-
-        renderWithContext(
-            <ChannelBanner channelId={'channel_id_1'}/>,
-            noLicenseState,
-        );
-        expect(screen.queryByTestId('channel_banner_container')).not.toBeInTheDocument();
+        expect(screen.getByTestId('channel_banner_container')).toBeInTheDocument();
     });
 
     test('should not render when banner is disabled', () => {

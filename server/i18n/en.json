@@ -2801,11 +2801,6 @@
     "description": "API error when flagging a post whose type cannot be quarantined; {{.PostType}} is the post's internal type identifier (e.g. a system message type)."
   },
   {
-    "id": "api.data_spillage.error.license",
-    "translation": "Your license does not support Data Spillage Handling.",
-    "description": "API error when using the data spillage (flagged content review) feature without a license that includes it; 'Data Spillage Handling' is a feature name."
-  },
-  {
     "id": "api.data_spillage.error.not_available_on_team",
     "translation": "Data Spillage Handling feature is not enabled on this team.",
     "description": "API error when data spillage handling (flagged content review) is not enabled for the team where the post lives."
@@ -4208,11 +4203,6 @@
     "id": "api.preference.update_preferences.update_sidebar.app_error",
     "translation": "Unable to update sidebar to match updated preferences",
     "description": "Internal error when updating the channel sidebar (e.g. favorites categories) after a preference change fails."
-  },
-  {
-    "id": "api.property.channel_attributes.license.app_error",
-    "translation": "Channel attributes require an Enterprise Advanced license.",
-    "description": "API error when managing channel attribute fields (custom fields defined for channels by admins) on a server without the required license. 'Enterprise Advanced' is a Mattermost license tier name; keep it in English."
   },
   {
     "id": "api.property.session_attributes.license.app_error",
@@ -16345,11 +16335,6 @@
     "id": "license_error.feature_unavailable",
     "translation": "Feature is not available for the current license",
     "description": "Generic API error when a requested feature is not included in the server's current license."
-  },
-  {
-    "id": "license_error.feature_unavailable.specific",
-    "translation": "{{.Feature}} feature is not available for the current license",
-    "description": "API error shown when using a feature not covered by the server's license; {{.Feature}} is the English feature name (e.g. 'Channel Banner') inserted at runtime."
   },
   {
     "id": "manualtesting.manual_test.parse.app_error",

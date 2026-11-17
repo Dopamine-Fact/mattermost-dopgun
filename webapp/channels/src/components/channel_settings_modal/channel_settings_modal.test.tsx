@@ -518,30 +518,12 @@ describe('ChannelSettingsModal', () => {
         expect(screen.queryByRole('tab', {name: /archive channel/i})).not.toBeInTheDocument();
     });
 
-    it('should not show banner section without enterprise advanced license', async () => {
+    it('should show banner section without a license', async () => {
         const testState = makeTestState();
 
         renderWithContext(<ChannelSettingsModal {...baseProps}/>, testState);
         await userEvent.click(screen.getByTestId('configuration-tab-button'));
-        expect(screen.queryByTestId('banner-section')).not.toBeInTheDocument();
-    });
-
-    it('should not show banner section with professional license', async () => {
-        const testState = makeTestState();
-        testState.entities.general.license.SkuShortName = 'professional';
-
-        renderWithContext(<ChannelSettingsModal {...baseProps}/>, testState);
-        await userEvent.click(screen.getByTestId('configuration-tab-button'));
-        expect(screen.queryByTestId('banner-section')).not.toBeInTheDocument();
-    });
-
-    it('should not show banner section with enterprise license', async () => {
-        const testState = makeTestState();
-        testState.entities.general.license.SkuShortName = 'enterprise';
-
-        renderWithContext(<ChannelSettingsModal {...baseProps}/>, testState);
-        await userEvent.click(screen.getByTestId('configuration-tab-button'));
-        expect(screen.queryByTestId('banner-section')).not.toBeInTheDocument();
+        expect(screen.getByTestId('banner-section')).toBeInTheDocument();
     });
 
     it('should show banner section when enterprise advanced license', async () => {

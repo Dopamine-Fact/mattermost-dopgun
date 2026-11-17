@@ -14,10 +14,8 @@ import {
     SYSTEM_TARGET_ID,
     SYSTEM_TARGET_TYPE,
 } from 'mattermost-redux/constants/properties';
-import {getFeatureFlagValue, getLicense} from 'mattermost-redux/selectors/entities/general';
+import {getFeatureFlagValue} from 'mattermost-redux/selectors/entities/general';
 import {getChannelAttributeFields} from 'mattermost-redux/selectors/entities/properties';
-
-import {isMinimumEnterpriseAdvancedLicense} from 'utils/license_utils';
 
 export type ChannelAttributesState = {
     enabled: boolean;
@@ -47,8 +45,7 @@ export default function useChannelAttributes(): ChannelAttributesState {
     const dispatch = useDispatch();
 
     const enabled = useSelector((state: GlobalState) => getFeatureFlagValue(state, 'ChannelAttributes') === 'true');
-    const hasAdvancedLicense = isMinimumEnterpriseAdvancedLicense(useSelector(getLicense));
-    const available = enabled && hasAdvancedLicense;
+    const available = enabled;
 
     const fields = useSelector(getChannelAttributeFields);
 

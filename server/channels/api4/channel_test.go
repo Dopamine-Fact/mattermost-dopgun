@@ -643,20 +643,6 @@ func TestCreateChannelWithPropertyValues(t *testing.T) {
 		requireNoSuchChannel(t, name)
 	})
 
-	t.Run("values are refused below Enterprise Advanced", func(t *testing.T) {
-		field := createField(t, model.PropertyFieldTypeText, memberLevel, nil)
-
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
-		defer th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced))
-
-		req, name := newRequest(model.PropertyValuePatchItem{FieldID: field.ID, Value: json.RawMessage(`"x"`)})
-		_, resp, err := th.Client.CreateChannelWithPropertyValues(context.Background(), req)
-		require.Error(t, err)
-		CheckBadRequestStatus(t, resp)
-		CheckErrorID(t, err, "api.channel.create_channel.attributes_feature_disabled.app_error")
-		requireNoSuchChannel(t, name)
-	})
-
 	t.Run("a required attribute is not enforced when the feature flag is off", func(t *testing.T) {
 		// Creation has to stay byte-identical to its pre-feature behaviour, or
 		// turning the flag on becomes the only safe state for every integration.
@@ -1584,7 +1570,7 @@ func TestPatchChannel(t *testing.T) {
 		require.Equal(t, "", cleared.DefaultCategoryName)
 	})
 
-	t.Run("Should not be able to configure channel banner without a license", func(t *testing.T) {
+	t.Run("Should be able to configure channel banner without a license", func(t *testing.T) {
 		_, err := client.Logout(context.Background())
 		require.NoError(t, err)
 		th.LoginBasic(t)
@@ -1608,43 +1594,9 @@ func TestPatchChannel(t *testing.T) {
 			},
 		}
 
-		patchedChannel, resp, err := client.PatchChannel(context.Background(), channel.Id, patch)
-		require.Error(t, err)
-		CheckForbiddenStatus(t, resp)
-		require.Nil(t, patchedChannel)
-	})
-
-	t.Run("Should not be able to configure channel banner with a professional license", func(t *testing.T) {
-		_, err := client.Logout(context.Background())
+		patchedChannel, _, err := client.PatchChannel(context.Background(), channel.Id, patch)
 		require.NoError(t, err)
-		th.LoginBasic(t)
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuProfessional))
-		defer func() {
-			appErr := th.App.Srv().RemoveLicense()
-			require.Nil(t, appErr)
-		}()
-
-		channel := &model.Channel{
-			DisplayName: GenerateTestChannelName(),
-			Name:        GenerateTestChannelName(),
-			Type:        model.ChannelTypeOpen,
-			TeamId:      team.Id,
-		}
-		channel, _, err = client.CreateChannel(context.Background(), channel)
-		require.NoError(t, err)
-
-		patch := &model.ChannelPatch{
-			BannerInfo: &model.ChannelBannerInfo{
-				Enabled:         new(true),
-				Text:            new("banner text"),
-				BackgroundColor: new("#dddddd"),
-			},
-		}
-
-		patchedChannel, resp, err := client.PatchChannel(context.Background(), channel.Id, patch)
-		require.Error(t, err)
-		CheckForbiddenStatus(t, resp)
-		require.Nil(t, patchedChannel)
+		require.True(t, *patchedChannel.BannerInfo.Enabled)
 	})
 
 	t.Run("Should be able to configure channel banner on a channel", func(t *testing.T) {

@@ -38,7 +38,7 @@ import {ID_PATH_PATTERN} from 'utils/path';
 import {getSiteURL} from 'utils/url';
 
 import * as DefinitionConstants from './admin_definition_constants';
-import {getRestrictedIndicator, it, usesLegacyOauth, validators} from './admin_definition_helpers';
+import {it, usesLegacyOauth, validators} from './admin_definition_helpers';
 import AuditLoggingCertificateUploadSetting from './audit_logging';
 import Audits from './audits';
 import {searchableStrings as auditSearchableStrings} from './audits/audits';
@@ -56,11 +56,6 @@ import {searchableStrings as customTermsOfServiceSearchableStrings} from './cust
 import CustomURLSchemesSetting from './custom_url_schemes_setting';
 import DatabaseSettings, {searchableStrings as databaseSearchableStrings} from './database_settings';
 import ElasticSearchSettings, {searchableStrings as elasticSearchSearchableStrings} from './elasticsearch_settings';
-import {
-    AnnouncementBannerFeatureDiscovery,
-    ClassificationMarkingsFeatureDiscovery,
-    DataSpillageFeatureDiscovery,
-} from './feature_discovery/features';
 import AutoTranslationFeatureDiscovery from './feature_discovery/features/auto_translation';
 import BurnOnReadSVG from './feature_discovery/features/images/burn_on_read_svg';
 import FeatureFlags, {messages as featureFlagsMessages} from './feature_flags';
@@ -3059,45 +3054,17 @@ const AdminDefinition: AdminDefinitionType = {
                 url: 'site_config/classification_markings',
                 title: defineMessage({id: 'admin.sidebar.classificationMarkings', defaultMessage: 'Classification Markings'}),
                 searchableStrings: classificationMarkingsSearchableStrings,
-                isHidden: it.any(
-                    it.not(it.minLicenseTier(LicenseSkus.EnterpriseAdvanced)),
-                    it.not(it.configIsTrue('FeatureFlags', 'ClassificationMarkings')),
-                ),
+                isHidden: it.not(it.configIsTrue('FeatureFlags', 'ClassificationMarkings')),
                 isDisabled: it.not(it.isSystemAdmin),
                 schema: {
                     id: 'ClassificationMarkings',
                     component: ClassificationMarkings,
                 },
             },
-            classification_markings_feature_discovery: {
-                url: 'site_config/classification_markings',
-                isDiscovery: true,
-                title: defineMessage({id: 'admin.sidebar.classificationMarkings', defaultMessage: 'Classification Markings'}),
-                isHidden: it.any(
-                    it.minLicenseTier(LicenseSkus.EnterpriseAdvanced),
-                    it.not(it.configIsTrue('FeatureFlags', 'ClassificationMarkings')),
-                ),
-                schema: {
-                    id: 'ClassificationMarkings',
-                    name: defineMessage({id: 'admin.sidebar.classificationMarkings', defaultMessage: 'Classification Markings'}),
-                    settings: [
-                        {
-                            type: 'custom',
-                            component: ClassificationMarkingsFeatureDiscovery,
-                            key: 'ClassificationMarkingsFeatureDiscovery',
-                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(true, LicenseSkus.EnterpriseAdvanced),
-            },
             announcement_banner: {
                 url: 'site_config/announcement_banner',
                 title: defineMessage({id: 'admin.sidebar.announcement', defaultMessage: 'System-wide Notifications'}),
-                isHidden: it.any(
-                    it.not(it.licensedForFeature('Announcement')),
-                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.SITE.ANNOUNCEMENT_BANNER)),
-                ),
+                isHidden: it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.SITE.ANNOUNCEMENT_BANNER)),
                 schema: {
                     id: 'AnnouncementSettings',
                     name: defineMessage({id: 'admin.site.announcementBanner', defaultMessage: 'System-wide Notifications'}),
@@ -3149,28 +3116,6 @@ const AdminDefinition: AdminDefinitionType = {
                         },
                     ],
                 },
-                restrictedIndicator: getRestrictedIndicator(),
-            },
-            announcement_banner_feature_discovery: {
-                url: 'site_config/announcement_banner',
-                isDiscovery: true,
-                title: defineMessage({id: 'admin.sidebar.announcement', defaultMessage: 'System-wide Notifications'}),
-                isHidden: it.any(
-                    it.licensedForFeature('Announcement'),
-                ),
-                schema: {
-                    id: 'AnnouncementSettings',
-                    name: defineMessage({id: 'admin.site.announcementBanner', defaultMessage: 'System-wide Notifications'}),
-                    settings: [
-                        {
-                            type: 'custom',
-                            component: AnnouncementBannerFeatureDiscovery,
-                            key: 'AnnouncementBannerFeatureDiscovery',
-                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(true),
             },
             emoji: {
                 url: 'site_config/emoji',
@@ -3830,38 +3775,14 @@ const AdminDefinition: AdminDefinitionType = {
                 title: defineMessage({id: 'admin.sidebar.dataSpillage', defaultMessage: 'Data Spillage Handling'}),
                 searchableStrings: dataSpillageSearchableStrings,
                 isHidden: it.any(
-                    it.not(it.minLicenseTier(LicenseSkus.EnterpriseAdvanced)),
                     it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
                     it.configIsFalse('FeatureFlags', 'ContentFlagging'),
                 ),
                 isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
-                restrictedIndicator: getRestrictedIndicator(false, LicenseSkus.EnterpriseAdvanced),
                 schema: {
                     id: 'ContentFlaggingSettings',
                     component: ContentFlaggingSettings,
                 },
-            },
-            content_flagging_feature_discovery: {
-                url: 'site_config/data_spillage',
-                isDiscovery: true,
-                title: defineMessage({id: 'admin.sidebar.dataSpillage', defaultMessage: 'Data Spillage Handling'}),
-                isHidden: it.any(
-                    it.minLicenseTier(LicenseSkus.EnterpriseAdvanced),
-                    it.configIsFalse('FeatureFlags', 'ContentFlagging'),
-                ),
-                schema: {
-                    id: 'ContentFlaggingSettings',
-                    name: defineMessage({id: 'admin.sidebar.dataSpillage', defaultMessage: 'Data Spillage Handling'}),
-                    settings: [
-                        {
-                            type: 'custom',
-                            component: DataSpillageFeatureDiscovery,
-                            key: 'DataSpillageFeatureDiscovery',
-                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(true, LicenseSkus.EnterpriseAdvanced),
             },
             wrangler: {
                 url: 'site_config/wrangler',

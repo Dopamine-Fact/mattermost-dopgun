@@ -15,7 +15,7 @@ import type {Channel} from '@mattermost/types/channels';
 
 import Permissions from 'mattermost-redux/constants/permissions';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
-import {getConfig, getLicense, isChannelPermissionPoliciesEnabled} from 'mattermost-redux/selectors/entities/general';
+import {getConfig, isChannelPermissionPoliciesEnabled} from 'mattermost-redux/selectors/entities/general';
 import {haveIChannelPermission, haveISystemPermission} from 'mattermost-redux/selectors/entities/roles';
 
 import {getBasePath, isChannelAccessControlEnabled} from 'selectors/general';
@@ -28,7 +28,6 @@ import {useChannelKind} from 'hooks/useChannelKind';
 import {focusElement} from 'utils/a11y_utils';
 import type {KindMessages} from 'utils/channel_kind';
 import Constants from 'utils/constants';
-import {isMinimumEnterpriseAdvancedLicense} from 'utils/license_utils';
 
 import type {GlobalState} from 'types/store';
 
@@ -118,7 +117,6 @@ function ChannelSettingsModal({channelId, isOpen, onExited, focusOriginElement, 
         return getChannelSettingsTabs(state).filter((registration) => registration.shouldRender?.(state, currentChannel) ?? true);
     }, shallowEqual);
     const isDMorGM = channel.type === Constants.DM_CHANNEL || channel.type === Constants.GM_CHANNEL;
-    const channelBannerEnabled = isMinimumEnterpriseAdvancedLicense(useSelector(getLicense));
 
     const canManagePublicChannelBanner = useSelector((state: GlobalState) =>
         haveIChannelPermission(state, channel.team_id, channel.id, Permissions.MANAGE_PUBLIC_CHANNEL_BANNER),
@@ -147,7 +145,7 @@ function ChannelSettingsModal({channelId, isOpen, onExited, focusOriginElement, 
         return haveIChannelPermission(state, channel.team_id, channel.id, permissionToCheck);
     });
 
-    const canManageBanner = channelBannerEnabled && hasManageChannelBannerPermission;
+    const canManageBanner = hasManageChannelBannerPermission;
     const canManageChannelProperties = useSelector((state: GlobalState) => {
         if (isDMorGM) {
             return true;

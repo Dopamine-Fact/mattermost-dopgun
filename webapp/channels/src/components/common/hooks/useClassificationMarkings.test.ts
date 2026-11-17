@@ -115,25 +115,14 @@ describe('useClassificationMarkings', () => {
         expect(dispatchMock).not.toHaveBeenCalled();
     });
 
-    test('returns available=false when license is not Enterprise', () => {
+    test('does not require an Enterprise license', () => {
         const {result} = renderHookWithContext(
             () => useClassificationMarkings(),
             stateWith({featureFlag: 'true', license: STARTER_LICENSE}),
         );
 
-        expect(result.current.available).toBe(false);
-        expect(result.current.loading).toBe(false);
-        expect(dispatchMock).not.toHaveBeenCalled();
-    });
-
-    test('returns available=false when license is missing entirely', () => {
-        const {result} = renderHookWithContext(
-            () => useClassificationMarkings(),
-            stateWith({featureFlag: 'true', license: {}}),
-        );
-
-        expect(result.current.available).toBe(false);
-        expect(dispatchMock).not.toHaveBeenCalled();
+        expect(result.current.loading).toBe(true);
+        expect(dispatchMock).toHaveBeenCalled();
     });
 
     test('returns loading=true and dispatches fetch when flag and license are on but no channel field', () => {

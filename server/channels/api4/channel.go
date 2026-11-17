@@ -201,7 +201,7 @@ func createChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	propertyValues, appErr := channelAttributeValuesForCreate(c, channel, license, req.PropertyValues)
+	propertyValues, appErr := channelAttributeValuesForCreate(c, channel, req.PropertyValues)
 	if appErr != nil {
 		c.Err = appErr
 		return
@@ -227,14 +227,14 @@ func createChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 // channelAttributeValuesForCreate turns the submitted attribute values into
 // PropertyValues to write with the channel, and refuses the creation when a
 // required attribute has no value. Each field is gated by its own feature:
-// classification by ClassificationMarkings + Enterprise, everything else by
-// ChannelAttributes + Enterprise Advanced. Both off with no items keeps
+// classification by ClassificationMarkings, everything else by
+// ChannelAttributes. Both off with no items keeps
 // creation byte-identical to its pre-feature behaviour, which is what makes
 // this safe to add to an endpoint every integration uses.
 //
 // Errors never name an attribute: which markings a server defines is itself
 // sensitive, and the caller may not be allowed to see them.
-func channelAttributeValuesForCreate(c *Context, channel *model.Channel, license *model.License, items []model.PropertyValuePatchItem) ([]*model.PropertyValue, *model.AppError) {
+func channelAttributeValuesForCreate(c *Context, channel *model.Channel, items []model.PropertyValuePatchItem) ([]*model.PropertyValue, *model.AppError) {
 	// A DM/GM type reaching here is refused by the app layer anyway, but values on
 	// one are never legitimate: DM/GM attributes are derived from the participants,
 	// not hand-written.
@@ -245,8 +245,8 @@ func channelAttributeValuesForCreate(c *Context, channel *model.Channel, license
 		return nil, nil
 	}
 
-	channelAttributesAvailable := c.App.Config().FeatureFlags.ChannelAttributes && model.MinimumEnterpriseAdvancedLicense(license)
-	classificationAvailable := c.App.Config().FeatureFlags.ClassificationMarkings && model.MinimumEnterpriseLicense(license)
+	channelAttributesAvailable := c.App.Config().FeatureFlags.ChannelAttributes
+	classificationAvailable := c.App.Config().FeatureFlags.ClassificationMarkings
 	requiredAttributesEnforced := c.App.Config().FeatureFlags.IsChannelAttributesRequiredEnabled()
 
 	if !channelAttributesAvailable && !classificationAvailable {
@@ -3442,10 +3442,6 @@ func convertGroupMessageToChannel(c *Context, w http.ResponseWriter, r *http.Req
 }
 
 func canEditChannelBanner(c *Context, originalChannel *model.Channel) {
-	if !model.MinimumEnterpriseAdvancedLicense(c.App.License()) {
-		c.Err = model.NewAppError("patchChannel", "license_error.feature_unavailable.specific", map[string]any{"Feature": "Channel Banner"}, "feature is not available for the current license", http.StatusForbidden)
-	}
-
 	switch originalChannel.Type {
 	case model.ChannelTypePrivate:
 		if ok, _ := c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), c.Params.ChannelId, model.PermissionManagePrivateChannelBanner); !ok {
