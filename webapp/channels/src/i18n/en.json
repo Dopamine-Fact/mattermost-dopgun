@@ -24351,13 +24351,161 @@
     "defaultMessage": "File access blocked: {reason}",
     "description": "Toast notification shown when a plugin blocks the user from accessing or downloading a file; {reason} is the rejection reason supplied by the plugin."
   },
+  "file_explorer.back": {
+    "defaultMessage": "Back",
+    "description": "File explorer address bar button that goes to the previous location."
+  },
+  "file_explorer.chatAttachments": {
+    "defaultMessage": "Chat attachments",
+    "description": "Name of the read-only virtual folder in the file explorer listing every file posted in a channel's messages."
+  },
+  "file_explorer.column.creator": {
+    "defaultMessage": "Uploaded by",
+    "description": "File explorer Details view column header and preview pane label: the user who uploaded the file."
+  },
+  "file_explorer.column.modified": {
+    "defaultMessage": "Date modified",
+    "description": "File explorer Details view column header and preview pane label: when the item last changed."
+  },
+  "file_explorer.column.name": {
+    "defaultMessage": "Name",
+    "description": "File explorer Details view column header for the item name."
+  },
+  "file_explorer.column.size": {
+    "defaultMessage": "Size",
+    "description": "File explorer Details view column header and preview pane label for the file size."
+  },
+  "file_explorer.column.type": {
+    "defaultMessage": "Type",
+    "description": "File explorer Details view column header and preview pane label for the item type."
+  },
+  "file_explorer.dimensions": {
+    "defaultMessage": "Dimensions",
+    "description": "File explorer preview pane label for an image's width × height in pixels."
+  },
+  "file_explorer.download": {
+    "defaultMessage": "Download",
+    "description": "File explorer button that downloads the selected file."
+  },
+  "file_explorer.empty.channels": {
+    "defaultMessage": "You are not a member of any channel in this team.",
+    "description": "File explorer root empty state: the user belongs to no channel, so there are no channel folders."
+  },
+  "file_explorer.empty.chat": {
+    "defaultMessage": "No files have been shared in this channel yet.",
+    "description": "File explorer empty state of the Chat attachments folder."
+  },
+  "file_explorer.empty.folder": {
+    "defaultMessage": "This folder is empty. Drop files here or use Upload.",
+    "description": "File explorer empty state of a channel folder; Upload is the toolbar button."
+  },
+  "file_explorer.empty.search": {
+    "defaultMessage": "No items match your search.",
+    "description": "File explorer empty state when the 'Search this folder' filter matches nothing."
+  },
+  "file_explorer.empty.trash": {
+    "defaultMessage": "The Recycle Bin is empty.",
+    "description": "File explorer empty state of a channel's Recycle Bin."
+  },
+  "file_explorer.forward": {
+    "defaultMessage": "Forward",
+    "description": "File explorer address bar button that goes to the next location in history."
+  },
+  "file_explorer.items": {
+    "defaultMessage": "Items",
+    "description": "Accessible name of the file explorer's list of files and folders."
+  },
+  "file_explorer.loading": {
+    "defaultMessage": "Loading…",
+    "description": "File explorer placeholder while a folder loads."
+  },
+  "file_explorer.location": {
+    "defaultMessage": "Location",
+    "description": "Accessible name of the file explorer breadcrumb showing the current folder path."
+  },
+  "file_explorer.open": {
+    "defaultMessage": "Open",
+    "description": "File explorer button that opens the selected item (file preview or folder)."
+  },
+  "file_explorer.preview": {
+    "defaultMessage": "Preview",
+    "description": "Accessible name of the file explorer preview pane."
+  },
+  "file_explorer.preview.many": {
+    "defaultMessage": "{count} items selected · {size}",
+    "description": "File explorer preview pane text when several items are selected; {size} is their total size, e.g. 2.5MB."
+  },
+  "file_explorer.preview.none": {
+    "defaultMessage": "Select a file to see its preview.",
+    "description": "File explorer preview pane text when nothing is selected."
+  },
+  "file_explorer.previewPane": {
+    "defaultMessage": "Preview pane",
+    "description": "File explorer toolbar toggle that shows or hides the preview pane."
+  },
+  "file_explorer.recycleBin": {
+    "defaultMessage": "Recycle Bin",
+    "description": "Name of a channel's Recycle Bin folder in the file explorer, holding deleted items for 30 days."
+  },
+  "file_explorer.refresh": {
+    "defaultMessage": "Refresh",
+    "description": "File explorer toolbar button that reloads the current folder."
+  },
+  "file_explorer.retry": {
+    "defaultMessage": "Retry",
+    "description": "File explorer button shown with a load error; tries loading the folder again."
+  },
+  "file_explorer.search": {
+    "defaultMessage": "Search this folder",
+    "description": "File explorer search box placeholder; filters the items of the open folder by name."
+  },
   "file_explorer.sidebarLink": {
     "defaultMessage": "Files",
     "description": "Sidebar link to the team file explorer, where channels appear as folders."
   },
+  "file_explorer.status.items": {
+    "defaultMessage": "{count, plural, one {# item} other {# items}}",
+    "description": "File explorer status bar: number of items in the open folder."
+  },
+  "file_explorer.status.selected": {
+    "defaultMessage": "{count} selected ({size})",
+    "description": "File explorer status bar: number of selected items and their total size, e.g. 2.5MB."
+  },
   "file_explorer.title": {
     "defaultMessage": "Files",
     "description": "Page title of the team file explorer."
+  },
+  "file_explorer.toolbar": {
+    "defaultMessage": "File actions",
+    "description": "Accessible name of the file explorer toolbar."
+  },
+  "file_explorer.tree": {
+    "defaultMessage": "Folders",
+    "description": "Accessible name of the file explorer folder tree on the left."
+  },
+  "file_explorer.type.channel": {
+    "defaultMessage": "Channel",
+    "description": "File explorer Type column value for a channel folder."
+  },
+  "file_explorer.type.file": {
+    "defaultMessage": "{ext} file",
+    "description": "File explorer Type column value for a file; {ext} is its upper-case extension, e.g. PDF file."
+  },
+  "file_explorer.type.folder": {
+    "defaultMessage": "File folder",
+    "description": "File explorer Type column value for a folder."
+  },
+  "file_explorer.up": {
+    "defaultMessage": "Up",
+    "description": "File explorer address bar button that goes to the parent folder."
+  },
+  "file_explorer.view.details": {
+    "defaultMessage": "Details",
+    "description": "File explorer toolbar button that shows items as a table with columns."
+  },
+  "file_explorer.view.icons": {
+    "defaultMessage": "Large icons",
+    "description": "File explorer toolbar button that shows items as large icons and thumbnails."
   },
   "file_info_preview.size": {
     "defaultMessage": "Size ",
