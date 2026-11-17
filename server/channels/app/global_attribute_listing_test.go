@@ -5,7 +5,6 @@ package app
 
 import (
 	"encoding/json"
-	"net/http"
 	"strconv"
 	"strings"
 	"testing"
@@ -195,7 +194,7 @@ func TestSearchGlobalAttributeListingGating(t *testing.T) {
 		{"enterprise advanced", model.NewTestLicenseSKU(model.LicenseShortSkuEnterpriseAdvanced), true},
 	}
 
-	t.Run("a licence below Enterprise is refused as the generic endpoints refuse it", func(t *testing.T) {
+	t.Run("a licence below Enterprise can still list", func(t *testing.T) {
 		th := setupListingHelper(t, true, true, true)
 		env := newListingEnv(t, th)
 		env.template(env.name("any"))
@@ -207,10 +206,8 @@ func TestSearchGlobalAttributeListingGating(t *testing.T) {
 			t.Run(name, func(t *testing.T) {
 				setListingLicense(t, th, license)
 				listing, appErr := env.search()
-				require.NotNil(t, appErr)
-				assert.Nil(t, listing)
-				assert.Equal(t, http.StatusForbidden, appErr.StatusCode)
-				assert.Equal(t, "app.property.license_error", appErr.Id)
+				require.Nil(t, appErr)
+				assert.NotNil(t, listing)
 			})
 		}
 	})

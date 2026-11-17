@@ -438,7 +438,7 @@ describe('components/login/Login', () => {
     });
 
     describe('EnableGuestMagicLink', () => {
-        // The server only answers the login type pre-check while guest accounts are licensed and enabled
+        // The server only answers the login type pre-check while guest accounts are enabled
         const magicLinkState = mergeObjects(baseState, {
             entities: {
                 general: {
@@ -742,18 +742,6 @@ describe('components/login/Login', () => {
                     general: {
                         config: {
                             EnableGuestAccounts: 'false',
-                        },
-                    },
-                },
-            }));
-        });
-
-        it('should log in with a password when the license does not include guest accounts', async () => {
-            await expectPasswordLoginWithoutPreCheck(mergeObjects(magicLinkState, {
-                entities: {
-                    general: {
-                        license: {
-                            GuestAccounts: 'false',
                         },
                     },
                 },

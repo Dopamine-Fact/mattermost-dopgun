@@ -339,13 +339,6 @@ func NewServer(options ...Option) (*Server, error) {
 		return nil, errors.Wrap(err, "failed to look up CPA property group")
 	}
 
-	// License check hook — must run before other hooks so unlicensed
-	// operations are rejected early.
-	licenseCheckHook := properties.NewLicenseCheckHook(func() *model.License {
-		return s.License()
-	}, cpaGroup.ID)
-	s.propertyService.AddHook(licenseCheckHook)
-
 	pluginChecker := func(pluginID string) bool {
 		_, err := s.ch.GetPluginStatus(pluginID)
 		return err == nil

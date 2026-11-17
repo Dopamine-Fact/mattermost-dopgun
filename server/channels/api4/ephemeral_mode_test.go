@@ -178,18 +178,6 @@ func TestLogCleanup(t *testing.T) {
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
-
-	t.Run("rejects request when license does not support ephemeral mode", func(t *testing.T) {
-		th := Setup(t).InitBasic(t)
-
-		body := mustMarshal(t, model.CleanupReport{
-			CleanupAt: model.NewPointer(model.GetMillis()),
-		})
-		resp, err := th.Client.DoAPIPost(context.Background(), "/ephemeral_mode/cleanup", string(body))
-		require.Error(t, err)
-		defer resp.Body.Close()
-		require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
-	})
 }
 
 func TestLogOfflinePurge(t *testing.T) {
@@ -294,18 +282,6 @@ func TestLogOfflinePurge(t *testing.T) {
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
-
-	t.Run("rejects request when license does not support ephemeral mode", func(t *testing.T) {
-		th := Setup(t).InitBasic(t)
-
-		body := mustMarshal(t, model.OfflinePurgeReport{
-			OfflineTimeMinutes: model.NewPointer(int64(45)),
-		})
-		resp, err := th.Client.DoAPIPost(context.Background(), "/ephemeral_mode/purge", string(body))
-		require.Error(t, err)
-		defer resp.Body.Close()
-		require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
-	})
 }
 
 func TestLogSessionWipe(t *testing.T) {
@@ -407,19 +383,6 @@ func TestLogSessionWipe(t *testing.T) {
 		data, err := io.ReadAll(logFile)
 		require.NoError(t, err)
 		require.Nil(t, FindAuditEntry(string(data), model.AuditEventSessionWipe, ""))
-	})
-
-	t.Run("rejects request when license does not support ephemeral mode", func(t *testing.T) {
-		th := Setup(t).InitBasic(t)
-		client := th.CreateClient()
-
-		body := mustMarshal(t, model.SessionWipeReport{
-			Signature: signWipePush(t, th, th.BasicUser.Id),
-		})
-		resp, err := client.DoAPIPost(context.Background(), "/ephemeral_mode/wipe", string(body))
-		require.Error(t, err)
-		defer resp.Body.Close()
-		require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
 	})
 }
 

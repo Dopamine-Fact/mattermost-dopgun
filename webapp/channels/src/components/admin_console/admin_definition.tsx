@@ -15,20 +15,12 @@ import {Posts} from 'mattermost-redux/constants';
 import {RESOURCE_KEYS} from 'mattermost-redux/constants/permissions_sysconsole';
 
 import {
-    getSamlMetadataFromIdp,
     invalidateAllCaches,
     invalidateAllEmailInvites,
     reloadConfig,
-    removeIdpSamlCertificate,
-    removePrivateSamlCertificate,
-    removePublicSamlCertificate,
-    setSamlIdpCertificateFromMetadata,
     testFileStoreConnection,
     testSiteURL,
     testSmtp,
-    uploadIdpSamlCertificate,
-    uploadPrivateSamlCertificate,
-    uploadPublicSamlCertificate,
 } from 'actions/admin_actions';
 
 import ContentFlaggingSettings, {searchableStrings as dataSpillageSearchableStrings} from 'components/admin_console/content_flagging/content_flagging_settings';
@@ -45,9 +37,6 @@ import {AboutLinks, CacheTypes, Constants, DeveloperLinks, DocLinks, LicenseSkus
 import {ID_PATH_PATTERN} from 'utils/path';
 import {getSiteURL} from 'utils/url';
 
-import PolicyList from './access_control';
-import AccessControlPolicyJobs from './access_control/jobs';
-import PolicyDetails from './access_control/policy_details';
 import * as DefinitionConstants from './admin_definition_constants';
 import {getRestrictedIndicator, it, usesLegacyOauth, validators} from './admin_definition_helpers';
 import AuditLoggingCertificateUploadSetting from './audit_logging';
@@ -63,55 +52,30 @@ import ClusterSettings, {searchableStrings as clusterSearchableStrings} from './
 import CustomEnableDisableGuestAccountsMagicLinkSetting, {searchableStrings as magicLinkSearchableStrings} from './custom_enable_disable_guest_accounts_magic_link_setting';
 import CustomEnableDisableGuestAccountsSetting from './custom_enable_disable_guest_accounts_setting';
 import CustomTermsOfServiceSettings from './custom_terms_of_service_settings';
-import {messages as customTermsOfServiceMessages, searchableStrings as customTermsOfServiceSearchableStrings} from './custom_terms_of_service_settings/custom_terms_of_service_settings';
+import {searchableStrings as customTermsOfServiceSearchableStrings} from './custom_terms_of_service_settings/custom_terms_of_service_settings';
 import CustomURLSchemesSetting from './custom_url_schemes_setting';
-import DataRetentionSettings from './data_retention_settings';
-import CustomDataRetentionForm from './data_retention_settings/custom_policy_form';
-import {searchableStrings as dataRetentionSearchableStrings} from './data_retention_settings/data_retention_settings';
-import GlobalDataRetentionForm from './data_retention_settings/global_policy_form';
 import DatabaseSettings, {searchableStrings as databaseSearchableStrings} from './database_settings';
 import ElasticSearchSettings, {searchableStrings as elasticSearchSearchableStrings} from './elasticsearch_settings';
 import {
     AnnouncementBannerFeatureDiscovery,
     ClassificationMarkingsFeatureDiscovery,
-    ComplianceExportFeatureDiscovery,
-    CustomTermsOfServiceFeatureDiscovery,
     DataSpillageFeatureDiscovery,
-    DataRetentionFeatureDiscovery,
-    GitLabFeatureDiscovery,
-    GroupsFeatureDiscovery,
-    GuestAccessFeatureDiscovery,
-    LDAPFeatureDiscovery,
-    MobileSecurityFeatureDiscovery,
-    OpenIDFeatureDiscovery,
-    SAMLFeatureDiscovery,
-    SystemRolesFeatureDiscovery,
 } from './feature_discovery/features';
-import AttributeBasedAccessControlFeatureDiscovery from './feature_discovery/features/attribute_based_access_control';
 import AutoTranslationFeatureDiscovery from './feature_discovery/features/auto_translation';
 import BurnOnReadSVG from './feature_discovery/features/images/burn_on_read_svg';
-import IntuneMAMSvg from './feature_discovery/features/images/intune_mam_svg';
-import SessionAttributesFeatureDiscovery from './feature_discovery/features/session_attributes';
-import UserAttributesFeatureDiscovery from './feature_discovery/features/user_attributes';
 import FeatureFlags, {messages as featureFlagsMessages} from './feature_flags';
 import GlobalAttributes, {searchableStrings as globalAttributesSearchableStrings} from './global_attributes';
 import AttributeDetails from './global_attributes/attribute_details';
 import ClassificationAttribute from './global_attributes/classification_attribute';
-import GroupDetails from './group_settings/group_details';
-import GroupSettings from './group_settings/group_settings';
 import HealthDashboard from './health_dashboard';
 import IPFiltering from './ip_filtering';
-import LDAPWizard from './ldap_wizard';
 import LicenseSettings from './license_settings';
 import {searchableStrings as licenseSettingsSearchableStrings} from './license_settings/license_settings';
 import LicensedSectionContainer from './licensed_section_container';
 import AutoTranslation, {searchableStrings as autoTranslationSearchableStrings} from './localization/auto_translation';
 import Localization, {searchableStrings as localizationSearchableStrings} from './localization/localization';
-import MessageExportSettings, {searchableStrings as messageExportSearchableStrings} from './message_export_settings';
 import OpenIdConvert from './openid_convert';
 import PasswordSettings, {searchableStrings as passwordSearchableStrings} from './password_settings';
-import PermissionPolicyList from './permission_policies';
-import PermissionPolicyDetails from './permission_policies/policy_details';
 import PermissionSchemesSettings from './permission_schemes_settings';
 import {searchableStrings as PermissionSchemeSearchableStrings} from './permission_schemes_settings/permission_schemes_settings';
 import PermissionSystemSchemeSettings from './permission_schemes_settings/permission_system_scheme_settings';
@@ -124,7 +88,6 @@ import SecureConnectionDetail from './secure_connections/secure_connection_detai
 import ServerLogs from './server_logs';
 import {searchableStrings as serverLogsSearchableStrings} from './server_logs/logs';
 import {canViewServerLogs} from './server_logs/url_filters';
-import SessionAttributesPage, {searchableStrings as sessionAttributesSearchableStrings} from './session_attributes';
 import SessionLengthSettings, {searchableStrings as sessionLengthSearchableStrings} from './session_length_settings';
 import SystemRoles from './system_roles';
 import SystemRole from './system_roles/system_role';
@@ -153,13 +116,6 @@ const AZURE_CLOUD_COMMERCIAL = 'commercial';
 const AZURE_CLOUD_GOVERNMENT = 'government';
 const AZURE_CLOUD_CUSTOM = 'custom';
 const MEBIBYTE = Math.pow(1024, 2);
-
-const SAML_SETTINGS_SIGNATURE_ALGORITHM_SHA1 = 'RSAwithSHA1';
-const SAML_SETTINGS_SIGNATURE_ALGORITHM_SHA256 = 'RSAwithSHA256';
-const SAML_SETTINGS_SIGNATURE_ALGORITHM_SHA512 = 'RSAwithSHA512';
-
-const SAML_SETTINGS_CANONICAL_ALGORITHM_C14N = 'Canonical1.0';
-const SAML_SETTINGS_CANONICAL_ALGORITHM_C14N11 = 'Canonical1.1';
 
 // admin_definitions data structure define the autogenerated admin_console
 // section. It defines the structure of the menu based on sections, subsections
@@ -464,50 +420,6 @@ const AdminDefinition: AdminDefinitionType = {
                     component: SystemUserDetail,
                 },
             },
-            group_detail: {
-                url: `user_management/groups/:group_id(${ID_PATH_PATTERN})`,
-                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.GROUPS)),
-                isHidden: it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.GROUPS)),
-                schema: {
-                    id: 'GroupDetail',
-                    component: GroupDetails,
-                },
-            },
-            groups: {
-                url: 'user_management/groups',
-                title: defineMessage({id: 'admin.sidebar.groups', defaultMessage: 'Groups'}),
-                isHidden: it.any(
-                    it.not(it.licensedForFeature('LDAPGroups')),
-                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.GROUPS)),
-                ),
-                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.GROUPS)),
-                schema: {
-                    id: 'Groups',
-                    component: GroupSettings,
-                },
-                restrictedIndicator: getRestrictedIndicator(),
-            },
-            groups_feature_discovery: {
-                url: 'user_management/groups',
-                isDiscovery: true,
-                title: defineMessage({id: 'admin.sidebar.groups', defaultMessage: 'Groups'}),
-                isHidden: it.any(
-                    it.licensedForFeature('LDAPGroups'),
-                ),
-                schema: {
-                    id: 'Groups',
-                    name: defineMessage({id: 'admin.group_settings.groupsPageTitle', defaultMessage: 'Groups'}),
-                    settings: [
-                        {
-                            type: 'custom',
-                            component: GroupsFeatureDiscovery,
-                            key: 'GroupsFeatureDiscovery',
-                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(true, LicenseSkus.Enterprise),
-            },
             team_detail: {
                 url: `user_management/teams/:team_id(${ID_PATH_PATTERN})`,
                 isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.TEAMS)),
@@ -590,8 +502,6 @@ const AdminDefinition: AdminDefinitionType = {
             system_role: {
                 url: `user_management/system_roles/:role_id(${ID_PATH_PATTERN})`,
                 isHidden: it.any(
-                    it.not(it.licensedForFeature('LDAPGroups')),
-                    it.licensedForSku(LicenseSkus.Entry),
                     it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
                 ),
                 isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
@@ -604,8 +514,6 @@ const AdminDefinition: AdminDefinitionType = {
                 url: 'user_management/system_roles',
                 title: defineMessage({id: 'admin.sidebar.systemRoles', defaultMessage: 'Delegated Granular Administration'}),
                 isHidden: it.any(
-                    it.not(it.licensedForFeature('LDAPGroups')),
-                    it.licensedForSku(LicenseSkus.Entry),
                     it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
                 ),
                 isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
@@ -613,28 +521,6 @@ const AdminDefinition: AdminDefinitionType = {
                     id: 'SystemRoles',
                     component: SystemRoles,
                 },
-                restrictedIndicator: getRestrictedIndicator(),
-            },
-            system_roles_feature_discovery: {
-                url: 'user_management/system_roles',
-                isDiscovery: true,
-                title: defineMessage({id: 'admin.sidebar.systemRoles', defaultMessage: 'Delegated Granular Administration'}),
-                isHidden: it.any(
-                    it.licensedForFeature('LDAPGroups'),
-                ),
-                schema: {
-                    id: 'SystemRoles',
-                    name: defineMessage({id: 'admin.permissions.systemRoles', defaultMessage: 'Delegated Granular Administration'}),
-                    settings: [
-                        {
-                            type: 'custom',
-                            component: SystemRolesFeatureDiscovery,
-                            key: 'SystemRolesFeatureDiscovery',
-                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(true, LicenseSkus.Enterprise),
             },
         },
     },
@@ -648,35 +534,11 @@ const AdminDefinition: AdminDefinitionType = {
         sectionTitle: defineMessage({id: 'admin.sidebar.systemAttributes', defaultMessage: 'System Attributes'}),
         isHidden: it.not(it.userHasReadPermissionOnSomeResources(RESOURCE_KEYS.USER_MANAGEMENT)),
         subsections: {
-            user_attributes_feature_discovery: {
-                url: 'system_attributes/user_attributes',
-                isDiscovery: true,
-                title: defineMessage({id: 'admin.sidebar.user_attributes', defaultMessage: 'User Attributes'}),
-                isHidden: it.minLicenseTier(LicenseSkus.Enterprise),
-                schema: {
-                    id: 'SystemProperties',
-                    name: defineMessage({id: 'admin.sidebar.user_attributes', defaultMessage: 'User Attributes'}),
-                    settings: [
-                        {
-                            type: 'custom',
-                            component: UserAttributesFeatureDiscovery,
-                            key: 'UserAttributesFeatureDiscovery',
-                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(true, LicenseSkus.EnterpriseAdvanced),
-            },
             user_attributes_redirect: {
                 url: 'system_attributes/user_attributes',
 
-                // Exact complement of user_attributes_feature_discovery's
-                // isHidden above: Enterprise+ has no page of its own here
-                // anymore (CPA fields now show in Manage Attributes as
-                // non-template fields), so this URL redirects there instead
-                // of falling through to the admin console's unrelated
-                // default-page redirect.
-                isHidden: it.not(it.minLicenseTier(LicenseSkus.Enterprise)),
+                // User attributes have no page of their own (CPA fields show in
+                // Attribute Management), so this URL redirects there.
                 schema: {
                     id: 'UserAttributesRedirect',
                     component: UserAttributesRedirect,
@@ -713,7 +575,6 @@ const AdminDefinition: AdminDefinitionType = {
             },
             global_attribute_details_edit: {
                 url: `system_attributes/manage_attributes/attribute_details/:field_id(${ID_PATH_PATTERN})`,
-                isHidden: it.not(it.minLicenseTier(LicenseSkus.Enterprise)),
                 isDisabled: it.not(it.isSystemAdmin),
                 schema: {
                     id: 'GlobalAttributeDetails',
@@ -722,7 +583,6 @@ const AdminDefinition: AdminDefinitionType = {
             },
             global_attribute_details: {
                 url: 'system_attributes/manage_attributes/attribute_details',
-                isHidden: it.not(it.minLicenseTier(LicenseSkus.Enterprise)),
                 isDisabled: it.not(it.isSystemAdmin),
                 schema: {
                     id: 'GlobalAttributeDetails',
@@ -733,283 +593,11 @@ const AdminDefinition: AdminDefinitionType = {
                 url: 'system_attributes/manage_attributes',
                 title: defineMessage({id: 'admin.sidebar.global_attributes', defaultMessage: 'Attribute Management'}),
                 searchableStrings: globalAttributesSearchableStrings,
-                isHidden: it.not(it.minLicenseTier(LicenseSkus.Enterprise)),
                 isDisabled: it.not(it.isSystemAdmin),
                 schema: {
                     id: 'GlobalAttributes',
                     component: GlobalAttributes,
                 },
-            },
-            session_attributes: {
-                url: 'system_attributes/session_attributes',
-                title: defineMessage({id: 'admin.sidebar.sessionAttributes', defaultMessage: 'Session Attributes'}),
-                searchableStrings: sessionAttributesSearchableStrings,
-                isHidden: it.any(
-                    it.not(it.minLicenseTier(LicenseSkus.EnterpriseAdvanced)),
-                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
-                    it.configIsFalse('FeatureFlags', 'SessionAttributes'),
-                ),
-                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
-                schema: {
-                    id: 'SessionAttributes',
-                    component: SessionAttributesPage,
-                },
-                restrictedIndicator: getRestrictedIndicator(false, LicenseSkus.EnterpriseAdvanced),
-            },
-            session_attributes_feature_discovery: {
-                url: 'system_attributes/session_attributes',
-                isDiscovery: true,
-                title: defineMessage({id: 'admin.sidebar.sessionAttributes', defaultMessage: 'Session Attributes'}),
-                isHidden: it.any(
-                    it.minLicenseTier(LicenseSkus.EnterpriseAdvanced),
-                    it.configIsFalse('FeatureFlags', 'SessionAttributes'),
-                ),
-                schema: {
-                    id: 'SessionAttributes',
-                    name: defineMessage({id: 'admin.session_attributes.title', defaultMessage: 'Session Attributes'}),
-                    settings: [
-                        {
-                            type: 'custom',
-                            component: SessionAttributesFeatureDiscovery,
-                            key: 'SessionAttributesFeatureDiscovery',
-                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(true, LicenseSkus.EnterpriseAdvanced),
-            },
-            attribute_based_access_control: {
-                url: 'system_attributes/attribute_based_access_control',
-                title: defineMessage({id: 'admin.sidebar.attributeBasedAccessControl', defaultMessage: 'Attribute-Based Access'}),
-                isHidden: it.any(
-                    it.not(it.minLicenseTier(LicenseSkus.EnterpriseAdvanced)),
-                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
-                ),
-                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
-                schema: {
-                    id: 'AttributeBasedAccessControl',
-                    name: defineMessage({id: 'admin.accesscontrol.title', defaultMessage: 'Attribute-Based Access'}),
-                    sections: [
-                        {
-                            key: 'admin.accesscontrol.settings',
-                            title: defineMessage({id: 'admin.accesscontrol.sections.settings.title', defaultMessage: 'Access Control'}),
-                            description: defineMessage({id: 'admin.accesscontrol.sections.settings.description', defaultMessage: 'Enable attribute-based access control and related membership policy settings.'}),
-                            settings: [
-                                {
-                                    type: 'bool',
-                                    key: 'AccessControlSettings.EnableAttributeBasedAccessControl',
-                                    label: defineMessage({id: 'admin.accesscontrol.enableTitle', defaultMessage: 'Allow attribute based access controls on this server'}),
-                                    help_text: defineMessage({id: 'admin.accesscontrol.enableDesc', defaultMessage: 'Allow access restrictions based on user attributes using custom access policies. To effectively use this feature, you must define attributes in the {userAttributes} section.'}), // eslint-disable-line formatjs/enforce-placeholders -- userAttributes provided via help_text_values
-                                    help_text_values: {
-                                        userAttributes: (
-                                            <Link to='/admin_console/system_attributes/manage_attributes'>
-                                                <FormattedMessage
-                                                    id='admin.accesscontrol.user_properties.link.label'
-                                                    defaultMessage='Attribute Management'
-                                                />
-                                            </Link>
-                                        ),
-                                    },
-                                },
-                                {
-                                    type: 'bool',
-                                    key: 'AccessControlSettings.EnableAccessControlAuditLogging',
-                                    label: defineMessage({id: 'admin.accesscontrol.enableAuditLogging.title', defaultMessage: 'Enable audit logging for membership policy decisions'}),
-                                    help_text: defineMessage({id: 'admin.accesscontrol.enableAuditLogging.desc', defaultMessage: 'When enabled, membership policy decisions are written to the server audit log. Requires server audit logging to be active.'}),
-                                    disabled_help_text: defineMessage({id: 'admin.accesscontrol.enableAuditLogging.disabled', defaultMessage: 'When enabled, membership policy decisions are written to the server audit log. This setting requires attribute-based access control to be enabled and server audit logging to be active (enable file audit logging or configure an advanced audit logging target).'}),
-                                    isDisabled: it.any(
-                                        it.stateIsFalse('AccessControlSettings.EnableAttributeBasedAccessControl'),
-                                        it.clientConfigIsFalse('AuditLoggingActive'),
-                                    ),
-                                },
-                                {
-                                    type: 'bool',
-                                    key: 'AccessControlSettings.EnableChannelPolicyIndicators',
-                                    label: defineMessage({id: 'admin.accesscontrol.enableChannelPolicyIndicatorsTitle', defaultMessage: 'Show channel access indicators to end users'}),
-                                    help_text: defineMessage({id: 'admin.accesscontrol.enableChannelPolicyIndicatorsDesc', defaultMessage: 'When enabled, channels restricted by a membership access policy display the matching user attributes as tags in the channel members list and the invite dialog. Disable this to avoid revealing policy details to end users.'}),
-                                    isDisabled: it.configIsFalse('AccessControlSettings', 'EnableAttributeBasedAccessControl'),
-                                },
-                            ],
-                        },
-                        {
-                            key: 'admin.accesscontrol.session_attributes',
-                            title: defineMessage({id: 'admin.accesscontrol.session_attributes', defaultMessage: 'Session Attributes'}),
-                            description: defineMessage({id: 'admin.accesscontrol.sections.session_attributes.description', defaultMessage: 'Configure how device identity is trusted and validated for session attributes.'}),
-                            isHidden: it.any(
-                                it.configIsFalse('FeatureFlags', 'SessionAttributes'),
-                                it.not(it.minLicenseTier(LicenseSkus.EnterpriseAdvanced)),
-                            ),
-                            settings: [
-                                {
-                                    type: 'bool',
-                                    key: 'AccessControlSettings.TrustProxyDeviceIdentityHeader',
-                                    label: defineMessage({id: 'admin.accesscontrol.trustProxyDeviceIdentityHeader.title', defaultMessage: 'Trust proxy device identity header'}),
-                                    help_text: defineMessage({id: 'admin.accesscontrol.trustProxyDeviceIdentityHeader.desc', defaultMessage: 'When enabled, the **TLS device ID** attribute is populated from the `X-Dopaminefact-Session-Attribute-Device-Id` request header, letting a reverse proxy that performs mutual TLS assert a device identity that the client cannot forge. **Note:** The device identity is accepted from the request header, so all clients must connect to Dopaminefact through a proxy that sets it and strips it from inbound requests.'}),
-                                    help_text_markdown: true,
-                                    isHidden: it.any(
-                                        it.configIsFalse('FeatureFlags', 'SessionAttributes'),
-                                        it.not(it.minLicenseTier(LicenseSkus.EnterpriseAdvanced)),
-                                    ),
-                                    isDisabled: it.configIsFalse('AccessControlSettings', 'EnableAttributeBasedAccessControl'),
-                                },
-                                {
-                                    type: 'bool',
-                                    key: 'AccessControlSettings.EnforceDeviceIDConsistency',
-                                    label: defineMessage({id: 'admin.accesscontrol.enforceDeviceIdConsistency.title', defaultMessage: 'Enforce device ID consistency'}),
-                                    help_text: defineMessage({id: 'admin.accesscontrol.enforceDeviceIdConsistency.desc', defaultMessage: 'When enabled, the **TLS device ID**, **Device ID**, and **Hardware ID** attributes are compared against the values cached for a session. If one of them changes mid-session, the session is revoked, the user must log in again, and the revocation is recorded in the audit log. This mitigates token theft, since a stolen token replayed from another device reports a different identifier. When disabled, a changed device identity overwrites the cached value and the session continues. **Note:** Confirm that these attributes report stable values across your fleet before enabling, since an identifier that legitimately changes will log users out.'}),
-                                    help_text_markdown: true,
-                                    isHidden: it.any(
-                                        it.configIsFalse('FeatureFlags', 'SessionAttributes'),
-                                        it.not(it.minLicenseTier(LicenseSkus.EnterpriseAdvanced)),
-                                    ),
-                                    isDisabled: it.configIsFalse('AccessControlSettings', 'EnableAttributeBasedAccessControl'),
-                                },
-                            ],
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(false, LicenseSkus.EnterpriseAdvanced),
-            },
-            attribute_based_access_control_feature_discovery: {
-                url: 'system_attributes/attribute_based_access_control',
-                isDiscovery: true,
-                title: defineMessage({id: 'admin.sidebar.attributeBasedAccessControl', defaultMessage: 'Attribute-Based Access'}),
-                isHidden: it.minLicenseTier(LicenseSkus.EnterpriseAdvanced),
-                schema: {
-                    id: 'AttributeBasedAccessControl',
-                    name: defineMessage({id: 'admin.accesscontrol.title', defaultMessage: 'Attribute-Based Access'}),
-                    settings: [
-                        {
-                            type: 'custom',
-                            component: AttributeBasedAccessControlFeatureDiscovery,
-                            key: 'AttributeBasedAccessControlFeatureDiscovery',
-                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(true, LicenseSkus.EnterpriseAdvanced),
-            },
-            membership_policy_details_edit: {
-                url: `system_attributes/membership_policies/edit_policy/:policy_id(${ID_PATH_PATTERN})`,
-                isHidden: it.any(
-                    it.configIsFalse('AccessControlSettings', 'EnableAttributeBasedAccessControl'),
-                    it.not(it.minLicenseTier(LicenseSkus.EnterpriseAdvanced)),
-                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
-                ),
-                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
-                schema: {
-                    id: 'AccessControlPolicy',
-                    component: PolicyDetails,
-                },
-            },
-            membership_policy_details: {
-                url: 'system_attributes/membership_policies/edit_policy',
-                isHidden: it.any(
-                    it.configIsFalse('AccessControlSettings', 'EnableAttributeBasedAccessControl'),
-                    it.not(it.minLicenseTier(LicenseSkus.EnterpriseAdvanced)),
-                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
-                ),
-                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
-                schema: {
-                    id: 'AccessControlPolicy',
-                    component: PolicyDetails,
-                },
-            },
-            membership_policies: {
-                url: 'system_attributes/membership_policies',
-                title: defineMessage({id: 'admin.sidebar.membershipPolicies', defaultMessage: 'Membership Policies'}),
-                isHidden: it.any(
-                    it.not(it.minLicenseTier(LicenseSkus.EnterpriseAdvanced)),
-                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
-                    it.configIsFalse('AccessControlSettings', 'EnableAttributeBasedAccessControl'),
-                ),
-                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
-                schema: {
-                    id: 'MembershipPolicies',
-                    name: defineMessage({id: 'admin.membership_policies.page_title', defaultMessage: 'Membership Policies'}),
-                    sections: [
-                        {
-                            key: 'admin.membershippolicies.policies',
-                            settings: [
-                                {
-                                    type: 'custom',
-                                    component: PolicyList,
-                                    key: 'PolicyListPanel',
-                                },
-                            ],
-                        },
-                        {
-                            key: 'admin.membershippolicies.policyjobs',
-                            settings: [
-                                {
-                                    type: 'custom',
-                                    component: AccessControlPolicyJobs,
-                                    key: 'AccessControlPolicyJobs',
-                                },
-                            ],
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(false, LicenseSkus.EnterpriseAdvanced),
-            },
-            permission_policy_details_edit: {
-                url: `system_attributes/permission_policies/edit_policy/:policy_id(${ID_PATH_PATTERN})`,
-                isHidden: it.any(
-                    it.configIsFalse('AccessControlSettings', 'EnableAttributeBasedAccessControl'),
-                    it.not(it.minLicenseTier(LicenseSkus.EnterpriseAdvanced)),
-                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
-                    it.configIsFalse('FeatureFlags', 'PermissionPolicies'),
-                ),
-                isDisabled: it.any(
-                    it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
-                    it.configIsFalse('FeatureFlags', 'PermissionPolicies'),
-                ),
-                schema: {
-                    id: 'PermissionPolicy',
-                    component: PermissionPolicyDetails,
-                },
-            },
-            permission_policy_details: {
-                url: 'system_attributes/permission_policies/edit_policy',
-                isHidden: it.any(
-                    it.configIsFalse('AccessControlSettings', 'EnableAttributeBasedAccessControl'),
-                    it.not(it.minLicenseTier(LicenseSkus.EnterpriseAdvanced)),
-                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
-                    it.configIsFalse('FeatureFlags', 'PermissionPolicies'),
-                ),
-                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
-                schema: {
-                    id: 'PermissionPolicy',
-                    component: PermissionPolicyDetails,
-                },
-            },
-            permission_policies: {
-                url: 'system_attributes/permission_policies',
-                title: defineMessage({id: 'admin.sidebar.permissionPolicies', defaultMessage: 'Permission Policies'}),
-                isHidden: it.any(
-                    it.not(it.minLicenseTier(LicenseSkus.EnterpriseAdvanced)),
-                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
-                    it.configIsFalse('FeatureFlags', 'PermissionPolicies'),
-                    it.configIsFalse('AccessControlSettings', 'EnableAttributeBasedAccessControl'),
-                ),
-                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.USER_MANAGEMENT.SYSTEM_ROLES)),
-                schema: {
-                    id: 'PermissionPolicies',
-                    name: defineMessage({id: 'admin.permission_policies.page_title', defaultMessage: 'Permission Policies'}),
-                    sections: [
-                        {
-                            key: 'admin.permissionpolicies.policies',
-                            settings: [
-                                {
-                                    type: 'custom',
-                                    component: PermissionPolicyList,
-                                    key: 'PermissionPolicyListPanel',
-                                },
-                            ],
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(false, LicenseSkus.EnterpriseAdvanced),
             },
         },
     },
@@ -2568,7 +2156,6 @@ const AdminDefinition: AdminDefinitionType = {
                 title: defineMessage({id: 'admin.sidebar.mobileSecurity', defaultMessage: 'Mobile Security'}),
                 isHidden: it.any(
                     it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.MOBILE_SECURITY)),
-                    it.not(it.minLicenseTier(LicenseSkus.Enterprise)),
                 ),
                 schema: {
                     id: 'MobileSecuritySettings',
@@ -2614,7 +2201,6 @@ const AdminDefinition: AdminDefinitionType = {
                                             </a>
                                         ),
                                     },
-                                    isHidden: it.not(it.minLicenseTier(LicenseSkus.EnterpriseAdvanced)),
                                 },
                                 {
                                     type: 'bool',
@@ -2622,88 +2208,6 @@ const AdminDefinition: AdminDefinitionType = {
                                     label: defineMessage({id: 'admin.mobileSecurity.allowPdfLinkNavigationTitle', defaultMessage: 'Allow Link Navigation in Secure PDFs:'}),
                                     help_text: defineMessage({id: 'admin.mobileSecurity.allowPdfLinkNavigationDescription', defaultMessage: 'Enables tapping links inside PDFs when Secure File Preview Mode is active. Links will open in the device browser or supported app. Has no effect when Secure File Preview Mode is disabled.'}),
                                     isDisabled: it.stateIsFalse('NativeAppSettings.MobileEnableSecureFilePreview'),
-                                    isHidden: it.not(it.minLicenseTier(LicenseSkus.EnterpriseAdvanced)),
-                                },
-                            ],
-                        },
-                        {
-                            key: 'MobileSecuritySettings.Intune',
-                            title: 'Microsoft Intune',
-                            description: defineMessage({id: 'admin.mobileSecurity.sections.intune.description', defaultMessage: 'Configure Microsoft Intune Mobile Application Management (MAM) for App Protection Policies.'}),
-                            license_sku: LicenseSkus.EnterpriseAdvanced,
-                            component: LicensedSectionContainer,
-                            componentProps: {
-                                requiredSku: LicenseSkus.EnterpriseAdvanced,
-                                featureDiscoveryConfig: {
-                                    featureName: 'intune_mam',
-                                    title: defineMessage({id: 'admin.intune_feature_discovery.title', defaultMessage: 'Protect mobile data with Microsoft Intune App Protection Policies (MAM) and Entra ID authentication'}),
-                                    description: defineMessage({id: 'admin.intune_feature_discovery.description', defaultMessage: 'With Dopaminefact Enterprise Advanced, you can enable Microsoft Intune Mobile Application Management (MAM) to enforce App Protection Policies (APP) on Dopaminefact Mobile. Users sign in with Microsoft Entra ID (Azure AD), and Intune MAM applies data protection, selective wipe, and compliance policies on supported iOS devices.'}),
-                                    learnMoreURL: 'https://docs.mattermost.com/deployment-guide/mobile/configure-microsoft-intune-mam.html',
-                                    svgImage: IntuneMAMSvg,
-                                },
-                            },
-                            settings: [
-                                {
-                                    type: 'bool',
-                                    key: 'IntuneSettings.Enable',
-                                    label: defineMessage({id: 'admin.intune.enableTitle', defaultMessage: 'Enable Microsoft Intune MAM:'}),
-                                    help_text: defineMessage({id: 'admin.intune.enableDescription', defaultMessage: 'When enabled, Dopaminefact Mobile uses Microsoft Entra ID (Azure AD) for app authentication and policy enforcement. Users authenticate using MSAL tokens, and Intune MAM policies (App Protection Policies) are applied to protect corporate data.'}),
-                                },
-                                {
-                                    type: 'dropdown',
-                                    key: 'IntuneSettings.AuthService',
-                                    label: defineMessage({id: 'admin.intune.authServiceTitle', defaultMessage: 'Auth Provider:'}),
-                                    help_text: defineMessage({id: 'admin.intune.authServiceDescription', defaultMessage: 'Select how users authenticate into Dopaminefact.\n* **OpenID Connect** – Use when users sign in to Dopaminefact via Microsoft 365 / Entra ID using OIDC.\n* **SAML 2.0** – Use when users authenticate via a SAML provider that ultimately maps to Microsoft Entra ID.\nChoose the option that matches how your organization already authenticates users into Dopaminefact on other clients.'}),
-                                    help_text_markdown: true,
-                                    options: [
-                                        {
-                                            value: '',
-                                            display_name: defineMessage({id: 'admin.intune.authServicePlaceholder', defaultMessage: 'Select an auth provider'}),
-                                        },
-                                        {
-                                            value: 'office365',
-                                            display_name: defineMessage({id: 'admin.intune.authServiceOffice365', defaultMessage: 'OpenID Connect (Office 365)'}),
-                                            isHidden: it.configIsFalse('Office365Settings', 'Enable'),
-                                        },
-                                        {
-                                            value: 'saml',
-                                            display_name: defineMessage({id: 'admin.intune.authServiceSaml', defaultMessage: 'SAML 2.0'}),
-                                            isHidden: it.configIsFalse('SamlSettings', 'Enable'),
-                                        },
-                                    ],
-                                    isDisabled: it.stateIsFalse('IntuneSettings.Enable'),
-                                },
-                                {
-                                    type: 'text',
-                                    key: 'IntuneSettings.TenantId',
-                                    label: defineMessage({id: 'admin.intune.tenantIdTitle', defaultMessage: 'Tenant ID:'}),
-                                    help_text: defineMessage({id: 'admin.intune.tenantIdDescription', defaultMessage: 'The Microsoft Entra ID (Azure AD) Tenant ID (also called the Directory ID).\nThis is the globally unique identifier that represents your organization in Microsoft Entra ID.\nMattermost uses this ID to validate tokens issued for Intune MAM.'}),
-                                    placeholder: defineMessage({id: 'admin.intune.tenantIdPlaceholder', defaultMessage: 'E.g.: "12345678-1234-1234-1234-123456789012"'}),
-                                    isDisabled: it.stateIsFalse('IntuneSettings.Enable'),
-                                    default: (value, config, state) => {
-                                        if (state['IntuneSettings.Enable'] && !state['IntuneSettings.TenantId']) {
-                                            if (state['IntuneSettings.AuthService'] === 'office365' && config.Office365Settings?.DirectoryId) {
-                                                return config.Office365Settings?.DirectoryId;
-                                            }
-                                        }
-                                        return '';
-                                    },
-                                },
-                                {
-                                    type: 'text',
-                                    key: 'IntuneSettings.ClientId',
-                                    label: defineMessage({id: 'admin.intune.clientIdTitle', defaultMessage: 'Application (Client) ID:'}),
-                                    help_text: defineMessage({id: 'admin.intune.clientIdDescription', defaultMessage: 'The Application (Client) ID of your Intune MAM–enabled app registration in Microsoft Entra ID.\nThis is the client identifier that the Dopaminefact Mobile app uses to request MSAL tokens for Intune MAM enrollment and policy evaluation.'}),
-                                    placeholder: defineMessage({id: 'admin.intune.clientIdPlaceholder', defaultMessage: 'E.g.: "87654321-4321-4321-4321-210987654321"'}),
-                                    isDisabled: it.stateIsFalse('IntuneSettings.Enable'),
-                                    default: (value, config, state) => {
-                                        if (state['IntuneSettings.Enable'] && !state['IntuneSettings.TenantId']) {
-                                            if (state['IntuneSettings.AuthService'] === 'office365' && config.Office365Settings?.Id) {
-                                                return config.Office365Settings?.Id;
-                                            }
-                                        }
-                                        return '';
-                                    },
                                 },
                             ],
                         },
@@ -2711,17 +2215,6 @@ const AdminDefinition: AdminDefinitionType = {
                             key: 'MobileSecuritySettings.EphemeralMode',
                             title: 'Mobile Ephemeral Mode',
                             description: defineMessage({id: 'admin.mobileSecurity.sections.ephemeralMode.description', defaultMessage: 'Configure data persistence and cache management policies for mobile devices.'}),
-                            license_sku: LicenseSkus.EnterpriseAdvanced,
-                            component: LicensedSectionContainer,
-                            componentProps: {
-                                requiredSku: LicenseSkus.EnterpriseAdvanced,
-                                featureDiscoveryConfig: {
-                                    featureName: 'mobile_ephemeral_mode',
-                                    title: defineMessage({id: 'admin.mobileSecurity.ephemeralMode_feature_discovery.title', defaultMessage: 'Control mobile data persistence with Mobile Ephemeral Mode'}),
-                                    description: defineMessage({id: 'admin.mobileSecurity.ephemeralMode_feature_discovery.description', defaultMessage: 'With Dopaminefact Enterprise Advanced, you can enable Mobile Ephemeral Mode to enforce data persistence policies on mobile devices. Configure disconnection timeouts, offline data retention, and automatic cache cleanup.'}),
-                                    learnMoreURL: 'https://docs.mattermost.com/configure/environment-configuration-settings.html#mobile-security',
-                                },
-                            },
                             isHidden: it.configIsFalse('FeatureFlags', 'MobileEphemeralMode'),
                             settings: [
                                 {
@@ -2779,28 +2272,6 @@ const AdminDefinition: AdminDefinitionType = {
                         },
                     ],
                 },
-            },
-            mobile_security_feature_discovery: {
-                url: 'environment/mobile_security_feature_discovery',
-                isDiscovery: true,
-                title: defineMessage({id: 'admin.sidebar.mobileSecurity', defaultMessage: 'Mobile Security'}),
-                isHidden: it.any(
-                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.MOBILE_SECURITY)),
-                    it.minLicenseTier(LicenseSkus.Enterprise),
-                ),
-                schema: {
-                    id: 'MobileSecurityFeatureDiscoverySettings',
-                    name: defineMessage({id: 'admin.mobileSecurity.title', defaultMessage: 'Mobile Security'}),
-                    settings: [
-                        {
-                            type: 'custom',
-                            component: MobileSecurityFeatureDiscovery,
-                            key: 'MobileSecurityFeatureDiscovery',
-                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(true),
             },
         },
     },
@@ -4789,521 +4260,6 @@ const AdminDefinition: AdminDefinitionType = {
                     ],
                 },
             },
-            ldap: {
-                url: 'authentication/ldap',
-                title: defineMessage({id: 'admin.sidebar.ldap', defaultMessage: 'AD/LDAP'}),
-                isHidden: it.any(
-                    it.not(it.licensedForFeature('LDAP')),
-                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.LDAP)),
-                ),
-                schema: {
-                    id: 'LdapWizard',
-                    component: LDAPWizard,
-                },
-            },
-            ldap_feature_discovery: {
-                url: 'authentication/ldap',
-                isDiscovery: true,
-                title: defineMessage({id: 'admin.sidebar.ldap', defaultMessage: 'AD/LDAP'}),
-                isHidden: it.any(
-                    it.licensedForFeature('LDAP'),
-                ),
-                schema: {
-                    id: 'LdapSettings',
-                    name: defineMessage({id: 'admin.authentication.ldap', defaultMessage: 'AD/LDAP'}),
-                    settings: [
-                        {
-                            type: 'custom',
-                            component: LDAPFeatureDiscovery,
-                            key: 'LDAPFeatureDiscovery',
-                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(true),
-            },
-            saml: {
-                url: 'authentication/saml',
-                title: defineMessage({id: 'admin.sidebar.saml', defaultMessage: 'SAML 2.0'}),
-                isHidden: it.any(
-                    it.not(it.licensedForFeature('SAML')),
-                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                ),
-                schema: {
-                    id: 'SamlSettings',
-                    name: defineMessage({id: 'admin.authentication.saml', defaultMessage: 'SAML 2.0'}),
-                    settings: [
-                        {
-                            type: 'bool',
-                            key: 'SamlSettings.Enable',
-                            label: defineMessage({id: 'admin.saml.enableTitle', defaultMessage: 'Enable Login With SAML 2.0:'}),
-                            help_text: defineMessage({id: 'admin.saml.enableDescription', defaultMessage: 'When true, Dopaminefact allows login using SAML 2.0. Please see <link>documentation</link> to learn more about configuring SAML for Dopaminefact.'}), // eslint-disable-line formatjs/enforce-placeholders -- placeholders provided
-                            help_text_markdown: false,
-                            help_text_values: {
-                                link: (msg: string) => (
-                                    <ExternalLink
-                                        location='admin_console'
-                                        href='http://docs.mattermost.com/deployment/sso-saml.html'
-                                    >
-                                        {msg}
-                                    </ExternalLink>
-                                ),
-                            },
-                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                        },
-                        {
-                            type: 'bool',
-                            key: 'SamlSettings.EnableSyncWithLdap',
-                            label: defineMessage({id: 'admin.saml.enableSyncWithLdapTitle', defaultMessage: 'Enable Synchronizing SAML Accounts With AD/LDAP:'}),
-                            help_text: defineMessage({id: 'admin.saml.enableSyncWithLdapDescription', defaultMessage: 'When true, Dopaminefact periodically synchronizes SAML user attributes, including user deactivation and removal, from AD/LDAP. Enable and configure synchronization settings at <strong>Authentication > AD/LDAP</strong>. When false, user attributes are updated from SAML during user login. See <link>documentation</link> to learn more.'}), // eslint-disable-line formatjs/enforce-placeholders -- placeholders provided
-                            help_text_values: {
-                                link: (msg: string) => (
-                                    <ExternalLink
-                                        location='admin_console'
-                                        href={DocLinks.SETUP_LDAP}
-                                    >
-                                        {msg}
-                                    </ExternalLink>
-                                ),
-                                strong: (msg: string) => <strong>{msg}</strong>,
-                            },
-                            help_text_markdown: false,
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'bool',
-                            key: 'SamlSettings.IgnoreGuestsLdapSync',
-                            label: defineMessage({id: 'admin.saml.ignoreGuestsLdapSyncTitle', defaultMessage: 'Ignore Guest Users when Synchronizing with AD/LDAP'}),
-                            help_text: defineMessage({id: 'admin.saml.ignoreGuestsLdapSyncDesc', defaultMessage: 'When true, Dopaminefact will ignore Guest Users who are identified by the Guest Attribute, when synchronizing with AD/LDAP for user deactivation and removal and Guest deactivation will need to be managed manually via System Console > Users.'}),
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.configIsFalse('GuestAccountsSettings', 'Enable'),
-                                it.stateIsFalse('SamlSettings.EnableSyncWithLdap'),
-                            ),
-                        },
-                        {
-                            type: 'bool',
-                            key: 'SamlSettings.EnableSyncWithLdapIncludeAuth',
-                            label: defineMessage({id: 'admin.saml.enableSyncWithLdapIncludeAuthTitle', defaultMessage: 'Override SAML bind data with AD/LDAP information:'}),
-                            help_text: defineMessage({id: 'admin.saml.enableSyncWithLdapIncludeAuthDescription', defaultMessage: 'When true, Dopaminefact will override the SAML ID attribute with the AD/LDAP ID attribute if configured or override the SAML Email attribute with the AD/LDAP Email attribute if SAML ID attribute is not present. This will allow you to automatically migrate users from Email binding to ID binding to prevent creation of new users when an email address changes for a user. Moving from true to false will remove the override from happening. <strong>Note:</strong> SAML IDs must match the LDAP IDs to prevent disabling of user accounts. Please review <link>documentation</link> for more information.'}), // eslint-disable-line formatjs/no-multiple-whitespaces, formatjs/enforce-placeholders -- placeholders provided
-                            help_text_values: {
-                                link: (msg: string) => (
-                                    <ExternalLink
-                                        location='admin_console'
-                                        href={DocLinks.CONFIGURE_OVERRIDE_SAML_BIND_DATA_WITH_LDAP}
-                                    >
-                                        {msg}
-                                    </ExternalLink>
-                                ),
-                                strong: (msg: string) => <strong>{msg}</strong>,
-                            },
-                            help_text_markdown: false,
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.EnableSyncWithLdap'),
-                            ),
-                        },
-                        {
-                            type: 'text',
-                            key: 'SamlSettings.IdpMetadataURL',
-                            label: defineMessage({id: 'admin.saml.idpMetadataUrlTitle', defaultMessage: 'Identity Provider Metadata URL:'}),
-                            help_text: defineMessage({id: 'admin.saml.idpMetadataUrlDesc', defaultMessage: 'The URL where Dopaminefact sends a request to obtain metadata'}),
-                            placeholder: defineMessage({id: 'admin.saml.idpMetadataUrlEx', defaultMessage: 'E.g.: "https://idp.example.org/SAML2/saml/metadata"'}),
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'button',
-                            key: 'getSamlMetadataFromIDPButton',
-                            action: getSamlMetadataFromIdp,
-                            label: defineMessage({id: 'admin.saml.getSamlMetadataFromIDPUrl', defaultMessage: 'Get SAML Metadata from IdP'}),
-                            loading: defineMessage({id: 'admin.saml.getSamlMetadataFromIDPFetching', defaultMessage: 'Fetching...'}),
-                            error_message: defineMessage({id: 'admin.saml.getSamlMetadataFromIDPFail', defaultMessage: 'SAML Metadata URL did not connect and pull data successfully'}),
-                            success_message: defineMessage({id: 'admin.saml.getSamlMetadataFromIDPSuccess', defaultMessage: 'SAML Metadata retrieved successfully. Two fields and one certificate have been updated'}),
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                                it.stateEquals('SamlSettings.IdpMetadataURL', ''),
-                            ),
-                            sourceUrlKey: 'SamlSettings.IdpMetadataURL',
-                            skipSaveNeeded: true,
-                        },
-                        {
-                            type: 'text',
-                            key: 'SamlSettings.IdpURL',
-                            label: defineMessage({id: 'admin.saml.idpUrlTitle', defaultMessage: 'SAML SSO URL:'}),
-                            help_text: defineMessage({id: 'admin.saml.idpUrlDesc', defaultMessage: 'The URL where Dopaminefact sends a SAML request to start login sequence.'}),
-                            placeholder: defineMessage({id: 'admin.saml.idpUrlEx', defaultMessage: 'E.g.: "https://idp.example.org/SAML2/SSO/Login"'}),
-                            setFromMetadataField: 'idp_url',
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'text',
-                            key: 'SamlSettings.IdpDescriptorURL',
-                            label: defineMessage({id: 'admin.saml.idpDescriptorUrlTitle', defaultMessage: 'Identity Provider Issuer URL:'}),
-                            help_text: defineMessage({id: 'admin.saml.idpDescriptorUrlDesc', defaultMessage: 'The issuer URL for the Identity Provider you use for SAML requests.'}),
-                            placeholder: defineMessage({id: 'admin.saml.idpDescriptorUrlEx', defaultMessage: 'E.g.: "https://idp.example.org/SAML2/issuer"'}),
-                            setFromMetadataField: 'idp_descriptor_url',
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'fileupload',
-                            key: 'SamlSettings.IdpCertificateFile',
-                            label: defineMessage({id: 'admin.saml.idpCertificateFileTitle', defaultMessage: 'Identity Provider Public Certificate:'}),
-                            help_text: defineMessage({id: 'admin.saml.idpCertificateFileDesc', defaultMessage: 'The public authentication certificate issued by your Identity Provider.'}),
-                            remove_help_text: defineMessage({id: 'admin.saml.idpCertificateFileRemoveDesc', defaultMessage: 'Remove the public authentication certificate issued by your Identity Provider.'}),
-                            remove_button_text: defineMessage({id: 'admin.saml.remove.idp_certificate', defaultMessage: 'Remove Identity Provider Certificate'}),
-                            removing_text: defineMessage({id: 'admin.saml.removing.certificate', defaultMessage: 'Removing Certificate...'}),
-                            uploading_text: defineMessage({id: 'admin.saml.uploading.certificate', defaultMessage: 'Uploading Certificate...'}),
-                            fileType: '.crt,.cer,.cert,.pem',
-                            upload_action: uploadIdpSamlCertificate,
-                            set_action: setSamlIdpCertificateFromMetadata,
-                            remove_action: removeIdpSamlCertificate,
-                            setFromMetadataField: 'idp_public_certificate',
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'bool',
-                            key: 'SamlSettings.Verify',
-                            label: defineMessage({id: 'admin.saml.verifyTitle', defaultMessage: 'Verify Signature:'}),
-                            help_text: defineMessage({id: 'admin.saml.verifyDescription', defaultMessage: 'When false, Dopaminefact will not verify that the signature sent from a SAML Response matches the Service Provider Login URL. Disabling verification is not recommended for production environments.'}),
-                            production_warning: {
-                                isEnabled: it.stateIsFalse('SamlSettings.Verify'),
-                                title: defineMessage({id: 'admin.saml.verifyProductionWarning.title', defaultMessage: 'Disabling verification is not recommended for production environments'}),
-                                text: defineMessage({id: 'admin.saml.verifyProductionWarning.text', defaultMessage: 'Without verification, forged SAML responses can authenticate as any user. Disable only while troubleshooting your SAML setup in non-production environments.'}),
-                            },
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'text',
-                            key: 'SamlSettings.AssertionConsumerServiceURL',
-                            label: defineMessage({id: 'admin.saml.assertionConsumerServiceURLTitle', defaultMessage: 'Service Provider Login URL:'}),
-                            help_text: defineMessage({id: 'admin.saml.assertionConsumerServiceURLPopulatedDesc', defaultMessage: 'This field is also known as the Assertion Consumer Service URL.'}),
-                            placeholder: defineMessage({id: 'admin.saml.assertionConsumerServiceURLEx', defaultMessage: 'E.g.: "<urlChunk>your-mattermost-url</urlChunk>"'}), // eslint-disable-line formatjs/enforce-placeholders -- placeholders provided
-                            placeholder_values: {
-                                urlChunk: (chunk: string) => `https://'<${chunk}>'/login/sso/saml`,
-                            },
-                            onConfigLoad: (value, config) => {
-                                const siteUrl = config.ServiceSettings?.SiteURL || '';
-                                if (siteUrl.length > 0 && value.length === 0) {
-                                    const addSlashIfNeeded = siteUrl[siteUrl.length - 1] === '/' ? '' : '/';
-                                    return `${siteUrl}${addSlashIfNeeded}login/sso/saml`;
-                                }
-                                return value;
-                            },
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'text',
-                            key: 'SamlSettings.ServiceProviderIdentifier',
-                            label: defineMessage({id: 'admin.saml.serviceProviderIdentifierTitle', defaultMessage: 'Service Provider Identifier:'}),
-                            help_text: defineMessage({id: 'admin.saml.serviceProviderIdentifierDesc', defaultMessage: 'The unique identifier for the Service Provider, usually the same as Service Provider Login URL. In ADFS, this MUST match the Relying Party Identifier.'}),
-                            placeholder: defineMessage({id: 'admin.saml.serviceProviderIdentifierEx', defaultMessage: 'E.g.: "<urlChunk>your-mattermost-url</urlChunk>"'}), // eslint-disable-line formatjs/enforce-placeholders -- placeholders provided
-                            placeholder_values: {
-                                urlChunk: (chunk: string) => `https://'<${chunk}>'/login/sso/saml`,
-                            },
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'bool',
-                            key: 'SamlSettings.Encrypt',
-                            label: defineMessage({id: 'admin.saml.encryptTitle', defaultMessage: 'Enable Encryption:'}),
-                            help_text: defineMessage({id: 'admin.saml.encryptDescription', defaultMessage: 'When false, Dopaminefact will not decrypt SAML Assertions encrypted with your Service Provider Public Certificate. Disabling encryption is not recommended for production environments.'}),
-                            production_warning: {
-                                isEnabled: it.stateIsFalse('SamlSettings.Encrypt'),
-                                title: defineMessage({id: 'admin.saml.encryptProductionWarning.title', defaultMessage: 'Disabling encryption is not recommended for production environments'}),
-                                text: defineMessage({id: 'admin.saml.encryptProductionWarning.text', defaultMessage: 'Without encryption, SAML assertions are sent in plain text and may expose user attributes. Disable only while troubleshooting your SAML setup in non-production environments.'}),
-                            },
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'fileupload',
-                            key: 'SamlSettings.PrivateKeyFile',
-                            label: defineMessage({id: 'admin.saml.privateKeyFileTitle', defaultMessage: 'Service Provider Private Key:'}),
-                            help_text: defineMessage({id: 'admin.saml.privateKeyFileFileDesc', defaultMessage: 'The private key used to decrypt SAML Assertions from the Identity Provider.'}),
-                            remove_help_text: defineMessage({id: 'admin.saml.privateKeyFileFileRemoveDesc', defaultMessage: 'Remove the private key used to decrypt SAML Assertions from the Identity Provider.'}),
-                            remove_button_text: defineMessage({id: 'admin.saml.remove.privKey', defaultMessage: 'Remove Service Provider Private Key'}),
-                            removing_text: defineMessage({id: 'admin.saml.removing.privKey', defaultMessage: 'Removing Private Key...'}),
-                            uploading_text: defineMessage({id: 'admin.saml.uploading.privateKey', defaultMessage: 'Uploading Private Key...'}),
-                            fileType: '.key',
-                            upload_action: uploadPrivateSamlCertificate,
-                            remove_action: removePrivateSamlCertificate,
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Encrypt'),
-                            ),
-                        },
-                        {
-                            type: 'fileupload',
-                            key: 'SamlSettings.PublicCertificateFile',
-                            label: defineMessage({id: 'admin.saml.publicCertificateFileTitle', defaultMessage: 'Service Provider Public Certificate:'}),
-                            help_text: defineMessage({id: 'admin.saml.publicCertificateFileDesc', defaultMessage: 'The certificate used to generate the signature on a SAML request to the Identity Provider for a service provider initiated SAML login, when Dopaminefact is the Service Provider.'}),
-                            remove_help_text: defineMessage({id: 'admin.saml.publicCertificateFileRemoveDesc', defaultMessage: 'Remove the certificate used to generate the signature on a SAML request to the Identity Provider for a service provider initiated SAML login, when Dopaminefact is the Service Provider.'}),
-                            remove_button_text: defineMessage({id: 'admin.saml.remove.sp_certificate', defaultMessage: 'Remove Service Provider Certificate'}),
-                            removing_text: defineMessage({id: 'admin.saml.removing.certificate', defaultMessage: 'Removing Certificate...'}),
-                            uploading_text: defineMessage({id: 'admin.saml.uploading.certificate', defaultMessage: 'Uploading Certificate...'}),
-                            fileType: '.crt,.cer',
-                            upload_action: uploadPublicSamlCertificate,
-                            remove_action: removePublicSamlCertificate,
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Encrypt'),
-                            ),
-                        },
-                        {
-                            type: 'bool',
-                            key: 'SamlSettings.SignRequest',
-                            label: defineMessage({id: 'admin.saml.signRequestTitle', defaultMessage: 'Sign Request:'}),
-                            help_text: defineMessage({id: 'admin.saml.signRequestDescription', defaultMessage: 'When true, Dopaminefact will sign the SAML request using your private key. When false, Dopaminefact will not sign the SAML request.'}),
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Encrypt'),
-                                it.stateIsFalse('SamlSettings.PrivateKeyFile'),
-                                it.stateIsFalse('SamlSettings.PublicCertificateFile'),
-                            ),
-                        },
-                        {
-                            type: 'dropdown',
-                            key: 'SamlSettings.SignatureAlgorithm',
-                            label: defineMessage({id: 'admin.saml.signatureAlgorithmTitle', defaultMessage: 'Signature Algorithm'}),
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.SignRequest'),
-                            ),
-                            options: [
-                                {
-                                    value: SAML_SETTINGS_SIGNATURE_ALGORITHM_SHA1,
-                                    display_name: defineMessage({id: 'admin.saml.signatureAlgorithmDisplay.sha1', defaultMessage: 'RSAwithSHA1'}),
-                                    help_text: defineMessage({id: 'admin.saml.signatureAlgorithmDescription.sha1', defaultMessage: 'Specify the Signature algorithm used to sign the request (RSAwithSHA1). Please see more information provided at [http://www.w3.org/2000/09/xmldsig#rsa-sha1](http://www.w3.org/2000/09/xmldsig#rsa-sha1)'}),
-                                    help_text_markdown: true,
-                                },
-                                {
-                                    value: SAML_SETTINGS_SIGNATURE_ALGORITHM_SHA256,
-                                    display_name: defineMessage({id: 'admin.saml.signatureAlgorithmDisplay.sha256', defaultMessage: 'RSAwithSHA256'}),
-                                    help_text: defineMessage({id: 'admin.saml.signatureAlgorithmDescription.sha256', defaultMessage: 'Specify the Signature algorithm used to sign the request (RSAwithSHA256). Please see more information provided at [http://www.w3.org/2001/04/xmldsig-more#rsa-sha256](http://www.w3.org/2001/04/xmldsig-more#rsa-sha256) [section 6.4.2 RSA (PKCS#1 v1.5)]'}),
-                                    help_text_markdown: true,
-                                },
-                                {
-                                    value: SAML_SETTINGS_SIGNATURE_ALGORITHM_SHA512,
-                                    display_name: defineMessage({id: 'admin.saml.signatureAlgorithmDisplay.sha512', defaultMessage: 'RSAwithSHA512'}),
-                                    help_text: defineMessage({id: 'admin.saml.signatureAlgorithmDescription.sha512', defaultMessage: 'Specify the Signature algorithm used to sign the request (RSAwithSHA512). Please see more information provided at [http://www.w3.org/2001/04/xmldsig-more#rsa-sha512](http://www.w3.org/2001/04/xmldsig-more#rsa-sha512)'}),
-                                    help_text_markdown: true,
-                                },
-                            ],
-                        },
-                        {
-                            type: 'dropdown',
-                            key: 'SamlSettings.CanonicalAlgorithm',
-                            label: defineMessage({id: 'admin.saml.canonicalAlgorithmTitle', defaultMessage: 'Canonicalization Algorithm'}),
-                            options: [
-                                {
-                                    value: SAML_SETTINGS_CANONICAL_ALGORITHM_C14N,
-                                    display_name: defineMessage({id: 'admin.saml.canonicalAlgorithmDisplay.n10', defaultMessage: 'Exclusive XML Canonicalization 1.0 (omit comments)'}),
-                                    help_text: defineMessage({id: 'admin.saml.canonicalAlgorithmDescription.exc', defaultMessage: 'Specify the Canonicalization algorithm (Exclusive XML Canonicalization 1.0). Please see more information provided at [http://www.w3.org/2001/10/xml-exc-c14n#](http://www.w3.org/2001/10/xml-exc-c14n#)'}),
-                                    help_text_markdown: true,
-                                },
-                                {
-                                    value: SAML_SETTINGS_CANONICAL_ALGORITHM_C14N11,
-                                    display_name: defineMessage({id: 'admin.saml.canonicalAlgorithmDisplay.n11', defaultMessage: 'Canonical XML 1.1 (omit comments)'}),
-                                    help_text: defineMessage({id: 'admin.saml.canonicalAlgorithmDescription.c14', defaultMessage: 'Specify the Canonicalization algorithm (Canonical XML 1.1). Please see more information provided at [http://www.w3.org/2006/12/xml-c14n11](http://www.w3.org/2006/12/xml-c14n11)'}),
-                                    help_text_markdown: true,
-                                },
-                            ],
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.SignRequest'),
-                            ),
-                        },
-                        {
-                            type: 'text',
-                            key: 'SamlSettings.EmailAttribute',
-                            label: defineMessage({id: 'admin.saml.emailAttrTitle', defaultMessage: 'Email Attribute:'}),
-                            placeholder: defineMessage({id: 'admin.saml.emailAttrEx', defaultMessage: 'E.g.: "Email" or "PrimaryEmail"'}),
-                            help_text: defineMessage({id: 'admin.saml.emailAttrDesc', defaultMessage: 'The attribute in the SAML Assertion that will be used to populate the email addresses of users in Dopaminefact.'}),
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'text',
-                            key: 'SamlSettings.UsernameAttribute',
-                            label: defineMessage({id: 'admin.saml.usernameAttrTitle', defaultMessage: 'Username Attribute:'}),
-                            placeholder: defineMessage({id: 'admin.saml.usernameAttrEx', defaultMessage: 'E.g.: "Username"'}),
-                            help_text: defineMessage({id: 'admin.saml.usernameAttrDesc', defaultMessage: 'The attribute in the SAML Assertion that will be used to populate the username field in Dopaminefact.'}),
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'text',
-                            key: 'SamlSettings.IdAttribute',
-                            label: defineMessage({id: 'admin.saml.idAttrTitle', defaultMessage: 'Id Attribute:'}),
-                            placeholder: defineMessage({id: 'admin.saml.idAttrEx', defaultMessage: 'E.g.: "Id"'}),
-                            help_text: defineMessage({id: 'admin.saml.idAttrDesc', defaultMessage: '(Optional) The attribute in the SAML Assertion that will be used to bind users from SAML to users in Dopaminefact.'}),
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'text',
-                            key: 'SamlSettings.GuestAttribute',
-                            label: defineMessage({id: 'admin.saml.guestAttrTitle', defaultMessage: 'Guest Attribute:'}),
-                            placeholder: defineMessage({id: 'admin.saml.guestAttrEx', defaultMessage: 'E.g.: "usertype=Guest" or "isGuest=true"'}),
-                            help_text: defineMessage({id: 'admin.saml.guestAttrDesc', defaultMessage: '(Optional) Requires Guest Access to be enabled before being applied. The attribute in the SAML Assertion that will be used to apply a guest role to users in Dopaminefact. Guests are prevented from accessing teams or channels upon logging in until they are assigned a team and at least one channel.\n \nNote: If this attribute is removed/changed from your guest user in SAML and the user is still active, they will not be promoted to a member and will retain their Guest role. Guests can be promoted in **System Console > User Management**.\n \n \nExisting members that are identified by this attribute as a guest will be demoted from a member to a guest when they are asked to log in next. The next login is based upon Session lengths set in **System Console > Session Lengths**. It is highly recommended to manually demote users to guests in **System Console > User Management** to ensure access is restricted immediately.'}), // eslint-disable-line formatjs/no-multiple-whitespaces
-                            help_text_markdown: true,
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.configIsFalse('GuestAccountsSettings', 'Enable'),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'bool',
-                            key: 'SamlSettings.EnableAdminAttribute',
-                            label: defineMessage({id: 'admin.saml.enableAdminAttrTitle', defaultMessage: 'Enable Admin Attribute:'}),
-                            isDisabled: it.any(
-                                it.not(it.isSystemAdmin),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'text',
-                            key: 'SamlSettings.AdminAttribute',
-                            label: defineMessage({id: 'admin.saml.adminAttrTitle', defaultMessage: 'Admin Attribute:'}),
-                            placeholder: defineMessage({id: 'admin.saml.adminAttrEx', defaultMessage: 'E.g.: "usertype=Admin" or "isAdmin=true"'}),
-                            help_text: defineMessage({id: 'admin.saml.adminAttrDesc', defaultMessage: '(Optional) The attribute in the SAML Assertion for designating System Admins. The users selected by the query will have access to your Dopaminefact server as System Admins. By default, System Admins have complete access to the Dopaminefact System Console.\n \nExisting members that are identified by this attribute will be promoted from member to System Admin upon next login. The next login is based upon Session lengths set in **System Console > Session Lengths**. It is highly recommended to manually demote users to members in **System Console > User Management** to ensure access is restricted immediately.\n \nNote: If this filter is removed/changed, System Admins that were promoted via this filter will be demoted to members and will not retain access to the System Console. When this filter is not in use, System Admins can be manually promoted/demoted in **System Console > User Management**.'}), // eslint-disable-line formatjs/no-multiple-whitespaces
-                            help_text_markdown: true,
-                            isDisabled: it.any(
-                                it.not(it.isSystemAdmin),
-                                it.stateIsFalse('SamlSettings.EnableAdminAttribute'),
-                            ),
-                        },
-                        {
-                            type: 'text',
-                            key: 'SamlSettings.FirstNameAttribute',
-                            label: defineMessage({id: 'admin.saml.firstnameAttrTitle', defaultMessage: 'First Name Attribute:'}),
-                            placeholder: defineMessage({id: 'admin.saml.firstnameAttrEx', defaultMessage: 'E.g.: "FirstName"'}),
-                            help_text: defineMessage({id: 'admin.saml.firstnameAttrDesc', defaultMessage: '(Optional) The attribute in the SAML Assertion that will be used to populate the first name of users in Dopaminefact.'}),
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'text',
-                            key: 'SamlSettings.LastNameAttribute',
-                            label: defineMessage({id: 'admin.saml.lastnameAttrTitle', defaultMessage: 'Last Name Attribute:'}),
-                            placeholder: defineMessage({id: 'admin.saml.lastnameAttrEx', defaultMessage: 'E.g.: "LastName"'}),
-                            help_text: defineMessage({id: 'admin.saml.lastnameAttrDesc', defaultMessage: '(Optional) The attribute in the SAML Assertion that will be used to populate the last name of users in Dopaminefact.'}),
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'text',
-                            key: 'SamlSettings.NicknameAttribute',
-                            label: defineMessage({id: 'admin.saml.nicknameAttrTitle', defaultMessage: 'Nickname Attribute:'}),
-                            placeholder: defineMessage({id: 'admin.saml.nicknameAttrEx', defaultMessage: 'E.g.: "Nickname"'}),
-                            help_text: defineMessage({id: 'admin.saml.nicknameAttrDesc', defaultMessage: '(Optional) The attribute in the SAML Assertion that will be used to populate the nickname of users in Dopaminefact.'}),
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'text',
-                            key: 'SamlSettings.PositionAttribute',
-                            label: defineMessage({id: 'admin.saml.positionAttrTitle', defaultMessage: 'Position Attribute:'}),
-                            placeholder: defineMessage({id: 'admin.saml.positionAttrEx', defaultMessage: 'E.g.: "Role"'}),
-                            help_text: defineMessage({id: 'admin.saml.positionAttrDesc', defaultMessage: '(Optional) The attribute in the SAML Assertion that will be used to populate the position of users in Dopaminefact.'}),
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'custom',
-                            key: 'SamlSettings.CustomProfileAttributes',
-                            component: CustomProfileAttributes,
-                            isHidden: it.not(it.minLicenseTier(LicenseSkus.Enterprise)),
-                        },
-                        {
-                            type: 'text',
-                            key: 'SamlSettings.LocaleAttribute',
-                            label: defineMessage({id: 'admin.saml.localeAttrTitle', defaultMessage: 'Preferred Language Attribute:'}),
-                            placeholder: defineMessage({id: 'admin.saml.localeAttrEx', defaultMessage: 'E.g.: "Locale" or "PrimaryLanguage"'}),
-                            help_text: defineMessage({id: 'admin.saml.localeAttrDesc', defaultMessage: '(Optional) The attribute in the SAML Assertion that will be used to populate the language of users in Dopaminefact.'}),
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                        {
-                            type: 'text',
-                            key: 'SamlSettings.LoginButtonText',
-                            label: defineMessage({id: 'admin.saml.loginButtonTextTitle', defaultMessage: 'Login Button Text:'}),
-                            placeholder: defineMessage({id: 'admin.saml.loginButtonTextEx', defaultMessage: 'E.g.: "OKTA"'}),
-                            help_text: defineMessage({id: 'admin.saml.loginButtonTextDesc', defaultMessage: '(Optional) The text that appears in the login button on the login page. Defaults to "SAML".'}),
-                            isDisabled: it.any(
-                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.SAML)),
-                                it.stateIsFalse('SamlSettings.Enable'),
-                            ),
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(),
-            },
-            saml_feature_discovery: {
-                url: 'authentication/saml',
-                isDiscovery: true,
-                title: defineMessage({id: 'admin.sidebar.saml', defaultMessage: 'SAML 2.0'}),
-                isHidden: it.any(
-                    it.licensedForFeature('SAML'),
-                ),
-                schema: {
-                    id: 'SamlSettings',
-                    name: defineMessage({id: 'admin.authentication.saml', defaultMessage: 'SAML 2.0'}),
-                    settings: [
-                        {
-                            type: 'custom',
-                            component: SAMLFeatureDiscovery,
-                            key: 'SAMLFeatureDiscovery',
-                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(true),
-            },
             oauth: {
                 url: 'authentication/oauth',
                 title: defineMessage({id: 'admin.sidebar.oauth', defaultMessage: 'OAuth 2.0'}),
@@ -5637,14 +4593,13 @@ const AdminDefinition: AdminDefinitionType = {
             },
             openid: {
                 url: 'authentication/openid',
-                title: defineMessage({id: 'admin.sidebar.openid', defaultMessage: 'OpenID Connect'}),
+                title: defineMessage({id: 'admin.sidebar.gitlab', defaultMessage: 'GitLab'}),
                 isHidden: it.any(
-                    it.all(it.not(it.licensedForFeature('OpenId')), it.not(it.cloudLicensed)),
                     it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.OPENID)),
                 ),
                 schema: {
                     id: 'OpenIdSettings',
-                    name: defineMessage({id: 'admin.authentication.openid', defaultMessage: 'OpenID Connect'}),
+                    name: defineMessage({id: 'admin.authentication.gitlab', defaultMessage: 'GitLab'}),
                     onConfigLoad: (config) => {
                         const newState: {openidType?: string; 'GitLabSettings.Url'?: string} = {};
                         if (config.Office365Settings?.Enable) {
@@ -5728,78 +4683,6 @@ const AdminDefinition: AdminDefinitionType = {
                                         loginUrlChunk: (chunk: string) => `<${chunk}>/login/gitlab/complete`,
                                         signupUrlChunk: (chunk: string) => `<${chunk}>/signup/gitlab/complete`,
                                     },
-                                    help_text_markdown: false,
-                                },
-                                {
-                                    value: Constants.GOOGLE_SERVICE,
-                                    display_name: defineMessage({id: 'admin.openid.google', defaultMessage: 'Google Apps'}),
-                                    help_text: defineMessage({id: 'admin.google.EnableMarkdownDesc', defaultMessage: '1. <linkLogin>Log in</linkLogin> to your Google account.\n2. Go to <linkConsole>https://console.developers.google.com</linkConsole>, click <strong>Credentials</strong> in the left hand side.\n 3. Under the <strong>Credentials</strong> header, click <strong>Create credentials</strong>, choose <strong>OAuth client ID</strong> and select <strong>Web Application</strong>.\n 4. Enter "Dopaminefact - your-company-name" as the <strong>Name</strong>.\n 5. Under <strong>Authorized redirect URIs</strong> enter <strong>"your-mattermost-url/signup/google/complete"</strong> (example: http://localhost:8065/signup/google/complete). Click <strong>Create</strong>.\n 6. Paste the <strong>Client ID</strong> and <strong>Client Secret</strong> to the fields below, then click <strong>Save</strong>.\n 7. Go to the <linkAPI>Google People API</linkAPI> and click <strong>Enable</strong>.'}), // eslint-disable-line formatjs/enforce-placeholders -- placeholders provided
-                                    help_text_markdown: false,
-                                    help_text_values: {
-                                        linkLogin: (msg: string) => (
-                                            <ExternalLink
-                                                location='admin_console'
-                                                href='https://accounts.google.com/login'
-                                            >
-                                                {msg}
-                                            </ExternalLink>
-                                        ),
-                                        linkConsole: (msg: string) => (
-                                            <ExternalLink
-                                                location='admin_console'
-                                                href='https://console.developers.google.com'
-                                            >
-                                                {msg}
-                                            </ExternalLink>
-                                        ),
-                                        linkAPI: (msg: string) => (
-                                            <ExternalLink
-                                                location='admin_console'
-                                                href='https://console.developers.google.com/apis/library/people.googleapis.com'
-                                            >
-                                                {msg}
-                                            </ExternalLink>
-                                        ),
-                                        strong: (msg: string) => <strong>{msg}</strong>,
-                                    },
-                                },
-                                {
-                                    value: Constants.OFFICE365_SERVICE,
-                                    display_name: defineMessage({id: 'admin.openid.office365', defaultMessage: 'Entra ID'}),
-                                    help_text: defineMessage({id: 'admin.office365.EnableMarkdownDesc', defaultMessage: '1. <linkLogin>Log in</linkLogin> to your Microsoft account. \n2. In Microsoft, go to <strong>Applications</strong> and <strong>App Registrations</strong> in the left pane.\n3. Select <strong>New registration</strong>, then enter "Dopaminefact - your-company-name" as the <strong>Application Name</strong>. \n4. Under <strong>Redirect URI</strong>, select <strong>Web</strong>, and enter "your-mattermost-url/signup/office365/complete" as the <strong>Redirect URI</strong>. Select <strong>Register</strong>.\n5. Copy the Microsoft <strong>Application (client) ID</strong> value, and paste it below as the <strong>Client ID</strong> value. \n6. Copy the Microsoft <strong>Directory (tenant) ID</strong> value, and paste it below as the <strong>Directory (tenant) ID</strong> value. \n7. In Microsoft, create a new client secret. Copy the resulting client secret value, and paste it below as the <strong>Client Secret</strong> value. Select <strong>Save</strong>.'}), // eslint-disable-line formatjs/enforce-placeholders -- placeholders provided
-                                    help_text_markdown: false,
-                                    help_text_values: {
-                                        linkLogin: (msg: string) => (
-                                            <ExternalLink
-                                                location='admin_console'
-                                                href='https://entra.microsoft.com'
-                                            >
-                                                {msg}
-                                            </ExternalLink>
-                                        ),
-                                        linkTenant: (msg: string) => (
-                                            <ExternalLink
-                                                location='admin_console'
-                                                href='https://msdn.microsoft.com/en-us/library/azure/jj573650.aspx#Anchor_0'
-                                            >
-                                                {msg}
-                                            </ExternalLink>
-                                        ),
-                                        linkApps: (msg: string) => (
-                                            <ExternalLink
-                                                location='admin_console'
-                                                href='https://entra.microsoft.com'
-                                            >
-                                                {msg}
-                                            </ExternalLink>
-                                        ),
-                                        strong: (msg: string) => <strong>{msg}</strong>,
-                                    },
-                                },
-                                {
-                                    value: Constants.OPENID_SERVICE,
-                                    display_name: defineMessage({id: 'admin.oauth.openid', defaultMessage: 'OpenID Connect (Other)'}),
-                                    help_text: defineMessage({id: 'admin.openid.EnableMarkdownDesc', defaultMessage: 'Follow provider directions for creating an OpenID Application. Most OpenID Connect providers require authorization of all redirect URIs. In the appropriate field, enter "your-mattermost-url/signup/openid/complete" (example: http://domain.com/signup/openid/complete)'}),
                                     help_text_markdown: false,
                                 },
                             ],
@@ -6014,56 +4897,12 @@ const AdminDefinition: AdminDefinitionType = {
                         },
                     ],
                 },
-                restrictedIndicator: getRestrictedIndicator(),
-            },
-            openid_feature_discovery: {
-                url: 'authentication/openid',
-                isDiscovery: true,
-                title: defineMessage({id: 'admin.sidebar.openid', defaultMessage: 'OpenID Connect'}),
-                isHidden: it.any(
-                    it.any(it.licensedForFeature('OpenId'), it.cloudLicensed),
-                ),
-                schema: {
-                    id: 'OpenIdSettings',
-                    name: defineMessage({id: 'admin.authentication.openid', defaultMessage: 'OpenID Connect'}),
-                    settings: [
-                        {
-                            type: 'custom',
-                            component: OpenIDFeatureDiscovery,
-                            key: 'OpenIDFeatureDiscovery',
-                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(true),
-            },
-            gitlab_feature_discovery: {
-                url: 'authentication/gitlab',
-                isDiscovery: true,
-                title: defineMessage({id: 'admin.sidebar.gitlab', defaultMessage: 'GitLab'}),
-                isHidden: it.any(
-                    it.licensedForFeature('OpenId'),
-                ),
-                schema: {
-                    id: 'GitLabSettings',
-                    name: defineMessage({id: 'admin.authentication.gitlab', defaultMessage: 'GitLab'}),
-                    settings: [
-                        {
-                            type: 'custom',
-                            component: GitLabFeatureDiscovery,
-                            key: 'GitLabFeatureDiscovery',
-                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(true),
             },
             guest_access: {
                 url: 'authentication/guest_access',
                 title: defineMessage({id: 'admin.sidebar.guest_access', defaultMessage: 'Guest Access'}),
                 searchableStrings: magicLinkSearchableStrings,
                 isHidden: it.any(
-                    it.not(it.licensedForFeature('GuestAccounts')),
                     it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.AUTHENTICATION.GUEST_ACCESS)),
                 ),
                 schema: {
@@ -6144,28 +4983,6 @@ const AdminDefinition: AdminDefinitionType = {
                         },
                     ],
                 },
-                restrictedIndicator: getRestrictedIndicator(),
-            },
-            guest_access_feature_discovery: {
-                isDiscovery: true,
-                url: 'authentication/guest_access',
-                title: defineMessage({id: 'admin.sidebar.guest_access', defaultMessage: 'Guest Access'}),
-                isHidden: it.any(
-                    it.licensedForFeature('GuestAccounts'),
-                ),
-                schema: {
-                    id: 'GuestAccountsSettings',
-                    name: defineMessage({id: 'admin.authentication.guest_access', defaultMessage: 'Guest Access'}),
-                    settings: [
-                        {
-                            type: 'custom',
-                            component: GuestAccessFeatureDiscovery,
-                            key: 'GuestAccessFeatureDiscovery',
-                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(true),
             },
         },
     },
@@ -6393,7 +5210,7 @@ const AdminDefinition: AdminDefinitionType = {
                             type: 'bool',
                             key: 'ServiceSettings.EnableUserAccessTokens',
                             label: defineMessage({id: 'admin.service.userAccessTokensTitle', defaultMessage: 'Enable Personal Access Tokens:'}),
-                            help_text: defineMessage({id: 'admin.service.userAccessTokensDescription', defaultMessage: 'When true, users can create <link>personal access tokens</link> for integrations in <strong>Profile > Security</strong>. They can be used to authenticate against the API and give full access to the account.\n\n To manage who can create personal access tokens or to search users by token ID, go to <strong>System Console > User Management > Users</strong>.'}), // eslint-disable-line formatjs/no-multiple-whitespaces, formatjs/enforce-placeholders -- placeholders provided
+                            help_text: defineMessage({id: 'admin.service.userAccessTokensDescription', defaultMessage: 'When true, users can create <link>personal access tokens</link> for integrations in <strong>Profile > Security</strong>. They can be used to authenticate against the API and give full access to the account.\n\n To manage who can create personal access tokens or to search users by token ID, go to <strong>System Console > User Management > Users</strong>.'}), // eslint-disable-line formatjs/enforce-placeholders -- placeholders provided
                             help_text_values: {
                                 link: (msg: string) => (
                                     <ExternalLink
@@ -6582,119 +5399,6 @@ const AdminDefinition: AdminDefinitionType = {
         sectionTitle: defineMessage({id: 'admin.sidebar.compliance', defaultMessage: 'Compliance'}),
         isHidden: it.not(it.userHasReadPermissionOnSomeResources(RESOURCE_KEYS.COMPLIANCE)),
         subsections: {
-            custom_policy_form_edit: {
-                url: `compliance/data_retention_settings/custom_policy/:policy_id(${ID_PATH_PATTERN})`,
-                isHidden: it.any(
-                    it.not(it.licensedForFeature('DataRetention')),
-                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.COMPLIANCE.DATA_RETENTION_POLICY)),
-                ),
-                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.COMPLIANCE.DATA_RETENTION_POLICY)),
-                schema: {
-                    id: 'CustomDataRetentionForm',
-                    component: CustomDataRetentionForm,
-                },
-
-            },
-            custom_policy_form: {
-                url: 'compliance/data_retention_settings/custom_policy',
-                isHidden: it.any(
-                    it.not(it.licensedForFeature('DataRetention')),
-                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.COMPLIANCE.DATA_RETENTION_POLICY)),
-                ),
-                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.COMPLIANCE.DATA_RETENTION_POLICY)),
-                schema: {
-                    id: 'CustomDataRetentionForm',
-                    component: CustomDataRetentionForm,
-                },
-
-            },
-            global_policy_form: {
-                url: 'compliance/data_retention_settings/global_policy',
-                isHidden: it.any(
-                    it.not(it.licensedForFeature('DataRetention')),
-                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.COMPLIANCE.DATA_RETENTION_POLICY)),
-                ),
-                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.COMPLIANCE.DATA_RETENTION_POLICY)),
-                schema: {
-                    id: 'GlobalDataRetentionForm',
-                    component: GlobalDataRetentionForm,
-                },
-            },
-            data_retention: {
-                url: 'compliance/data_retention_settings',
-                title: defineMessage({id: 'admin.sidebar.dataRetentionSettingsPolicies', defaultMessage: 'Data Retention Policies'}),
-                searchableStrings: [
-                    adminDefinitionMessages.data_retention_title,
-                    ...dataRetentionSearchableStrings,
-                ],
-                isHidden: it.any(
-                    it.not(it.licensedForFeature('DataRetention')),
-                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.COMPLIANCE.DATA_RETENTION_POLICY)),
-                ),
-                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.COMPLIANCE.DATA_RETENTION_POLICY)),
-                schema: {
-                    id: 'DataRetentionSettings',
-                    component: DataRetentionSettings,
-                },
-                restrictedIndicator: getRestrictedIndicator(),
-            },
-            data_retention_feature_discovery: {
-                url: 'compliance/data_retention',
-                isDiscovery: true,
-                title: defineMessage({id: 'admin.sidebar.dataRetentionPolicy', defaultMessage: 'Data Retention Policy'}),
-                isHidden: it.any(
-                    it.licensedForFeature('DataRetention'),
-                ),
-                schema: {
-                    id: 'DataRetentionSettings',
-                    name: adminDefinitionMessages.data_retention_title,
-                    settings: [
-                        {
-                            type: 'custom',
-                            component: DataRetentionFeatureDiscovery,
-                            key: 'DataRetentionFeatureDiscovery',
-                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(true, LicenseSkus.Enterprise),
-            },
-            message_export: {
-                url: 'compliance/export',
-                title: defineMessage({id: 'admin.sidebar.complianceExport', defaultMessage: 'Compliance Export'}),
-                searchableStrings: messageExportSearchableStrings,
-                isHidden: it.any(
-                    it.not(it.licensedForFeature('MessageExport')),
-                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.COMPLIANCE.COMPLIANCE_EXPORT)),
-                ),
-                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.COMPLIANCE.COMPLIANCE_EXPORT)),
-                schema: {
-                    id: 'MessageExportSettings',
-                    component: MessageExportSettings,
-                },
-                restrictedIndicator: getRestrictedIndicator(),
-            },
-            compliance_export_feature_discovery: {
-                isDiscovery: true,
-                url: 'compliance/export',
-                title: defineMessage({id: 'admin.sidebar.complianceExport', defaultMessage: 'Compliance Export'}),
-                isHidden: it.any(
-                    it.licensedForFeature('MessageExport'),
-                ),
-                schema: {
-                    id: 'MessageExportSettings',
-                    name: defineMessage({id: 'admin.complianceExport.title', defaultMessage: 'Compliance Export'}),
-                    settings: [
-                        {
-                            type: 'custom',
-                            component: ComplianceExportFeatureDiscovery,
-                            key: 'ComplianceExportFeatureDiscovery',
-                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(true, LicenseSkus.Enterprise),
-            },
             audits: {
                 url: 'compliance/monitoring',
                 title: defineMessage({id: 'admin.sidebar.complianceMonitoring', defaultMessage: 'Compliance Monitoring'}),
@@ -6862,7 +5566,6 @@ const AdminDefinition: AdminDefinitionType = {
                 title: defineMessage({id: 'admin.sidebar.customTermsOfService', defaultMessage: 'Custom Terms of Service'}),
                 searchableStrings: customTermsOfServiceSearchableStrings,
                 isHidden: it.any(
-                    it.not(it.licensedForFeature('CustomTermsOfService')),
                     it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.COMPLIANCE.CUSTOM_TERMS_OF_SERVICE)),
                 ),
                 isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.COMPLIANCE.CUSTOM_TERMS_OF_SERVICE)),
@@ -6870,28 +5573,6 @@ const AdminDefinition: AdminDefinitionType = {
                     id: 'TermsOfServiceSettings',
                     component: CustomTermsOfServiceSettings,
                 },
-                restrictedIndicator: getRestrictedIndicator(),
-            },
-            custom_terms_of_service_feature_discovery: {
-                url: 'compliance/custom_terms_of_service',
-                isDiscovery: true,
-                title: defineMessage({id: 'admin.sidebar.customTermsOfService', defaultMessage: 'Custom Terms of Service'}),
-                isHidden: it.any(
-                    it.licensedForFeature('CustomTermsOfService'),
-                ),
-                schema: {
-                    id: 'TermsOfServiceSettings',
-                    name: customTermsOfServiceMessages.termsOfServiceTitle,
-                    settings: [
-                        {
-                            type: 'custom',
-                            component: CustomTermsOfServiceFeatureDiscovery,
-                            key: 'CustomTermsOfServiceFeatureDiscovery',
-                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                        },
-                    ],
-                },
-                restrictedIndicator: getRestrictedIndicator(true, LicenseSkus.Enterprise),
             },
         },
     },

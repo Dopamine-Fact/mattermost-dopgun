@@ -105,7 +105,7 @@ const Login = ({onCustomizeHeader}: LoginProps) => {
         ForgotPasswordLink,
         PasswordEnableForgotLink,
     } = useSelector(getConfig);
-    const {IsLicensed, GuestAccounts} = useSelector(getLicense);
+    const {IsLicensed} = useSelector(getLicense);
     const initializing = useSelector((state: GlobalState) => state.requests.users.logout.status === RequestStatus.SUCCESS || !state.storage.initialized);
     const currentUser = useSelector(getCurrentUser);
     const experimentalPrimaryTeam = useSelector((state: GlobalState) => (ExperimentalPrimaryTeam ? getTeamByName(state, ExperimentalPrimaryTeam) : undefined));
@@ -131,7 +131,7 @@ const Login = ({onCustomizeHeader}: LoginProps) => {
     const enableCustomBrand = EnableCustomBrand === 'true';
 
     // The server only answers the login type pre-check while guest accounts are licensed and enabled
-    const enableGuestMagicLink = GuestAccounts === 'true' && EnableGuestAccounts === 'true' && EnableGuestMagicLink === 'true';
+    const enableGuestMagicLink = EnableGuestAccounts === 'true' && EnableGuestMagicLink === 'true';
     const enableLdap = EnableLdap === 'true';
     const enableOpenServer = EnableOpenServer === 'true';
     const enableUserCreation = EnableUserCreation === 'true';

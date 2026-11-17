@@ -705,7 +705,7 @@ func TestGetClientConfig(t *testing.T) {
 			[]string{"MobileEphemeralModeEnabled", "MobileEphemeralModeDisconnectionTimeoutSeconds", "MobileEphemeralModeOfflinePersistenceTimerHours", "MobileEphemeralModeAutoCacheCleanupDays"},
 		},
 		{
-			"Mobile Ephemeral Mode not exposed without license",
+			"Mobile Ephemeral Mode exposed without license",
 			&model.Config{
 				FeatureFlags: &model.FeatureFlags{MobileEphemeralMode: true},
 				MobileEphemeralModeSettings: model.MobileEphemeralModeSettings{
@@ -714,11 +714,13 @@ func TestGetClientConfig(t *testing.T) {
 			},
 			"",
 			nil,
-			map[string]string{},
-			[]string{"MobileEphemeralModeEnabled", "MobileEphemeralModeDisconnectionTimeoutSeconds", "MobileEphemeralModeOfflinePersistenceTimerHours", "MobileEphemeralModeAutoCacheCleanupDays"},
+			map[string]string{
+				"MobileEphemeralModeEnabled": "true",
+			},
+			nil,
 		},
 		{
-			"Mobile Ephemeral Mode not exposed with lower license tier",
+			"Mobile Ephemeral Mode exposed with lower license tier",
 			&model.Config{
 				FeatureFlags: &model.FeatureFlags{MobileEphemeralMode: true},
 				MobileEphemeralModeSettings: model.MobileEphemeralModeSettings{
@@ -730,8 +732,10 @@ func TestGetClientConfig(t *testing.T) {
 				Features:     &model.Features{},
 				SkuShortName: model.LicenseShortSkuProfessional,
 			},
-			map[string]string{},
-			[]string{"MobileEphemeralModeEnabled", "MobileEphemeralModeDisconnectionTimeoutSeconds", "MobileEphemeralModeOfflinePersistenceTimerHours", "MobileEphemeralModeAutoCacheCleanupDays"},
+			map[string]string{
+				"MobileEphemeralModeEnabled": "true",
+			},
+			nil,
 		},
 		{
 			"audit logging - AuditLoggingActive is not derived from config",

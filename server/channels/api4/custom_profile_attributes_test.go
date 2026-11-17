@@ -31,16 +31,6 @@ func TestCreateCPAField(t *testing.T) {
 	mainHelper.Parallel(t)
 	th := Setup(t)
 
-	th.TestForSystemAdminAndLocal(t, func(t *testing.T, client *model.Client4) {
-		field := &model.PropertyField{Name: celSafeName(), Type: model.PropertyFieldTypeText}
-
-		createdField, resp, err := client.CreateCPAField(context.Background(), field)
-		CheckForbiddenStatus(t, resp)
-		require.Error(t, err)
-		CheckErrorID(t, err, "app.property.license_error")
-		require.Empty(t, createdField)
-	}, "endpoint should not work if no valid license is present")
-
 	// add a valid license
 	th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
 
@@ -224,17 +214,6 @@ func TestListCPAFields(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, createdField)
 
-	t.Run("endpoint should not work if no valid license is present", func(t *testing.T) {
-		th.App.Srv().SetLicense(nil)
-		defer th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
-
-		fields, resp, err := th.Client.ListCPAFields(context.Background())
-		CheckForbiddenStatus(t, resp)
-		require.Error(t, err)
-		CheckErrorID(t, err, "app.property.license_error")
-		require.Empty(t, fields)
-	})
-
 	t.Run("any user should be able to list fields", func(t *testing.T) {
 		fields, resp, err := th.Client.ListCPAFields(context.Background())
 		CheckOKStatus(t, resp)
@@ -316,24 +295,6 @@ func TestPatchCPAField(t *testing.T) {
 	th := SetupConfig(t, func(cfg *model.Config) {
 		cfg.FeatureFlags.PropertyFieldRank = true
 	})
-
-	th.TestForSystemAdminAndLocal(t, func(t *testing.T, client *model.Client4) {
-		// Create a field with a license so we can test the license check on patch.
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
-		field := &model.PropertyField{Name: celSafeName(), Type: model.PropertyFieldTypeText}
-		createdField, _, createErr := th.SystemAdminClient.CreateCPAField(context.Background(), field)
-		require.NoError(t, createErr)
-		require.NotNil(t, createdField)
-
-		// Remove the license and verify patch is blocked.
-		th.App.Srv().SetLicense(nil)
-		patch := &model.PropertyFieldPatch{Name: model.NewPointer(celSafeName())}
-		patchedField, resp, err := client.PatchCPAField(context.Background(), createdField.ID, patch)
-		CheckForbiddenStatus(t, resp)
-		require.Error(t, err)
-		CheckErrorID(t, err, "app.property.license_error")
-		require.Empty(t, patchedField)
-	}, "endpoint should not work if no valid license is present")
 
 	// add a valid license
 	th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
@@ -667,22 +628,6 @@ func TestDeleteCPAField(t *testing.T) {
 	mainHelper.Parallel(t)
 	th := Setup(t)
 
-	th.TestForSystemAdminAndLocal(t, func(t *testing.T, client *model.Client4) {
-		// Create a field with a license so we can test the license check on delete.
-		th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
-		field := &model.PropertyField{Name: celSafeName(), Type: model.PropertyFieldTypeText}
-		createdField, _, createErr := th.SystemAdminClient.CreateCPAField(context.Background(), field)
-		require.NoError(t, createErr)
-		require.NotNil(t, createdField)
-
-		// Remove the license and verify delete is blocked.
-		th.App.Srv().SetLicense(nil)
-		resp, err := client.DeleteCPAField(context.Background(), createdField.ID)
-		CheckForbiddenStatus(t, resp)
-		require.Error(t, err)
-		CheckErrorID(t, err, "app.property.license_error")
-	}, "endpoint should not work if no valid license is present")
-
 	// add a valid license
 	th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
 
@@ -774,17 +719,6 @@ func TestListCPAValues(t *testing.T) {
 	CheckOKStatus(t, resp)
 	require.NoError(t, err)
 
-	t.Run("endpoint should not work if no valid license is present", func(t *testing.T) {
-		th.App.Srv().SetLicense(nil)
-		defer th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
-
-		values, resp, err := th.Client.ListCPAValues(context.Background(), th.BasicUser.Id)
-		CheckForbiddenStatus(t, resp)
-		require.Error(t, err)
-		CheckErrorID(t, err, "app.property.license_error")
-		require.Empty(t, values)
-	})
-
 	// login with Client2 from this point on
 	th.LoginBasic2(t)
 
@@ -859,18 +793,6 @@ func TestPatchCPAValues(t *testing.T) {
 	CheckCreatedStatus(t, resp)
 	require.NoError(t, err)
 	require.NotNil(t, createdField)
-
-	t.Run("endpoint should not work if no valid license is present", func(t *testing.T) {
-		th.App.Srv().SetLicense(nil)
-		defer th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
-
-		values := map[string]json.RawMessage{createdField.ID: json.RawMessage(`"Field Value"`)}
-		patchedValues, resp, err := th.Client.PatchCPAValues(context.Background(), values)
-		CheckForbiddenStatus(t, resp)
-		require.Error(t, err)
-		CheckErrorID(t, err, "app.property.license_error")
-		require.Empty(t, patchedValues)
-	})
 
 	t.Run("any team member should be able to create their own values", func(t *testing.T) {
 		webSocketClient := th.CreateConnectedWebSocketClient(t)
@@ -1417,18 +1339,6 @@ func TestPatchCPAValuesForUser(t *testing.T) {
 	CheckCreatedStatus(t, resp)
 	require.NoError(t, err)
 	require.NotNil(t, createdField)
-
-	t.Run("endpoint should not work if no valid license is present", func(t *testing.T) {
-		th.App.Srv().SetLicense(nil)
-		defer th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))
-
-		values := map[string]json.RawMessage{createdField.ID: json.RawMessage(`"Field Value"`)}
-		patchedValues, resp, err := th.Client.PatchCPAValuesForUser(context.Background(), th.BasicUser.Id, values)
-		CheckForbiddenStatus(t, resp)
-		require.Error(t, err)
-		CheckErrorID(t, err, "app.property.license_error")
-		require.Empty(t, patchedValues)
-	})
 
 	// add a valid license
 	th.App.Srv().SetLicense(model.NewTestLicenseSKU(model.LicenseShortSkuEnterprise))

@@ -573,7 +573,7 @@ export default class PermissionTeamSchemeSettings extends React.PureComponent<Pr
     };
 
     haveGuestAccountsPermissions = () => {
-        return this.props.license.GuestAccountsPermissions === 'true';
+        return true;
     };
 
     render = () => {
@@ -713,7 +713,7 @@ export default class PermissionTeamSchemeSettings extends React.PureComponent<Pr
                             </div>
                         </AdminPanelWithButton>
 
-                        {this.props.license && this.props.config.EnableGuestAccounts === 'true' &&
+                        {this.props.config.EnableGuestAccounts === 'true' &&
                             <AdminPanelTogglable
                                 className='permissions-block'
                                 open={this.state.openRoles.guests}

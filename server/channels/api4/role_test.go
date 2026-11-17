@@ -399,9 +399,8 @@ func TestPatchRole(t *testing.T) {
 
 			guestRole, err := th.App.Srv().Store().Role().GetByName(th.Context, "system_guest")
 			require.NoError(t, err)
-			received, resp, err = client.PatchRole(context.Background(), guestRole.Id, patch)
-			require.Error(t, err)
-			CheckNotImplementedStatus(t, resp)
+			_, _, err = client.PatchRole(context.Background(), guestRole.Id, patch)
+			require.NoError(t, err)
 		})
 
 		t.Run("Check guest permissions editing with E20 license", func(t *testing.T) {

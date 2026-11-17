@@ -5920,24 +5920,16 @@ func TestGetLoginType(t *testing.T) {
 		assertMagicLinkUnavailable(t, th.BasicUser.Email)
 	})
 
-	t.Run("returns a JSON error when the license does not include guest accounts", func(t *testing.T) {
-		th.App.Srv().SetLicense(model.NewTestLicenseWithFalseDefaults("guest_accounts"))
-		th.App.UpdateConfig(func(cfg *model.Config) {
-			*cfg.GuestAccountsSettings.Enable = true
-			*cfg.GuestAccountsSettings.EnableGuestMagicLink = true
-		})
-
-		assertMagicLinkUnavailable(t, th.BasicUser.Email)
-	})
-
-	t.Run("returns a JSON error when the server is unlicensed", func(t *testing.T) {
+	t.Run("returns an empty login type when the server is unlicensed", func(t *testing.T) {
 		th.App.Srv().SetLicense(nil)
 		th.App.UpdateConfig(func(cfg *model.Config) {
 			*cfg.GuestAccountsSettings.Enable = true
 			*cfg.GuestAccountsSettings.EnableGuestMagicLink = true
 		})
 
-		assertMagicLinkUnavailable(t, th.BasicUser.Email)
+		status, body := postLoginType(t, th.BasicUser.Email)
+		assert.Equal(t, http.StatusOK, status)
+		assert.Equal(t, "", body["auth_service"])
 	})
 }
 
@@ -8725,18 +8717,8 @@ func TestDemoteUserToGuest(t *testing.T) {
 	user := th.BasicUser
 	user2 := th.BasicUser2
 
-	t.Run("Guest Account not available in license returns forbidden", func(t *testing.T) {
+	t.Run("Guest Account not in license still demotes", func(t *testing.T) {
 		th.App.Srv().SetLicense(model.NewTestLicenseWithFalseDefaults("guest_accounts"))
-
-		res, err := th.SystemAdminClient.DoAPIPost(context.Background(), "/users/"+user2.Id+"/demote", "")
-
-		require.Equal(t, http.StatusForbidden, res.StatusCode)
-		require.True(t, strings.Contains(err.Error(), "Guest accounts are disabled"))
-		require.Error(t, err)
-	})
-
-	t.Run("Guest Account available in license returns OK", func(t *testing.T) {
-		th.App.Srv().SetLicense(model.NewTestLicense("guest_accounts"))
 
 		res, err := th.SystemAdminClient.DoAPIPost(context.Background(), "/users/"+user2.Id+"/demote", "")
 

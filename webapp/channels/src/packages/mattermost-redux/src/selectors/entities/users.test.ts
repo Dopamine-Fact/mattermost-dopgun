@@ -809,7 +809,7 @@ describe('Selectors.Users', () => {
             },
         } as unknown as GlobalState)).toEqual(false);
 
-        // Test unlicensed
+        // Unlicensed servers still show terms
         expect(Selectors.shouldShowTermsOfService({
             entities: {
                 general: {
@@ -828,7 +828,7 @@ describe('Selectors.Users', () => {
                     },
                 },
             },
-        } as unknown as GlobalState)).toEqual(false);
+        } as unknown as GlobalState)).toEqual(true);
 
         // Test terms already accepted
         expect(Selectors.shouldShowTermsOfService({

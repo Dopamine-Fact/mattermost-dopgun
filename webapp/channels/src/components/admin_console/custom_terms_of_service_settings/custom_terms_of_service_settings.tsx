@@ -212,7 +212,7 @@ export default class CustomTermsOfServiceSettings extends OLDAdminSettings<Props
                     value={Boolean(this.state.termsEnabled)}
                     onChange={this.handleTermsEnabledChange}
                     setByEnv={this.isSetByEnv('SupportSettings.CustomTermsOfServiceEnabled')}
-                    disabled={this.props.isDisabled || !(this.props.license.IsLicensed && this.props.license.CustomTermsOfService === 'true')}
+                    disabled={this.props.isDisabled}
                 />
                 <TextSetting
                     key={'customTermsOfServiceText'}

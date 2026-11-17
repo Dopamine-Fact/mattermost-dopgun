@@ -268,10 +268,6 @@ func createUser(c *Context, w http.ResponseWriter, r *http.Request) {
 		auditRec.AddMeta("token_type", token.Type)
 
 		if token.Type == model.TokenTypeGuestInvitation {
-			if c.App.Channels().License() == nil {
-				c.Err = model.NewAppError("CreateUserWithToken", "api.user.create_user.guest_accounts.license.app_error", nil, "", http.StatusBadRequest)
-				return
-			}
 			if !*c.App.Config().GuestAccountsSettings.Enable {
 				c.Err = model.NewAppError("CreateUserWithToken", "api.user.create_user.guest_accounts.disabled.app_error", nil, "", http.StatusBadRequest)
 				return
@@ -1738,18 +1734,6 @@ func updateUserRoles(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// require license feature to assign "new system roles"
-	for roleName := range strings.FieldsSeq(newRoles) {
-		for _, id := range model.NewSystemRoleIDs {
-			if roleName == id {
-				if license := c.App.Channels().License(); license == nil || !*license.Features.CustomPermissionsSchemes {
-					c.Err = model.NewAppError("updateUserRoles", "api.user.update_user_roles.license.app_error", nil, "", http.StatusBadRequest)
-					return
-				}
-			}
-		}
-	}
-
 	auditRec := c.MakeAuditRecord(model.AuditEventUpdateUserRoles, model.AuditStatusFail)
 	model.AddEventParameterToAuditRec(auditRec, "roles", newRoles)
 	defer c.LogAuditRec(auditRec)
@@ -2244,10 +2228,6 @@ func login(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	if user.IsGuest() {
-		if c.App.Channels().License() == nil {
-			c.Err = model.NewAppError("login", "api.user.login.guest_accounts.license.error", nil, "", http.StatusUnauthorized)
-			return
-		}
 		if !*c.App.Config().GuestAccountsSettings.Enable {
 			c.Err = model.NewAppError("login", "api.user.login.guest_accounts.disabled.error", nil, "", http.StatusUnauthorized)
 			return
@@ -2432,10 +2412,8 @@ func getLoginType(c *Context, w http.ResponseWriter, r *http.Request) {
 	// For the time being, we only support getting the login type when
 	// guest magic link is enabled. We can consider adding support for other
 	// login methods in the future, and this check may be removed.
-	license := c.App.Channels().License()
 	if !*c.App.Config().GuestAccountsSettings.EnableGuestMagicLink ||
-		!*c.App.Config().GuestAccountsSettings.Enable ||
-		license == nil || !*license.Features.GuestAccounts {
+		!*c.App.Config().GuestAccountsSettings.Enable {
 		c.Err = model.NewAppError("getLoginType", "api.user.login.guest_magic_link.disabled.error", nil, "", http.StatusNotFound)
 		return
 	}
@@ -2484,14 +2462,6 @@ func getLoginType(c *Context, w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !user.IsMagicLinkEnabled() {
-			return false
-		}
-
-		if c.App.Channels().License() == nil {
-			return false
-		}
-
-		if !*c.App.Channels().License().Features.GuestAccounts {
 			return false
 		}
 
@@ -3544,20 +3514,8 @@ func demoteUserToGuest(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if c.App.Channels().License() == nil {
-		c.Err = model.NewAppError("Api4.demoteUserToGuest", "api.team.demote_user_to_guest.license.error", nil, "", http.StatusNotImplemented)
-		return
-	}
-
 	if !*c.App.Config().GuestAccountsSettings.Enable {
 		c.Err = model.NewAppError("Api4.demoteUserToGuest", "api.team.demote_user_to_guest.disabled.error", nil, "", http.StatusNotImplemented)
-		return
-	}
-
-	guestEnabled := c.App.Channels().License() != nil && *c.App.Channels().License().Features.GuestAccounts
-
-	if !guestEnabled {
-		c.Err = model.NewAppError("Api4.demoteUserToGuest", "api.team.invite_guests_to_channels.disabled.error", nil, "", http.StatusForbidden)
 		return
 	}
 

@@ -40,10 +40,6 @@ func (a *App) globalAttributeListingPolicy() properties.GlobalAttributeListingPo
 // every other access_control read it needs an Enterprise licence, refused with
 // the same error the property service's licence hook raises.
 func (a *App) SearchGlobalAttributeListing(rctx request.CTX, search model.GlobalAttributeListingSearch) (*model.GlobalAttributeListing, *model.AppError) {
-	if !model.MinimumEnterpriseLicense(a.License()) {
-		return nil, mapPropertyServiceError("SearchGlobalAttributeListing", properties.ErrLicenseRequired)
-	}
-
 	group, err := a.Srv().propertyService.Group(model.AccessControlPropertyGroupName)
 	if err != nil {
 		return nil, model.NewAppError("SearchGlobalAttributeListing", "app.property_group.get.app_error", nil, "", http.StatusInternalServerError).Wrap(err)

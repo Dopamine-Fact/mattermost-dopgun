@@ -28,8 +28,8 @@ const consoleAccess = {read: {}, write: {}} as ConsoleAccess;
 
 function isHidden(config: Partial<AdminConfig>, license: ClientLicense) {
     const subsection = AdminDefinition.system_attributes.subsections.global_attributes;
-    const check = subsection.isHidden as Extract<Check, (...args: any[]) => boolean>;
-    return check(config, {}, license, true, consoleAccess);
+    const check = subsection.isHidden as Extract<Check, (...args: any[]) => boolean> | undefined;
+    return check?.(config, {}, license, true, consoleAccess) ?? false;
 }
 
 function isDisabled(isSystemAdmin: boolean) {
@@ -38,17 +38,13 @@ function isDisabled(isSystemAdmin: boolean) {
     return check(config, {}, enterpriseLicense, true, consoleAccess, undefined, isSystemAdmin);
 }
 
-describe('AdminDefinition - Global Attributes access gate', () => {
-    test('is hidden below Enterprise license', () => {
-        expect(isHidden(config, professionalLicense)).toBe(true);
-    });
-
-    test('is hidden when unlicensed', () => {
-        expect(isHidden(config, unlicensed)).toBe(true);
-    });
-
-    test('is visible on Enterprise+ license', () => {
-        expect(isHidden(config, enterpriseLicense)).toBe(false);
+describe('AdminDefinition - Global Attributes access', () => {
+    test.each([
+        ['unlicensed', unlicensed],
+        ['Professional', professionalLicense],
+        ['Enterprise', enterpriseLicense],
+    ])('is visible when %s', (_name, license) => {
+        expect(isHidden(config, license)).toBe(false);
     });
 
     test('disables the page for non-sysadmins', () => {

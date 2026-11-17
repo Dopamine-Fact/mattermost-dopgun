@@ -93,18 +93,13 @@ describe('components/admin_console/permission_schemes_settings/permission_system
         expect(editRole).toHaveBeenCalledTimes(11);
     });
 
-    test('should save roles based on license', async () => {
-        const license = {
-            IsLicensed: 'true',
-            CustomPermissionsSchemes: 'false',
-            GuestAccountsPermissions: 'false',
-        };
-        let editRole = jest.fn().mockImplementation(() => Promise.resolve({data: {}}));
+    test('should save guest roles regardless of license', async () => {
+        const editRole = jest.fn().mockImplementation(() => Promise.resolve({data: {}}));
         const ref = React.createRef<InstanceType<typeof PermissionSystemSchemeSettings>>();
         renderWithContext(
             <PermissionSystemSchemeSettings
                 {...defaultProps}
-                license={license}
+                license={{IsLicensed: 'false'}}
                 actions={{...defaultProps.actions, editRole}}
                 ref={ref}
             />,
@@ -112,22 +107,6 @@ describe('components/admin_console/permission_schemes_settings/permission_system
 
         await act(async () => {
             await (ref.current as any).handleSubmit();
-        });
-        expect(editRole).toHaveBeenCalledTimes(8);
-        license.GuestAccountsPermissions = 'true';
-        editRole = jest.fn().mockImplementation(() => Promise.resolve({data: {}}));
-        const ref2 = React.createRef<InstanceType<typeof PermissionSystemSchemeSettings>>();
-        renderWithContext(
-            <PermissionSystemSchemeSettings
-                {...defaultProps}
-                license={license}
-                actions={{...defaultProps.actions, editRole}}
-                ref={ref2}
-            />,
-        );
-
-        await act(async () => {
-            await (ref2.current as any).handleSubmit();
         });
         expect(editRole).toHaveBeenCalledTimes(11);
     });
