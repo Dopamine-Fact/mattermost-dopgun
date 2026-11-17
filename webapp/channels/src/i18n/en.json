@@ -2263,6 +2263,118 @@
     "defaultMessage": "Remove language barriers with auto-translation",
     "description": "Headline on the feature discovery (upsell) page for the auto-translation feature."
   },
+  "admin.backups.accessKeyIdDescription": {
+    "defaultMessage": "(Optional) Leave empty to use the IAM role of the instance the server runs on.",
+    "description": "Help text under a setting on the Backups admin page (System Console > Environment > Backups); optional; when empty the server uses the IAM role of its machine. Keep \"IAM\" untranslated."
+  },
+  "admin.backups.accessKeyIdTitle": {
+    "defaultMessage": "Amazon S3 Access Key ID:",
+    "description": "Setting label on the Backups admin page (System Console > Environment > Backups); text field for the AWS access key ID. Ends with a colon."
+  },
+  "admin.backups.backupNow": {
+    "defaultMessage": "Back up now",
+    "description": "Button label on the Backups admin page that starts a backup immediately; compact space."
+  },
+  "admin.backups.backupNowDescription": {
+    "defaultMessage": "Runs a backup immediately with the saved settings. The table below shows each backup and the folder it was written to.",
+    "description": "Help text under a setting on the Backups admin page (System Console > Environment > Backups); explains the \"Back up now\" button and the job history table below it. Keep \"Back up now\" matching the button label."
+  },
+  "admin.backups.bucketDescription": {
+    "defaultMessage": "Bucket the backups are written to. Keep it private: each backup includes config.json, which contains secrets.",
+    "description": "Help text under a setting on the Backups admin page (System Console > Environment > Backups); the bucket must be private because backups include config.json with secrets. Keep \"config.json\" untranslated."
+  },
+  "admin.backups.bucketExample": {
+    "defaultMessage": "E.g.: \"mattermost-backups\"",
+    "description": "Placeholder example inside a text field on the Backups admin page; an example S3 bucket name; keep the quoted name untranslated."
+  },
+  "admin.backups.bucketTitle": {
+    "defaultMessage": "Amazon S3 Bucket:",
+    "description": "Setting label on the Backups admin page (System Console > Environment > Backups); text field for the Amazon S3 bucket name. Ends with a colon."
+  },
+  "admin.backups.dailyRunTimeDescription": {
+    "defaultMessage": "Time of day to run the backup, in server time (HH:MM). The server clock follows the container's TZ setting; UTC by default.",
+    "description": "Help text under a setting on the Backups admin page (System Console > Environment > Backups); the time is HH:MM in the server clock, which follows the container TZ environment variable. Keep \"TZ\", \"HH:MM\" and \"UTC\" untranslated."
+  },
+  "admin.backups.dailyRunTimeExample": {
+    "defaultMessage": "03:00",
+    "description": "Placeholder example inside a text field on the Backups admin page; a 24-hour time of day; do not translate."
+  },
+  "admin.backups.dailyRunTimeTitle": {
+    "defaultMessage": "Backup Time:",
+    "description": "Setting label on the Backups admin page (System Console > Environment > Backups); text field for the time of day the backup runs. Ends with a colon."
+  },
+  "admin.backups.enableDescription": {
+    "defaultMessage": "When true, a full backup (database, local files and config) is written to S3 every day at the time below. \"Back up now\" works whether or not this is on, as long as a bucket is set.",
+    "description": "Help text under a setting on the Backups admin page (System Console > Environment > Backups); explains the daily backup toggle and that the manual \"Back up now\" button works regardless. Keep \"Back up now\" matching the button label."
+  },
+  "admin.backups.enableTitle": {
+    "defaultMessage": "Enable Daily Backups:",
+    "description": "Setting label on the Backups admin page (System Console > Environment > Backups); toggle that turns the daily scheduled backup on or off. Ends with a colon."
+  },
+  "admin.backups.endpointDescription": {
+    "defaultMessage": "Hostname of the S3 service. Change it only for S3-compatible storage.",
+    "description": "Help text under a setting on the Backups admin page (System Console > Environment > Backups); only change the hostname for S3-compatible storage other than Amazon."
+  },
+  "admin.backups.endpointExample": {
+    "defaultMessage": "E.g.: \"s3.amazonaws.com\"",
+    "description": "Placeholder example inside a text field on the Backups admin page; the default Amazon S3 hostname; do not translate."
+  },
+  "admin.backups.endpointTitle": {
+    "defaultMessage": "Amazon S3 Endpoint:",
+    "description": "Setting label on the Backups admin page (System Console > Environment > Backups); text field for the S3 service hostname. Ends with a colon."
+  },
+  "admin.backups.pathPrefixDescription": {
+    "defaultMessage": "Folder inside the bucket that holds the backups.",
+    "description": "Help text under a setting on the Backups admin page (System Console > Environment > Backups); the folder inside the bucket where backup folders are created."
+  },
+  "admin.backups.pathPrefixTitle": {
+    "defaultMessage": "Amazon S3 Path Prefix:",
+    "description": "Setting label on the Backups admin page (System Console > Environment > Backups); text field for the folder path inside the S3 bucket. Ends with a colon."
+  },
+  "admin.backups.regionDescription": {
+    "defaultMessage": "(Optional) AWS region of the bucket. If empty, it is detected from the bucket.",
+    "description": "Help text under a setting on the Backups admin page (System Console > Environment > Backups); optional AWS region; detected automatically when empty."
+  },
+  "admin.backups.regionExample": {
+    "defaultMessage": "E.g.: \"eu-central-1\"",
+    "description": "Placeholder example inside a text field on the Backups admin page; an example AWS region code; keep the quoted code untranslated."
+  },
+  "admin.backups.regionTitle": {
+    "defaultMessage": "Amazon S3 Region:",
+    "description": "Setting label on the Backups admin page (System Console > Environment > Backups); text field for the AWS region. Ends with a colon."
+  },
+  "admin.backups.retentionDaysDescription": {
+    "defaultMessage": "Backups older than this are deleted after each successful backup. The newest complete backup is always kept.",
+    "description": "Help text under a setting on the Backups admin page (System Console > Environment > Backups); old backups are deleted after each successful run, but the newest one is always kept."
+  },
+  "admin.backups.retentionDaysTitle": {
+    "defaultMessage": "Keep Backups For (Days):",
+    "description": "Setting label on the Backups admin page (System Console > Environment > Backups); number field for how many days backups are kept. Ends with a colon."
+  },
+  "admin.backups.secretAccessKeyDescription": {
+    "defaultMessage": "(Optional) The secret access key for the Access Key ID above.",
+    "description": "Help text under a setting on the Backups admin page (System Console > Environment > Backups); optional secret that pairs with the access key ID setting."
+  },
+  "admin.backups.secretAccessKeyTitle": {
+    "defaultMessage": "Amazon S3 Secret Access Key:",
+    "description": "Setting label on the Backups admin page (System Console > Environment > Backups); text field for the AWS secret access key. Ends with a colon."
+  },
+  "admin.backups.sseDescription": {
+    "defaultMessage": "When true, backups are encrypted in S3 with Amazon S3-managed keys.",
+    "description": "Help text under a setting on the Backups admin page (System Console > Environment > Backups); backups are encrypted at rest by Amazon S3 with keys it manages."
+  },
+  "admin.backups.sseTitle": {
+    "defaultMessage": "Enable Server-Side Encryption:",
+    "description": "Setting label on the Backups admin page (System Console > Environment > Backups); toggle for S3 server-side encryption of backups. Ends with a colon."
+  },
+  "admin.backups.sslDescription": {
+    "defaultMessage": "When false, allow insecure connections to the S3 endpoint.",
+    "description": "Help text under a setting on the Backups admin page (System Console > Environment > Backups); turning this off allows unencrypted connections to S3."
+  },
+  "admin.backups.sslTitle": {
+    "defaultMessage": "Enable Secure Amazon S3 Connections:",
+    "description": "Setting label on the Backups admin page (System Console > Environment > Backups); toggle for using HTTPS to reach S3. Ends with a colon."
+  },
   "admin.banner.heading": {
     "defaultMessage": "Note:",
     "description": "Default bold heading of a note/warning banner in the System Console, prepended before the banner's description text."
@@ -4994,6 +5106,10 @@
   "admin.email.selfPush": {
     "defaultMessage": "Manually enter Push Notification Service location",
     "description": "Radio option on the Push Notification Server admin page for entering a custom push service URL manually."
+  },
+  "admin.environment.backups": {
+    "defaultMessage": "Backups",
+    "description": "Page title of the System Console page for scheduled database and file backups to Amazon S3."
   },
   "admin.environment.fileStorage": {
     "defaultMessage": "File Storage",
@@ -15086,6 +15202,10 @@
   "admin.sidebar.authentication": {
     "defaultMessage": "Authentication",
     "description": "Category heading in the System Console left navigation sidebar, grouping login/authentication settings pages; compact space."
+  },
+  "admin.sidebar.backups": {
+    "defaultMessage": "Backups",
+    "description": "Navigation item in the System Console sidebar under Environment; opens the scheduled S3 backup settings page; compact space."
   },
   "admin.sidebar.billing": {
     "defaultMessage": "Billing & Account",

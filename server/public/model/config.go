@@ -4252,6 +4252,75 @@ func (s *ExportSettings) SetDefaults() {
 	}
 }
 
+// BackupSettings configures the scheduled backup job that writes the database dump,
+// local files and config to S3.
+type BackupSettings struct {
+	Enable                  *bool   `access:"environment_file_storage"`
+	DailyRunTime            *string `access:"environment_file_storage"`
+	RetentionDays           *int    `access:"environment_file_storage"`
+	AmazonS3Bucket          *string `access:"environment_file_storage"` // telemetry: none
+	AmazonS3PathPrefix      *string `access:"environment_file_storage"` // telemetry: none
+	AmazonS3Region          *string `access:"environment_file_storage"` // telemetry: none
+	AmazonS3Endpoint        *string `access:"environment_file_storage"` // telemetry: none
+	AmazonS3AccessKeyId     *string `access:"environment_file_storage"` // telemetry: none
+	AmazonS3SecretAccessKey *string `access:"environment_file_storage,write_restrictable"` // telemetry: none
+	AmazonS3SSL             *bool   `access:"environment_file_storage"`
+	AmazonS3SSE             *bool   `access:"environment_file_storage"`
+}
+
+func (s *BackupSettings) SetDefaults() {
+	if s.Enable == nil {
+		s.Enable = new(false)
+	}
+	if s.DailyRunTime == nil {
+		s.DailyRunTime = new("03:00")
+	}
+	if s.RetentionDays == nil {
+		s.RetentionDays = new(14)
+	}
+	if s.AmazonS3Bucket == nil {
+		s.AmazonS3Bucket = new("")
+	}
+	if s.AmazonS3PathPrefix == nil {
+		s.AmazonS3PathPrefix = new("mattermost-backups")
+	}
+	if s.AmazonS3Region == nil {
+		s.AmazonS3Region = new("")
+	}
+	if s.AmazonS3Endpoint == nil {
+		s.AmazonS3Endpoint = new("s3.amazonaws.com")
+	}
+	if s.AmazonS3AccessKeyId == nil {
+		s.AmazonS3AccessKeyId = new("")
+	}
+	if s.AmazonS3SecretAccessKey == nil {
+		s.AmazonS3SecretAccessKey = new("")
+	}
+	if s.AmazonS3SSL == nil {
+		s.AmazonS3SSL = new(true)
+	}
+	if s.AmazonS3SSE == nil {
+		s.AmazonS3SSE = new(false)
+	}
+}
+
+func (s *BackupSettings) isValid() *AppError {
+	// Checked even when the schedule is off: "Back up now" prunes with this value too.
+	if *s.RetentionDays < 1 {
+		return NewAppError("Config.IsValid", "model.config.is_valid.backup.retention_days.app_error", nil, "", http.StatusBadRequest)
+	}
+	if !*s.Enable {
+		return nil
+	}
+	if *s.AmazonS3Bucket == "" {
+		return NewAppError("Config.IsValid", "model.config.is_valid.backup.bucket.app_error", nil, "", http.StatusBadRequest)
+	}
+	if _, err := time.Parse("15:04", *s.DailyRunTime); err != nil {
+		return NewAppError("Config.IsValid", "model.config.is_valid.backup.run_time.app_error", nil, "", http.StatusBadRequest).Wrap(err)
+	}
+	return nil
+}
+
 type AccessControlSettings struct {
 	EnableAttributeBasedAccessControl *bool
 	EnableUserManagedAttributes       *bool `access:"write_restrictable"`
@@ -4410,6 +4479,7 @@ type Config struct {
 	FeatureFlags                *FeatureFlags  `access:"*_read" json:",omitempty"`
 	ImportSettings              ImportSettings // telemetry: none
 	ExportSettings              ExportSettings
+	BackupSettings              BackupSettings
 	WranglerSettings            WranglerSettings
 	ConnectedWorkspacesSettings ConnectedWorkspacesSettings
 	AccessControlSettings       AccessControlSettings
@@ -4532,6 +4602,7 @@ func (o *Config) SetDefaults() {
 	}
 	o.ImportSettings.SetDefaults()
 	o.ExportSettings.SetDefaults()
+	o.BackupSettings.SetDefaults()
 	o.WranglerSettings.SetDefaults()
 	o.ConnectedWorkspacesSettings.SetDefaults(isUpdate, o.ExperimentalSettings)
 	o.AccessControlSettings.SetDefaults()
@@ -4683,6 +4754,10 @@ func (o *Config) IsValid() *AppError {
 	}
 
 	if appErr := o.ExportSettings.isValid(); appErr != nil {
+		return appErr
+	}
+
+	if appErr := o.BackupSettings.isValid(); appErr != nil {
 		return appErr
 	}
 
@@ -5735,6 +5810,10 @@ func (o *Config) Sanitize(pluginManifests []*Manifest, opts *SanitizeOptions) {
 
 	if o.FileSettings.ExportAmazonS3SecretAccessKey != nil && *o.FileSettings.ExportAmazonS3SecretAccessKey != "" {
 		*o.FileSettings.ExportAmazonS3SecretAccessKey = FakeSetting
+	}
+
+	if o.BackupSettings.AmazonS3SecretAccessKey != nil && *o.BackupSettings.AmazonS3SecretAccessKey != "" {
+		*o.BackupSettings.AmazonS3SecretAccessKey = FakeSetting
 	}
 
 	if o.FileSettings.AzureAccessKey != nil && *o.FileSettings.AzureAccessKey != "" {

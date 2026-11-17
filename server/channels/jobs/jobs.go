@@ -162,6 +162,7 @@ func (srv *JobServer) publishJobStatus(job *model.Job, status string) {
 		model.JobTypeImportDelete,
 		model.JobTypeExportProcess,
 		model.JobTypeExportDelete,
+		model.JobTypeBackup,
 		model.JobTypeCloud,
 		model.JobTypeMobileSessionMetadata,
 		model.JobTypeExtractContent,

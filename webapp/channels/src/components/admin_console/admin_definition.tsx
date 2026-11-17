@@ -9,6 +9,7 @@ import {Link} from 'react-router-dom';
 import semver from 'semver';
 
 import {AccountMultipleOutlineIcon, ChartBarIcon, CogOutlineIcon, CreditCardOutlineIcon, FlaskOutlineIcon, FormatListBulletedIcon, InformationOutlineIcon, PowerPlugOutlineIcon, ServerVariantIcon, ShieldOutlineIcon, SitemapIcon, TableLargeIcon} from '@mattermost/compass-icons/components';
+import type {Job} from '@mattermost/types/jobs';
 
 import {Posts} from 'mattermost-redux/constants';
 import {RESOURCE_KEYS} from 'mattermost-redux/constants/permissions_sysconsole';
@@ -1701,6 +1702,115 @@ const AdminDefinition: AdminDefinitionType = {
                                 it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.FILE_STORAGE)),
                                 it.stateEquals('FileSettings.DriverName', FILE_STORAGE_DRIVER_LOCAL),
                             ),
+                        },
+                    ],
+                },
+            },
+            backups: {
+                url: 'environment/backups',
+                title: defineMessage({id: 'admin.sidebar.backups', defaultMessage: 'Backups'}),
+                isHidden: it.any(
+                    it.configIsTrue('ExperimentalSettings', 'RestrictSystemAdmin'),
+                    it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.FILE_STORAGE)),
+                ),
+                schema: {
+                    id: 'BackupSettings',
+                    name: defineMessage({id: 'admin.environment.backups', defaultMessage: 'Backups'}),
+                    settings: [
+                        {
+                            type: 'bool',
+                            key: 'BackupSettings.Enable',
+                            label: defineMessage({id: 'admin.backups.enableTitle', defaultMessage: 'Enable Daily Backups:'}),
+                            help_text: defineMessage({id: 'admin.backups.enableDescription', defaultMessage: 'When true, a full backup (database, local files and config) is written to S3 every day at the time below. "Back up now" works whether or not this is on, as long as a bucket is set.'}),
+                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.FILE_STORAGE)),
+                        },
+                        {
+                            type: 'text',
+                            key: 'BackupSettings.DailyRunTime',
+                            label: defineMessage({id: 'admin.backups.dailyRunTimeTitle', defaultMessage: 'Backup Time:'}),
+                            help_text: defineMessage({id: 'admin.backups.dailyRunTimeDescription', defaultMessage: 'Time of day to run the backup, in server time (HH:MM). The server clock follows the container\'s TZ setting; UTC by default.'}),
+                            placeholder: defineMessage({id: 'admin.backups.dailyRunTimeExample', defaultMessage: '03:00'}),
+                            isDisabled: it.any(
+                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.FILE_STORAGE)),
+                                it.stateIsFalse('BackupSettings.Enable'),
+                            ),
+                        },
+                        {
+                            type: 'number',
+                            key: 'BackupSettings.RetentionDays',
+                            label: defineMessage({id: 'admin.backups.retentionDaysTitle', defaultMessage: 'Keep Backups For (Days):'}),
+                            help_text: defineMessage({id: 'admin.backups.retentionDaysDescription', defaultMessage: 'Backups older than this are deleted after each successful backup. The newest complete backup is always kept.'}),
+                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.FILE_STORAGE)),
+                        },
+                        {
+                            type: 'text',
+                            key: 'BackupSettings.AmazonS3Bucket',
+                            label: defineMessage({id: 'admin.backups.bucketTitle', defaultMessage: 'Amazon S3 Bucket:'}),
+                            help_text: defineMessage({id: 'admin.backups.bucketDescription', defaultMessage: 'Bucket the backups are written to. Keep it private: each backup includes config.json, which contains secrets.'}),
+                            placeholder: defineMessage({id: 'admin.backups.bucketExample', defaultMessage: 'E.g.: "mattermost-backups"'}),
+                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.FILE_STORAGE)),
+                        },
+                        {
+                            type: 'text',
+                            key: 'BackupSettings.AmazonS3PathPrefix',
+                            label: defineMessage({id: 'admin.backups.pathPrefixTitle', defaultMessage: 'Amazon S3 Path Prefix:'}),
+                            help_text: defineMessage({id: 'admin.backups.pathPrefixDescription', defaultMessage: 'Folder inside the bucket that holds the backups.'}),
+                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.FILE_STORAGE)),
+                        },
+                        {
+                            type: 'text',
+                            key: 'BackupSettings.AmazonS3Region',
+                            label: defineMessage({id: 'admin.backups.regionTitle', defaultMessage: 'Amazon S3 Region:'}),
+                            help_text: defineMessage({id: 'admin.backups.regionDescription', defaultMessage: '(Optional) AWS region of the bucket. If empty, it is detected from the bucket.'}),
+                            placeholder: defineMessage({id: 'admin.backups.regionExample', defaultMessage: 'E.g.: "eu-central-1"'}),
+                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.FILE_STORAGE)),
+                        },
+                        {
+                            type: 'text',
+                            key: 'BackupSettings.AmazonS3AccessKeyId',
+                            label: defineMessage({id: 'admin.backups.accessKeyIdTitle', defaultMessage: 'Amazon S3 Access Key ID:'}),
+                            help_text: defineMessage({id: 'admin.backups.accessKeyIdDescription', defaultMessage: '(Optional) Leave empty to use the IAM role of the instance the server runs on.'}),
+                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.FILE_STORAGE)),
+                        },
+                        {
+                            type: 'text',
+                            key: 'BackupSettings.AmazonS3SecretAccessKey',
+                            label: defineMessage({id: 'admin.backups.secretAccessKeyTitle', defaultMessage: 'Amazon S3 Secret Access Key:'}),
+                            help_text: defineMessage({id: 'admin.backups.secretAccessKeyDescription', defaultMessage: '(Optional) The secret access key for the Access Key ID above.'}),
+                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.FILE_STORAGE)),
+                        },
+                        {
+                            type: 'text',
+                            key: 'BackupSettings.AmazonS3Endpoint',
+                            label: defineMessage({id: 'admin.backups.endpointTitle', defaultMessage: 'Amazon S3 Endpoint:'}),
+                            help_text: defineMessage({id: 'admin.backups.endpointDescription', defaultMessage: 'Hostname of the S3 service. Change it only for S3-compatible storage.'}),
+                            placeholder: defineMessage({id: 'admin.backups.endpointExample', defaultMessage: 'E.g.: "s3.amazonaws.com"'}),
+                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.FILE_STORAGE)),
+                        },
+                        {
+                            type: 'bool',
+                            key: 'BackupSettings.AmazonS3SSL',
+                            label: defineMessage({id: 'admin.backups.sslTitle', defaultMessage: 'Enable Secure Amazon S3 Connections:'}),
+                            help_text: defineMessage({id: 'admin.backups.sslDescription', defaultMessage: 'When false, allow insecure connections to the S3 endpoint.'}),
+                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.FILE_STORAGE)),
+                        },
+                        {
+                            type: 'bool',
+                            key: 'BackupSettings.AmazonS3SSE',
+                            label: defineMessage({id: 'admin.backups.sseTitle', defaultMessage: 'Enable Server-Side Encryption:'}),
+                            help_text: defineMessage({id: 'admin.backups.sseDescription', defaultMessage: 'When true, backups are encrypted in S3 with Amazon S3-managed keys.'}),
+                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.FILE_STORAGE)),
+                        },
+                        {
+                            type: 'jobstable',
+                            job_type: Constants.JobTypes.BACKUP,
+                            label: defineMessage({id: 'admin.backups.backupNow', defaultMessage: 'Back up now'}),
+                            help_text: defineMessage({id: 'admin.backups.backupNowDescription', defaultMessage: 'Runs a backup immediately with the saved settings. The table below shows each backup and the folder it was written to.'}),
+                            isDisabled: it.any(
+                                it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ENVIRONMENT.FILE_STORAGE)),
+                                it.stateEquals('BackupSettings.AmazonS3Bucket', ''),
+                            ),
+                            render_job: (job: Job) => <span>{job.data?.folder}</span>,
                         },
                     ],
                 },

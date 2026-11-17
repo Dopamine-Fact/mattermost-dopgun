@@ -35,9 +35,15 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG PUID=2000
 ARG PGID=2000
 # Document-text extractors used for file search, same set as upstream's image.
+# postgresql-client-17 comes from PGDG (noble ships 16, which cannot dump a 17 server); the backup job runs pg_dump.
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
-      ca-certificates media-types mailcap unrtf wv poppler-utils tidy tzdata \
+      ca-certificates media-types mailcap unrtf wv poppler-utils tidy tzdata curl gnupg \
+ && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql.gpg \
+ && echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+ && apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y postgresql-client-17 \
+ && apt-get purge -y --auto-remove curl gnupg \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --gid ${PGID} mattermost \
  && useradd --uid ${PUID} --gid ${PGID} --comment "" --home-dir /mattermost mattermost

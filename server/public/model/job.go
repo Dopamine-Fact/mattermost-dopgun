@@ -25,6 +25,7 @@ const (
 	JobTypeImportDelete                  = "import_delete"
 	JobTypeExportProcess                 = "export_process"
 	JobTypeExportDelete                  = "export_delete"
+	JobTypeBackup                        = "backup"
 	JobTypeCloud                         = "cloud"
 	JobTypeResendInvitationEmail         = "resend_invitation_email"
 	JobTypeExtractContent                = "extract_content"

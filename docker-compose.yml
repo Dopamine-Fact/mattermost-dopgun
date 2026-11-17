@@ -40,6 +40,7 @@ services:
     ports:
       - "${MM_PORT:-8065}:8065"
     environment:
+      # Server clock; the daily backup time in System Console > Backups follows it.
       TZ: ${TZ:-Europe/Istanbul}
       MM_SQLSETTINGS_DRIVERNAME: postgres
       MM_SQLSETTINGS_DATASOURCE: postgres://mmuser:${POSTGRES_PASSWORD}@postgres:5432/mattermost?sslmode=disable&connect_timeout=10

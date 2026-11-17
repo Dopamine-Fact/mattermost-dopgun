@@ -1044,6 +1044,20 @@ export type ExportSettings = {
     RetentionDays: number;
 };
 
+export type BackupSettings = {
+    Enable: boolean;
+    DailyRunTime: string;
+    RetentionDays: number;
+    AmazonS3Bucket: string;
+    AmazonS3PathPrefix: string;
+    AmazonS3Region: string;
+    AmazonS3Endpoint: string;
+    AmazonS3AccessKeyId: string;
+    AmazonS3SecretAccessKey: string;
+    AmazonS3SSL: boolean;
+    AmazonS3SSE: boolean;
+};
+
 export type AccessControlSettings = {
     EnableAttributeBasedAccessControl: boolean;
     EnableUserManagedAttributes: boolean;
@@ -1150,6 +1164,7 @@ export type AdminConfig = {
     FeatureFlags: FeatureFlags;
     ImportSettings: ImportSettings;
     ExportSettings: ExportSettings;
+    BackupSettings: BackupSettings;
     WranglerSettings: WranglerSettings;
     ConnectedWorkspacesSettings: ConnectedWorkspacesSettings;
     AccessControlSettings: AccessControlSettings;

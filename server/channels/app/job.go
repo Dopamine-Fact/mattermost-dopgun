@@ -254,6 +254,7 @@ func (a *App) SessionHasPermissionToCreateJob(session model.Session, job *model.
 		model.JobTypeImportDelete,
 		model.JobTypeExportProcess,
 		model.JobTypeExportDelete,
+		model.JobTypeBackup,
 		model.JobTypeCloud,
 		model.JobTypeExtractContent,
 		model.JobTypeCleanupExpiredAccessTokens,
@@ -339,6 +340,7 @@ func (a *App) SessionHasPermissionToManageJob(session model.Session, job *model.
 		model.JobTypeImportDelete,
 		model.JobTypeExportProcess,
 		model.JobTypeExportDelete,
+		model.JobTypeBackup,
 		model.JobTypeCloud,
 		model.JobTypeExtractContent,
 		model.JobTypeCleanupExpiredAccessTokens:
@@ -388,6 +390,7 @@ func (a *App) SessionHasPermissionToReadJob(session model.Session, jobType strin
 		model.JobTypeImportDelete,
 		model.JobTypeExportProcess,
 		model.JobTypeExportDelete,
+		model.JobTypeBackup,
 		model.JobTypeCloud,
 		model.JobTypeMobileSessionMetadata,
 		model.JobTypeExtractContent,

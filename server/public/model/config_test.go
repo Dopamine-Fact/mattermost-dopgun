@@ -3131,6 +3131,7 @@ func TestConfigSanitize(t *testing.T) {
 	*c.LdapSettings.BindPassword = "foo"
 	*c.FileSettings.AmazonS3SecretAccessKey = "bar"
 	*c.FileSettings.ExportAmazonS3SecretAccessKey = "export-secret"
+	*c.BackupSettings.AmazonS3SecretAccessKey = "backup-secret"
 	*c.EmailSettings.SMTPPassword = "baz"
 	*c.GitLabSettings.Secret = "bingo"
 	*c.OpenIdSettings.Secret = "secret"
@@ -3151,6 +3152,7 @@ func TestConfigSanitize(t *testing.T) {
 	assert.Equal(t, FakeSetting, *c.FileSettings.PublicLinkSalt)
 	assert.Equal(t, FakeSetting, *c.FileSettings.AmazonS3SecretAccessKey)
 	assert.Equal(t, FakeSetting, *c.FileSettings.ExportAmazonS3SecretAccessKey)
+	assert.Equal(t, FakeSetting, *c.BackupSettings.AmazonS3SecretAccessKey)
 	assert.Equal(t, FakeSetting, *c.EmailSettings.SMTPPassword)
 	assert.Equal(t, FakeSetting, *c.GitLabSettings.Secret)
 	assert.Equal(t, FakeSetting, *c.OpenIdSettings.Secret)
@@ -5505,6 +5507,59 @@ func TestElasticsearchSettingsIsValid(t *testing.T) {
 			appErr := s.isValid()
 			require.NotNil(t, appErr)
 			require.Equal(t, tc.errorID, appErr.Id)
+		})
+	}
+}
+
+func TestBackupSettingsIsValid(t *testing.T) {
+	for name, tc := range map[string]struct {
+		patch   func(s *BackupSettings)
+		errorID string
+	}{
+		"defaults are valid while disabled": {patch: func(s *BackupSettings) {}},
+		"enabled without bucket": {
+			patch:   func(s *BackupSettings) { s.Enable = new(true) },
+			errorID: "model.config.is_valid.backup.bucket.app_error",
+		},
+		"enabled with bad time": {
+			patch: func(s *BackupSettings) {
+				s.Enable = new(true)
+				s.AmazonS3Bucket = new("b")
+				s.DailyRunTime = new("25:00")
+			},
+			errorID: "model.config.is_valid.backup.run_time.app_error",
+		},
+		"enabled with zero retention": {
+			patch: func(s *BackupSettings) {
+				s.Enable = new(true)
+				s.AmazonS3Bucket = new("b")
+				s.RetentionDays = new(0)
+			},
+			errorID: "model.config.is_valid.backup.retention_days.app_error",
+		},
+		// "Back up now" prunes even while the schedule is off, so 0 would wipe every older backup.
+		"disabled with zero retention": {
+			patch:   func(s *BackupSettings) { s.RetentionDays = new(0) },
+			errorID: "model.config.is_valid.backup.retention_days.app_error",
+		},
+		"enabled with bucket and defaults": {
+			patch: func(s *BackupSettings) {
+				s.Enable = new(true)
+				s.AmazonS3Bucket = new("b")
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := BackupSettings{}
+			s.SetDefaults()
+			tc.patch(&s)
+			appErr := s.isValid()
+			if tc.errorID == "" {
+				require.Nil(t, appErr)
+				return
+			}
+			require.NotNil(t, appErr)
+			assert.Equal(t, tc.errorID, appErr.Id)
 		})
 	}
 }
