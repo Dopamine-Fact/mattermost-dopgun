@@ -4305,6 +4305,10 @@ func (s *BackupSettings) SetDefaults() {
 }
 
 func (s *BackupSettings) isValid() *AppError {
+	// Checked even when the schedule is off: "Back up now" prunes with this value too.
+	if *s.RetentionDays < 1 {
+		return NewAppError("Config.IsValid", "model.config.is_valid.backup.retention_days.app_error", nil, "", http.StatusBadRequest)
+	}
 	if !*s.Enable {
 		return nil
 	}
@@ -4313,9 +4317,6 @@ func (s *BackupSettings) isValid() *AppError {
 	}
 	if _, err := time.Parse("15:04", *s.DailyRunTime); err != nil {
 		return NewAppError("Config.IsValid", "model.config.is_valid.backup.run_time.app_error", nil, "", http.StatusBadRequest).Wrap(err)
-	}
-	if *s.RetentionDays < 1 {
-		return NewAppError("Config.IsValid", "model.config.is_valid.backup.retention_days.app_error", nil, "", http.StatusBadRequest)
 	}
 	return nil
 }

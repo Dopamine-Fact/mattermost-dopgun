@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -174,4 +175,80 @@ func TestSchedulerAndWorkerEnabled(t *testing.T) {
 
 	cfg.BackupSettings.Enable = new(true)
 	assert.True(t, scheduler.Enabled(cfg))
+}
+
+// s3LikeStore mimics the S3 behaviour the local backend hides: HEAD needs s3:GetObject (absent
+// from the runbook policy), RemoveDirectory deletes by string prefix, and a write can fail
+// without reading its input.
+type s3LikeStore struct {
+	filestore.FileBackend
+	writeErr error
+}
+
+func (s *s3LikeStore) FileExists(string) (bool, error) {
+	return false, errors.New("403 Forbidden")
+}
+
+func (s *s3LikeStore) RemoveDirectory(p string) error {
+	keys, err := s.FileBackend.ListDirectoryRecursively(path.Dir(p))
+	if err != nil {
+		return err
+	}
+	for _, k := range keys {
+		if strings.HasPrefix(filepath.ToSlash(k), p) {
+			if err := s.RemoveFile(k); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (s *s3LikeStore) WriteFile(r io.Reader, p string) (int64, error) {
+	if s.writeErr != nil {
+		return 0, s.writeErr
+	}
+	return s.FileBackend.WriteFile(r, p)
+}
+
+func TestRunBackupPrunesWithoutGetObject(t *testing.T) {
+	cfg, local := setupBackupTest(t)
+	store := &s3LikeStore{FileBackend: local}
+
+	_, err := runBackup(context.Background(), cfg, store, fakeDump("DUMP"), testNow)
+	require.NoError(t, err)
+
+	ok, err := local.FileExists(oldFolder + "/manifest.json")
+	require.NoError(t, err)
+	assert.False(t, ok, "expired backup should be pruned")
+}
+
+func TestRunBackupPruneKeepsPrefixSiblings(t *testing.T) {
+	cfg, local := setupBackupTest(t)
+	store := &s3LikeStore{FileBackend: local}
+	kept := oldFolder + "-pre-upgrade/manifest.json"
+	_, err := local.WriteFile(strings.NewReader("{}"), kept)
+	require.NoError(t, err)
+
+	_, err = runBackup(context.Background(), cfg, store, fakeDump("DUMP"), testNow)
+	require.NoError(t, err)
+
+	ok, err := local.FileExists(kept)
+	require.NoError(t, err)
+	assert.True(t, ok, "a folder outside the timestamp pattern must never be deleted")
+}
+
+func TestRunBackupReportsUploadFailure(t *testing.T) {
+	cfg, local := setupBackupTest(t)
+	store := &s3LikeStore{FileBackend: local, writeErr: errors.New("NoSuchBucket")}
+	// Like pg_dump: a write error surfaces only as an exit status, not wrapped.
+	dump := func(_ context.Context, _ string, w io.Writer) error {
+		if _, err := io.WriteString(w, strings.Repeat("x", 1<<20)); err != nil {
+			return errors.New("pg_dump failed: exit status 1: could not write to output file: Broken pipe")
+		}
+		return nil
+	}
+
+	_, err := runBackup(context.Background(), cfg, store, dump, testNow)
+	require.ErrorContains(t, err, "NoSuchBucket")
 }

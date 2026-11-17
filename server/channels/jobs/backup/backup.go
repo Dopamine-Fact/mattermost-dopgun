@@ -86,18 +86,31 @@ func execPgDump(ctx context.Context, dsn string, w io.Writer) error {
 func streamUpload(ctx context.Context, store filestore.FileBackend, p string, produce func(io.Writer) error) (int64, error) {
 	pr, pw := io.Pipe()
 	var produceErr error
+	produced := make(chan struct{})
 	done := make(chan struct{})
 	go func() {
 		produceErr = produce(pw)
+		close(produced)
 		pw.CloseWithError(produceErr)
 		close(done)
 	}()
 
 	n, uploadErr := filestore.TryWriteFileContext(ctx, store, pr, p)
+	producerFinished := false
+	select {
+	case <-produced:
+		producerFinished = true
+	default:
+	}
 	// Unblock the producer if the upload stopped before reading everything.
 	pr.CloseWithError(errors.Join(uploadErr, io.ErrClosedPipe))
 	<-done
 
+	// An upload that failed while the producer was still writing is the cause; the producer's
+	// broken-pipe error is only the symptom.
+	if uploadErr != nil && !producerFinished {
+		return n, uploadErr
+	}
 	if produceErr != nil {
 		return n, produceErr
 	}
@@ -118,7 +131,7 @@ func runBackup(ctx context.Context, cfg *model.Config, store filestore.FileBacke
 
 	m, err := writeBackup(ctx, cfg, store, dump, folder, now)
 	if err != nil {
-		_ = store.RemoveDirectory(folder)
+		_ = removeFolder(store, folder)
 		return nil, err
 	}
 
@@ -177,28 +190,49 @@ func writeBackup(ctx context.Context, cfg *model.Config, store filestore.FileBac
 }
 
 func prune(store filestore.FileBackend, prefix string, now time.Time, retentionDays int) error {
-	entries, err := store.ListDirectory(prefix)
+	// One listing finds complete backups; FileExists would be a HEAD, which needs s3:GetObject.
+	keys, err := store.ListDirectoryRecursively(prefix)
 	if err != nil {
 		return err
 	}
 
 	var names []string
 	complete := map[string]bool{}
-	for _, e := range entries {
-		name := filepath.Base(strings.TrimSuffix(e, "/"))
+	for _, k := range keys {
+		rel := strings.TrimPrefix(strings.TrimPrefix(filepath.ToSlash(k), prefix), "/")
+		name, rest, ok := strings.Cut(rel, "/")
+		if !ok {
+			continue
+		}
 		if _, err := time.Parse(folderLayout, name); err != nil {
 			continue
 		}
-		names = append(names, name)
-		ok, err := store.FileExists(path.Join(prefix, name, "manifest.json"))
-		if err != nil {
-			return err
+		if _, seen := complete[name]; !seen {
+			names = append(names, name)
+			complete[name] = false
 		}
-		complete[name] = ok
+		if rest == "manifest.json" {
+			complete[name] = true
+		}
 	}
 
 	for _, name := range selectExpired(names, complete, now, retentionDays) {
-		if err := store.RemoveDirectory(path.Join(prefix, name)); err != nil {
+		if err := removeFolder(store, path.Join(prefix, name)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// removeFolder deletes the folder's keys one by one: S3 RemoveDirectory matches a bare string
+// prefix, so it would also take sibling folders such as "<name>-pre-upgrade".
+func removeFolder(store filestore.FileBackend, folder string) error {
+	keys, err := store.ListDirectoryRecursively(folder)
+	if err != nil {
+		return err
+	}
+	for _, k := range keys {
+		if err := store.RemoveFile(k); err != nil {
 			return err
 		}
 	}

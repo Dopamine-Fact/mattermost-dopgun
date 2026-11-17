@@ -5537,6 +5537,11 @@ func TestBackupSettingsIsValid(t *testing.T) {
 			},
 			errorID: "model.config.is_valid.backup.retention_days.app_error",
 		},
+		// "Back up now" prunes even while the schedule is off, so 0 would wipe every older backup.
+		"disabled with zero retention": {
+			patch:   func(s *BackupSettings) { s.RetentionDays = new(0) },
+			errorID: "model.config.is_valid.backup.retention_days.app_error",
+		},
 		"enabled with bucket and defaults": {
 			patch: func(s *BackupSettings) {
 				s.Enable = new(true)
