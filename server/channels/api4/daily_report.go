@@ -5,6 +5,7 @@ package api4
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -22,7 +23,11 @@ func (api *API) InitDailyReports() {
 	api.BaseRoutes.Team.Handle("/daily_reports", api.APISessionRequired(getDailyReports)).Methods(http.MethodGet)
 	api.BaseRoutes.Team.Handle("/daily_reports/mine", api.APISessionRequired(submitDailyReport)).Methods(http.MethodPut)
 	api.BaseRoutes.Team.Handle("/daily_reports/export", api.APISessionRequired(exportDailyReports)).Methods(http.MethodGet)
+	api.BaseRoutes.Team.Handle("/daily_reports/assignees", api.APISessionRequired(getDailyReportAssignees)).Methods(http.MethodGet)
+	api.BaseRoutes.Team.Handle("/daily_reports/assignees", api.APISessionRequired(setDailyReportAssignees)).Methods(http.MethodPut)
+	api.BaseRoutes.APIRoot.Handle("/daily_reports/{report_id:[A-Za-z0-9]+}", api.APISessionRequired(updateDailyReport)).Methods(http.MethodPut)
 	api.BaseRoutes.APIRoot.Handle("/daily_reports/{report_id:[A-Za-z0-9]+}/approve", api.APISessionRequired(approveDailyReport)).Methods(http.MethodPost)
+	api.BaseRoutes.APIRoot.Handle("/daily_reports/{report_id:[A-Za-z0-9]+}/reject", api.APISessionRequired(rejectDailyReport)).Methods(http.MethodPost)
 }
 
 // requireDailyReportTeam checks the caller is a team member and the team has daily reports on.
@@ -117,16 +122,38 @@ func submitDailyReport(c *Context, w http.ResponseWriter, r *http.Request) {
 	writeTaskJSON(w, http.StatusOK, report)
 }
 
-func approveDailyReport(c *Context, w http.ResponseWriter, r *http.Request) {
+// reviewBody is the approve/reject body; update_at is the version the reviewer saw (0 = no check).
+type reviewBody struct {
+	Reason   string `json:"reason"`
+	UpdateAt int64  `json:"update_at"`
+}
+
+// loadReviewableReport reads the report and the optional body, and checks the caller may review it.
+func loadReviewableReport(c *Context, r *http.Request) (*model.DailyReport, reviewBody) {
+	var body reviewBody
+	if r.ContentLength != 0 {
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil && err != io.EOF {
+			c.SetInvalidParamWithErr("body", err)
+			return nil, body
+		}
+	}
 	report, appErr := c.App.GetDailyReport(mux.Vars(r)["report_id"])
 	if appErr != nil {
 		c.Err = appErr
-		return
+		return nil, body
 	}
 	if requireDailyReportTeam(c, report.TeamId); c.Err != nil {
-		return
+		return nil, body
 	}
 	if requireManageTasks(c, report.TeamId); c.Err != nil {
+		return nil, body
+	}
+	return report, body
+}
+
+func approveDailyReport(c *Context, w http.ResponseWriter, r *http.Request) {
+	report, body := loadReviewableReport(c, r)
+	if c.Err != nil {
 		return
 	}
 
@@ -134,7 +161,7 @@ func approveDailyReport(c *Context, w http.ResponseWriter, r *http.Request) {
 	defer c.LogAuditRec(auditRec)
 	auditRec.AddEventPriorState(report)
 
-	approved, appErr := c.App.ApproveDailyReport(c.AppContext, report.Id, c.AppContext.Session().UserId, 0)
+	approved, appErr := c.App.ApproveDailyReport(c.AppContext, report.Id, c.AppContext.Session().UserId, body.UpdateAt)
 	if appErr != nil {
 		c.Err = appErr
 		return
@@ -143,6 +170,111 @@ func approveDailyReport(c *Context, w http.ResponseWriter, r *http.Request) {
 	auditRec.AddEventResultState(approved)
 	auditRec.AddEventObjectType("daily_report")
 	writeTaskJSON(w, http.StatusOK, approved)
+}
+
+func rejectDailyReport(c *Context, w http.ResponseWriter, r *http.Request) {
+	report, body := loadReviewableReport(c, r)
+	if c.Err != nil {
+		return
+	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventRejectDailyReport, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	auditRec.AddEventPriorState(report)
+
+	rejected, appErr := c.App.RejectDailyReport(c.AppContext, report.Id, c.AppContext.Session().UserId, body.Reason, body.UpdateAt)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	auditRec.Success()
+	auditRec.AddEventResultState(rejected)
+	auditRec.AddEventObjectType("daily_report")
+	writeTaskJSON(w, http.StatusOK, rejected)
+}
+
+func updateDailyReport(c *Context, w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Message *string `json:"message"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Message == nil || strings.TrimSpace(*body.Message) == "" {
+		c.SetInvalidParam("message")
+		return
+	}
+	report, appErr := c.App.GetDailyReport(mux.Vars(r)["report_id"])
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	if requireDailyReportTeam(c, report.TeamId); c.Err != nil {
+		return
+	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventUpdateDailyReport, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	auditRec.AddEventPriorState(report)
+
+	updated, appErr := c.App.UpdateDailyReport(c.AppContext, report.Id, c.AppContext.Session().UserId, *body.Message)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	auditRec.Success()
+	auditRec.AddEventResultState(updated)
+	auditRec.AddEventObjectType("daily_report")
+	writeTaskJSON(w, http.StatusOK, updated)
+}
+
+type dailyReportAssigneesBody struct {
+	UserIDs []string `json:"user_ids"`
+}
+
+func getDailyReportAssignees(c *Context, w http.ResponseWriter, r *http.Request) {
+	if c.RequireTeamId(); c.Err != nil {
+		return
+	}
+	if requireDailyReportTeam(c, c.Params.TeamId); c.Err != nil {
+		return
+	}
+	ids, appErr := c.App.GetDailyReportAssignees(c.Params.TeamId)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	if ids == nil {
+		ids = []string{} // JSON [] rather than null
+	}
+	writeTaskJSON(w, http.StatusOK, dailyReportAssigneesBody{UserIDs: ids})
+}
+
+func setDailyReportAssignees(c *Context, w http.ResponseWriter, r *http.Request) {
+	if c.RequireTeamId(); c.Err != nil {
+		return
+	}
+	if requireDailyReportTeam(c, c.Params.TeamId); c.Err != nil {
+		return
+	}
+	if requireManageTasks(c, c.Params.TeamId); c.Err != nil {
+		return
+	}
+	var body dailyReportAssigneesBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.UserIDs == nil {
+		c.SetInvalidParam("user_ids")
+		return
+	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventSetDailyReportAssignees, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	model.AddEventParameterToAuditRec(auditRec, "team_id", c.Params.TeamId)
+	model.AddEventParameterToAuditRec(auditRec, "user_ids", body.UserIDs)
+
+	ids, appErr := c.App.SetDailyReportAssignees(c.AppContext, c.Params.TeamId, body.UserIDs)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	auditRec.Success()
+	writeTaskJSON(w, http.StatusOK, dailyReportAssigneesBody{UserIDs: ids})
 }
 
 func exportDailyReports(c *Context, w http.ResponseWriter, r *http.Request) {

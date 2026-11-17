@@ -424,7 +424,12 @@ const (
 )
 
 // Daily reports
-const AuditEventApproveDailyReport = "approveDailyReport" // approve a daily report
+const (
+	AuditEventApproveDailyReport      = "approveDailyReport"      // approve a daily report
+	AuditEventRejectDailyReport       = "rejectDailyReport"       // send a daily report back with a reason
+	AuditEventUpdateDailyReport       = "updateDailyReport"       // author edits a sent daily report
+	AuditEventSetDailyReportAssignees = "setDailyReportAssignees" // choose who must send daily reports
+)
 
 // Tasks
 const (

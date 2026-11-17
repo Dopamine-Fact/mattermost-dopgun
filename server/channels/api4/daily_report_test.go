@@ -123,6 +123,52 @@ func TestDailyReportsAPI(t *testing.T) {
 		require.Equal(t, "my day", edited.PreviousMessage)
 	})
 
+	t.Run("reject, update, assignees", func(t *testing.T) {
+		report, _, err := th.Client.SubmitDailyReport(ctx, teamID, "v1")
+		require.NoError(t, err)
+
+		_, resp, err := th.Client.RejectDailyReport(ctx, report.Id, "nope")
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+
+		adminClient, admin := teamAdminClient(th.BasicTeam)
+		_, resp, err = adminClient.RejectDailyReport(ctx, report.Id, "  ")
+		require.Error(t, err)
+		CheckBadRequestStatus(t, resp)
+		rejected, _, err := adminClient.RejectDailyReport(ctx, report.Id, "add details")
+		require.NoError(t, err)
+		require.Equal(t, model.DailyReportStatusRejected, rejected.Status)
+		require.Equal(t, admin.Id, rejected.RejectedBy)
+		require.Equal(t, "add details", rejected.RejectReason)
+
+		_, resp, err = th.SystemAdminClient.UpdateDailyReport(ctx, report.Id, "hijack")
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		updated, _, err := th.Client.UpdateDailyReport(ctx, report.Id, "v2")
+		require.NoError(t, err)
+		require.Equal(t, model.DailyReportStatusPending, updated.Status)
+		require.True(t, updated.Edited)
+		require.Equal(t, "v2", updated.Message)
+
+		_, resp, err = th.Client.SetDailyReportAssignees(ctx, teamID, []string{th.BasicUser.Id})
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		ids, _, err := adminClient.SetDailyReportAssignees(ctx, teamID, []string{th.BasicUser.Id, th.BasicUser.Id})
+		require.NoError(t, err)
+		require.Equal(t, []string{th.BasicUser.Id}, ids)
+		ids, _, err = th.Client.GetDailyReportAssignees(ctx, teamID)
+		require.NoError(t, err)
+		require.Equal(t, []string{th.BasicUser.Id}, ids)
+
+		// Not on the list: cannot submit.
+		_, resp, err = th.SystemAdminClient.SubmitDailyReport(ctx, teamID, "x")
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		ids, _, err = adminClient.SetDailyReportAssignees(ctx, teamID, []string{})
+		require.NoError(t, err)
+		require.Empty(t, ids)
+	})
+
 	t.Run("bad dates return 400", func(t *testing.T) {
 		for _, c := range [][2]string{{"nope", ""}, {"2026-01-02", "2026-01-01"}, {"2024-01-01", "2026-01-01"}} {
 			_, resp, err := th.Client.GetDailyReports(ctx, teamID, c[0], c[1], "")

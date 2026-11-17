@@ -58,3 +58,47 @@ func (c *Client4) ExportDailyReports(ctx context.Context, teamID, from, to strin
 	data, err := io.ReadAll(r.Body)
 	return data, BuildResponse(r), err
 }
+
+// UpdateDailyReport edits the caller's own report; it goes back to pending and is marked edited.
+func (c *Client4) UpdateDailyReport(ctx context.Context, reportID, message string) (*DailyReport, *Response, error) {
+	r, err := c.doAPIPutJSON(ctx, newClientRoute("daily_reports").Join(reportID), map[string]string{"message": message})
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return DecodeJSONFromResponse[*DailyReport](r)
+}
+
+func (c *Client4) RejectDailyReport(ctx context.Context, reportID, reason string) (*DailyReport, *Response, error) {
+	r, err := c.doAPIPostJSON(ctx, newClientRoute("daily_reports").Join(reportID, "reject"), map[string]string{"reason": reason})
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return DecodeJSONFromResponse[*DailyReport](r)
+}
+
+type dailyReportAssignees struct {
+	UserIDs []string `json:"user_ids"`
+}
+
+func (c *Client4) GetDailyReportAssignees(ctx context.Context, teamID string) ([]string, *Response, error) {
+	r, err := c.doAPIGet(ctx, c.teamRoute(teamID).Join("daily_reports", "assignees"), "")
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+	out, resp, err := DecodeJSONFromResponse[dailyReportAssignees](r)
+	return out.UserIDs, resp, err
+}
+
+// SetDailyReportAssignees replaces who must report; an empty list means everyone.
+func (c *Client4) SetDailyReportAssignees(ctx context.Context, teamID string, userIDs []string) ([]string, *Response, error) {
+	r, err := c.doAPIPutJSON(ctx, c.teamRoute(teamID).Join("daily_reports", "assignees"), dailyReportAssignees{UserIDs: userIDs})
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+	out, resp, err := DecodeJSONFromResponse[dailyReportAssignees](r)
+	return out.UserIDs, resp, err
+}
