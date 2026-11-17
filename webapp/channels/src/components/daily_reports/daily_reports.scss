@@ -157,8 +157,9 @@
     &__editor {
         width: 100%;
 
-        textarea {
-            min-height: 180px;
+        // beats the global `.app__body .custom-textarea` 46px floor so the report starts as a roomy box
+        textarea.custom-textarea {
+            min-height: 160px;
         }
     }
 
