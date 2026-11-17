@@ -5164,7 +5164,7 @@ export default class Client4 {
     };
 
     renameDriveItem = (channelId: string, itemId: string, name: string) => {
-        return this.doFetch<DriveItem>(`${this.getDriveRoute(channelId)}/items/${itemId}`, {method: 'patch', body: JSON.stringify({name})});
+        return this.doFetch<DriveItem>(`${this.getDriveRoute(channelId)}/items/${itemId}`, {method: 'PATCH', body: JSON.stringify({name})});
     };
 
     moveDriveItems = (channelId: string, itemIds: string[], targetChannelId: string, targetParentId: string) => {

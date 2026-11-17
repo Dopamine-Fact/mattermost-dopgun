@@ -180,7 +180,15 @@ const ExplorerItems = ({entries, view, selected, sort, sortable = () => true, on
         <ExplorerRenameInput
             name={entry.name}
             keepExtension={entry.kind === 'file'}
-            onDone={(name) => onRenameDone(entry, name)}
+            onDone={(name) => {
+                onRenameDone(entry, name);
+
+                // Enter/Escape unmount the focused input; give focus back to its cell (a blur already moved it elsewhere).
+                const cell = refs.current.get(entry.key);
+                if (cell?.contains(document.activeElement)) {
+                    cell.focus();
+                }
+            }}
         />
     );
 

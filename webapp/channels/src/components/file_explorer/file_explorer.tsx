@@ -7,7 +7,7 @@ import {FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {Redirect, useHistory, useParams} from 'react-router-dom';
 
-import {ChevronDownIcon, ContentCopyIcon, DownloadOutlineIcon, FolderMoveOutlineIcon, FolderPlusOutlineIcon, PencilOutlineIcon, RestoreIcon, TrashCanOutlineIcon, UploadOutlineIcon} from '@mattermost/compass-icons/components';
+import {AlertOutlineIcon, CheckIcon, ChevronDownIcon, ContentCopyIcon, DownloadOutlineIcon, FolderMoveOutlineIcon, FolderPlusOutlineIcon, PencilOutlineIcon, RestoreIcon, TrashCanOutlineIcon, UploadOutlineIcon} from '@mattermost/compass-icons/components';
 import {Button} from '@mattermost/compass-ui/components/button';
 import {Icon} from '@mattermost/compass-ui/components/icon';
 import type {DriveChatFileSort} from '@mattermost/types/drive';
@@ -125,6 +125,20 @@ const FileExplorer = () => {
     const chatSort = useMemo(() => ({by: CHAT_SORTS[sort.by] ?? 'create_at', desc: sort.desc}), [sort]);
     const data = useExplorerData(channel?.id, folderId, chatSort);
     const uploads = useExplorerUploads(data.reload);
+
+    // Opening a folder unmounts the focused item; keep keyboard users inside the list, like Explorer.
+    const mainRef = useRef<HTMLElement>(null);
+    const focusedLocation = useRef('');
+    useEffect(() => {
+        const location = `${channelName ?? ''}/${folderId}`;
+        if (data.loading || focusedLocation.current === location) {
+            return;
+        }
+        focusedLocation.current = location;
+        if (!document.activeElement || document.activeElement === document.body) {
+            (mainRef.current?.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]') ?? mainRef.current)?.focus();
+        }
+    });
 
     useEffect(() => {
         dispatch(selectLhsItem(LhsItemType.Page, LhsPage.Files));
@@ -259,7 +273,7 @@ const FileExplorer = () => {
     const toast = (message: string, undo?: () => void) => dispatch(openModal({
         modalId: ModalIdentifiers.INFO_TOAST,
         dialogType: InfoToast,
-        dialogProps: {content: {message, undo}},
+        dialogProps: {content: {icon: undo ? <CheckIcon size={18}/> : <AlertOutlineIcon size={18}/>, message, undo}},
     }));
 
     /** Runs a server call, shows its error as a toast, and refreshes the folder. */
@@ -661,6 +675,8 @@ const FileExplorer = () => {
                     onDrop={dropOn}
                 />
                 <main
+                    ref={mainRef}
+                    tabIndex={-1}
                     className={classNames('FileExplorer__main', {dropTarget: drop?.key === ''})}
                     {...dragHandlers}
                     onScroll={onScroll}
@@ -702,6 +718,7 @@ const FileExplorer = () => {
             <input
                 ref={fileInput}
                 type='file'
+                className='FileExplorer__picker'
                 multiple={true}
                 hidden={true}
                 onChange={onPick}
@@ -709,6 +726,7 @@ const FileExplorer = () => {
             <input
                 ref={folderInput}
                 type='file'
+                className='FileExplorer__picker'
                 hidden={true}
                 onChange={onPick}
                 {...{webkitdirectory: ''}}

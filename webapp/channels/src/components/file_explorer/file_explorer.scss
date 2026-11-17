@@ -525,3 +525,8 @@
         color: var(--error-text);
     }
 }
+
+// The global form styles give file inputs display: block, which beats the hidden attribute.
+input.FileExplorer__picker[type='file'] {
+    display: none;
+}

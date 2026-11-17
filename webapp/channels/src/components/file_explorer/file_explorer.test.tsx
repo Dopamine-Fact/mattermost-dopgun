@@ -187,6 +187,17 @@ describe('FileExplorer', () => {
             await waitFor(() => expect(move).toHaveBeenCalledWith('c1', ['i1'], 'c1', 'd1'));
         });
 
+        test('opening a folder moves keyboard focus to its first item, or to the empty list', async () => {
+            const first = renderAt('/team/files/town');
+            await waitFor(() => expect(screen.getByRole('gridcell', {name: 'Chat attachments'})).toHaveFocus());
+            first.unmount();
+
+            // useHistory is mocked in unit tests, so open the folder directly.
+            renderAt('/team/files/town/d1');
+            await screen.findByText('This folder is empty. Drop files here or use Upload.');
+            await waitFor(() => expect(screen.getByRole('main')).toHaveFocus());
+        });
+
         test('a chat attachment copied with Ctrl+C is pasted as a file id', async () => {
             jest.spyOn(Client4, 'getDriveChatFiles').mockResolvedValue([fileInfo('f9', 'chat.png', 10)]);
             const copy = jest.spyOn(Client4, 'copyDriveItems').mockResolvedValue({status: 'OK'});
@@ -213,6 +224,9 @@ describe('FileExplorer', () => {
 
             await waitFor(() => expect(del).toHaveBeenCalledWith('c1', ['i1'], false));
             await waitFor(() => expect(lastModal().dialogProps.content.message).toBe('Moved 1 item to the Recycle Bin'));
+
+            // InfoToast lays its first column out for an icon; without one the message wraps word by word.
+            expect(React.isValidElement(lastModal().dialogProps.content.icon)).toBe(true);
             await act(async () => lastModal().dialogProps.content.undo());
             expect(restore).toHaveBeenCalledWith('c1', ['i1']);
         });
@@ -236,6 +250,7 @@ describe('FileExplorer', () => {
             fireEvent.click(cell);
             fireEvent.keyDown(cell, {key: 'Delete'});
             await waitFor(() => expect(lastModal().dialogProps.content.message).toBe('nope from server'));
+            expect(React.isValidElement(lastModal().dialogProps.content.icon)).toBe(true);
         });
 
         test('context menu Rename is only enabled for items I may change', async () => {
@@ -268,6 +283,10 @@ describe('FileExplorer', () => {
             fireEvent.keyDown(input, {key: 'Enter'});
 
             await waitFor(() => expect(rename).toHaveBeenCalledWith('c1', 'i1', 'new.txt'));
+
+            // Keyboard focus returns to the item, so the next shortcut still works.
+            expect(input).not.toBeInTheDocument();
+            expect(cell).toHaveFocus();
         });
 
         const dataTransfer = (files: File[] = []) => {
