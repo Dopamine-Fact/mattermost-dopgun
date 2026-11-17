@@ -5674,6 +5674,22 @@ func (s *TimerLayerFileInfoStore) Search(rctx request.CTX, paramsList []*model.S
 	return result, err
 }
 
+func (s *TimerLayerFileInfoStore) SetChannelId(rctx request.CTX, fileID string, channelID string) error {
+	start := time.Now()
+
+	err := s.FileInfoStore.SetChannelId(rctx, fileID, channelID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("FileInfoStore.SetChannelId", success, elapsed)
+	}
+	return err
+}
+
 func (s *TimerLayerFileInfoStore) SetContent(rctx request.CTX, fileID string, content string) error {
 	start := time.Now()
 

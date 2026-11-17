@@ -491,6 +491,17 @@ func (fs SqlFileInfoStore) SetContent(rctx request.CTX, fileId, content string) 
 	return nil
 }
 
+func (fs SqlFileInfoStore) SetChannelId(rctx request.CTX, fileID, channelID string) error {
+	if _, err := fs.GetMaster().ExecBuilder(fs.getQueryBuilder().
+		Update("FileInfo").
+		Set("ChannelId", channelID).
+		Set("UpdateAt", model.GetMillis()).
+		Where(sq.Eq{"Id": fileID, "PostId": ""})); err != nil {
+		return errors.Wrapf(err, "failed to update FileInfo channel with id=%s", fileID)
+	}
+	return nil
+}
+
 func (fs SqlFileInfoStore) DeleteForPost(rctx request.CTX, postId string) (string, error) {
 	if _, err := fs.GetMaster().Exec(
 		`UPDATE

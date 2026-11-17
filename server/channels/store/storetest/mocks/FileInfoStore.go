@@ -603,6 +603,24 @@ func (_m *FileInfoStore) Search(rctx request.CTX, paramsList []*model.SearchPara
 	return r0, r1
 }
 
+// SetChannelId provides a mock function with given fields: rctx, fileID, channelID
+func (_m *FileInfoStore) SetChannelId(rctx request.CTX, fileID string, channelID string) error {
+	ret := _m.Called(rctx, fileID, channelID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetChannelId")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(request.CTX, string, string) error); ok {
+		r0 = rf(rctx, fileID, channelID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // SetContent provides a mock function with given fields: rctx, fileID, content
 func (_m *FileInfoStore) SetContent(rctx request.CTX, fileID string, content string) error {
 	ret := _m.Called(rctx, fileID, content)

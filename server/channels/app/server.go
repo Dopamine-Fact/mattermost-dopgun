@@ -2104,6 +2104,11 @@ func runLeaderTasks(a *App) {
 		return model.CreateRecurringTaskFromNextIntervalTime("Daily report tick", fn, time.Minute)
 	})
 
+	a.ch.driveTrashTask.runOnLeader(a, "Drive trash purge", func() *model.ScheduledTask {
+		fn := func() { a.RunDriveTrashPurge(rctx, time.Now()) }
+		return model.CreateRecurringTaskFromNextIntervalTime("Drive trash purge", fn, time.Hour)
+	})
+
 	a.ch.scheduledPostTask.runOnLeader(a, "Process Scheduled Posts", func() *model.ScheduledTask {
 		jobInterval := scheduledPostJobInterval
 		if *a.Config().ServiceSettings.EnableTesting {

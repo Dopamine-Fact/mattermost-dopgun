@@ -164,6 +164,14 @@ func testDriveItemUpdateMany(t *testing.T, ss store.Store) {
 	items, err := ss.DriveItem().GetChildren(channelID, dst.Id, 100)
 	require.NoError(t, err)
 	require.Equal(t, []string{"x.txt", "y.txt"}, driveNames(items))
+
+	// a cross-channel move changes ChannelId
+	otherID := model.NewId()
+	x.ChannelId, x.ParentId = otherID, ""
+	require.NoError(t, ss.DriveItem().UpdateMany([]*model.DriveItem{x}))
+	got, err := ss.DriveItem().Get(x.Id)
+	require.NoError(t, err)
+	require.Equal(t, otherID, got.ChannelId)
 }
 
 func testDriveItemTrash(t *testing.T, ss store.Store) {

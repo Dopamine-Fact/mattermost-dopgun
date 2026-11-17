@@ -130,6 +130,7 @@ func (s *SqlDriveItemStore) NameExists(channelID, parentID, name, excludeID stri
 func (s *SqlDriveItemStore) updateQuery(item *model.DriveItem) sq.UpdateBuilder {
 	return s.getQueryBuilder().
 		Update("DriveItems").
+		Set("ChannelId", item.ChannelId).
 		Set("ParentId", item.ParentId).
 		Set("Name", item.Name).
 		Set("UpdateAt", item.UpdateAt).

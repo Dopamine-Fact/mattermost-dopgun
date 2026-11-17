@@ -820,6 +820,8 @@ type FileInfoStore interface {
 	PermanentDeleteBatch(rctx request.CTX, endTime int64, limit int64) (int64, error)
 	PermanentDeleteByUser(rctx request.CTX, userID string) (int64, error)
 	SetContent(rctx request.CTX, fileID, content string) error
+	// SetChannelId moves an unattached file (PostId "", such as a channel drive file) to another channel.
+	SetChannelId(rctx request.CTX, fileID, channelID string) error
 	Search(rctx request.CTX, paramsList []*model.SearchParams, userID, teamID string, page, perPage int) (*model.FileInfoList, error)
 	CountAll() (int64, error)
 	GetFilesBatchForIndexing(startTime int64, startFileID string, includeDeleted bool, limit int) ([]*model.FileForIndexing, error)

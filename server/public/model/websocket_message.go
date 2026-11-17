@@ -89,6 +89,7 @@ const (
 	WebsocketEventChannelBookmarkUpdated              WebsocketEventType = "channel_bookmark_updated"
 	WebsocketEventChannelBookmarkDeleted              WebsocketEventType = "channel_bookmark_deleted"
 	WebsocketEventChannelBookmarkSorted               WebsocketEventType = "channel_bookmark_sorted"
+	WebsocketEventDriveChanged                        WebsocketEventType = "drive_changed"
 	WebsocketEventChannelAccessControlUpdated         WebsocketEventType = "channel_access_control_updated"
 	WebsocketEventPermissionPolicyUpdated             WebsocketEventType = "permission_policy_updated"
 	WebsocketEventTeamAccessControlUpdated            WebsocketEventType = "team_access_control_updated"

@@ -3913,6 +3913,10 @@ func (a *App) PermanentDeleteChannel(rctx request.CTX, channel *model.Channel) *
 		return model.NewAppError("PermanentDeleteChannel", "app.post_persistent_notification.delete_by_channel.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
 	}
 
+	if appErr := a.permanentDeleteDriveChannel(rctx, channel.Id); appErr != nil {
+		return appErr
+	}
+
 	deleteAt := model.GetMillis()
 
 	if nErr := a.Srv().Store().Channel().PermanentDelete(rctx, channel.Id); nErr != nil {
