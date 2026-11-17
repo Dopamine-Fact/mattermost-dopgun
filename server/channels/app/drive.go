@@ -53,6 +53,7 @@ func driveStoreError(where string, err error) *model.AppError {
 	var appErr *model.AppError
 	var nf *store.ErrNotFound
 	var conflict *store.ErrConflict
+	var unique *store.ErrUniqueConstraint
 	switch {
 	case errors.As(err, &appErr):
 		return appErr
@@ -60,6 +61,8 @@ func driveStoreError(where string, err error) *model.AppError {
 		return driveError(where, "not_found", http.StatusNotFound).Wrap(err)
 	case errors.As(err, &conflict):
 		return driveError(where, "name_exists", http.StatusBadRequest).Wrap(err)
+	case errors.As(err, &unique):
+		return driveError(where, "invalid_file", http.StatusBadRequest).Wrap(err)
 	}
 	return driveError(where, "store", http.StatusInternalServerError).Wrap(err)
 }
@@ -218,6 +221,27 @@ func (a *App) uniqueDriveName(channelID, parentID, name string, isFolder bool, t
 	return "", driveError("uniqueDriveName", "name_exists", http.StatusBadRequest)
 }
 
+// saveDriveItem saves item under its name, or the next free "name (n)". A concurrent save can take
+// the name between the check and the insert; the unique index refuses it and the next number is tried.
+func (a *App) saveDriveItem(item *model.DriveItem, taken map[string]bool) (*model.DriveItem, *model.AppError) {
+	want := item.Name
+	for range 20 {
+		name, appErr := a.uniqueDriveName(item.ChannelId, item.ParentId, want, item.IsFolder(), taken)
+		if appErr != nil {
+			return nil, appErr
+		}
+		item.Name = name
+		saved, err := a.Srv().Store().DriveItem().Save(item)
+		if conflict := new(store.ErrConflict); !errors.As(err, &conflict) {
+			if err != nil {
+				return nil, driveStoreError("saveDriveItem", err)
+			}
+			return saved, nil
+		}
+	}
+	return nil, driveError("saveDriveItem", "name_exists", http.StatusBadRequest)
+}
+
 // driveSafeName turns an uploaded file name into a valid drive item name.
 func driveSafeName(name string) string {
 	name = strings.Map(func(r rune) rune {
@@ -323,13 +347,9 @@ func (a *App) CreateDriveFolder(rctx request.CTX, userID string, channel *model.
 	if _, appErr := a.driveFolderPath(channel, parentID); appErr != nil {
 		return nil, appErr
 	}
-	name, appErr := a.uniqueDriveName(channel.Id, parentID, name, true, nil)
+	item, appErr := a.saveDriveItem(&model.DriveItem{ChannelId: channel.Id, ParentId: parentID, Type: model.DriveItemTypeFolder, Name: name, CreatorId: userID}, nil)
 	if appErr != nil {
 		return nil, appErr
-	}
-	item, err := a.Srv().Store().DriveItem().Save(&model.DriveItem{ChannelId: channel.Id, ParentId: parentID, Type: model.DriveItemTypeFolder, Name: name, CreatorId: userID})
-	if err != nil {
-		return nil, driveStoreError("CreateDriveFolder", err)
 	}
 	a.publishDriveChanged(channel.Id, parentID)
 	return item, nil
@@ -352,13 +372,9 @@ func (a *App) AddDriveFile(rctx request.CTX, userID string, channel *model.Chann
 	if _, appErr := a.driveFolderPath(channel, parentID); appErr != nil {
 		return nil, appErr
 	}
-	name, appErr := a.uniqueDriveName(channel.Id, parentID, driveSafeName(info.Name), false, nil)
+	item, appErr := a.saveDriveItem(&model.DriveItem{ChannelId: channel.Id, ParentId: parentID, Type: model.DriveItemTypeFile, Name: driveSafeName(info.Name), FileId: fileID, CreatorId: userID}, nil)
 	if appErr != nil {
 		return nil, appErr
-	}
-	item, err := a.Srv().Store().DriveItem().Save(&model.DriveItem{ChannelId: channel.Id, ParentId: parentID, Type: model.DriveItemTypeFile, Name: name, FileId: fileID, CreatorId: userID})
-	if err != nil {
-		return nil, driveStoreError("AddDriveFile", err)
 	}
 	if appErr := a.syncDriveFileName(rctx, item); appErr != nil {
 		return nil, appErr
@@ -522,9 +538,13 @@ func (a *App) copyDriveFile(rctx request.CTX, userID string, info *model.FileInf
 		cleanup()
 		return driveStoreError("copyDriveFile", err)
 	}
-	if _, err := a.Srv().Store().DriveItem().Save(&model.DriveItem{ChannelId: dst.Id, ParentId: parentID, Type: model.DriveItemTypeFile, Name: name, FileId: cp.Id, CreatorId: userID}); err != nil {
+	item, appErr := a.saveDriveItem(&model.DriveItem{ChannelId: dst.Id, ParentId: parentID, Type: model.DriveItemTypeFile, Name: name, FileId: cp.Id, CreatorId: userID}, nil)
+	if appErr != nil {
 		cleanup()
-		return driveStoreError("copyDriveFile", err)
+		return appErr
+	}
+	if item.Name != name {
+		return a.syncDriveFileName(rctx, item)
 	}
 	return nil
 }
@@ -549,13 +569,9 @@ func (a *App) copyDriveTree(rctx request.CTX, userID string, item *model.DriveIt
 			}
 			return a.copyDriveFile(rctx, userID, info, dst, parentID, it.Name, taken)
 		}
-		name, appErr := a.uniqueDriveName(dst.Id, parentID, it.Name, true, taken)
+		folder, appErr := a.saveDriveItem(&model.DriveItem{ChannelId: dst.Id, ParentId: parentID, Type: model.DriveItemTypeFolder, Name: it.Name, CreatorId: userID}, taken)
 		if appErr != nil {
 			return appErr
-		}
-		folder, err := a.Srv().Store().DriveItem().Save(&model.DriveItem{ChannelId: dst.Id, ParentId: parentID, Type: model.DriveItemTypeFolder, Name: name, CreatorId: userID})
-		if err != nil {
-			return driveStoreError("copyDriveTree", err)
 		}
 		inner := map[string]bool{}
 		for _, c := range children[it.Id] {

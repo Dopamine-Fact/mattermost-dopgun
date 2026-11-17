@@ -145,12 +145,19 @@ func TestDriveAPI(t *testing.T) {
 		_, resp, err := client2.GetFile(ctx, item.FileId)
 		require.NoError(t, err)
 		CheckOKStatus(t, resp)
+		// GetFileInfo reads through the FileInfo cache, which the move must invalidate.
+		_, resp, err = client2.GetFileInfo(ctx, item.FileId)
+		require.NoError(t, err)
+		CheckOKStatus(t, resp)
 
 		dst := th.CreatePrivateChannel(t)
 		_, err = th.Client.MoveDriveItems(ctx, th.BasicChannel.Id, []string{item.Id}, dst.Id, "")
 		require.NoError(t, err)
 
 		_, resp, err = client2.GetFile(ctx, item.FileId)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		_, resp, err = client2.GetFileInfo(ctx, item.FileId)
 		require.Error(t, err)
 		CheckForbiddenStatus(t, resp)
 	})

@@ -209,6 +209,11 @@ func testDriveItemGetByFileId(t *testing.T, ss store.Store) {
 	_, err = ss.DriveItem().GetByFileId(model.NewId())
 	var nf *store.ErrNotFound
 	require.ErrorAs(t, err, &nf)
+
+	// one FileInfo belongs to one drive item, even when two adds race
+	_, err = ss.DriveItem().Save(&model.DriveItem{ChannelId: item.ChannelId, Type: model.DriveItemTypeFile, Name: "g.txt", FileId: fileID, CreatorId: model.NewId()})
+	var unique *store.ErrUniqueConstraint
+	require.ErrorAs(t, err, &unique)
 }
 
 func testDriveItemDangling(t *testing.T, rctx request.CTX, ss store.Store) {

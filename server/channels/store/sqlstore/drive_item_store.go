@@ -48,6 +48,9 @@ func (s *SqlDriveItemStore) Save(item *model.DriveItem) (*model.DriveItem, error
 		if IsUniqueConstraintError(err, []string{"idx_driveitems_live_name"}) {
 			return nil, store.NewErrConflict("DriveItem", err, "name="+item.Name)
 		}
+		if IsUniqueConstraintError(err, []string{"idx_driveitems_fileid_unique"}) {
+			return nil, store.NewErrUniqueConstraint("FileId")
+		}
 		return nil, errors.Wrapf(err, "failed to save DriveItem with id=%s", item.Id)
 	}
 	return item, nil

@@ -6,6 +6,7 @@ package app
 import (
 	"bytes"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -110,6 +111,41 @@ func TestDriveNameClash(t *testing.T) {
 	// a file whose FileInfo is already in the drive cannot be added twice
 	_, appErr := th.App.AddDriveFile(th.Context, th.BasicUser.Id, ch, "", clash.FileId)
 	require.NotNil(t, appErr)
+}
+
+func TestDriveConcurrentSameName(t *testing.T) {
+	th := setupDrive(t)
+	ch := th.BasicChannel
+
+	const n = 8
+	var wg sync.WaitGroup
+	errs := make([]*model.AppError, n)
+	for i := range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, errs[i] = th.App.CreateDriveFolder(th.Context, th.BasicUser.Id, ch, "", "Docs")
+		}()
+	}
+	wg.Wait()
+	for _, appErr := range errs {
+		require.Nil(t, appErr)
+	}
+	require.Len(t, driveListNames(t, th, ch, ""), n)
+}
+
+func TestDriveOnlyOpenAndPrivateChannels(t *testing.T) {
+	th := setupDrive(t)
+	for _, typ := range []model.ChannelType{model.ChannelTypeSpace, model.ChannelTypeOpenBoard, model.ChannelTypePrivateBoard} {
+		ch := th.CreateChannel(t, th.BasicTeam)
+		ch.Type = typ
+		_, err := th.App.Srv().Store().Channel().Update(th.Context, ch)
+		require.NoError(t, err)
+		th.App.Srv().Store().Channel().InvalidateChannel(ch.Id)
+
+		_, appErr := th.App.RequireDriveChannel(th.Context, ch.Id)
+		require.NotNil(t, appErr, string(typ))
+	}
 }
 
 func TestDriveRenameRules(t *testing.T) {
