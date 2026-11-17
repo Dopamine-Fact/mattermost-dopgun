@@ -2,7 +2,7 @@
 #
 # Usage: POSTGRES_PASSWORD=... docker compose up -d --build
 #
-# Mattermost's state lives in host folders under MM_ROOT (default /mnt/data/mattermost),
+# Mattermost's state lives in host folders under MM_ROOT=/mnt/data/mattermost,
 # so files, config and plugins can be copied in from an existing install:
 #   MM_ROOT/config          config.json (bring the old one to keep AtRestEncryptKey, PublicLinkSalt, SiteURL...)
 #   MM_ROOT/data            uploaded files
@@ -14,6 +14,8 @@
 # push-proxy, which runs as nobody (65534):
 #   sudo mkdir -p $MM_ROOT/{config,data,logs,plugins,client-plugins} && sudo chown -R 2000:2000 $MM_ROOT
 #   sudo mkdir -p $MM_ROOT/push-proxy/config && sudo chown -R 65534:65534 $MM_ROOT/push-proxy
+# The path is written out in the volumes below instead of ${MM_ROOT:-...}: Coolify's compose
+# parser splits "${VAR:-default}/sub:/target" at the default and mounts the wrong folder.
 services:
   postgres:
     image: postgres:17
@@ -61,11 +63,11 @@ services:
       # Server-to-server only: mobile devices never call the push proxy, so it needs no public domain.
       MM_EMAILSETTINGS_PUSHNOTIFICATIONSERVER: http://push-proxy:8066
     volumes:
-      - ${MM_ROOT:-/mnt/data/mattermost}/config:/mattermost/config
-      - ${MM_ROOT:-/mnt/data/mattermost}/data:/mattermost/data
-      - ${MM_ROOT:-/mnt/data/mattermost}/logs:/mattermost/logs
-      - ${MM_ROOT:-/mnt/data/mattermost}/plugins:/mattermost/plugins
-      - ${MM_ROOT:-/mnt/data/mattermost}/client-plugins:/mattermost/client/plugins
+      - /mnt/data/mattermost/config:/mattermost/config
+      - /mnt/data/mattermost/data:/mattermost/data
+      - /mnt/data/mattermost/logs:/mattermost/logs
+      - /mnt/data/mattermost/plugins:/mattermost/plugins
+      - /mnt/data/mattermost/client-plugins:/mattermost/client/plugins
     security_opt:
       - no-new-privileges:true
 
@@ -79,7 +81,7 @@ services:
     environment:
       TZ: ${TZ:-Europe/Istanbul}
     volumes:
-      - ${MM_ROOT:-/mnt/data/mattermost}/push-proxy/config:/mattermost-push-proxy/config
+      - /mnt/data/mattermost/push-proxy/config:/mattermost-push-proxy/config
     security_opt:
       - no-new-privileges:true
 
