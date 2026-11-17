@@ -123,8 +123,8 @@ func teamLocation(where string, team *model.Team) (*time.Location, *model.AppErr
 	return loc, nil
 }
 
-func (a *App) requireDailyReportAssignee(where, teamID, userID string) *model.AppError {
-	ok, appErr := a.IsDailyReportAssignee(teamID, userID)
+func (a *App) requireDailyReportAssignee(rctx request.CTX, where, teamID, userID string) *model.AppError {
+	ok, appErr := a.IsDailyReportAssignee(rctx, teamID, userID)
 	if appErr != nil {
 		return appErr
 	}
@@ -140,7 +140,7 @@ func (a *App) SubmitDailyReport(rctx request.CTX, teamID, userID, message string
 	if appErr != nil {
 		return nil, appErr
 	}
-	if appErr = a.requireDailyReportAssignee("SubmitDailyReport", teamID, userID); appErr != nil {
+	if appErr = a.requireDailyReportAssignee(rctx, "SubmitDailyReport", teamID, userID); appErr != nil {
 		return nil, appErr
 	}
 	loc, appErr := teamLocation("SubmitDailyReport", team)
@@ -187,7 +187,7 @@ func (a *App) UpdateDailyReport(rctx request.CTX, reportID, userID, message stri
 	if appErr != nil {
 		return nil, appErr
 	}
-	if appErr = a.requireDailyReportAssignee("UpdateDailyReport", report.TeamId, userID); appErr != nil {
+	if appErr = a.requireDailyReportAssignee(rctx, "UpdateDailyReport", report.TeamId, userID); appErr != nil {
 		return nil, appErr
 	}
 	loc, appErr := teamLocation("UpdateDailyReport", team)
@@ -280,6 +280,9 @@ func (a *App) reviewDailyReport(rctx request.CTX, where, reportID, status string
 		if current.Status == status { // another reviewer got there first; theirs stands
 			return current, false, nil
 		}
+		if status == model.DailyReportStatusApproved && current.Status == model.DailyReportStatusRejected {
+			return nil, false, model.NewAppError(where, "app.daily_report.approve_rejected.app_error", nil, "id="+reportID, http.StatusConflict).Wrap(err)
+		}
 		return nil, false, model.NewAppError(where, "app.daily_report.changed.app_error", nil, "id="+reportID, http.StatusConflict).Wrap(err)
 	}
 	if err != nil {
@@ -310,22 +313,26 @@ func (a *App) postDailyReportRejected(rctx request.CTX, report *model.DailyRepor
 	return a.postDailyReportDM(rctx, author, T("app.daily_report.rejected_dm", map[string]any{
 		"Date":     report.Date,
 		"Reviewer": reviewer.Username,
-		"Reason":   report.RejectReason,
+		"Reason":   strings.ReplaceAll(report.RejectReason, "\n", "\n> "), // the template quotes the first line
 		"Link":     fmt.Sprintf("%s/%s/daily_reports", a.GetSiteURL(), team.Name),
 	}))
 }
 
-// GetDailyReportAssignees lists who must report for the team; empty means every member.
-func (a *App) GetDailyReportAssignees(teamID string) ([]string, *model.AppError) {
+// GetDailyReportAssignees lists who must report for the team; empty means every member. Listed users who have since
+// left the team, been deactivated or turned into bots no longer count.
+func (a *App) GetDailyReportAssignees(rctx request.CTX, teamID string) ([]string, *model.AppError) {
 	ids, err := a.Srv().Store().DailyReport().GetAssignees(teamID)
+	if err == nil {
+		ids, err = a.activeDailyReportUsers(rctx, teamID, ids)
+	}
 	if err != nil {
 		return nil, dailyReportStoreError("GetDailyReportAssignees", teamID, err)
 	}
 	return ids, nil
 }
 
-func (a *App) IsDailyReportAssignee(teamID, userID string) (bool, *model.AppError) {
-	ids, appErr := a.GetDailyReportAssignees(teamID)
+func (a *App) IsDailyReportAssignee(rctx request.CTX, teamID, userID string) (bool, *model.AppError) {
+	ids, appErr := a.GetDailyReportAssignees(rctx, teamID)
 	if appErr != nil {
 		return false, appErr
 	}
@@ -337,33 +344,43 @@ func (a *App) SetDailyReportAssignees(rctx request.CTX, teamID string, userIDs [
 	if _, appErr := a.RequireDailyReportsEnabled(teamID); appErr != nil {
 		return nil, appErr
 	}
-	keep := []string{}
-	if len(userIDs) > 0 {
-		members, err := a.Srv().Store().Team().GetMembersByIds(teamID, userIDs, nil)
-		if err != nil {
-			return nil, dailyReportStoreError("SetDailyReportAssignees", teamID, err)
-		}
-		memberIDs := make([]string, 0, len(members))
-		for _, m := range members {
-			if m.DeleteAt == 0 {
-				memberIDs = append(memberIDs, m.UserId)
-			}
-		}
-		users, err := a.Srv().Store().User().GetProfileByIds(rctx, memberIDs, &store.UserGetByIdsOpts{}, false)
-		if err != nil {
-			return nil, dailyReportStoreError("SetDailyReportAssignees", teamID, err)
-		}
-		for _, u := range users {
-			if !u.IsBot && u.DeleteAt == 0 && !slices.Contains(keep, u.Id) {
-				keep = append(keep, u.Id)
-			}
-		}
-		slices.Sort(keep)
+	keep, err := a.activeDailyReportUsers(rctx, teamID, userIDs)
+	if err != nil {
+		return nil, dailyReportStoreError("SetDailyReportAssignees", teamID, err)
 	}
 	if err := a.Srv().Store().DailyReport().SetAssignees(teamID, keep); err != nil {
 		return nil, dailyReportStoreError("SetDailyReportAssignees", teamID, err)
 	}
 	a.publishTaskEvent(rctx, model.WebsocketDailyReportUpdated, teamID, "assignees", keep, "")
+	return keep, nil
+}
+
+// activeDailyReportUsers keeps the ids of active, non-bot team members, sorted and without duplicates.
+func (a *App) activeDailyReportUsers(rctx request.CTX, teamID string, userIDs []string) ([]string, error) {
+	keep := []string{}
+	if len(userIDs) == 0 {
+		return keep, nil
+	}
+	members, err := a.Srv().Store().Team().GetMembersByIds(teamID, userIDs, nil)
+	if err != nil {
+		return nil, err
+	}
+	memberIDs := make([]string, 0, len(members))
+	for _, m := range members {
+		if m.DeleteAt == 0 {
+			memberIDs = append(memberIDs, m.UserId)
+		}
+	}
+	users, err := a.Srv().Store().User().GetProfileByIds(rctx, memberIDs, &store.UserGetByIdsOpts{}, false)
+	if err != nil {
+		return nil, err
+	}
+	for _, u := range users {
+		if !u.IsBot && u.DeleteAt == 0 && !slices.Contains(keep, u.Id) {
+			keep = append(keep, u.Id)
+		}
+	}
+	slices.Sort(keep)
 	return keep, nil
 }
 
@@ -489,9 +506,9 @@ func (a *App) sendDailyReportReminders(rctx request.CTX, team *model.Team, now t
 		logger.Error("Daily report reminders: failed to load the reports", mlog.Err(err))
 		return
 	}
-	assignees, err := a.Srv().Store().DailyReport().GetAssignees(team.Id)
-	if err != nil {
-		logger.Error("Daily report reminders: failed to load the assignees", mlog.Err(err))
+	assignees, appErr := a.GetDailyReportAssignees(rctx, team.Id)
+	if appErr != nil {
+		logger.Error("Daily report reminders: failed to load the assignees", mlog.Err(appErr))
 		return
 	}
 	reported := make(map[string]bool, len(reports))

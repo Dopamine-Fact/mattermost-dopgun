@@ -236,7 +236,7 @@ func getDailyReportAssignees(c *Context, w http.ResponseWriter, r *http.Request)
 	if requireDailyReportTeam(c, c.Params.TeamId); c.Err != nil {
 		return
 	}
-	ids, appErr := c.App.GetDailyReportAssignees(c.Params.TeamId)
+	ids, appErr := c.App.GetDailyReportAssignees(c.AppContext, c.Params.TeamId)
 	if appErr != nil {
 		c.Err = appErr
 		return
@@ -266,13 +266,14 @@ func setDailyReportAssignees(c *Context, w http.ResponseWriter, r *http.Request)
 	auditRec := c.MakeAuditRecord(model.AuditEventSetDailyReportAssignees, model.AuditStatusFail)
 	defer c.LogAuditRec(auditRec)
 	model.AddEventParameterToAuditRec(auditRec, "team_id", c.Params.TeamId)
-	model.AddEventParameterToAuditRec(auditRec, "user_ids", body.UserIDs)
 
 	ids, appErr := c.App.SetDailyReportAssignees(c.AppContext, c.Params.TeamId, body.UserIDs)
 	if appErr != nil {
 		c.Err = appErr
 		return
 	}
+	// The ids actually stored, not the raw request: unknown and non-member ids are dropped.
+	model.AddEventParameterToAuditRec(auditRec, "user_ids", ids)
 	auditRec.Success()
 	writeTaskJSON(w, http.StatusOK, dailyReportAssigneesBody{UserIDs: ids})
 }

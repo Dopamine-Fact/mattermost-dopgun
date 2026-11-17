@@ -110,7 +110,8 @@ function ReportCard({editorId, teamId, date, title, report, save, onError}: Edit
     }, [version, report, hasDraft]);
 
     const submit = async () => {
-        if (!message.trim() || busy) {
+        // Same guard as the disabled Send button, since Ctrl+Enter reaches here without it.
+        if (!message.trim() || message.length > MESSAGE_MAX_LENGTH || busy) {
             return;
         }
         setBusy(true);

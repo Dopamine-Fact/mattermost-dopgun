@@ -7920,6 +7920,11 @@
     "description": "Internal API error converting a generic property field into a User Attribute field; 'User Attribute' is the custom profile attributes feature name."
   },
   {
+    "id": "app.daily_report.approve_rejected.app_error",
+    "translation": "This report was sent back. Its author must fix it before it can be approved.",
+    "description": "Error returned when a reviewer tries to approve a daily report that was rejected (sent back to its author) and not yet edited."
+  },
+  {
     "id": "app.daily_report.changed.app_error",
     "translation": "This report changed since you opened it. Refresh and review it again.",
     "description": "Error returned when a reviewer approves or rejects a daily report that its author edited (or someone else reviewed) after the reviewer loaded it."

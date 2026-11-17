@@ -5,6 +5,7 @@ package api4
 
 import (
 	"context"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -94,7 +95,7 @@ func TestDailyReportsAPI(t *testing.T) {
 		require.Contains(t, string(csv), th.BasicUser.Username)
 		require.NotContains(t, string(csv), th.SystemAdminUser.Username)
 
-		_, resp, err = th.Client.ApproveDailyReport(ctx, report.Id)
+		_, resp, err = th.Client.ApproveDailyReport(ctx, report.Id, 0)
 		require.Error(t, err)
 		CheckForbiddenStatus(t, resp)
 
@@ -102,7 +103,7 @@ func TestDailyReportsAPI(t *testing.T) {
 		otherTeam := th.CreateTeamWithClient(t, th.SystemAdminClient)
 		enableTeam(otherTeam.Id)
 		outsiderClient, _ := teamAdminClient(otherTeam)
-		_, resp, err = outsiderClient.ApproveDailyReport(ctx, report.Id)
+		_, resp, err = outsiderClient.ApproveDailyReport(ctx, report.Id, 0)
 		require.Error(t, err)
 		CheckForbiddenStatus(t, resp)
 		still, appErr := th.App.GetDailyReport(report.Id)
@@ -111,7 +112,10 @@ func TestDailyReportsAPI(t *testing.T) {
 
 		// A non-sysadmin team admin of the report's team can.
 		adminClient, admin := teamAdminClient(th.BasicTeam)
-		approved, _, err := adminClient.ApproveDailyReport(ctx, report.Id)
+		_, resp, err = adminClient.ApproveDailyReport(ctx, report.Id, report.UpdateAt-1)
+		require.Error(t, err)
+		require.Equal(t, http.StatusConflict, resp.StatusCode)
+		approved, _, err := adminClient.ApproveDailyReport(ctx, report.Id, report.UpdateAt)
 		require.NoError(t, err)
 		require.Equal(t, model.DailyReportStatusApproved, approved.Status)
 		require.Equal(t, admin.Id, approved.ApprovedBy)
@@ -127,15 +131,18 @@ func TestDailyReportsAPI(t *testing.T) {
 		report, _, err := th.Client.SubmitDailyReport(ctx, teamID, "v1")
 		require.NoError(t, err)
 
-		_, resp, err := th.Client.RejectDailyReport(ctx, report.Id, "nope")
+		_, resp, err := th.Client.RejectDailyReport(ctx, report.Id, "nope", 0)
 		require.Error(t, err)
 		CheckForbiddenStatus(t, resp)
 
 		adminClient, admin := teamAdminClient(th.BasicTeam)
-		_, resp, err = adminClient.RejectDailyReport(ctx, report.Id, "  ")
+		_, resp, err = adminClient.RejectDailyReport(ctx, report.Id, "  ", 0)
 		require.Error(t, err)
 		CheckBadRequestStatus(t, resp)
-		rejected, _, err := adminClient.RejectDailyReport(ctx, report.Id, "add details")
+		_, resp, err = adminClient.RejectDailyReport(ctx, report.Id, "add details", report.UpdateAt-1)
+		require.Error(t, err)
+		require.Equal(t, http.StatusConflict, resp.StatusCode)
+		rejected, _, err := adminClient.RejectDailyReport(ctx, report.Id, "add details", report.UpdateAt)
 		require.NoError(t, err)
 		require.Equal(t, model.DailyReportStatusRejected, rejected.Status)
 		require.Equal(t, admin.Id, rejected.RejectedBy)
@@ -164,8 +171,8 @@ func TestDailyReportsAPI(t *testing.T) {
 		_, resp, err = th.SystemAdminClient.SubmitDailyReport(ctx, teamID, "x")
 		require.Error(t, err)
 		CheckForbiddenStatus(t, resp)
-		ids, _, err = adminClient.SetDailyReportAssignees(ctx, teamID, []string{})
-		require.NoError(t, err)
+		ids, _, err = adminClient.SetDailyReportAssignees(ctx, teamID, nil)
+		require.NoError(t, err, "nil means everyone, like an empty list")
 		require.Empty(t, ids)
 	})
 

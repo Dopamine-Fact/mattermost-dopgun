@@ -193,6 +193,57 @@ func TestRejectedNotAutoApproved(t *testing.T) {
 	assert.Equal(t, model.DailyReportStatusRejected, got.Status)
 }
 
+func TestRejectDailyReportMultilineReason(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	team := enableDailyReports(t, th)
+
+	report, appErr := th.App.SubmitDailyReport(th.Context, team.Id, th.BasicUser.Id, "msg")
+	require.Nil(t, appErr)
+	_, appErr = th.App.RejectDailyReport(th.Context, report.Id, th.BasicUser2.Id, "first line\nsecond line", 0)
+	require.Nil(t, appErr)
+	dms := strings.Join(systemBotDMTexts(t, th, th.BasicUser), "\n")
+	assert.Contains(t, dms, "> first line\n> second line", "every line of the reason stays in the quote")
+}
+
+func TestApproveRejectedDailyReport(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	team := enableDailyReports(t, th)
+
+	report, appErr := th.App.SubmitDailyReport(th.Context, team.Id, th.BasicUser.Id, "msg")
+	require.Nil(t, appErr)
+	_, appErr = th.App.RejectDailyReport(th.Context, report.Id, th.BasicUser2.Id, "no", 0)
+	require.Nil(t, appErr)
+	_, appErr = th.App.ApproveDailyReport(th.Context, report.Id, th.BasicUser2.Id, 0)
+	require.NotNil(t, appErr)
+	assert.Equal(t, "app.daily_report.approve_rejected.app_error", appErr.Id)
+	assert.Equal(t, 409, appErr.StatusCode)
+}
+
+func TestDailyReportAssigneesIgnoreDeparted(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	team := enableDailyReports(t, th)
+
+	_, appErr := th.App.SetDailyReportAssignees(th.Context, team.Id, []string{th.BasicUser2.Id})
+	require.Nil(t, appErr)
+	require.Nil(t, th.App.RemoveUserFromTeam(th.Context, team.Id, th.BasicUser2.Id, th.SystemAdminUser.Id))
+
+	ids, appErr := th.App.GetDailyReportAssignees(th.Context, team.Id)
+	require.Nil(t, appErr)
+	assert.Empty(t, ids, "a listed user who left the team no longer counts")
+	ok, appErr := th.App.IsDailyReportAssignee(th.Context, team.Id, th.BasicUser.Id)
+	require.Nil(t, appErr)
+	assert.True(t, ok, "nobody left on the list means everyone reports")
+
+	// 2026-11-16 is a Monday, 10 minutes before the 18:00 deadline.
+	loc, err := time.LoadLocation("Europe/Istanbul")
+	require.NoError(t, err)
+	th.App.RunDailyReportTick(th.Context, time.Date(2026, 11, 16, 17, 50, 0, 0, loc))
+	assert.Contains(t, strings.Join(systemBotDMTexts(t, th, th.BasicUser), "\n"), "18:00")
+}
+
 func TestUpdateDailyReportNotAuthor(t *testing.T) {
 	mainHelper.Parallel(t)
 	th := Setup(t).InitBasic(t)
@@ -215,14 +266,14 @@ func TestDailyReportAssignees(t *testing.T) {
 	_, _, appErr := th.App.AddUserToTeam(th.Context, team.Id, bot.UserId, "")
 	require.Nil(t, appErr)
 
-	ok, appErr := th.App.IsDailyReportAssignee(team.Id, th.BasicUser.Id)
+	ok, appErr := th.App.IsDailyReportAssignee(th.Context, team.Id, th.BasicUser.Id)
 	require.Nil(t, appErr)
 	assert.True(t, ok, "an empty list means everyone")
 
 	ids, appErr := th.App.SetDailyReportAssignees(th.Context, team.Id, []string{th.BasicUser2.Id, outsider.Id, bot.UserId, th.BasicUser2.Id})
 	require.Nil(t, appErr)
 	assert.Equal(t, []string{th.BasicUser2.Id}, ids, "non-members and bots are dropped, duplicates collapsed")
-	got, appErr := th.App.GetDailyReportAssignees(team.Id)
+	got, appErr := th.App.GetDailyReportAssignees(th.Context, team.Id)
 	require.Nil(t, appErr)
 	assert.Equal(t, ids, got)
 

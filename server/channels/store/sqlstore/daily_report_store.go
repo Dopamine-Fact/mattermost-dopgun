@@ -107,9 +107,7 @@ func (s *SqlDailyReportStore) Update(r *model.DailyReport) (*model.DailyReport, 
 		Set("ApprovedAt", r.ApprovedAt).
 		Set("Edited", r.Edited).
 		Set("PreviousMessage", r.PreviousMessage).
-		Set("RejectedBy", r.RejectedBy).
-		Set("RejectedAt", r.RejectedAt).
-		Set("RejectReason", r.RejectReason).
+		// The rejection columns belong to Reject alone: an edit that read the report before a reject must not erase it.
 		Set("UpdateAt", r.UpdateAt).
 		Where(sq.Eq{"Id": r.Id}))
 	if err != nil {

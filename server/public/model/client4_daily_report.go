@@ -39,8 +39,10 @@ func (c *Client4) SubmitDailyReport(ctx context.Context, teamID, message string)
 	return DecodeJSONFromResponse[*DailyReport](r)
 }
 
-func (c *Client4) ApproveDailyReport(ctx context.Context, reportID string) (*DailyReport, *Response, error) {
-	r, err := c.doAPIPost(ctx, newClientRoute("daily_reports").Join(reportID, "approve"), "")
+// ApproveDailyReport approves a pending report. updateAt > 0 is the version the reviewer saw: if the report changed
+// since, it is a 409 and nothing happens. 0 skips that check.
+func (c *Client4) ApproveDailyReport(ctx context.Context, reportID string, updateAt int64) (*DailyReport, *Response, error) {
+	r, err := c.doAPIPostJSON(ctx, newClientRoute("daily_reports").Join(reportID, "approve"), map[string]int64{"update_at": updateAt})
 	if err != nil {
 		return nil, BuildResponse(r), err
 	}
@@ -69,8 +71,9 @@ func (c *Client4) UpdateDailyReport(ctx context.Context, reportID, message strin
 	return DecodeJSONFromResponse[*DailyReport](r)
 }
 
-func (c *Client4) RejectDailyReport(ctx context.Context, reportID, reason string) (*DailyReport, *Response, error) {
-	r, err := c.doAPIPostJSON(ctx, newClientRoute("daily_reports").Join(reportID, "reject"), map[string]string{"reason": reason})
+// RejectDailyReport sends the report back with a required reason; updateAt works as in ApproveDailyReport.
+func (c *Client4) RejectDailyReport(ctx context.Context, reportID, reason string, updateAt int64) (*DailyReport, *Response, error) {
+	r, err := c.doAPIPostJSON(ctx, newClientRoute("daily_reports").Join(reportID, "reject"), map[string]any{"reason": reason, "update_at": updateAt})
 	if err != nil {
 		return nil, BuildResponse(r), err
 	}
@@ -94,6 +97,9 @@ func (c *Client4) GetDailyReportAssignees(ctx context.Context, teamID string) ([
 
 // SetDailyReportAssignees replaces who must report; an empty list means everyone.
 func (c *Client4) SetDailyReportAssignees(ctx context.Context, teamID string, userIDs []string) ([]string, *Response, error) {
+	if userIDs == nil {
+		userIDs = []string{} // the server wants a list; nil would be sent as null
+	}
 	r, err := c.doAPIPutJSON(ctx, c.teamRoute(teamID).Join("daily_reports", "assignees"), dailyReportAssignees{UserIDs: userIDs})
 	if err != nil {
 		return nil, BuildResponse(r), err

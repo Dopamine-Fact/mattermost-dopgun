@@ -12,7 +12,7 @@ import WebSocketClient from 'client/web_websocket_client';
 import {act, fireEvent, renderWithContext, screen, waitFor, within} from 'tests/react_testing_utils';
 import {TestHelper} from 'utils/test_helper';
 
-import {todayIn} from './common';
+import {MESSAGE_MAX_LENGTH, todayIn} from './common';
 import DailyReports from './daily_reports';
 
 jest.mock('mattermost-redux/actions/users', () => ({
@@ -109,6 +109,19 @@ describe('DailyReports', () => {
         expect(submit).toHaveBeenCalledWith('team1', 'Did things');
         expect(await screen.findByText('Did things')).toBeInTheDocument();
         expect(screen.getByRole('button', {name: 'Edit'})).toBeInTheDocument();
+    });
+
+    test('Ctrl+Enter does not send a report over the length limit', async () => {
+        const submit = jest.spyOn(Client4, 'submitDailyReport').mockResolvedValue(report({user_id: 'me'}));
+        renderPage(false);
+
+        const box = await editor();
+        fireEvent.input(box, {target: {value: 'x'.repeat(MESSAGE_MAX_LENGTH + 1)}});
+        await act(async () => {
+            fireEvent.keyDown(box, {key: 'Enter', ctrlKey: true});
+        });
+
+        expect(submit).not.toHaveBeenCalled();
     });
 
     test('restores an unsent draft for today', async () => {

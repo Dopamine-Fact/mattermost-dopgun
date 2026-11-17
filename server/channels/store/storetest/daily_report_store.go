@@ -21,6 +21,7 @@ func TestDailyReportStore(t *testing.T, rctx request.CTX, ss store.Store) {
 	t.Run("GetPendingBefore", func(t *testing.T) { testDailyReportGetPendingBefore(t, ss) })
 	t.Run("Reject", func(t *testing.T) { testDailyReportReject(t, ss) })
 	t.Run("SeenUpdateAt", func(t *testing.T) { testDailyReportSeenUpdateAt(t, ss) })
+	t.Run("UpdateKeepsRejection", func(t *testing.T) { testDailyReportUpdateKeepsRejection(t, ss) })
 	t.Run("Assignees", func(t *testing.T) { testDailyReportAssignees(t, ss) })
 }
 
@@ -131,6 +132,7 @@ func testDailyReportGetForTeam(t *testing.T, ss store.Store) {
 		_, err := ss.DailyReport().Save(newDailyReport(teamID, userA, d))
 		require.NoError(t, err)
 	}
+	time.Sleep(2 * time.Millisecond) // userB's report is created strictly later, so the CreateAt tiebreak is stable
 	_, err := ss.DailyReport().Save(newDailyReport(teamID, userB, "2026-11-12"))
 	require.NoError(t, err)
 	_, err = ss.DailyReport().Save(newDailyReport(model.NewId(), userA, "2026-11-12"))
@@ -231,6 +233,25 @@ func testDailyReportSeenUpdateAt(t *testing.T, ss store.Store) {
 	require.ErrorAs(t, ss.DailyReport().Approve(r.Id, "boss", false, 1, r.UpdateAt-1), &conflictErr)
 	require.ErrorAs(t, ss.DailyReport().Reject(r.Id, "boss", "why", 1, r.UpdateAt-1), &conflictErr)
 	require.NoError(t, ss.DailyReport().Approve(r.Id, "boss", false, 1, r.UpdateAt))
+}
+
+// An edit that read the report before a reviewer rejected it must not erase the rejection.
+func testDailyReportUpdateKeepsRejection(t *testing.T, ss store.Store) {
+	r, err := ss.DailyReport().Save(newDailyReport(model.NewId(), model.NewId(), "2026-11-16"))
+	require.NoError(t, err)
+	stale := *r
+	require.NoError(t, ss.DailyReport().Reject(r.Id, "boss", "why", 77, 0))
+
+	stale.Message = "edited"
+	stale.Status = model.DailyReportStatusPending
+	_, err = ss.DailyReport().Update(&stale)
+	require.NoError(t, err)
+	got, err := ss.DailyReport().Get(r.Id)
+	require.NoError(t, err)
+	require.Equal(t, "edited", got.Message)
+	require.Equal(t, "boss", got.RejectedBy)
+	require.Equal(t, "why", got.RejectReason)
+	require.EqualValues(t, 77, got.RejectedAt)
 }
 
 func testDailyReportAssignees(t *testing.T, ss store.Store) {
