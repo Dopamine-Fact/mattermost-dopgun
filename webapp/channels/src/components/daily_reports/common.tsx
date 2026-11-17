@@ -3,7 +3,7 @@
 
 import classNames from 'classnames';
 import React from 'react';
-import {defineMessages, useIntl} from 'react-intl';
+import {defineMessages, FormattedMessage, useIntl} from 'react-intl';
 
 import type {DailyReport, DailyReportTask} from '@mattermost/types/daily_reports';
 
@@ -40,6 +40,22 @@ export function StatusChip({report}: {report?: DailyReport}) {
         <span className={classNames('DailyReportsPage__chip', `DailyReportsPage__chip--${status}`)}>
             {formatMessage(statusLabels[status])}
         </span>
+    );
+}
+
+// The last rejection stays on a report once it is pending (or approved) again, so the fix can be judged against it.
+export function PreviouslyRejected({report}: {report?: DailyReport}) {
+    if (!report?.reject_reason || report.status === 'rejected') {
+        return null;
+    }
+    return (
+        <p className='DailyReportsPage__previouslyRejected'>
+            <FormattedMessage
+                id='daily_reports.previouslyRejected'
+                defaultMessage='Previously sent back: {reason}'
+                values={{reason: report.reject_reason}}
+            />
+        </p>
     );
 }
 

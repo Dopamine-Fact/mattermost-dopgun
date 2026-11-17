@@ -23195,6 +23195,10 @@
     "defaultMessage": "Before the edit",
     "description": "Label above the previous text of an edited report on Team reports."
   },
+  "daily_reports.previouslyRejected": {
+    "defaultMessage": "Previously sent back: {reason}",
+    "description": "Muted line on a daily report that is pending or approved again after a manager rejected it; {reason} is the reason they wrote then."
+  },
   "daily_reports.reject": {
     "defaultMessage": "Reject",
     "description": "Button that sends a daily report back to its author with a reason; also the confirm button of that dialog."

@@ -5437,6 +5437,7 @@
   "daily_reports.needsFixing": "Düzeltilmesi gerekenler",
   "daily_reports.notExpected": "Bu takımda sizden rapor beklenmiyor.",
   "daily_reports.previous": "Düzenlemeden önce",
+  "daily_reports.previouslyRejected": "Daha önce geri gönderildi: {reason}",
   "daily_reports.reject": "Reddet",
   "daily_reports.rejectModal.placeholder": "Neyin düzeltilmesi gerekiyor? Yazan kişi bunu görür.",
   "daily_reports.rejectModal.reason": "Sebep",

@@ -18,7 +18,7 @@ import AdvancedTextbox from 'components/widgets/advanced_textbox/advanced_textbo
 
 import type {GlobalState} from 'types/store';
 
-import {daysBefore, MESSAGE_MAX_LENGTH, StatusChip, TaskChips, todayIn} from './common';
+import {daysBefore, MESSAGE_MAX_LENGTH, PreviouslyRejected, StatusChip, TaskChips, todayIn} from './common';
 
 // How far back the author is shown reports that were sent back to them.
 const NEEDS_FIXING_DAYS = 30;
@@ -58,27 +58,42 @@ function ReportCard({editorId, teamId, date, title, report, save, onError}: Edit
     const {formatMessage} = useIntl();
     const draftKey = `dailyReportDraft:${teamId}:${date}`;
 
-    const readDraft = useCallback(() => {
+    const hasDraft = useCallback(() => {
         try {
-            return localStorage.getItem(draftKey);
+            return localStorage.getItem(draftKey) !== null;
         } catch {
-            return null;
+            return false;
         }
     }, [draftKey]);
-    const writeDraft = (value: string | null) => {
+
+    // A draft remembers the report text it was written against (base), so one left in another tab
+    // can't overwrite a newer version.
+    const writeDraft = (text: string | null) => {
         try {
-            if (value === null) {
+            if (text === null) {
                 localStorage.removeItem(draftKey);
             } else {
-                localStorage.setItem(draftKey, value);
+                localStorage.setItem(draftKey, JSON.stringify({text, base: report?.message ?? ''}));
             }
         } catch {
             // Storage can be full or blocked; the draft is a convenience only.
         }
     };
 
-    const [message, setMessage] = useState(() => readDraft() ?? report?.message ?? '');
-    const [editing, setEditing] = useState(() => !report || readDraft() !== null);
+    const [draft] = useState(() => {
+        try {
+            const saved = JSON.parse(localStorage.getItem(draftKey) ?? 'null');
+            if (typeof saved?.text === 'string' && saved.base === (report?.message ?? '')) {
+                return saved.text as string;
+            }
+        } catch {
+            // unreadable draft: drop it below
+        }
+        writeDraft(null);
+        return null;
+    });
+    const [message, setMessage] = useState(() => draft ?? report?.message ?? '');
+    const [editing, setEditing] = useState(() => !report || draft !== null);
     const [preview, setPreview] = useState(false);
     const [busy, setBusy] = useState(false);
 
@@ -88,11 +103,11 @@ function ReportCard({editorId, teamId, date, title, report, save, onError}: Edit
     useEffect(() => {
         if (version !== synced.current) {
             synced.current = version;
-            if (readDraft() === null) {
+            if (!hasDraft()) {
                 setMessage(report?.message ?? '');
             }
         }
-    }, [version, report, readDraft]);
+    }, [version, report, hasDraft]);
 
     const submit = async () => {
         if (!message.trim() || busy) {
@@ -154,6 +169,7 @@ function ReportCard({editorId, teamId, date, title, report, save, onError}: Edit
                 )}
             </header>
             {report?.status === 'rejected' && <RejectedBanner report={report}/>}
+            <PreviouslyRejected report={report}/>
             <TaskChips tasks={report?.tasks}/>
             {editing ? (
                 <>

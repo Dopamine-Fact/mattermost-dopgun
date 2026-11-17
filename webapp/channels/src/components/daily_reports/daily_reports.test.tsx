@@ -112,9 +112,34 @@ describe('DailyReports', () => {
     });
 
     test('restores an unsent draft for today', async () => {
-        localStorage.setItem(`dailyReportDraft:team1:${todayIn(undefined)}`, 'half written');
+        localStorage.setItem(`dailyReportDraft:team1:${todayIn(undefined)}`, JSON.stringify({text: 'half written', base: ''}));
         renderPage(false);
         expect(await editor()).toHaveValue('half written');
+    });
+
+    test('restores an edit draft while the report is unchanged', async () => {
+        mockReports([report({user_id: 'me', message: 'v1'})]);
+        localStorage.setItem(`dailyReportDraft:team1:${todayIn(undefined)}`, JSON.stringify({text: 'v1 plus more', base: 'v1'}));
+        renderPage(false);
+        expect(await editor()).toHaveValue('v1 plus more');
+    });
+
+    test('drops a leftover draft when the report changed elsewhere', async () => {
+        mockReports([report({user_id: 'me', message: 'v2 from another tab'})]);
+        localStorage.setItem(`dailyReportDraft:team1:${todayIn(undefined)}`, JSON.stringify({text: 'stale', base: 'v1'}));
+        renderPage(false);
+
+        expect(await screen.findByText('v2 from another tab')).toBeInTheDocument();
+        expect(screen.queryByTestId('dailyReportEditor_today')).not.toBeInTheDocument();
+        expect(localStorage.getItem(`dailyReportDraft:team1:${todayIn(undefined)}`)).toBeNull();
+    });
+
+    test('a resubmitted report still shows why it was sent back', async () => {
+        mockReports([report({user_id: 'me', status: 'pending', reject_reason: 'Add the ticket links', rejected_by: 'u2'})]);
+        renderPage(false);
+
+        expect(await screen.findByText('Previously sent back: Add the ticket links')).toBeInTheDocument();
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
     test('My report asks only for the current user', async () => {
@@ -194,6 +219,14 @@ describe('DailyReports', () => {
         });
 
         expect(approve).toHaveBeenCalledWith('r1', 7);
+    });
+
+    test('a resubmitted row shows the earlier reason to the reviewer', async () => {
+        mockReports([], [report({status: 'pending', reject_reason: 'Too vague', rejected_by: 'me'})]);
+        renderPage(true);
+
+        await openTeamTab();
+        expect(await screen.findByText('Previously sent back: Too vague')).toBeInTheDocument();
     });
 
     test('an edited row reveals the previous text on click', async () => {

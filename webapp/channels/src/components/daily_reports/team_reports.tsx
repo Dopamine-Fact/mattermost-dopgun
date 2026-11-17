@@ -18,7 +18,7 @@ import Markdown from 'components/markdown';
 import type {GlobalState} from 'types/store';
 
 import AssigneesModal from './assignees_modal';
-import {StatusChip, TaskChips, todayIn} from './common';
+import {PreviouslyRejected, StatusChip, TaskChips, todayIn} from './common';
 import RejectModal from './reject_modal';
 
 // shortcut: the team list shows the first 200 members; page through them for bigger teams.
@@ -193,6 +193,7 @@ const TeamReports = ({teamId, timeZone, tick, onError}: Props) => {
                                 />
                             </p>
                         )}
+                        <PreviouslyRejected report={report}/>
                         {report && expanded.has(report.id) && (
                             <blockquote className='DailyReportsPage__previous'>
                                 <span className='DailyReportsPage__previousLabel'>
