@@ -12,6 +12,7 @@
     }
 
     &__body {
+        position: relative;
         display: flex;
         min-height: 0;
         flex: 1;
@@ -19,6 +20,12 @@
 
     &__main {
         min-width: 0;
+        outline-offset: -4px;
+
+        &.dropTarget {
+            outline: 2px dashed rgba(var(--button-bg-rgb), 0.6);
+        }
+
         flex: 1;
         overflow: auto;
     }
@@ -436,5 +443,85 @@
         &.destructive:not(:disabled) {
             color: var(--error-text);
         }
+    }
+}
+
+.ExplorerItems__tile.dropTarget,
+.ExplorerItems__row.dropTarget,
+.ExplorerTree__row.dropTarget {
+    background: rgba(var(--button-bg-rgb), 0.16);
+    outline: 1px solid rgba(var(--button-bg-rgb), 0.6);
+}
+
+.ExplorerDropOverlay {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    background: var(--button-bg);
+    box-shadow: var(--elevation-3);
+    color: var(--button-color);
+    gap: 6px;
+    pointer-events: none;
+    transform: translateX(-50%);
+}
+
+.ExplorerUploadPanel {
+    position: fixed;
+    z-index: 100;
+    right: 16px;
+    bottom: 16px;
+    display: flex;
+    width: 320px;
+    max-height: 40vh;
+    flex-direction: column;
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: var(--radius-m);
+    background: var(--center-channel-bg);
+    box-shadow: var(--elevation-4);
+
+    &__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        border-bottom: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+        font-weight: 600;
+    }
+
+    ul {
+        overflow: auto;
+        padding: 4px 12px;
+        margin: 0;
+        list-style: none;
+    }
+
+    li {
+        padding: 6px 0;
+    }
+
+    &__name {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+
+        span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+
+    &__status {
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+        font-size: 12px;
+    }
+
+    &__error {
+        color: var(--error-text);
     }
 }

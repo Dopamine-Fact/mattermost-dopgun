@@ -1,12 +1,13 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import classNames from 'classnames';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {Redirect, useHistory, useParams} from 'react-router-dom';
 
-import {ContentCopyIcon, DownloadOutlineIcon, FolderMoveOutlineIcon, FolderPlusOutlineIcon, PencilOutlineIcon, RestoreIcon, TrashCanOutlineIcon} from '@mattermost/compass-icons/components';
+import {ChevronDownIcon, ContentCopyIcon, DownloadOutlineIcon, FolderMoveOutlineIcon, FolderPlusOutlineIcon, PencilOutlineIcon, RestoreIcon, TrashCanOutlineIcon, UploadOutlineIcon} from '@mattermost/compass-icons/components';
 import {Button} from '@mattermost/compass-ui/components/button';
 import {Icon} from '@mattermost/compass-ui/components/icon';
 import type {DriveChatFileSort} from '@mattermost/types/drive';
@@ -36,6 +37,7 @@ import ExplorerAddressBar from './explorer_address_bar';
 import type {Crumb} from './explorer_address_bar';
 import ExplorerContextMenu from './explorer_context_menu';
 import type {ContextMenuItem} from './explorer_context_menu';
+import ExplorerDropOverlay from './explorer_drop_overlay';
 import ExplorerItems, {entryCreator, entryModified, entryType} from './explorer_items';
 import type {ExplorerSort, ExplorerView, SortKey} from './explorer_items';
 import ExplorerPreviewPane from './explorer_preview_pane';
@@ -43,9 +45,14 @@ import ExplorerStatusBar from './explorer_status_bar';
 import ExplorerToolbar from './explorer_toolbar';
 import {useTrashColumns} from './explorer_trash_view';
 import ExplorerTree from './explorer_tree';
+import ExplorerUploadPanel from './explorer_upload_panel';
 import {CHAT_FOLDER, TRASH_FOLDER, useExplorerChannels, useExplorerData} from './use_explorer_data';
 import type {ExplorerEntry} from './use_explorer_data';
+import {endDrag, handleDrag, startDrag} from './use_explorer_dnd';
+import type {DropResult, DropTarget} from './use_explorer_dnd';
 import {useExplorerSelection, useRubberBand} from './use_explorer_selection';
+import {useExplorerUploads} from './use_explorer_uploads';
+import type {UploadRequest} from './use_explorer_uploads';
 
 import './file_explorer.scss';
 
@@ -86,7 +93,8 @@ const isDriveObject = (e: ExplorerEntry) => e.kind === 'file' || e.kind === 'fol
 const driveIds = (entries: ExplorerEntry[]) => entries.flatMap((e) => (e.driveItem ? [e.driveItem.id] : []));
 
 type Params = {team: string; channelName?: string; folderId?: string};
-type MenuState = {x: number; y: number; onItem: boolean};
+type MenuState = {x: number; y: number; onItem: boolean; upload?: boolean};
+type DropHover = {key: string; location: string; files: boolean};
 
 const FileExplorer = () => {
     const intl = useIntl();
@@ -106,13 +114,17 @@ const FileExplorer = () => {
     const [search, setSearch] = useState('');
     const [renamingKey, setRenamingKey] = useState<string>();
     const [menu, setMenu] = useState<MenuState>();
+    const [drop, setDrop] = useState<DropHover>();
     const clipboard = useClipboard();
+    const fileInput = useRef<HTMLInputElement>(null);
+    const folderInput = useRef<HTMLInputElement>(null);
 
     const inChat = folderId === CHAT_FOLDER;
     const inTrash = folderId === TRASH_FOLDER;
     const inDrive = Boolean(channel) && !inChat && !inTrash;
     const chatSort = useMemo(() => ({by: CHAT_SORTS[sort.by] ?? 'create_at', desc: sort.desc}), [sort]);
     const data = useExplorerData(channel?.id, folderId, chatSort);
+    const uploads = useExplorerUploads(data.reload);
 
     useEffect(() => {
         dispatch(selectLhsItem(LhsItemType.Page, LhsPage.Files));
@@ -307,6 +319,70 @@ const FileExplorer = () => {
         up: () => upTo && history.push(upTo),
     };
 
+    const dropOn = (target: DropTarget, result: DropResult) => {
+        if (result.kind === 'items') {
+            const p = result.payload;
+            run(() => (result.effect === 'move' ? Client4.moveDriveItems(p.channelId, p.itemIds, target.channelId, target.folderId) : Client4.copyDriveItems(p.channelId, p.itemIds, p.chatFileIds, target.channelId, target.folderId)));
+            return;
+        }
+        result.files.then((files) => uploads.enqueue(files, target.channelId, target.folderId), (err) => toast(err?.message || String(err)));
+    };
+
+    /** The drop target under the pointer in the main area: a folder or channel tile, else the open folder. */
+    const pathIds = data.path.map((p) => p.id);
+    const dropTargetAt = (el: Element): {key: string; target: DropTarget; location: string[]} | undefined => {
+        const key = el.closest<HTMLElement>('[data-entry-key]')?.dataset.entryKey;
+        const entry = visible.find((e) => e.key === key);
+        const here = [channel?.display_name ?? '', ...data.path.map((p) => p.name)];
+        if (entry?.kind === 'channel') {
+            return {key: entry.key, target: {channelId: entry.channel!.id, folderId: '', ancestors: []}, location: [entry.name]};
+        }
+        if (entry?.kind === 'folder' && inDrive) {
+            return {key: entry.key, target: {channelId, folderId: entry.key, ancestors: pathIds}, location: [...here, entry.name]};
+        }
+        return inDrive ? {key: '', target: {channelId, folderId, ancestors: pathIds}, location: here} : undefined;
+    };
+    const dragHandlers = {
+        onDragOver: (e: React.DragEvent) => {
+            const hit = dropTargetAt(e.target as Element);
+            const result = handleDrag(e, hit?.target);
+            const next = hit && result ? {key: hit.key, location: hit.location.join(' › '), files: result.kind === 'files'} : undefined;
+            setDrop((prev) => (prev?.key === next?.key && prev?.files === next?.files ? prev : next));
+        },
+        onDragLeave: (e: React.DragEvent) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setDrop(undefined);
+            }
+        },
+        onDrop: (e: React.DragEvent) => {
+            const hit = dropTargetAt(e.target as Element);
+            const result = handleDrag(e, hit?.target);
+            setDrop(undefined);
+            if (hit && result) {
+                dropOn(hit.target, result);
+            }
+        },
+        onDragEnd: () => {
+            endDrag();
+            setDrop(undefined);
+        },
+    };
+    const onDragStart = channel && !inTrash ? (entry: ExplorerEntry, e: React.DragEvent) => {
+        const dragged = selection.selected.has(entry.key) ? selected : [entry];
+        if (!selection.selected.has(entry.key)) {
+            selection.click(entry.key);
+        }
+        startDrag(e, {channelId, parentId: folderId, itemIds: driveIds(dragged), chatFileIds: dragged.flatMap((d) => (!d.driveItem && d.fileInfo ? [d.fileInfo.id] : []))});
+    } : undefined;
+
+    const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files: UploadRequest[] = [...(e.target.files ?? [])].map((file) => ({file, relPath: file.webkitRelativePath || file.name}));
+        e.target.value = '';
+        if (files.length) {
+            uploads.enqueue(files, channelId, folderId);
+        }
+    };
+
     const onRenameDone = (entry: ExplorerEntry, name?: string) => {
         setRenamingKey(undefined);
         if (name && name !== entry.name && entry.driveItem) {
@@ -369,10 +445,16 @@ const FileExplorer = () => {
         restore: label('file_explorer.restore', 'Restore'),
         purge: label('file_explorer.purge', 'Delete permanently'),
         empty: label('file_explorer.emptyTrash', 'Empty Recycle Bin'),
+        upload: label('file_explorer.upload', 'Upload'),
     };
 
     let menuItems: ContextMenuItem[] = [];
-    if (menu?.onItem && inTrash) {
+    if (menu?.upload) {
+        menuItems = [
+            {key: 'files', label: label('file_explorer.upload.files', 'Files'), onClick: () => fileInput.current?.click()},
+            {key: 'folder', label: label('file_explorer.upload.folder', 'Folder'), onClick: () => folderInput.current?.click()},
+        ];
+    } else if (menu?.onItem && inTrash) {
         menuItems = [
             {key: 'restore', label: L.restore, onClick: actions.restore, disabled: !can.restore},
             {key: 'purge', label: L.purge, onClick: () => actions.remove(true), disabled: !can.purge, destructive: true},
@@ -419,6 +501,21 @@ const FileExplorer = () => {
         ];
     } else if (channel) {
         toolbarActions = [
+            <Button
+                key='upload'
+                size='x-small'
+                emphasis='tertiary'
+                disabled={!inDrive}
+                aria-haspopup='menu'
+                leadingIcon={<Icon glyph={<UploadOutlineIcon/>}/>}
+                trailingIcon={<Icon glyph={<ChevronDownIcon/>}/>}
+                onClick={(e: React.MouseEvent) => {
+                    const r = e.currentTarget.getBoundingClientRect();
+                    setMenu({x: r.left, y: r.bottom, onItem: false, upload: true});
+                }}
+            >
+                {L.upload}
+            </Button>,
             toolButton('newFolder', can.newFolder, actions.newFolder, <FolderPlusOutlineIcon/>),
             toolButton('cut', can.cut, actions.cut, <FolderMoveOutlineIcon/>),
             toolButton('copy', can.copy, actions.copy, <ContentCopyIcon/>),
@@ -515,6 +612,8 @@ const FileExplorer = () => {
                 getUserName={getUserName}
                 renamingKey={renamingKey}
                 onRenameDone={onRenameDone}
+                onDragStart={onDragStart}
+                dropKey={drop?.key}
             />
         );
     }
@@ -559,9 +658,11 @@ const FileExplorer = () => {
                     channelId={channel?.id}
                     folderId={folderId}
                     changeCount={data.changeCount}
+                    onDrop={dropOn}
                 />
                 <main
-                    className='FileExplorer__main'
+                    className={classNames('FileExplorer__main', {dropTarget: drop?.key === ''})}
+                    {...dragHandlers}
                     onScroll={onScroll}
                     onMouseDown={rubberBand.onMouseDown}
                     onContextMenu={(e) => {
@@ -574,6 +675,7 @@ const FileExplorer = () => {
                 >
                     {content}
                 </main>
+                {drop?.files && <ExplorerDropOverlay location={drop.location}/>}
                 {previewOpen && wide && (
                     <ExplorerPreviewPane
                         entries={selected}
@@ -592,6 +694,25 @@ const FileExplorer = () => {
                     style={rubberBand.box}
                 />
             )}
+            <ExplorerUploadPanel
+                uploads={uploads.uploads}
+                onCancel={uploads.cancel}
+                onClose={uploads.clearFinished}
+            />
+            <input
+                ref={fileInput}
+                type='file'
+                multiple={true}
+                hidden={true}
+                onChange={onPick}
+            />
+            <input
+                ref={folderInput}
+                type='file'
+                hidden={true}
+                onChange={onPick}
+                {...{webkitdirectory: ''}}
+            />
             {menu && (
                 <ExplorerContextMenu
                     x={menu.x}

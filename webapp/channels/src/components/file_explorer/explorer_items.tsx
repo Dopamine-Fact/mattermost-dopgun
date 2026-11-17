@@ -42,6 +42,12 @@ type Props = {
     /** The entry whose name is being edited, and what to do with the result. */
     renamingKey?: string;
     onRenameDone: (entry: ExplorerEntry, name?: string) => void;
+
+    /** Makes files and folders draggable; omitted where nothing may be dragged (e.g. the Recycle Bin). */
+    onDragStart?: (entry: ExplorerEntry, event: React.DragEvent) => void;
+
+    /** The entry a drag is hovering over, highlighted as the drop target. */
+    dropKey?: string;
 };
 
 export function entryModified(entry: ExplorerEntry): number {
@@ -97,7 +103,7 @@ export function formatDate(intl: IntlShape, time: number) {
     return time ? intl.formatDate(time, {dateStyle: 'medium', timeStyle: 'short'}) : '';
 }
 
-const ExplorerItems = ({entries, view, selected, sort, sortable = () => true, onSort, onSelect, onOpen, onContextMenu, getUserName, columns, renamingKey, onRenameDone}: Props) => {
+const ExplorerItems = ({entries, view, selected, sort, sortable = () => true, onSort, onSelect, onOpen, onContextMenu, getUserName, columns, renamingKey, onRenameDone, onDragStart, dropKey}: Props) => {
     const intl = useIntl();
     const nameColumn: ExplorerColumn = {key: 'name', label: intl.formatMessage({id: 'file_explorer.column.name', defaultMessage: 'Name'}), render: () => null};
     const allColumns = [nameColumn, ...(columns ?? [
@@ -166,6 +172,8 @@ const ExplorerItems = ({entries, view, selected, sort, sortable = () => true, on
             onSelect(entry, event);
         },
         onDoubleClick: () => onOpen(entry),
+        draggable: Boolean(onDragStart) && (entry.kind === 'file' || entry.kind === 'folder') && renamingKey !== entry.key,
+        onDragStart: (event: React.DragEvent) => onDragStart?.(entry, event),
     });
 
     const renameInput = (entry: ExplorerEntry) => (
@@ -190,7 +198,7 @@ const ExplorerItems = ({entries, view, selected, sort, sortable = () => true, on
                     {entries.map((entry, index) => (
                         <div
                             key={entry.key}
-                            className={classNames('ExplorerItems__tile', {selected: selected.has(entry.key)})}
+                            className={classNames('ExplorerItems__tile', {selected: selected.has(entry.key), dropTarget: dropKey === entry.key})}
                             title={entry.name}
                             {...cellProps(entry, index)}
                             {...mouseProps(entry)}
@@ -247,7 +255,7 @@ const ExplorerItems = ({entries, view, selected, sort, sortable = () => true, on
                 <div
                     key={entry.key}
                     role='row'
-                    className={classNames('ExplorerItems__row', {selected: selected.has(entry.key)})}
+                    className={classNames('ExplorerItems__row', {selected: selected.has(entry.key), dropTarget: dropKey === entry.key})}
                     style={{gridTemplateColumns}}
                     {...mouseProps(entry)}
                 >

@@ -24415,6 +24415,10 @@
     "defaultMessage": "Download",
     "description": "File explorer button that downloads the selected file."
   },
+  "file_explorer.dropTo": {
+    "defaultMessage": "Drop to upload to {location}",
+    "description": "File explorer hint shown while files from the computer are dragged over a folder; location is the folder path, e.g. Town › Docs."
+  },
   "file_explorer.empty.channels": {
     "defaultMessage": "You are not a member of any channel in this team.",
     "description": "File explorer root empty state: the user belongs to no channel, so there are no channel folders."
@@ -24574,6 +24578,46 @@
   "file_explorer.up": {
     "defaultMessage": "Up",
     "description": "File explorer address bar button that goes to the parent folder."
+  },
+  "file_explorer.upload": {
+    "defaultMessage": "Upload",
+    "description": "File explorer toolbar button that opens a menu to upload files or a folder from the computer into the open folder."
+  },
+  "file_explorer.upload.files": {
+    "defaultMessage": "Files",
+    "description": "File explorer Upload menu item that opens the file picker to upload files."
+  },
+  "file_explorer.upload.folder": {
+    "defaultMessage": "Folder",
+    "description": "File explorer Upload menu item that opens a folder picker to upload a whole folder with its sub-folders."
+  },
+  "file_explorer.uploads": {
+    "defaultMessage": "Uploads",
+    "description": "Accessible name of the file explorer upload panel in the bottom-right corner."
+  },
+  "file_explorer.uploads.cancel": {
+    "defaultMessage": "Cancel upload of {name}",
+    "description": "Accessible label of the button that cancels one file's upload in the file explorer upload panel."
+  },
+  "file_explorer.uploads.cancelled": {
+    "defaultMessage": "Cancelled",
+    "description": "Status of an upload the user cancelled in the file explorer upload panel."
+  },
+  "file_explorer.uploads.close": {
+    "defaultMessage": "Close uploads",
+    "description": "Accessible label of the button that closes the file explorer upload panel once every upload has finished."
+  },
+  "file_explorer.uploads.done": {
+    "defaultMessage": "Uploaded",
+    "description": "Status of a finished upload in the file explorer upload panel."
+  },
+  "file_explorer.uploads.progress": {
+    "defaultMessage": "{done} of {total} uploaded",
+    "description": "Header of the file explorer upload panel counting finished uploads, e.g. 3 of 5 uploaded."
+  },
+  "file_explorer.uploads.queued": {
+    "defaultMessage": "Waiting",
+    "description": "Status of an upload waiting for the ones before it in the file explorer upload panel."
   },
   "file_explorer.view.details": {
     "defaultMessage": "Details",

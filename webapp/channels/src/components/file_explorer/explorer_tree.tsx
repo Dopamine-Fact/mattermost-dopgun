@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import classNames from 'classnames';
-import React, {useEffect, useState} from 'react';
+import React, {createContext, useContext, useEffect, useState} from 'react';
 import {useIntl} from 'react-intl';
 import {Link} from 'react-router-dom';
 
@@ -13,6 +13,11 @@ import type {DriveItem} from '@mattermost/types/drive';
 import {Client4} from 'mattermost-redux/client';
 
 import {CHAT_FOLDER, TRASH_FOLDER} from './use_explorer_data';
+import {endDrag, handleDrag, startDrag} from './use_explorer_dnd';
+import type {DragPayload, DropResult, DropTarget} from './use_explorer_dnd';
+
+type DropHandler = (target: DropTarget, result: DropResult) => void;
+const DropContext = createContext<DropHandler | undefined>(undefined);
 
 type Props = {
     baseUrl: string;
@@ -22,6 +27,9 @@ type Props = {
 
     /** Bumped on every drive change in the open channel, so expanded nodes re-fetch. */
     changeCount: number;
+
+    /** Called when items or files are dropped on a channel or folder in the tree. */
+    onDrop?: DropHandler;
 };
 
 type RowProps = {
@@ -33,40 +41,62 @@ type RowProps = {
     expanded?: boolean;
     onToggle?: () => void;
     children?: React.ReactNode;
+
+    /** The folder this row drops into, and what dragging the row carries. */
+    target?: DropTarget;
+    drag?: DragPayload;
 };
 
-const TreeRow = ({depth, label, icon, to, active, expanded, onToggle, children}: RowProps) => (
-    <li
-        role='treeitem'
-        aria-expanded={onToggle ? Boolean(expanded) : undefined}
-        aria-selected={active}
-    >
-        <div
-            className={classNames('ExplorerTree__row', {active})}
-            style={{paddingLeft: 8 + (depth * 14)}}
+const TreeRow = ({depth, label, icon, to, active, expanded, onToggle, children, target, drag}: RowProps) => {
+    const onDrop = useContext(DropContext);
+    const [over, setOver] = useState(false);
+    const dropProps = target && onDrop ? {
+        onDragOver: (e: React.DragEvent) => setOver(Boolean(handleDrag(e, target))),
+        onDragLeave: (e: React.DragEvent) => !e.currentTarget.contains(e.relatedTarget as Node) && setOver(false),
+        onDrop: (e: React.DragEvent) => {
+            setOver(false);
+            const result = handleDrag(e, target);
+            if (result) {
+                onDrop(target, result);
+            }
+        },
+    } : {};
+    const dragProps = drag ? {draggable: true, onDragStart: (e: React.DragEvent) => startDrag(e, drag), onDragEnd: endDrag} : {};
+    return (
+        <li
+            role='treeitem'
+            aria-expanded={onToggle ? Boolean(expanded) : undefined}
+            aria-selected={active}
         >
-            {onToggle ? (
-                <button
-                    type='button'
-                    className='ExplorerTree__toggle'
-                    tabIndex={-1}
-                    aria-hidden={true}
-                    onClick={onToggle}
-                >
-                    {expanded ? <ChevronDownIcon size={14}/> : <ChevronRightIcon size={14}/>}
-                </button>
-            ) : <span className='ExplorerTree__toggle'/>}
-            <Link
-                to={to}
-                className='ExplorerTree__link'
+            <div
+                className={classNames('ExplorerTree__row', {active, dropTarget: over})}
+                style={{paddingLeft: 8 + (depth * 14)}}
+                {...dropProps}
+                {...dragProps}
             >
-                {icon}
-                <span>{label}</span>
-            </Link>
-        </div>
-        {expanded && children && <ul role='group'>{children}</ul>}
-    </li>
-);
+                {onToggle ? (
+                    <button
+                        type='button'
+                        className='ExplorerTree__toggle'
+                        tabIndex={-1}
+                        aria-hidden={true}
+                        onClick={onToggle}
+                    >
+                        {expanded ? <ChevronDownIcon size={14}/> : <ChevronRightIcon size={14}/>}
+                    </button>
+                ) : <span className='ExplorerTree__toggle'/>}
+                <Link
+                    to={to}
+                    className='ExplorerTree__link'
+                >
+                    {icon}
+                    <span>{label}</span>
+                </Link>
+            </div>
+            {expanded && children && <ul role='group'>{children}</ul>}
+        </li>
+    );
+};
 
 function useSubfolders(channelId: string, parentId: string, open: boolean, changeCount: number) {
     const [folders, setFolders] = useState<DriveItem[]>([]);
@@ -89,9 +119,9 @@ function useSubfolders(channelId: string, parentId: string, open: boolean, chang
     return folders;
 }
 
-type FolderNodeProps = {channel: Channel; item: DriveItem; depth: number; channelUrl: string; folderId: string; changeCount: number};
+type FolderNodeProps = {channel: Channel; item: DriveItem; ancestors: string[]; depth: number; channelUrl: string; folderId: string; changeCount: number};
 
-const FolderNode = ({channel, item, depth, channelUrl, folderId, changeCount}: FolderNodeProps) => {
+const FolderNode = ({channel, item, ancestors, depth, channelUrl, folderId, changeCount}: FolderNodeProps) => {
     const [open, setOpen] = useState(false);
     const subfolders = useSubfolders(channel.id, item.id, open, changeCount);
     return (
@@ -103,12 +133,15 @@ const FolderNode = ({channel, item, depth, channelUrl, folderId, changeCount}: F
             active={folderId === item.id}
             expanded={open}
             onToggle={() => setOpen(!open)}
+            target={{channelId: channel.id, folderId: item.id, ancestors}}
+            drag={{channelId: channel.id, parentId: item.parent_id, itemIds: [item.id], chatFileIds: []}}
         >
             {subfolders.map((sub) => (
                 <FolderNode
                     key={sub.id}
                     channel={channel}
                     item={sub}
+                    ancestors={[...ancestors, item.id]}
                     depth={depth + 1}
                     channelUrl={channelUrl}
                     folderId={folderId}
@@ -140,6 +173,7 @@ const ChannelNode = ({channel, baseUrl, current, folderId, changeCount}: Channel
             active={current && !folderId}
             expanded={open}
             onToggle={() => setOpen(!open)}
+            target={{channelId: channel.id, folderId: '', ancestors: []}}
         >
             <TreeRow
                 depth={2}
@@ -153,6 +187,7 @@ const ChannelNode = ({channel, baseUrl, current, folderId, changeCount}: Channel
                     key={item.id}
                     channel={channel}
                     item={item}
+                    ancestors={[]}
                     depth={2}
                     channelUrl={channelUrl}
                     folderId={current ? folderId : ''}
@@ -170,35 +205,37 @@ const ChannelNode = ({channel, baseUrl, current, folderId, changeCount}: Channel
     );
 };
 
-const ExplorerTree = ({baseUrl, channels, channelId, folderId, changeCount}: Props) => {
+const ExplorerTree = ({baseUrl, channels, channelId, folderId, changeCount, onDrop}: Props) => {
     const intl = useIntl();
     return (
-        <nav
-            className='ExplorerTree'
-            aria-label={intl.formatMessage({id: 'file_explorer.tree', defaultMessage: 'Folders'})}
-        >
-            <ul role='tree'>
-                <TreeRow
-                    depth={0}
-                    label={intl.formatMessage({id: 'file_explorer.title', defaultMessage: 'Files'})}
-                    icon={<FolderOutlineIcon size={16}/>}
-                    to={baseUrl}
-                    active={!channelId}
-                    expanded={true}
-                >
-                    {channels.map((channel) => (
-                        <ChannelNode
-                            key={channel.id}
-                            channel={channel}
-                            baseUrl={baseUrl}
-                            current={channel.id === channelId}
-                            folderId={folderId}
-                            changeCount={changeCount}
-                        />
-                    ))}
-                </TreeRow>
-            </ul>
-        </nav>
+        <DropContext.Provider value={onDrop}>
+            <nav
+                className='ExplorerTree'
+                aria-label={intl.formatMessage({id: 'file_explorer.tree', defaultMessage: 'Folders'})}
+            >
+                <ul role='tree'>
+                    <TreeRow
+                        depth={0}
+                        label={intl.formatMessage({id: 'file_explorer.title', defaultMessage: 'Files'})}
+                        icon={<FolderOutlineIcon size={16}/>}
+                        to={baseUrl}
+                        active={!channelId}
+                        expanded={true}
+                    >
+                        {channels.map((channel) => (
+                            <ChannelNode
+                                key={channel.id}
+                                channel={channel}
+                                baseUrl={baseUrl}
+                                current={channel.id === channelId}
+                                folderId={folderId}
+                                changeCount={changeCount}
+                            />
+                        ))}
+                    </TreeRow>
+                </ul>
+            </nav>
+        </DropContext.Provider>
     );
 };
 

@@ -10,6 +10,7 @@ import type {FileInfo} from '@mattermost/types/files';
 
 import {Client4} from 'mattermost-redux/client';
 
+import {uploadFile} from 'actions/file_actions';
 import {openModal} from 'actions/views/modals';
 
 import WebSocketClient from 'client/web_websocket_client';
@@ -22,6 +23,10 @@ import FileExplorer from './file_explorer';
 jest.mock('client/web_websocket_client', () => ({
     addMessageListener: jest.fn(),
     removeMessageListener: jest.fn(),
+}));
+jest.mock('actions/file_actions', () => ({
+    ...jest.requireActual('actions/file_actions'),
+    uploadFile: jest.fn(),
 }));
 jest.mock('actions/views/modals', () => ({
     openModal: jest.fn(() => ({type: 'MOCK_OPEN_MODAL'})),
@@ -263,6 +268,55 @@ describe('FileExplorer', () => {
             fireEvent.keyDown(input, {key: 'Enter'});
 
             await waitFor(() => expect(rename).toHaveBeenCalledWith('c1', 'i1', 'new.txt'));
+        });
+
+        const dataTransfer = (files: File[] = []) => {
+            const data: Record<string, string> = {};
+            return {
+                get types() {
+                    return [...Object.keys(data), ...(files.length ? ['Files'] : [])];
+                },
+                files,
+                items: files.map((f) => ({kind: 'file', getAsFile: () => f})),
+                setData: (k: string, v: string) => {
+                    data[k] = v;
+                },
+                getData: (k: string) => data[k],
+                dropEffect: 'none',
+                effectAllowed: 'all',
+            };
+        };
+
+        test('dragging an item onto a folder moves it there', async () => {
+            const move = jest.spyOn(Client4, 'moveDriveItems').mockResolvedValue({status: 'OK'});
+            renderAt('/team/files/town');
+            const cell = await screen.findByRole('gridcell', {name: 'a.txt'});
+            const docs = screen.getByRole('gridcell', {name: 'Docs'});
+            const dt = dataTransfer();
+
+            fireEvent.dragStart(cell, {dataTransfer: dt});
+            fireEvent.dragOver(docs, {dataTransfer: dt});
+            fireEvent.drop(docs, {dataTransfer: dt});
+
+            await waitFor(() => expect(move).toHaveBeenCalledWith('c1', ['i1'], 'c1', 'd1'));
+        });
+
+        test('dropping files from the computer on a folder uploads them there', async () => {
+            (uploadFile as jest.Mock).mockImplementation(({file, onSuccess}) => () => {
+                Promise.resolve().then(() => onSuccess({file_infos: [{id: `f-${file.name}`}]}));
+                return {abort: jest.fn()};
+            });
+            const add = jest.spyOn(Client4, 'addDriveFile').mockResolvedValue({} as DriveItem);
+            renderAt('/team/files/town');
+            const docs = await screen.findByRole('gridcell', {name: 'Docs'});
+            const dt = dataTransfer([new File(['x'], 'new.png')]);
+
+            fireEvent.dragOver(docs, {dataTransfer: dt});
+            expect(screen.getByText('Drop to upload to Town › Docs')).toBeInTheDocument();
+            fireEvent.drop(docs, {dataTransfer: dt});
+
+            await waitFor(() => expect(add).toHaveBeenCalledWith('c1', 'd1', 'f-new.png'));
+            expect(await screen.findByRole('region', {name: 'Uploads'})).toHaveTextContent('new.png');
         });
 
         test('Ctrl+A selects everything and Escape clears it', async () => {
