@@ -3827,6 +3827,34 @@
     "translation": "Yazma zaman aşımı değeri geçersiz."
   },
   {
+    "id": "model.custom_role.is_valid.color.app_error",
+    "translation": "Renk #ff00aa gibi bir onaltılık renk olmalıdır."
+  },
+  {
+    "id": "model.custom_role.is_valid.create_at.app_error",
+    "translation": "Eklenme zamanı geçerli bir zaman olmalıdır."
+  },
+  {
+    "id": "model.custom_role.is_valid.department.app_error",
+    "translation": "Departman en fazla {{.Max}} karakter olabilir."
+  },
+  {
+    "id": "model.custom_role.is_valid.display_name.app_error",
+    "translation": "Ad 1 ile {{.Max}} karakter arasında olmalıdır."
+  },
+  {
+    "id": "model.custom_role.is_valid.id.app_error",
+    "translation": "Geçersiz özel rol kimliği."
+  },
+  {
+    "id": "model.custom_role.is_valid.position.app_error",
+    "translation": "Sıra negatif olamaz."
+  },
+  {
+    "id": "model.custom_role.is_valid.role_name.app_error",
+    "translation": "Geçersiz rol adı."
+  },
+  {
     "id": "model.daily_report.is_valid.create_at.app_error",
     "translation": "Oluşturma zamanı geçerli bir zaman olmalıdır."
   },

@@ -63,7 +63,7 @@ const (
 	UserPasswordMaxLength = 72
 	UserLocaleMaxLength   = 5
 	UserTimezoneMaxRunes  = 256
-	UserRolesMaxLength    = 256
+	UserRolesMaxLength    = 1024
 
 	// MentionKeysMaxCount is the maximum number of individual mention keys a user may have.
 	MentionKeysMaxCount = 500

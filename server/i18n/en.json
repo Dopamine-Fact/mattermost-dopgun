@@ -18322,6 +18322,41 @@
     "description": "Validation error for a Custom Profile Attributes field; {{.Name}} is the rejected field name, which collides with a reserved word of the CEL expression language."
   },
   {
+    "id": "model.custom_role.is_valid.color.app_error",
+    "translation": "Color must be a hex color like #ff00aa.",
+    "description": "Validation error when a system admin creates or edits a custom role in the System Console Roles page and its color is not a lowercase six-digit hex color."
+  },
+  {
+    "id": "model.custom_role.is_valid.create_at.app_error",
+    "translation": "Create at must be a valid time.",
+    "description": "Validation error when a system admin creates or edits a custom role in the System Console Roles page and its creation timestamp is unset."
+  },
+  {
+    "id": "model.custom_role.is_valid.department.app_error",
+    "translation": "Department must be at most {{.Max}} characters.",
+    "description": "Validation error when a system admin creates or edits a custom role in the System Console Roles page and its department name is longer than 64 characters."
+  },
+  {
+    "id": "model.custom_role.is_valid.display_name.app_error",
+    "translation": "Name must be between 1 and {{.Max}} characters.",
+    "description": "Validation error when a system admin creates or edits a custom role in the System Console Roles page and its display name is empty or longer than 64 characters."
+  },
+  {
+    "id": "model.custom_role.is_valid.id.app_error",
+    "translation": "Invalid custom role id.",
+    "description": "Validation error when a system admin creates or edits a custom role in the System Console Roles page and its id is not a valid 26-character id."
+  },
+  {
+    "id": "model.custom_role.is_valid.position.app_error",
+    "translation": "Position must not be negative.",
+    "description": "Validation error when a system admin creates or edits a custom role in the System Console Roles page and its position in the role list is negative."
+  },
+  {
+    "id": "model.custom_role.is_valid.role_name.app_error",
+    "translation": "Invalid role name.",
+    "description": "Validation error when a system admin creates or edits a custom role in the System Console Roles page and its underlying native role name does not match its id."
+  },
+  {
     "id": "model.daily_report.is_valid.create_at.app_error",
     "translation": "Create at must be a valid time.",
     "description": "API validation error when a daily report's creation or update timestamp is unset."

@@ -35,6 +35,7 @@ type RetryLayer struct {
 	CommandWebhookStore             store.CommandWebhookStore
 	ComplianceStore                 store.ComplianceStore
 	ContentFlaggingStore            store.ContentFlaggingStore
+	CustomRoleStore                 store.CustomRoleStore
 	DailyReportStore                store.DailyReportStore
 	DeliveryTrackingStore           store.DeliveryTrackingStore
 	DesktopTokensStore              store.DesktopTokensStore
@@ -150,6 +151,10 @@ func (s *RetryLayer) Compliance() store.ComplianceStore {
 
 func (s *RetryLayer) ContentFlagging() store.ContentFlaggingStore {
 	return s.ContentFlaggingStore
+}
+
+func (s *RetryLayer) CustomRole() store.CustomRoleStore {
+	return s.CustomRoleStore
 }
 
 func (s *RetryLayer) DailyReport() store.DailyReportStore {
@@ -433,6 +438,11 @@ type RetryLayerComplianceStore struct {
 
 type RetryLayerContentFlaggingStore struct {
 	store.ContentFlaggingStore
+	Root *RetryLayer
+}
+
+type RetryLayerCustomRoleStore struct {
+	store.CustomRoleStore
 	Root *RetryLayer
 }
 
@@ -5406,6 +5416,132 @@ func (s *RetryLayerContentFlaggingStore) SaveReviewerSettings(reviewerSettings m
 		if tries >= 3 {
 			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
 			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerCustomRoleStore) Delete(id string, at int64) error {
+
+	tries := 0
+	for {
+		err := s.CustomRoleStore.Delete(id, at)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerCustomRoleStore) Get(id string) (*model.CustomRole, error) {
+
+	tries := 0
+	for {
+		result, err := s.CustomRoleStore.Get(id)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerCustomRoleStore) GetAll() ([]*model.CustomRole, error) {
+
+	tries := 0
+	for {
+		result, err := s.CustomRoleStore.GetAll()
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerCustomRoleStore) Save(r *model.CustomRole) (*model.CustomRole, error) {
+
+	tries := 0
+	for {
+		result, err := s.CustomRoleStore.Save(r)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerCustomRoleStore) SetPositions(orderedIDs []string, at int64) error {
+
+	tries := 0
+	for {
+		err := s.CustomRoleStore.SetPositions(orderedIDs, at)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerCustomRoleStore) Update(r *model.CustomRole) (*model.CustomRole, error) {
+
+	tries := 0
+	for {
+		result, err := s.CustomRoleStore.Update(r)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
 		}
 		timepkg.Sleep(100 * timepkg.Millisecond)
 	}
@@ -20337,6 +20473,27 @@ func (s *RetryLayerUserStore) RefreshPostStatsForUsers() error {
 
 }
 
+func (s *RetryLayerUserStore) RemoveRoleFromAll(roleName string) ([]string, error) {
+
+	tries := 0
+	for {
+		result, err := s.UserStore.RemoveRoleFromAll(roleName)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
 func (s *RetryLayerUserStore) ResetAuthDataToEmailForUsers(service string, userIDs []string, includeDeleted bool, dryRun bool) (int, error) {
 
 	tries := 0
@@ -22061,6 +22218,7 @@ func New(childStore store.Store) *RetryLayer {
 	newStore.CommandWebhookStore = &RetryLayerCommandWebhookStore{CommandWebhookStore: childStore.CommandWebhook(), Root: &newStore}
 	newStore.ComplianceStore = &RetryLayerComplianceStore{ComplianceStore: childStore.Compliance(), Root: &newStore}
 	newStore.ContentFlaggingStore = &RetryLayerContentFlaggingStore{ContentFlaggingStore: childStore.ContentFlagging(), Root: &newStore}
+	newStore.CustomRoleStore = &RetryLayerCustomRoleStore{CustomRoleStore: childStore.CustomRole(), Root: &newStore}
 	newStore.DailyReportStore = &RetryLayerDailyReportStore{DailyReportStore: childStore.DailyReport(), Root: &newStore}
 	newStore.DeliveryTrackingStore = &RetryLayerDeliveryTrackingStore{DeliveryTrackingStore: childStore.DeliveryTracking(), Root: &newStore}
 	newStore.DesktopTokensStore = &RetryLayerDesktopTokensStore{DesktopTokensStore: childStore.DesktopTokens(), Root: &newStore}

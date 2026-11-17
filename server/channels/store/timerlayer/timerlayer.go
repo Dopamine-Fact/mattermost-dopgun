@@ -34,6 +34,7 @@ type TimerLayer struct {
 	CommandWebhookStore             store.CommandWebhookStore
 	ComplianceStore                 store.ComplianceStore
 	ContentFlaggingStore            store.ContentFlaggingStore
+	CustomRoleStore                 store.CustomRoleStore
 	DailyReportStore                store.DailyReportStore
 	DeliveryTrackingStore           store.DeliveryTrackingStore
 	DesktopTokensStore              store.DesktopTokensStore
@@ -149,6 +150,10 @@ func (s *TimerLayer) Compliance() store.ComplianceStore {
 
 func (s *TimerLayer) ContentFlagging() store.ContentFlaggingStore {
 	return s.ContentFlaggingStore
+}
+
+func (s *TimerLayer) CustomRole() store.CustomRoleStore {
+	return s.CustomRoleStore
 }
 
 func (s *TimerLayer) DailyReport() store.DailyReportStore {
@@ -432,6 +437,11 @@ type TimerLayerComplianceStore struct {
 
 type TimerLayerContentFlaggingStore struct {
 	store.ContentFlaggingStore
+	Root *TimerLayer
+}
+
+type TimerLayerCustomRoleStore struct {
+	store.CustomRoleStore
 	Root *TimerLayer
 }
 
@@ -4507,6 +4517,102 @@ func (s *TimerLayerContentFlaggingStore) SaveReviewerSettings(reviewerSettings m
 		s.Root.Metrics.ObserveStoreMethodDuration("ContentFlaggingStore.SaveReviewerSettings", success, elapsed)
 	}
 	return err
+}
+
+func (s *TimerLayerCustomRoleStore) Delete(id string, at int64) error {
+	start := time.Now()
+
+	err := s.CustomRoleStore.Delete(id, at)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("CustomRoleStore.Delete", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerCustomRoleStore) Get(id string) (*model.CustomRole, error) {
+	start := time.Now()
+
+	result, err := s.CustomRoleStore.Get(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("CustomRoleStore.Get", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerCustomRoleStore) GetAll() ([]*model.CustomRole, error) {
+	start := time.Now()
+
+	result, err := s.CustomRoleStore.GetAll()
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("CustomRoleStore.GetAll", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerCustomRoleStore) Save(r *model.CustomRole) (*model.CustomRole, error) {
+	start := time.Now()
+
+	result, err := s.CustomRoleStore.Save(r)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("CustomRoleStore.Save", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerCustomRoleStore) SetPositions(orderedIDs []string, at int64) error {
+	start := time.Now()
+
+	err := s.CustomRoleStore.SetPositions(orderedIDs, at)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("CustomRoleStore.SetPositions", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerCustomRoleStore) Update(r *model.CustomRole) (*model.CustomRole, error) {
+	start := time.Now()
+
+	result, err := s.CustomRoleStore.Update(r)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("CustomRoleStore.Update", success, elapsed)
+	}
+	return result, err
 }
 
 func (s *TimerLayerDailyReportStore) Approve(id string, approverID string, auto bool, approvedAt int64, seenUpdateAt int64) error {
@@ -16095,6 +16201,22 @@ func (s *TimerLayerUserStore) RefreshPostStatsForUsers() error {
 	return err
 }
 
+func (s *TimerLayerUserStore) RemoveRoleFromAll(roleName string) ([]string, error) {
+	start := time.Now()
+
+	result, err := s.UserStore.RemoveRoleFromAll(roleName)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("UserStore.RemoveRoleFromAll", success, elapsed)
+	}
+	return result, err
+}
+
 func (s *TimerLayerUserStore) ResetAuthDataToEmailForUsers(service string, userIDs []string, includeDeleted bool, dryRun bool) (int, error) {
 	start := time.Now()
 
@@ -17443,6 +17565,7 @@ func New(childStore store.Store, metrics einterfaces.MetricsInterface) *TimerLay
 	newStore.CommandWebhookStore = &TimerLayerCommandWebhookStore{CommandWebhookStore: childStore.CommandWebhook(), Root: &newStore}
 	newStore.ComplianceStore = &TimerLayerComplianceStore{ComplianceStore: childStore.Compliance(), Root: &newStore}
 	newStore.ContentFlaggingStore = &TimerLayerContentFlaggingStore{ContentFlaggingStore: childStore.ContentFlagging(), Root: &newStore}
+	newStore.CustomRoleStore = &TimerLayerCustomRoleStore{CustomRoleStore: childStore.CustomRole(), Root: &newStore}
 	newStore.DailyReportStore = &TimerLayerDailyReportStore{DailyReportStore: childStore.DailyReport(), Root: &newStore}
 	newStore.DeliveryTrackingStore = &TimerLayerDeliveryTrackingStore{DeliveryTrackingStore: childStore.DeliveryTracking(), Root: &newStore}
 	newStore.DesktopTokensStore = &TimerLayerDesktopTokensStore{DesktopTokensStore: childStore.DesktopTokens(), Root: &newStore}

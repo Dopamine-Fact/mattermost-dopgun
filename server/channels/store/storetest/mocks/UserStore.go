@@ -1730,6 +1730,36 @@ func (_m *UserStore) RefreshPostStatsForUsers() error {
 	return r0
 }
 
+// RemoveRoleFromAll provides a mock function with given fields: roleName
+func (_m *UserStore) RemoveRoleFromAll(roleName string) ([]string, error) {
+	ret := _m.Called(roleName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RemoveRoleFromAll")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]string, error)); ok {
+		return rf(roleName)
+	}
+	if rf, ok := ret.Get(0).(func(string) []string); ok {
+		r0 = rf(roleName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(roleName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // ResetAuthDataToEmailForUsers provides a mock function with given fields: service, userIDs, includeDeleted, dryRun
 func (_m *UserStore) ResetAuthDataToEmailForUsers(service string, userIDs []string, includeDeleted bool, dryRun bool) (int, error) {
 	ret := _m.Called(service, userIDs, includeDeleted, dryRun)

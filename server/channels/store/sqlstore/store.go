@@ -111,6 +111,7 @@ type SqlStoreStores struct {
 	canvas                     store.CanvasStore
 	dailyReport                store.DailyReportStore
 	driveItem                  store.DriveItemStore
+	customRole                 store.CustomRoleStore
 	view                       store.ViewStore
 	propertyGroup              store.PropertyGroupStore
 	propertyField              store.PropertyFieldStore
@@ -311,6 +312,7 @@ func New(settings model.SqlSettings, logger mlog.LoggerIFace, metrics einterface
 	store.stores.canvas = newSqlCanvasStore(store)
 	store.stores.dailyReport = newSqlDailyReportStore(store)
 	store.stores.driveItem = newSqlDriveItemStore(store)
+	store.stores.customRole = newSqlCustomRoleStore(store)
 	store.stores.view = newSqlViewStore(store)
 	store.stores.propertyGroup = newPropertyGroupStore(store)
 	store.stores.propertyField = newPropertyFieldStore(store)
@@ -1183,6 +1185,10 @@ func (ss *SqlStore) Canvas() store.CanvasStore {
 
 func (ss *SqlStore) DailyReport() store.DailyReportStore {
 	return ss.stores.dailyReport
+}
+
+func (ss *SqlStore) CustomRole() store.CustomRoleStore {
+	return ss.stores.customRole
 }
 
 func (ss *SqlStore) DriveItem() store.DriveItemStore {

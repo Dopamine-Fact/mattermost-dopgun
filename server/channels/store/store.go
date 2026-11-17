@@ -94,6 +94,7 @@ type Store interface {
 	Task() TaskStore
 	Canvas() CanvasStore
 	DailyReport() DailyReportStore
+	CustomRole() CustomRoleStore
 	DriveItem() DriveItemStore
 	View() ViewStore
 	PropertyGroup() PropertyGroupStore
@@ -535,6 +536,8 @@ type UserStore interface {
 	AnalyticsGetInactiveUsersCount() (int64, error)
 	AnalyticsGetExternalUsers(hostDomain string) (bool, error)
 	AnalyticsGetSystemAdminCount() (int64, error)
+	// RemoveRoleFromAll strips roleName (whole word) from every user's Roles and returns the ids of the users changed.
+	RemoveRoleFromAll(roleName string) ([]string, error)
 	AnalyticsGetGuestCount() (int64, error)
 	AnalyticsGetSingleChannelGuestCount() (int64, error)
 	GetProfilesNotInTeam(teamID string, groupConstrained bool, offset int, limit int, viewRestrictions *model.ViewUsersRestrictions) ([]*model.User, error)
@@ -1252,6 +1255,21 @@ type DailyReportStore interface {
 	GetForTeam(teamID, fromDate, toDate, userID string) ([]*model.DailyReport, error)
 	// GetPendingBefore lists pending reports last submitted before the given time, across all teams.
 	GetPendingBefore(updatedBefore int64) ([]*model.DailyReport, error)
+}
+
+type CustomRoleStore interface {
+	Save(r *model.CustomRole) (*model.CustomRole, error)
+	// Update writes the metadata columns; *store.ErrNotFound when it does not exist or is deleted.
+	Update(r *model.CustomRole) (*model.CustomRole, error)
+	// Get returns a live role; *store.ErrNotFound when missing or deleted.
+	Get(id string) (*model.CustomRole, error)
+	// GetAll lists live roles ordered by Position.
+	GetAll() ([]*model.CustomRole, error)
+	// Delete soft-deletes the role.
+	Delete(id string, at int64) error
+	// SetPositions gives orderedIDs positions 0..n-1 in one transaction. orderedIDs must be exactly the live roles,
+	// each once, else *store.ErrInvalidInput.
+	SetPositions(orderedIDs []string, at int64) error
 }
 
 type DriveItemStore interface {
