@@ -18,6 +18,12 @@ const (
 	DriveTrashRetention   = 30 * 24 * time.Hour
 )
 
+// DriveListing is a drive folder's children and its path from the channel root (root excluded).
+type DriveListing struct {
+	Items []*DriveItem `json:"items"`
+	Path  []*DriveItem `json:"path"`
+}
+
 // DriveItem is a file or folder in a channel's file drive. ParentId "" is the channel root.
 type DriveItem struct {
 	Id        string `json:"id"`

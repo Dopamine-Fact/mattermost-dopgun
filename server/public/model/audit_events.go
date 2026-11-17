@@ -426,6 +426,18 @@ const (
 // Daily reports
 const AuditEventApproveDailyReport = "approveDailyReport" // approve a daily report
 
+// Channel drives
+const (
+	AuditEventCreateDriveItem    = "createDriveItem"    // create a folder or add an upload to a channel drive
+	AuditEventPatchDriveItem     = "patchDriveItem"     // rename a channel drive item
+	AuditEventMoveDriveItems     = "moveDriveItems"     // move channel drive items, possibly to another channel
+	AuditEventCopyDriveItems     = "copyDriveItems"     // copy channel drive items or chat files into a drive
+	AuditEventDeleteDriveItems   = "deleteDriveItems"   // move channel drive items to the recycle bin or delete them for good
+	AuditEventRestoreDriveItems  = "restoreDriveItems"  // restore channel drive items from the recycle bin
+	AuditEventEmptyDriveTrash    = "emptyDriveTrash"    // permanently delete a channel drive's recycle bin
+	AuditEventDownloadDriveItems = "downloadDriveItems" // download channel drive items as a zip
+)
+
 // Tasks
 const (
 	AuditEventCreateTask          = "createTask"          // create task on a team task list

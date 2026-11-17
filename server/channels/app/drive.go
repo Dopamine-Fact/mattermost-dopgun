@@ -43,10 +43,7 @@ const (
 	driveAnyState
 )
 
-type DriveListing struct {
-	Items []*model.DriveItem `json:"items"`
-	Path  []*model.DriveItem `json:"path"`
-}
+type DriveListing = model.DriveListing
 
 func driveError(where, id string, status int) *model.AppError {
 	return model.NewAppError(where, "app.drive."+id+".app_error", nil, "", status)
@@ -179,6 +176,15 @@ func (a *App) getDriveItems(channel *model.Channel, ids []string, state driveIte
 		}
 	}
 	return items, nil
+}
+
+// GetDriveItem loads one live item of channel.
+func (a *App) GetDriveItem(channel *model.Channel, id string) (*model.DriveItem, *model.AppError) {
+	items, appErr := a.getDriveItems(channel, []string{id}, driveLive)
+	if appErr != nil {
+		return nil, appErr
+	}
+	return items[0], nil
 }
 
 // uniqueDriveName returns name, or "name (2).ext", "name (3).ext"… when it is taken in the
