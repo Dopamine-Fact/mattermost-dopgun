@@ -533,3 +533,45 @@ func TestApplyPermissionsMapToSchemeRole(t *testing.T) {
 		})
 	}
 }
+
+func TestSplitManageTeamTasksPermissionMigration(t *testing.T) {
+	mainHelper.Parallel(t)
+
+	th := SetupWithStoreMock(t)
+
+	migrationMap, err := th.App.getSplitManageTeamTasksPermissionMigration()
+	require.NoError(t, err)
+
+	teamAdminRole := &model.Role{
+		Name:        model.TeamAdminRoleId,
+		Permissions: []string{model.PermissionManageTeam.Id, model.PermissionManageTeamTasks.Id},
+	}
+	systemAdminRole := &model.Role{
+		Name:        model.SystemAdminRoleId,
+		Permissions: []string{model.PermissionManageSystem.Id, model.PermissionManageTeamTasks.Id},
+	}
+	teamUserRole := &model.Role{
+		Name:        model.TeamUserRoleId,
+		Permissions: []string{model.PermissionViewTeam.Id},
+	}
+	roles := []*model.Role{teamAdminRole, systemAdminRole, teamUserRole}
+
+	mockStore := th.App.Srv().Store().(*mocks.Store)
+	roleStore := mocks.RoleStore{}
+	systemStore := mocks.SystemStore{}
+	mockStore.On("Role").Return(&roleStore)
+	mockStore.On("System").Return(&systemStore)
+	systemStore.On("GetByName", model.MigrationKeySplitManageTeamTasksPermission).
+		Return(nil, model.NewAppError("test", "missing", nil, "", 404)).Once()
+	systemStore.On("SaveOrUpdate", mock.AnythingOfType("*model.System")).Return(nil).Once()
+	roleStore.On("SavePreservingUnknownPermissions", mock.AnythingOfType("*model.Role")).
+		Return(func(role *model.Role) *model.Role { return role }, nil)
+
+	appErr := th.App.Srv().doPermissionsMigration(model.MigrationKeySplitManageTeamTasksPermission, migrationMap, roles)
+	require.Nil(t, appErr)
+
+	split := []string{model.PermissionManageTasks.Id, model.PermissionManageDailyReports.Id, model.PermissionManageRevisions.Id}
+	assert.ElementsMatch(t, append([]string{model.PermissionManageTeam.Id}, split...), teamAdminRole.Permissions)
+	assert.ElementsMatch(t, append([]string{model.PermissionManageSystem.Id, model.PermissionAssignCustomRoles.Id}, split...), systemAdminRole.Permissions)
+	assert.Equal(t, []string{model.PermissionViewTeam.Id}, teamUserRole.Permissions)
+}

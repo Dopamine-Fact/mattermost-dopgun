@@ -44,7 +44,7 @@ describe('SidebarBrowseOrAddChannelMenu', () => {
         return screen.getAllByRole('menuitem').map((item) => item.id);
     }
 
-    test('offers "Create revision channel" only when the team has revisions on and the user manages tasks', async () => {
+    test('offers "Create revision channel" only when the team has revisions on and the user manages revisions', async () => {
         const state = (revisionsEnabled: boolean, permissions: string[]) => ({
             entities: {
                 users: {currentUserId: 'me', profiles: {me: TestHelper.getUserMock({id: 'me', roles: 'system_user'})}},
@@ -64,8 +64,9 @@ describe('SidebarBrowseOrAddChannelMenu', () => {
             return shown;
         };
 
-        expect(await open(state(true, ['manage_team_tasks']))).toBe(true);
-        expect(await open(state(false, ['manage_team_tasks']))).toBe(false);
+        expect(await open(state(true, ['manage_revisions']))).toBe(true);
+        expect(await open(state(false, ['manage_revisions']))).toBe(false);
+        expect(await open(state(true, ['manage_tasks']))).toBe(false);
         expect(await open(state(true, []))).toBe(false);
     });
 

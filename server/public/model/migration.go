@@ -69,4 +69,5 @@ const (
 	MigrationRemoveImportTeamPermission                = "remove_import_team_permission"
 	MigrationKeyAddAIRecapsPermissions                 = "add_ai_recaps_permissions"
 	MigrationKeyAddManageTeamTasksPermission           = "add_manage_team_tasks_permission"
+	MigrationKeySplitManageTeamTasksPermission         = "split_manage_team_tasks_permission"
 )

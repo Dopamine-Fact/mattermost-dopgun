@@ -11599,6 +11599,14 @@
     "defaultMessage": "Manage members",
     "description": "Row label for the permission to manage custom user group membership; shown under the Custom Groups section of the permission scheme editor, so 'members' refers to group members."
   },
+  "admin.permissions.permission.manage_daily_reports.description": {
+    "defaultMessage": "See and export other members' daily reports, approve or reject them, and choose who must submit one.",
+    "description": "Help text under the \"Manage daily reports\" permission row in the System Console permission scheme editor."
+  },
+  "admin.permissions.permission.manage_daily_reports.name": {
+    "defaultMessage": "Manage daily reports",
+    "description": "Row label in the System Console permission scheme editor for the team permission to review other members' daily reports."
+  },
   "admin.permissions.permission.manage_incoming_webhooks.description": {
     "defaultMessage": "Create, edit, and delete incoming webhooks owned by other users.",
     "description": "Description text for the permission to manage incoming webhooks created by other users, in the System Console permission scheme editor."
@@ -11751,6 +11759,14 @@
     "defaultMessage": "Manage Channel Settings",
     "description": "Row label for the permission to edit channel name/header/purpose; shown under the public channels section of the permission scheme editor."
   },
+  "admin.permissions.permission.manage_revisions.description": {
+    "defaultMessage": "Create revision channels, upload their video, and create, assign and delete revision tasks.",
+    "description": "Help text under the \"Manage revisions\" permission row in the System Console permission scheme editor."
+  },
+  "admin.permissions.permission.manage_revisions.name": {
+    "defaultMessage": "Manage revisions",
+    "description": "Row label in the System Console permission scheme editor for the team permission to manage revision channels and revision tasks."
+  },
   "admin.permissions.permission.manage_roles.description": {
     "defaultMessage": "Manage roles",
     "description": "Description text for the permission to manage user roles system-wide, in the System Console permission scheme editor."
@@ -11791,6 +11807,14 @@
     "defaultMessage": "Manage system",
     "description": "Row label for the system administration permission, in the System Console permission scheme editor."
   },
+  "admin.permissions.permission.manage_tasks.description": {
+    "defaultMessage": "Create, assign and delete tasks, and manage task sections. Other members can still update status, dates and descriptions.",
+    "description": "Help text under the \"Manage tasks\" permission row in the System Console permission scheme editor."
+  },
+  "admin.permissions.permission.manage_tasks.name": {
+    "defaultMessage": "Manage tasks",
+    "description": "Row label in the System Console permission scheme editor for the team permission to create, assign and delete tasks."
+  },
   "admin.permissions.permission.manage_team_access_rules.description": {
     "defaultMessage": "Manage attribute based membership policies for channels in the team.",
     "description": "Description text for the permission to manage attribute-based channel membership policies within a team, in the System Console permission scheme editor."
@@ -11806,14 +11830,6 @@
   "admin.permissions.permission.manage_team_roles.name": {
     "defaultMessage": "Manage team roles",
     "description": "Row label for the permission to manage members' roles within a team, in the System Console permission scheme editor."
-  },
-  "admin.permissions.permission.manage_team_tasks.description": {
-    "defaultMessage": "Create, assign and delete tasks, and manage task sections. Other members can still update status, dates and descriptions.",
-    "description": ""
-  },
-  "admin.permissions.permission.manage_team_tasks.name": {
-    "defaultMessage": "Manage tasks",
-    "description": ""
   },
   "admin.permissions.permission.manage_team.description": {
     "defaultMessage": "Manage team",

@@ -375,14 +375,34 @@ export const permissionRolesStrings: Record<string, Record<string, MessageDescri
             defaultMessage: 'Manage team roles',
         },
     }),
-    manage_team_tasks: defineMessages({
+    manage_tasks: defineMessages({
         name: {
-            id: 'admin.permissions.permission.manage_team_tasks.name',
+            id: 'admin.permissions.permission.manage_tasks.name',
             defaultMessage: 'Manage tasks',
         },
         description: {
-            id: 'admin.permissions.permission.manage_team_tasks.description',
+            id: 'admin.permissions.permission.manage_tasks.description',
             defaultMessage: 'Create, assign and delete tasks, and manage task sections. Other members can still update status, dates and descriptions.',
+        },
+    }),
+    manage_daily_reports: defineMessages({
+        name: {
+            id: 'admin.permissions.permission.manage_daily_reports.name',
+            defaultMessage: 'Manage daily reports',
+        },
+        description: {
+            id: 'admin.permissions.permission.manage_daily_reports.description',
+            defaultMessage: "See and export other members' daily reports, approve or reject them, and choose who must submit one.",
+        },
+    }),
+    manage_revisions: defineMessages({
+        name: {
+            id: 'admin.permissions.permission.manage_revisions.name',
+            defaultMessage: 'Manage revisions',
+        },
+        description: {
+            id: 'admin.permissions.permission.manage_revisions.description',
+            defaultMessage: 'Create revision channels, upload their video, and create, assign and delete revision tasks.',
         },
     }),
     manage_incoming_webhooks: defineMessages({

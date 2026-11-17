@@ -43,7 +43,7 @@ func requireDailyReportTeam(c *Context, teamID string) *model.Team {
 	return team
 }
 
-// dailyReportFilter resolves from/to (default today) and the user filter; users who cannot manage tasks only see their own.
+// dailyReportFilter resolves from/to (default today) and the user filter; users who cannot manage daily reports only see their own.
 func dailyReportFilter(c *Context, r *http.Request, team *model.Team) (from, to, userID string, ok bool) {
 	q := r.URL.Query()
 	from, to, userID = q.Get("from"), q.Get("to"), q.Get("user_id")
@@ -74,7 +74,7 @@ func dailyReportFilter(c *Context, r *http.Request, team *model.Team) (from, to,
 		c.SetInvalidParam("to")
 		return
 	}
-	if !c.App.SessionHasPermissionToTeam(*c.AppContext.Session(), team.Id, model.PermissionManageTeamTasks) {
+	if !c.App.SessionHasPermissionToTeam(*c.AppContext.Session(), team.Id, model.PermissionManageDailyReports) {
 		userID = c.AppContext.Session().UserId
 	}
 	return from, to, userID, true
@@ -145,7 +145,7 @@ func loadReviewableReport(c *Context, r *http.Request) (*model.DailyReport, revi
 	if requireDailyReportTeam(c, report.TeamId); c.Err != nil {
 		return nil, body
 	}
-	if requireManageTasks(c, report.TeamId); c.Err != nil {
+	if requireTeamPermission(c, report.TeamId, model.PermissionManageDailyReports); c.Err != nil {
 		return nil, body
 	}
 	return report, body
@@ -254,7 +254,7 @@ func setDailyReportAssignees(c *Context, w http.ResponseWriter, r *http.Request)
 	if requireDailyReportTeam(c, c.Params.TeamId); c.Err != nil {
 		return
 	}
-	if requireManageTasks(c, c.Params.TeamId); c.Err != nil {
+	if requireTeamPermission(c, c.Params.TeamId, model.PermissionManageDailyReports); c.Err != nil {
 		return
 	}
 	var body dailyReportAssigneesBody

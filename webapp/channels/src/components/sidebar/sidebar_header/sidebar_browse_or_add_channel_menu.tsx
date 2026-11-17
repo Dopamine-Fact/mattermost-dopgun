@@ -64,7 +64,7 @@ export default function SidebarBrowserOrAddChannelMenu(props: Props) {
     const pluginMenuItems = useSelector(getSidebarBrowseOrAddChannelMenuPluginComponents);
     const dispatch = useDispatch();
     const team = useSelector(getCurrentTeam);
-    const canManageTasks = useSelector((state: GlobalState) => haveICurrentTeamPermission(state, Permissions.MANAGE_TEAM_TASKS));
+    const canManageRevisions = useSelector((state: GlobalState) => haveICurrentTeamPermission(state, Permissions.MANAGE_REVISIONS));
 
     const canCreatePublicChannel = useSelector((state: GlobalState) => haveICurrentTeamPermission(state, Permissions.CREATE_PUBLIC_CHANNEL));
 
@@ -91,7 +91,7 @@ export default function SidebarBrowserOrAddChannelMenu(props: Props) {
     }
 
     let createRevisionChannelMenuItem: JSX.Element | null = null;
-    if (team?.tasks_enabled && team.revisions_enabled && canManageTasks) {
+    if (team?.tasks_enabled && team.revisions_enabled && canManageRevisions) {
         createRevisionChannelMenuItem = (
             <Menu.Item
                 id='createRevisionChannelMenuItem'

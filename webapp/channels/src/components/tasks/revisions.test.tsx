@@ -124,7 +124,7 @@ describe('Revisions', () => {
         expect(screen.getByRole('textbox', {name: 'Revision'})).toHaveValue('');
     });
 
-    test('members without manage_team_tasks can watch but not add', () => {
+    test('members without manage_revisions can watch but not add', () => {
         renderRevisions(false);
         expect(screen.queryByRole('textbox', {name: 'Revision'})).not.toBeInTheDocument();
         expect(screen.getByRole('button', {name: 'Revision late'})).toBeInTheDocument();

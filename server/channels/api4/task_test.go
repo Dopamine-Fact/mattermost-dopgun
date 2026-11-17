@@ -41,7 +41,7 @@ func TestTasks(t *testing.T) {
 		CheckForbiddenStatus(t, resp)
 	})
 
-	t.Run("members without manage_team_tasks only edit existing tasks", func(t *testing.T) {
+	t.Run("members without manage_tasks only edit existing tasks", func(t *testing.T) {
 		task, _, err := th.SystemAdminClient.CreateTask(ctx, &model.Task{TeamId: teamId, Title: "Admin task"})
 		require.NoError(t, err)
 		section, _, err := th.SystemAdminClient.CreateTaskSection(ctx, &model.TaskSection{TeamId: teamId, Name: "Admin section"})
@@ -76,8 +76,8 @@ func TestTasks(t *testing.T) {
 	})
 
 	t.Run("crud and section delete", func(t *testing.T) {
-		th.AddPermissionToRole(t, model.PermissionManageTeamTasks.Id, model.TeamUserRoleId)
-		defer th.RemovePermissionFromRole(t, model.PermissionManageTeamTasks.Id, model.TeamUserRoleId)
+		th.AddPermissionToRole(t, model.PermissionManageTasks.Id, model.TeamUserRoleId)
+		defer th.RemovePermissionFromRole(t, model.PermissionManageTasks.Id, model.TeamUserRoleId)
 
 		section, resp, err := th.Client.CreateTaskSection(ctx, &model.TaskSection{TeamId: teamId, Name: "Yapılacak"})
 		require.NoError(t, err)
@@ -147,7 +147,7 @@ func TestTasks(t *testing.T) {
 		require.Error(t, err)
 		CheckBadRequestStatus(t, resp)
 
-		// Another member without manage_team_tasks cannot delete someone else's comment.
+		// Another member without manage_tasks cannot delete someone else's comment.
 		client2 := th.CreateClient()
 		th.LoginBasic2WithClient(t, client2)
 		resp, err = client2.DeleteTaskComment(ctx, comment.Id)
@@ -368,5 +368,56 @@ func TestTasks(t *testing.T) {
 		_, resp, err = th.SystemAdminClient.CreateTaskSection(ctx, &model.TaskSection{TeamId: teamId, Name: "Off", ChannelId: th.CreatePublicChannel(t).Id})
 		require.Error(t, err)
 		CheckForbiddenStatus(t, resp)
+	})
+}
+
+func TestTaskPermissionSplit(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	ctx := context.Background()
+	teamId := th.BasicTeam.Id
+	_, _, err := th.SystemAdminClient.PatchTeam(ctx, teamId, &model.TeamPatch{TasksEnabled: new(true), RevisionsEnabled: new(true)})
+	require.NoError(t, err)
+
+	t.Run("manage_tasks alone: plain tasks only", func(t *testing.T) {
+		th.AddPermissionToRole(t, model.PermissionManageTasks.Id, model.TeamUserRoleId)
+		defer th.RemovePermissionFromRole(t, model.PermissionManageTasks.Id, model.TeamUserRoleId)
+
+		task, resp, err := th.Client.CreateTask(ctx, &model.Task{TeamId: teamId, Title: "plain"})
+		require.NoError(t, err)
+		CheckCreatedStatus(t, resp)
+		_, err = th.Client.DeleteTask(ctx, task.Id)
+		require.NoError(t, err)
+
+		_, resp, err = th.Client.CreateTaskSection(ctx, &model.TaskSection{TeamId: teamId, Name: "rev", ChannelId: th.BasicChannel.Id})
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+	})
+
+	t.Run("manage_revisions alone: revision sections and their tasks only", func(t *testing.T) {
+		th.AddPermissionToRole(t, model.PermissionManageRevisions.Id, model.TeamUserRoleId)
+		defer th.RemovePermissionFromRole(t, model.PermissionManageRevisions.Id, model.TeamUserRoleId)
+
+		section, resp, err := th.Client.CreateTaskSection(ctx, &model.TaskSection{TeamId: teamId, Name: "rev", ChannelId: th.BasicChannel.Id})
+		require.NoError(t, err)
+		CheckCreatedStatus(t, resp)
+
+		revision, resp, err := th.Client.CreateTask(ctx, &model.Task{TeamId: teamId, SectionId: section.Id, Title: "fix frame 12"})
+		require.NoError(t, err)
+		CheckCreatedStatus(t, resp)
+		_, _, err = th.Client.PatchTask(ctx, revision.Id, &model.TaskPatch{AssigneeId: &th.BasicUser2.Id})
+		require.NoError(t, err)
+
+		_, resp, err = th.Client.CreateTask(ctx, &model.Task{TeamId: teamId, Title: "plain"})
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		_, resp, err = th.Client.CreateTaskSection(ctx, &model.TaskSection{TeamId: teamId, Name: "plain section"})
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+
+		_, err = th.Client.DeleteTask(ctx, revision.Id)
+		require.NoError(t, err)
+		_, err = th.Client.DeleteTaskSection(ctx, section.Id)
+		require.NoError(t, err)
 	})
 }

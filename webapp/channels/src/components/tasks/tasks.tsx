@@ -63,7 +63,7 @@ const Tasks = () => {
     const members = useSelector((state: GlobalState) => getProfilesInTeam(state, teamId));
     const nameDisplay = useSelector(getTeammateNameDisplaySetting);
     const usersById = useSelector((state: GlobalState) => state.entities.users.profiles);
-    const canManage = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_TEAM_TASKS));
+    const canManage = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_TASKS));
 
     const {search} = useLocation();
     const [view, setView] = useState<ViewId>('board');

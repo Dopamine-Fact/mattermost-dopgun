@@ -191,6 +191,11 @@ func (s *TaskSection) Auditable() map[string]any {
 	}
 }
 
+// IsRevision reports whether the section is a revision channel: tied to a channel or carrying a video.
+func (s *TaskSection) IsRevision() bool {
+	return s.ChannelId != "" || s.VideoFileId != ""
+}
+
 func (s *TaskSection) PreSave() {
 	if s.Id == "" {
 		s.Id = NewId()

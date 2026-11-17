@@ -80,7 +80,9 @@ export default class PermissionsTree extends React.PureComponent<Props, State> {
                         ],
                     },
                     Permissions.CREATE_TEAM,
-                    Permissions.MANAGE_TEAM_TASKS,
+                    Permissions.MANAGE_TASKS,
+                    Permissions.MANAGE_DAILY_REPORTS,
+                    Permissions.MANAGE_REVISIONS,
                 ],
             },
             {

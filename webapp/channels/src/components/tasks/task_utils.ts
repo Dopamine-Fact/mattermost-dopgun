@@ -16,7 +16,7 @@ export type ViewProps = {
     selectedId: string;
     onSelect: (taskId: string) => void;
 
-    // canManage: the user may create, assign and delete tasks and edit sections (manage_team_tasks).
+    // canManage: the user may create, assign and delete tasks and edit sections (manage_tasks; manage_revisions on the Revisions tab).
     canManage: boolean;
 };
 

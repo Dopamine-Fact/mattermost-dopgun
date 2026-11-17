@@ -37,7 +37,7 @@ const DailyReports = () => {
     const teamId = team?.id ?? '';
     const enabled = Boolean(team?.daily_reports_enabled);
     const currentUserId = useSelector(getCurrentUserId);
-    const canApprove = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_TEAM_TASKS));
+    const canApprove = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_DAILY_REPORTS));
 
     const [tab, setTab] = useState<Tab>('mine');
     const [tick, setTick] = useState(0);

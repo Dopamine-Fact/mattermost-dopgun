@@ -176,6 +176,28 @@ func TestDailyReportsAPI(t *testing.T) {
 		require.Empty(t, ids)
 	})
 
+	t.Run("manage_daily_reports alone approves; manage_tasks alone does not", func(t *testing.T) {
+		client2 := th.CreateClient()
+		th.LoginBasic2WithClient(t, client2)
+		report, _, err := client2.SubmitDailyReport(ctx, teamID, "split day")
+		require.NoError(t, err)
+
+		th.AddPermissionToRole(t, model.PermissionManageTasks.Id, model.TeamUserRoleId)
+		_, resp, err := th.Client.ApproveDailyReport(ctx, report.Id, report.UpdateAt)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		th.RemovePermissionFromRole(t, model.PermissionManageTasks.Id, model.TeamUserRoleId)
+
+		th.AddPermissionToRole(t, model.PermissionManageDailyReports.Id, model.TeamUserRoleId)
+		defer th.RemovePermissionFromRole(t, model.PermissionManageDailyReports.Id, model.TeamUserRoleId)
+		list, _, err := th.Client.GetDailyReports(ctx, teamID, "", "", th.BasicUser2.Id)
+		require.NoError(t, err)
+		require.NotEmpty(t, list)
+		approved, _, err := th.Client.ApproveDailyReport(ctx, report.Id, report.UpdateAt)
+		require.NoError(t, err)
+		require.Equal(t, model.DailyReportStatusApproved, approved.Status)
+	})
+
 	t.Run("bad dates return 400", func(t *testing.T) {
 		for _, c := range [][2]string{{"nope", ""}, {"2026-01-02", "2026-01-01"}, {"2024-01-01", "2026-01-01"}} {
 			_, resp, err := th.Client.GetDailyReports(ctx, teamID, c[0], c[1], "")

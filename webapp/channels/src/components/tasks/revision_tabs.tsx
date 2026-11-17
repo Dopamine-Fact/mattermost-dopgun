@@ -52,7 +52,7 @@ const RevisionTabs = ({channelId, children}: Props) => {
     const members = useSelector((state: GlobalState) => getProfilesInTeam(state, teamId));
     const nameDisplay = useSelector(getTeammateNameDisplaySetting);
     const usersById = useSelector((state: GlobalState) => state.entities.users.profiles);
-    const canManage = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_TEAM_TASKS));
+    const canManage = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_REVISIONS));
     const section = enabled ? sections.find((s) => s.channel_id === channelId) : undefined;
 
     // ?revision=<task id> (used by assignment messages) opens the Revisions tab on that revision.

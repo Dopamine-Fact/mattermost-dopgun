@@ -43,11 +43,34 @@ func requireTaskTeamMember(c *Context, teamID string) {
 	}
 }
 
-// requireManageTasks: creating, assigning and deleting tasks, and editing sections, need manage_team_tasks.
-func requireManageTasks(c *Context, teamID string) {
-	if !c.App.SessionHasPermissionToTeam(*c.AppContext.Session(), teamID, model.PermissionManageTeamTasks) {
-		c.SetPermissionError(model.PermissionManageTeamTasks)
+func requireTeamPermission(c *Context, teamID string, permission *model.Permission) {
+	if !c.App.SessionHasPermissionToTeam(*c.AppContext.Session(), teamID, permission) {
+		c.SetPermissionError(permission)
 	}
+}
+
+// sectionPermission: revision sections need manage_revisions, the others manage_tasks.
+func sectionPermission(section *model.TaskSection) *model.Permission {
+	if section.IsRevision() {
+		return model.PermissionManageRevisions
+	}
+	return model.PermissionManageTasks
+}
+
+// requireTaskPermission: creating, assigning and deleting a task needs the permission of the section it is in.
+func requireTaskPermission(c *Context, teamID, sectionID string) {
+	permission := model.PermissionManageTasks
+	if sectionID != "" {
+		section, appErr := c.App.GetTaskSection(sectionID)
+		if appErr != nil && appErr.StatusCode != http.StatusNotFound {
+			c.Err = appErr
+			return
+		}
+		if appErr == nil {
+			permission = sectionPermission(section)
+		}
+	}
+	requireTeamPermission(c, teamID, permission)
 }
 
 func writeTaskJSON(w http.ResponseWriter, status int, v any) {
@@ -104,13 +127,13 @@ func createTask(c *Context, w http.ResponseWriter, r *http.Request) {
 	if requireTaskTeamMember(c, c.Params.TeamId); c.Err != nil {
 		return
 	}
-	if requireManageTasks(c, c.Params.TeamId); c.Err != nil {
-		return
-	}
 
 	var task model.Task
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
 		c.SetInvalidParamWithErr("task", err)
+		return
+	}
+	if requireTaskPermission(c, c.Params.TeamId, task.SectionId); c.Err != nil {
 		return
 	}
 	task.Id = ""
@@ -145,7 +168,11 @@ func patchTask(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if patch.AssigneeId != nil && *patch.AssigneeId != task.AssigneeId {
-		if requireManageTasks(c, task.TeamId); c.Err != nil {
+		sectionID := task.SectionId
+		if patch.SectionId != nil {
+			sectionID = *patch.SectionId
+		}
+		if requireTaskPermission(c, task.TeamId, sectionID); c.Err != nil {
 			return
 		}
 	}
@@ -171,7 +198,7 @@ func deleteTask(c *Context, w http.ResponseWriter, r *http.Request) {
 	if c.Err != nil {
 		return
 	}
-	if requireManageTasks(c, task.TeamId); c.Err != nil {
+	if requireTaskPermission(c, task.TeamId, task.SectionId); c.Err != nil {
 		return
 	}
 
@@ -210,9 +237,6 @@ func createTaskSection(c *Context, w http.ResponseWriter, r *http.Request) {
 	if requireTaskTeamMember(c, c.Params.TeamId); c.Err != nil {
 		return
 	}
-	if requireManageTasks(c, c.Params.TeamId); c.Err != nil {
-		return
-	}
 
 	var section model.TaskSection
 	if err := json.NewDecoder(r.Body).Decode(&section); err != nil {
@@ -222,6 +246,9 @@ func createTaskSection(c *Context, w http.ResponseWriter, r *http.Request) {
 	section.Id = ""
 	section.TeamId = c.Params.TeamId
 	section.VideoFileId = "" // set only by uploading through /video
+	if requireTeamPermission(c, c.Params.TeamId, sectionPermission(&section)); c.Err != nil {
+		return
+	}
 	if section.ChannelId != "" {
 		if ok, _ := c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), section.ChannelId, model.PermissionReadChannel); !ok {
 			c.SetPermissionError(model.PermissionReadChannel)
@@ -250,7 +277,7 @@ func patchTaskSection(c *Context, w http.ResponseWriter, r *http.Request) {
 	if c.Err != nil {
 		return
 	}
-	if requireManageTasks(c, section.TeamId); c.Err != nil {
+	if requireTeamPermission(c, section.TeamId, sectionPermission(section)); c.Err != nil {
 		return
 	}
 
@@ -281,7 +308,7 @@ func deleteTaskSection(c *Context, w http.ResponseWriter, r *http.Request) {
 	if c.Err != nil {
 		return
 	}
-	if requireManageTasks(c, section.TeamId); c.Err != nil {
+	if requireTeamPermission(c, section.TeamId, sectionPermission(section)); c.Err != nil {
 		return
 	}
 
@@ -333,7 +360,7 @@ func setTaskSectionVideo(c *Context, w http.ResponseWriter, r *http.Request) {
 	if c.Err != nil {
 		return
 	}
-	if requireManageTasks(c, section.TeamId); c.Err != nil {
+	if requireTeamPermission(c, section.TeamId, model.PermissionManageRevisions); c.Err != nil {
 		return
 	}
 	name, data := readUploadedFile(c, r, "video")
@@ -482,7 +509,7 @@ func deleteTaskComment(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if comment.UserId != c.AppContext.Session().UserId {
-		if requireManageTasks(c, task.TeamId); c.Err != nil {
+		if requireTaskPermission(c, task.TeamId, task.SectionId); c.Err != nil {
 			return
 		}
 	}

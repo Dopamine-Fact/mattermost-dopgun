@@ -44,6 +44,10 @@ var PermissionManageTeamRoles *Permission
 var PermissionManageChannelRoles *Permission
 var PermissionManageTeamAccessRules *Permission
 var PermissionManageTeamTasks *Permission
+var PermissionManageTasks *Permission
+var PermissionManageDailyReports *Permission
+var PermissionManageRevisions *Permission
+var PermissionAssignCustomRoles *Permission
 var PermissionCreateDirectChannel *Permission
 var PermissionCreateGroupChannel *Permission
 var PermissionManagePublicChannelProperties *Permission
@@ -524,12 +528,40 @@ func initializePermissions() {
 		"",
 		PermissionScopeTeam,
 	}
-	// PermissionManageTeamTasks gates creating, assigning and deleting tasks and task sections.
+	// PermissionManageTeamTasks is deprecated: split into manage_tasks, manage_daily_reports and manage_revisions.
 	PermissionManageTeamTasks = &Permission{
 		"manage_team_tasks",
 		"",
 		"",
 		PermissionScopeTeam,
+	}
+	// PermissionManageTasks gates creating, assigning and deleting tasks and non-revision task sections.
+	PermissionManageTasks = &Permission{
+		"manage_tasks",
+		"",
+		"",
+		PermissionScopeTeam,
+	}
+	// PermissionManageDailyReports gates seeing others' daily reports, reviewing them and editing the assignee list.
+	PermissionManageDailyReports = &Permission{
+		"manage_daily_reports",
+		"",
+		"",
+		PermissionScopeTeam,
+	}
+	// PermissionManageRevisions gates revision sections, their video and their tasks.
+	PermissionManageRevisions = &Permission{
+		"manage_revisions",
+		"",
+		"",
+		PermissionScopeTeam,
+	}
+	// PermissionAssignCustomRoles gates giving and removing custom roles (subject to the role hierarchy).
+	PermissionAssignCustomRoles = &Permission{
+		"assign_custom_roles",
+		"",
+		"",
+		PermissionScopeSystem,
 	}
 	PermissionManageChannelRoles = &Permission{
 		"manage_channel_roles",
@@ -2509,6 +2541,7 @@ func initializePermissions() {
 	}
 
 	SystemScopedPermissionsMinusSysconsole := []*Permission{
+		PermissionAssignCustomRoles,
 		PermissionAssignSystemAdminRole,
 		PermissionManageRoles,
 		PermissionManageSystem,
@@ -2599,7 +2632,9 @@ func initializePermissions() {
 		PermissionCreatePrivateChannel,
 		PermissionManageTeamRoles,
 		PermissionManageTeamAccessRules,
-		PermissionManageTeamTasks,
+		PermissionManageTasks,
+		PermissionManageDailyReports,
+		PermissionManageRevisions,
 		PermissionListTeamChannels,
 		PermissionJoinPublicChannels,
 		PermissionReadPublicChannel,
@@ -2675,6 +2710,7 @@ func initializePermissions() {
 	}
 
 	DeprecatedPermissions = []*Permission{
+		PermissionManageTeamTasks,
 		PermissionPermanentDeleteUser,
 		PermissionManageWebhooks,
 		PermissionManageOthersWebhooks,

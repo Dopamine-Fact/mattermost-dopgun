@@ -80,7 +80,7 @@ describe('task views', () => {
         expect(screen.getByText(/1 task has no dates/)).toBeInTheDocument();
     });
 
-    test('members without manage_team_tasks get no create or section controls', () => {
+    test('members without manage_tasks get no create or section controls', () => {
         const manager = renderWithContext(<Board {...props}/>);
         expect(screen.getAllByRole('textbox', {name: 'New task title'})).toHaveLength(3);
         manager.unmount();

@@ -306,7 +306,7 @@ func (a *App) getIntegrationsOwnPermissionsMigration() (permissionsMap, error) {
 		},
 		// Ensure system admin has the new "manage others" permissions
 		permissionTransformation{
-			On:  isExactRole(model.SystemAdminRoleId),
+			On:  isRole(model.SystemAdminRoleId),
 			Add: []string{model.PermissionManageOthersIncomingWebhooks.Id, model.PermissionManageOthersOutgoingWebhooks.Id, model.PermissionManageOthersSlashCommands.Id},
 		},
 		// Ensure team admin (including scheme team admins) have the new "manage others" permissions
@@ -400,7 +400,7 @@ func (a *App) getViewMembersPermissionMigration() (permissionsMap, error) {
 			Add: []string{PermissionViewMembers},
 		},
 		permissionTransformation{
-			On:  isExactRole(model.SystemAdminRoleId),
+			On:  isRole(model.SystemAdminRoleId),
 			Add: []string{PermissionViewMembers},
 		},
 	}, nil
@@ -409,7 +409,7 @@ func (a *App) getViewMembersPermissionMigration() (permissionsMap, error) {
 func (a *App) getAddManageGuestsPermissionsMigration() (permissionsMap, error) {
 	return permissionsMap{
 		permissionTransformation{
-			On:  isExactRole(model.SystemAdminRoleId),
+			On:  isRole(model.SystemAdminRoleId),
 			Add: []string{PermissionPromoteGuest, PermissionDemoteToGuest, PermissionInviteGuest},
 		},
 	}, nil
@@ -514,7 +514,7 @@ func (a *App) channelModerationPermissionsMigration() (permissionsMap, error) {
 
 	// ensure system admin has all the moderated permissions
 	transformations = append(transformations, permissionTransformation{
-		On:  isExactRole(model.SystemAdminRoleId),
+		On:  isRole(model.SystemAdminRoleId),
 		Add: append(moderatedPermissionsMinusCreatePost, PermissionCreatePost),
 	})
 
@@ -549,7 +549,7 @@ func (a *App) getAddSystemConsolePermissionsMigration() (permissionsMap, error) 
 	return permissionsMap{
 		// add the new permissions to system admin
 		permissionTransformation{
-			On:  isExactRole(model.SystemAdminRoleId),
+			On:  isRole(model.SystemAdminRoleId),
 			Add: permissionsToAdd,
 		},
 		// add read_jobs to all roles with manage_jobs
@@ -592,7 +592,7 @@ func (a *App) getAddConvertChannelPermissionsMigration() (permissionsMap, error)
 func (a *App) getSystemRolesPermissionsMigration() (permissionsMap, error) {
 	return permissionsMap{
 		permissionTransformation{
-			On:  isExactRole(model.SystemAdminRoleId),
+			On:  isRole(model.SystemAdminRoleId),
 			Add: []string{model.PermissionSysconsoleReadUserManagementSystemRoles.Id, model.PermissionSysconsoleWriteUserManagementSystemRoles.Id},
 		},
 	}, nil
@@ -601,7 +601,7 @@ func (a *App) getSystemRolesPermissionsMigration() (permissionsMap, error) {
 func (a *App) getAddManageSharedChannelsPermissionsMigration() (permissionsMap, error) {
 	return permissionsMap{
 		permissionTransformation{
-			On:  isExactRole(model.SystemAdminRoleId),
+			On:  isRole(model.SystemAdminRoleId),
 			Add: []string{PermissionManageSharedChannels},
 		},
 	}, nil
@@ -610,7 +610,7 @@ func (a *App) getAddManageSharedChannelsPermissionsMigration() (permissionsMap, 
 func (a *App) getBillingPermissionsMigration() (permissionsMap, error) {
 	return permissionsMap{
 		permissionTransformation{
-			On:  isExactRole(model.SystemAdminRoleId),
+			On:  isRole(model.SystemAdminRoleId),
 			Add: []string{model.PermissionSysconsoleReadBilling.Id, model.PermissionSysconsoleWriteBilling.Id},
 		},
 	}, nil
@@ -620,7 +620,7 @@ func (a *App) getAddManageSecureConnectionsPermissionsMigration() (permissionsMa
 	return permissionsMap{
 		// add the new permission to system admin
 		permissionTransformation{
-			On:  isExactRole(model.SystemAdminRoleId),
+			On:  isRole(model.SystemAdminRoleId),
 			Add: []string{PermissionManageSecureConnections},
 		},
 		// remove the deprecated permission from system admin
@@ -635,7 +635,7 @@ func (a *App) getAddDownloadComplianceExportResult() (permissionsMap, error) {
 	return permissionsMap{
 		// add the new permissions to system admin
 		permissionTransformation{
-			On:  isExactRole(model.SystemAdminRoleId),
+			On:  isRole(model.SystemAdminRoleId),
 			Add: []string{model.PermissionDownloadComplianceExportResult.Id},
 		},
 		// add Download Compliance Export Result and Read Jobs to all roles with sysconsole_read_compliance
@@ -959,7 +959,7 @@ func (a *App) getAddCustomUserGroupsPermissions() (permissionsMap, error) {
 			Add: customGroupPermissions,
 		},
 		permissionTransformation{
-			On:  isExactRole(model.SystemAdminRoleId),
+			On:  isRole(model.SystemAdminRoleId),
 			Add: customGroupPermissions,
 		},
 	}, nil
@@ -976,7 +976,7 @@ func (a *App) getAddCustomUserGroupsPermissionRestore() (permissionsMap, error) 
 			Add: customGroupPermissions,
 		},
 		permissionTransformation{
-			On:  isExactRole(model.SystemAdminRoleId),
+			On:  isRole(model.SystemAdminRoleId),
 			Add: customGroupPermissions,
 		},
 		permissionTransformation{
@@ -1200,7 +1200,7 @@ func (a *App) addSysConsoleMobileSecurityPermission() (permissionsMap, error) {
 	transformations := []permissionTransformation{}
 
 	transformations = append(transformations, permissionTransformation{
-		On:  isExactRole(model.SystemAdminRoleId),
+		On:  isRole(model.SystemAdminRoleId),
 		Add: []string{model.PermissionSysconsoleWriteEnvironmentMobileSecurity.Id},
 	})
 
@@ -1305,7 +1305,7 @@ func (a *App) getAddSharedChannelManagerPermissionsMigration() (permissionsMap, 
 func (a *App) getRestoreManageOAuthPermissionMigration() (permissionsMap, error) {
 	return permissionsMap{
 		permissionTransformation{
-			On:  isExactRole(model.SystemAdminRoleId),
+			On:  isRole(model.SystemAdminRoleId),
 			Add: []string{model.PermissionManageOAuth.Id},
 		},
 	}, nil
@@ -1371,6 +1371,22 @@ func (a *App) getAddManageTeamTasksPermissionMigration() (permissionsMap, error)
 		permissionTransformation{
 			On:  permissionOr(isRole(model.TeamAdminRoleId), isRole(model.SystemAdminRoleId)),
 			Add: []string{model.PermissionManageTeamTasks.Id},
+		},
+	}, nil
+}
+
+// getSplitManageTeamTasksPermissionMigration replaces manage_team_tasks with its three successors
+// and gives system_admin assign_custom_roles.
+func (a *App) getSplitManageTeamTasksPermissionMigration() (permissionsMap, error) {
+	return permissionsMap{
+		permissionTransformation{
+			On:     permissionExists(model.PermissionManageTeamTasks.Id),
+			Add:    []string{model.PermissionManageTasks.Id, model.PermissionManageDailyReports.Id, model.PermissionManageRevisions.Id},
+			Remove: []string{model.PermissionManageTeamTasks.Id},
+		},
+		permissionTransformation{
+			On:  isRole(model.SystemAdminRoleId),
+			Add: []string{model.PermissionAssignCustomRoles.Id},
 		},
 	}, nil
 }
@@ -1441,6 +1457,7 @@ func (s *Server) doPermissionsMigrations() error {
 		{Key: model.MigrationRemoveImportTeamPermission, Migration: a.removeImportTeamPermissionMigration},
 		{Key: model.MigrationKeyAddAIRecapsPermissions, Migration: a.getAddAIRecapsPermissionsMigration},
 		{Key: model.MigrationKeyAddManageTeamTasksPermission, Migration: a.getAddManageTeamTasksPermissionMigration},
+		{Key: model.MigrationKeySplitManageTeamTasksPermission, Migration: a.getSplitManageTeamTasksPermissionMigration},
 	}
 
 	roles, err := s.Store().Role().GetAll()
