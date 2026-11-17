@@ -5136,8 +5136,40 @@ export default class Client4 {
         );
     };
 
-    approveDailyReport = (reportId: string) => {
-        return this.doFetch<DailyReport>(`${this.getBaseRoute()}/daily_reports/${reportId}/approve`, {method: 'post'});
+    updateDailyReport = (reportId: string, message: string) => {
+        return this.doFetch<DailyReport>(
+            `${this.getBaseRoute()}/daily_reports/${reportId}`,
+            {method: 'put', body: JSON.stringify({message})},
+        );
+    };
+
+    // updateAt is the version the reviewer saw; the server answers 409 if the report changed since.
+    approveDailyReport = (reportId: string, updateAt = 0) => {
+        return this.doFetch<DailyReport>(
+            `${this.getBaseRoute()}/daily_reports/${reportId}/approve`,
+            {method: 'post', body: JSON.stringify({update_at: updateAt})},
+        );
+    };
+
+    rejectDailyReport = (reportId: string, reason: string, updateAt = 0) => {
+        return this.doFetch<DailyReport>(
+            `${this.getBaseRoute()}/daily_reports/${reportId}/reject`,
+            {method: 'post', body: JSON.stringify({reason, update_at: updateAt})},
+        );
+    };
+
+    // An empty list means every team member reports.
+    getDailyReportAssignees = async (teamId: string) => {
+        const {user_ids: userIds} = await this.doFetch<{user_ids: string[]}>(`${this.getTeamRoute(teamId)}/daily_reports/assignees`, {method: 'get'});
+        return userIds;
+    };
+
+    setDailyReportAssignees = async (teamId: string, userIds: string[]) => {
+        const {user_ids: saved} = await this.doFetch<{user_ids: string[]}>(
+            `${this.getTeamRoute(teamId)}/daily_reports/assignees`,
+            {method: 'put', body: JSON.stringify({user_ids: userIds})},
+        );
+        return saved;
     };
 
     getDailyReportsExportUrl = (teamId: string, from: string, to: string) => {

@@ -7,7 +7,7 @@ export type DailyReportTask = {
     section_name: string;
 };
 
-export type DailyReportStatus = 'pending' | 'approved';
+export type DailyReportStatus = 'pending' | 'approved' | 'rejected';
 
 export type DailyReport = {
     id: string;
@@ -22,6 +22,13 @@ export type DailyReport = {
     auto_approved: boolean;
     approved_by: string;
     approved_at: number;
+
+    /** set when the author changed the report after sending it; previous_message is the text the reviewer last saw */
+    edited: boolean;
+    previous_message: string;
+    rejected_by: string;
+    rejected_at: number;
+    reject_reason: string;
     create_at: number;
     update_at: number;
 };

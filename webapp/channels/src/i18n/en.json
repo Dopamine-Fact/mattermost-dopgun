@@ -23155,6 +23155,10 @@
     "defaultMessage": "Approve",
     "description": "Button on a pending report row in Team reports that approves it."
   },
+  "daily_reports.cancel": {
+    "defaultMessage": "Cancel",
+    "description": "Button that discards changes to an already sent daily report and closes its editor."
+  },
   "daily_reports.date": {
     "defaultMessage": "Date",
     "description": "Label of the date input that selects which day the Team reports tab shows."
@@ -23163,17 +23167,81 @@
     "defaultMessage": "Download CSV",
     "description": "Link that downloads the daily reports of the chosen date range as a CSV file."
   },
+  "daily_reports.edit": {
+    "defaultMessage": "Edit",
+    "description": "Button on a sent daily report that opens it for editing."
+  },
+  "daily_reports.edited": {
+    "defaultMessage": "Edited",
+    "description": "Tag on a daily report that was changed after it was first sent; on Team reports it toggles the text before the edit."
+  },
   "daily_reports.from": {
     "defaultMessage": "From",
     "description": "Label of the start date input for the CSV export of daily reports."
   },
-  "daily_reports.mine.label": {
-    "defaultMessage": "Your report for today",
-    "description": "Accessible label of the textarea where the user writes their daily report."
-  },
   "daily_reports.mine.placeholder": {
     "defaultMessage": "What did you get done today?",
-    "description": "Placeholder of the daily report textarea."
+    "description": "Placeholder of the daily report editor."
+  },
+  "daily_reports.needsFixing": {
+    "defaultMessage": "Needs fixing",
+    "description": "Section heading on My report listing earlier reports a manager sent back to the user."
+  },
+  "daily_reports.notExpected": {
+    "defaultMessage": "No report is expected from you in this team.",
+    "description": "Shown on My report when the team picked who sends reports and the user is not among them."
+  },
+  "daily_reports.previous": {
+    "defaultMessage": "Before the edit",
+    "description": "Label above the previous text of an edited report on Team reports."
+  },
+  "daily_reports.reject": {
+    "defaultMessage": "Reject",
+    "description": "Button that sends a daily report back to its author with a reason; also the confirm button of that dialog."
+  },
+  "daily_reports.rejectModal.placeholder": {
+    "defaultMessage": "What needs fixing? The author sees this.",
+    "description": "Placeholder of the required reason field in the reject dialog."
+  },
+  "daily_reports.rejectModal.reason": {
+    "defaultMessage": "Reason",
+    "description": "Label of the required reason field in the reject dialog."
+  },
+  "daily_reports.rejectModal.title": {
+    "defaultMessage": "Send report back",
+    "description": "Title of the dialog where a manager rejects a daily report."
+  },
+  "daily_reports.rejectedBanner": {
+    "defaultMessage": "Sent back by {name}: {reason}",
+    "description": "Banner on the author's report after a manager rejected it; {name} is the manager, {reason} is the text they wrote."
+  },
+  "daily_reports.reporters": {
+    "defaultMessage": "Reporters",
+    "description": "Button on Team reports that opens the dialog to pick who must send daily reports."
+  },
+  "daily_reports.reportersModal.hint": {
+    "defaultMessage": "Only checked members are asked for a report and reminded. Leave everyone unchecked to ask every member.",
+    "description": "Explanation at the top of the dialog for picking who sends daily reports."
+  },
+  "daily_reports.reportersModal.search": {
+    "defaultMessage": "Search members",
+    "description": "Placeholder and accessible label of the member search box in the reporters dialog."
+  },
+  "daily_reports.reportersModal.title": {
+    "defaultMessage": "Who sends daily reports",
+    "description": "Title of the dialog for picking which team members must send daily reports."
+  },
+  "daily_reports.rowRejected": {
+    "defaultMessage": "Sent back: {reason}",
+    "description": "Line under a rejected report on Team reports; {reason} is the reason the manager wrote."
+  },
+  "daily_reports.save": {
+    "defaultMessage": "Save",
+    "description": "Button that saves an edited daily report, or the reporters dialog."
+  },
+  "daily_reports.sendHint": {
+    "defaultMessage": "Markdown supported. Ctrl+Enter to send.",
+    "description": "Hint next to the daily report editor buttons."
   },
   "daily_reports.sidebarLink": {
     "defaultMessage": "Daily reports",
@@ -23195,6 +23263,10 @@
     "defaultMessage": "Pending",
     "description": "Status of a daily report that is waiting for approval."
   },
+  "daily_reports.status.rejected": {
+    "defaultMessage": "Sent back",
+    "description": "Status of a daily report a manager rejected; the author has to fix and resend it."
+  },
   "daily_reports.submit": {
     "defaultMessage": "Submit",
     "description": "Button that submits the user's first daily report of the day."
@@ -23215,9 +23287,9 @@
     "defaultMessage": "To",
     "description": "Label of the end date input for the CSV export of daily reports."
   },
-  "daily_reports.update": {
-    "defaultMessage": "Update",
-    "description": "Button that updates the user's already submitted daily report while it is not yet approved."
+  "daily_reports.today": {
+    "defaultMessage": "Today",
+    "description": "Heading of the card holding the user's report for today."
   },
   "dashboard.due.overdue": {
     "defaultMessage": "Overdue",

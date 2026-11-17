@@ -9,10 +9,11 @@ import {Client4} from 'mattermost-redux/client';
 import * as roles from 'mattermost-redux/selectors/entities/roles';
 
 import WebSocketClient from 'client/web_websocket_client';
-import {act, fireEvent, renderWithContext, screen, waitFor} from 'tests/react_testing_utils';
+import {act, fireEvent, renderWithContext, screen, waitFor, within} from 'tests/react_testing_utils';
 import {TestHelper} from 'utils/test_helper';
 
-import DailyReports, {todayIn} from './daily_reports';
+import {todayIn} from './common';
+import DailyReports from './daily_reports';
 
 jest.mock('mattermost-redux/actions/users', () => ({
     ...jest.requireActual('mattermost-redux/actions/users'),
@@ -23,6 +24,7 @@ jest.mock('mattermost-redux/selectors/entities/roles', () => ({
     ...jest.requireActual('mattermost-redux/selectors/entities/roles'),
     haveITeamPermission: jest.fn(() => false),
 }));
+jest.mock('components/markdown', () => ({message}: {message: string}) => <p>{message}</p>);
 jest.mock('client/web_websocket_client', () => ({
     addMessageListener: jest.fn(),
     removeMessageListener: jest.fn(),
@@ -43,6 +45,11 @@ const report = (extra: Partial<DailyReport>): DailyReport => ({
     auto_approved: false,
     approved_by: '',
     approved_at: 0,
+    edited: false,
+    previous_message: '',
+    rejected_by: '',
+    rejected_at: 0,
+    reject_reason: '',
     create_at: 1,
     update_at: 1,
     ...extra,
@@ -69,43 +76,103 @@ const renderPage = (canApprove: boolean) => {
     });
 };
 
+// mockReports answers the today call (no dates) and the date-range calls separately.
+const mockReports = (today: DailyReport[], ranged: DailyReport[] = []) =>
+    jest.spyOn(Client4, 'getDailyReports').mockImplementation((_teamId, from) => Promise.resolve(from ? ranged : today));
+
+const editor = () => screen.findByTestId('dailyReportEditor_today');
+
+const openTeamTab = async () => {
+    fireEvent.click(await screen.findByRole('tab', {name: 'Team reports'}));
+};
+
+const lastListener = () => (WebSocketClient.addMessageListener as jest.Mock).mock.calls.at(-1)[0];
+
 describe('DailyReports', () => {
     beforeEach(() => {
         jest.restoreAllMocks();
-        jest.spyOn(Client4, 'getDailyReports').mockResolvedValue([]);
+        localStorage.clear();
+        mockReports([]);
+        jest.spyOn(Client4, 'getDailyReportAssignees').mockResolvedValue([]);
     });
 
-    test('submits the message from the My report tab', async () => {
+    test('submits on Ctrl+Enter and shows the rendered report', async () => {
         const submit = jest.spyOn(Client4, 'submitDailyReport').mockResolvedValue(report({user_id: 'me', message: 'Did things'}));
         renderPage(false);
 
-        fireEvent.change(await screen.findByRole('textbox', {name: 'Your report for today'}), {target: {value: 'Did things'}});
-        fireEvent.click(screen.getByRole('button', {name: 'Submit'}));
+        const box = await editor();
+        fireEvent.input(box, {target: {value: 'Did things'}});
+        await act(async () => {
+            fireEvent.keyDown(box, {key: 'Enter', ctrlKey: true});
+        });
 
-        await waitFor(() => expect(submit).toHaveBeenCalledWith('team1', 'Did things'));
-        expect(await screen.findByRole('button', {name: 'Update'})).toBeInTheDocument();
+        expect(submit).toHaveBeenCalledWith('team1', 'Did things');
+        expect(await screen.findByText('Did things')).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Edit'})).toBeInTheDocument();
     });
 
-    test('My report ignores other users reports, even for approvers', async () => {
-        const list = jest.spyOn(Client4, 'getDailyReports').mockResolvedValue([report({message: 'Not mine'})]);
+    test('restores an unsent draft for today', async () => {
+        localStorage.setItem(`dailyReportDraft:team1:${todayIn(undefined)}`, 'half written');
+        renderPage(false);
+        expect(await editor()).toHaveValue('half written');
+    });
+
+    test('My report asks only for the current user', async () => {
+        const list = mockReports([]);
         renderPage(true);
 
-        await screen.findByRole('textbox', {name: 'Your report for today'});
+        await editor();
         await waitFor(() => expect(list).toHaveBeenCalledWith('team1', undefined, undefined, 'me'));
     });
 
     test('My report follows the server report when it changes', async () => {
-        const list = jest.spyOn(Client4, 'getDailyReports').mockResolvedValue([report({user_id: 'me', message: 'v1'})]);
+        const list = mockReports([report({user_id: 'me', message: 'v1'})]);
         renderPage(false);
-        expect(await screen.findByDisplayValue('v1')).toBeInTheDocument();
+        expect(await screen.findByText('v1')).toBeInTheDocument();
 
-        list.mockResolvedValue([report({user_id: 'me', message: 'v2', update_at: 2})]);
-        const listener = (WebSocketClient.addMessageListener as jest.Mock).mock.calls.at(-1)[0];
+        list.mockImplementation((_teamId, from) => Promise.resolve(from ? [] : [report({user_id: 'me', message: 'v2', update_at: 2})]));
         await act(async () => {
-            listener({event: 'daily_report_updated'});
+            lastListener()({event: 'daily_report_updated'});
         });
 
-        expect(await screen.findByDisplayValue('v2')).toBeInTheDocument();
+        expect(await screen.findByText('v2')).toBeInTheDocument();
+    });
+
+    test('a rejected report shows the reason banner', async () => {
+        mockReports([report({user_id: 'me', status: 'rejected', reject_reason: 'Add the ticket links', rejected_by: 'u2'})]);
+        renderPage(false);
+
+        const banner = await screen.findByRole('status');
+        expect(banner).toHaveTextContent('Add the ticket links');
+        expect(banner).toHaveTextContent('ayse');
+    });
+
+    test('lists earlier rejected reports under Needs fixing and saves them by id', async () => {
+        mockReports([], [
+            report({id: 'old', user_id: 'me', date: '2000-01-01', status: 'rejected', reject_reason: 'Too short'}),
+            report({id: 'ok', user_id: 'me', date: '2000-01-02'}),
+        ]);
+        const update = jest.spyOn(Client4, 'updateDailyReport').mockResolvedValue(report({id: 'old', user_id: 'me', date: '2000-01-01', message: 'Longer'}));
+        renderPage(false);
+
+        expect(await screen.findByText('Needs fixing')).toBeInTheDocument();
+        expect(screen.getByText(/Too short/)).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', {name: 'Edit'}));
+        const box = await screen.findByTestId('dailyReportEditor_old');
+        fireEvent.input(box, {target: {value: 'Longer'}});
+        await act(async () => {
+            fireEvent.click(screen.getByRole('button', {name: 'Save'}));
+        });
+
+        expect(update).toHaveBeenCalledWith('old', 'Longer');
+    });
+
+    test('an unlisted user sees that no report is expected', async () => {
+        jest.spyOn(Client4, 'getDailyReportAssignees').mockResolvedValue(['u2']);
+        renderPage(false);
+
+        expect(await screen.findByText('No report is expected from you in this team.')).toBeInTheDocument();
+        expect(screen.queryByTestId('dailyReportEditor_today')).not.toBeInTheDocument();
     });
 
     test('hides the Team reports tab without permission', async () => {
@@ -114,30 +181,80 @@ describe('DailyReports', () => {
         expect(screen.queryByRole('tab', {name: 'Team reports'})).not.toBeInTheDocument();
     });
 
-    test('approves a pending row', async () => {
-        jest.spyOn(Client4, 'getDailyReports').mockResolvedValue([report({})]);
+    test('approves a pending row with the version it shows', async () => {
+        mockReports([], [report({update_at: 7})]);
         const approve = jest.spyOn(Client4, 'approveDailyReport').mockResolvedValue(report({status: 'approved'}));
         renderPage(true);
 
-        fireEvent.click(await screen.findByRole('tab', {name: 'Team reports'}));
+        await openTeamTab();
         expect(await screen.findByText('Wrote the parser')).toBeInTheDocument();
         expect(screen.getAllByText('Missing')).toHaveLength(2); // me and mehmet have no report
         await act(async () => {
             fireEvent.click(screen.getByRole('button', {name: 'Approve'}));
         });
 
-        expect(approve).toHaveBeenCalledWith('r1');
+        expect(approve).toHaveBeenCalledWith('r1', 7);
+    });
+
+    test('an edited row reveals the previous text on click', async () => {
+        mockReports([], [report({edited: true, previous_message: 'First try'})]);
+        renderPage(true);
+
+        await openTeamTab();
+        const tag = await screen.findByRole('button', {name: 'Edited'});
+        expect(screen.queryByText('First try')).not.toBeInTheDocument();
+        fireEvent.click(tag);
+        expect(screen.getByText('First try')).toBeInTheDocument();
+    });
+
+    test('Reject needs a reason, and is offered on auto-approved rows', async () => {
+        mockReports([], [report({status: 'approved', auto_approved: true, update_at: 3})]);
+        const reject = jest.spyOn(Client4, 'rejectDailyReport').mockResolvedValue(report({status: 'rejected'}));
+        renderPage(true);
+
+        await openTeamTab();
+        expect(await screen.findByText('Auto-approved')).toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Approve'})).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', {name: 'Reject'}));
+
+        const dialog = await screen.findByRole('dialog');
+        const confirm = within(dialog).getByRole('button', {name: 'Reject'});
+        expect(confirm).toBeDisabled();
+        fireEvent.change(within(dialog).getByRole('textbox', {name: 'Reason'}), {target: {value: 'Missing links'}});
+        expect(confirm).toBeEnabled();
+        await act(async () => {
+            fireEvent.click(confirm);
+        });
+
+        expect(reject).toHaveBeenCalledWith('r1', 'Missing links', 3);
     });
 
     test('lists report authors who left the team but not bots without a report', async () => {
-        jest.spyOn(Client4, 'getDailyReports').mockResolvedValue([report({user_id: 'u5', message: 'Handover notes'})]);
+        mockReports([], [report({user_id: 'u5', message: 'Handover notes'})]);
         renderPage(true);
 
-        fireEvent.click(await screen.findByRole('tab', {name: 'Team reports'}));
+        await openTeamTab();
         expect(await screen.findByText('Handover notes')).toBeInTheDocument();
         expect(screen.getByText('leaver')).toBeInTheDocument();
         expect(screen.queryByText('bot')).not.toBeInTheDocument();
         expect(screen.getAllByText('Missing')).toHaveLength(3); // me, ayse and mehmet
+    });
+
+    test('Reporters modal saves the checked members and limits the rows', async () => {
+        const save = jest.spyOn(Client4, 'setDailyReportAssignees').mockResolvedValue(['u2']);
+        renderPage(true);
+
+        await openTeamTab();
+        expect(await screen.findByText('mehmet')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', {name: 'Reporters'}));
+        const dialog = await screen.findByRole('dialog');
+        fireEvent.click(within(dialog).getByRole('checkbox', {name: 'ayse'}));
+        await act(async () => {
+            fireEvent.click(within(dialog).getByRole('button', {name: 'Save'}));
+        });
+
+        expect(save).toHaveBeenCalledWith('team1', ['u2']);
+        await waitFor(() => expect(screen.queryByText('mehmet')).not.toBeInTheDocument());
     });
 
     test('disables the CSV download when the range is reversed', async () => {
@@ -158,21 +275,11 @@ describe('DailyReports', () => {
         expect(await screen.findByRole('alert')).toHaveTextContent('boom');
 
         list.mockResolvedValue([]);
-        const listener = (WebSocketClient.addMessageListener as jest.Mock).mock.calls.at(-1)[0];
         await act(async () => {
-            listener({event: 'daily_report_updated'});
+            lastListener()({event: 'daily_report_updated'});
         });
 
         await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
-    });
-
-    test('labels an auto-approved row', async () => {
-        jest.spyOn(Client4, 'getDailyReports').mockResolvedValue([report({status: 'approved', auto_approved: true})]);
-        renderPage(true);
-
-        fireEvent.click(await screen.findByRole('tab', {name: 'Team reports'}));
-        expect(await screen.findByText('Auto-approved')).toBeInTheDocument();
-        expect(screen.queryByRole('button', {name: 'Approve'})).not.toBeInTheDocument();
     });
 });
 

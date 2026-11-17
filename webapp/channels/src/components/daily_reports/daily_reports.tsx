@@ -2,22 +2,18 @@
 // See LICENSE.txt for license information.
 
 import classNames from 'classnames';
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {defineMessages, FormattedMessage, useIntl} from 'react-intl';
+import React, {useEffect, useState} from 'react';
+import {FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {Redirect} from 'react-router-dom';
 
 import {FileTextOutlineIcon} from '@mattermost/compass-icons/components';
-import type {DailyReport} from '@mattermost/types/daily_reports';
 
-import {getMissingProfilesByIds, getProfilesInTeam as fetchProfilesInTeam} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
 import {Permissions} from 'mattermost-redux/constants';
-import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
 import {haveITeamPermission} from 'mattermost-redux/selectors/entities/roles';
 import {getCurrentTeam} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUserId, getProfilesInTeam, getUsers} from 'mattermost-redux/selectors/entities/users';
-import {displayUsername} from 'mattermost-redux/utils/user_utils';
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
 import {selectLhsItem} from 'actions/views/lhs';
 
@@ -26,49 +22,11 @@ import WebSocketClient from 'client/web_websocket_client';
 import type {GlobalState} from 'types/store';
 import {LhsItemType, LhsPage} from 'types/store/lhs';
 
+import {DAILY_REPORT_UPDATED, todayIn} from './common';
+import MyReport from './my_report';
+import TeamReports from './team_reports';
+
 import './daily_reports.scss';
-
-// shortcut: the team list shows the first 200 members; page through them for bigger teams.
-const MEMBER_PAGE_SIZE = 200;
-
-const DAILY_REPORT_UPDATED = 'daily_report_updated';
-
-type Status = 'missing' | 'pending' | 'approved' | 'auto_approved';
-
-const statusLabels = defineMessages<Status>({
-    missing: {id: 'daily_reports.status.missing', defaultMessage: 'Missing'},
-    pending: {id: 'daily_reports.status.pending', defaultMessage: 'Pending'},
-    approved: {id: 'daily_reports.status.approved', defaultMessage: 'Approved'},
-    auto_approved: {id: 'daily_reports.status.autoApproved', defaultMessage: 'Auto-approved'},
-});
-
-function statusOf(report?: DailyReport): Status {
-    if (!report) {
-        return 'missing';
-    }
-    if (report.status === 'approved') {
-        return report.auto_approved ? 'auto_approved' : 'approved';
-    }
-    return 'pending';
-}
-
-// The calendar day (YYYY-MM-DD) in the team's timezone; falls back to the browser's when it is empty or invalid.
-export function todayIn(timeZone?: string, now = new Date()) {
-    try {
-        return new Intl.DateTimeFormat('en-CA', {timeZone: timeZone || undefined}).format(now);
-    } catch {
-        return new Intl.DateTimeFormat('en-CA').format(now);
-    }
-}
-
-function StatusChip({status}: {status: Status}) {
-    const {formatMessage} = useIntl();
-    return (
-        <span className={classNames('DailyReportsPage__chip', `DailyReportsPage__chip--${status}`)}>
-            {formatMessage(statusLabels[status])}
-        </span>
-    );
-}
 
 type Tab = 'mine' | 'team';
 
@@ -78,97 +36,34 @@ const DailyReports = () => {
     const team = useSelector(getCurrentTeam);
     const teamId = team?.id ?? '';
     const enabled = Boolean(team?.daily_reports_enabled);
-
-    const members = useSelector((state: GlobalState) => getProfilesInTeam(state, teamId));
-    const profiles = useSelector(getUsers);
-    const nameDisplay = useSelector(getTeammateNameDisplaySetting);
     const currentUserId = useSelector(getCurrentUserId);
     const canApprove = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_TEAM_TASKS));
 
     const [tab, setTab] = useState<Tab>('mine');
-    const [mine, setMine] = useState<DailyReport>();
-    const [message, setMessage] = useState('');
-    const [date, setDate] = useState(() => todayIn(team?.daily_report_timezone));
-    const [teamReports, setTeamReports] = useState<DailyReport[]>([]);
+    const [tick, setTick] = useState(0);
     const [from, setFrom] = useState(() => todayIn(team?.daily_report_timezone));
     const [to, setTo] = useState(() => todayIn(team?.daily_report_timezone));
     const [error, setError] = useState('');
 
-    const syncedReport = useRef('');
     const activeTab = canApprove ? tab : 'mine';
 
     useEffect(() => {
         dispatch(selectLhsItem(LhsItemType.Page, LhsPage.DailyReports));
     }, [dispatch]);
 
-    useEffect(() => {
-        if (enabled && canApprove) {
-            dispatch(fetchProfilesInTeam(teamId, 0, MEMBER_PAGE_SIZE));
-        }
-    }, [dispatch, teamId, enabled, canApprove]);
-
-    // Refetches whatever list the visible tab shows.
-    const refresh = useCallback(async () => {
-        try {
-            if (activeTab === 'mine') {
-                // No dates: the server defaults to today in the team's timezone.
-                // user_id: approvers would otherwise get the whole team's reports.
-                const [today] = await Client4.getDailyReports(teamId, undefined, undefined, currentUserId);
-                setMine(today);
-
-                // Follow the server's report when it changes; keep what the user is typing otherwise.
-                const key = today ? `${today.id}:${today.update_at}` : '';
-                if (key !== syncedReport.current) {
-                    syncedReport.current = key;
-                    setMessage(today?.message ?? '');
-                }
-            } else {
-                setTeamReports(await Client4.getDailyReports(teamId, date, date));
-            }
-            setError('');
-        } catch (e) {
-            setError((e as Error).message);
-        }
-    }, [activeTab, teamId, date, currentUserId]);
-
-    useEffect(() => {
-        if (enabled) {
-            refresh();
-        }
-    }, [enabled, refresh]);
-
+    // Every daily report event makes the visible tab refetch.
     useEffect(() => {
         if (!enabled) {
             return undefined;
         }
         const listener = (msg: {event: string}) => {
             if (msg.event === DAILY_REPORT_UPDATED) {
-                refresh();
+                setTick((n) => n + 1);
             }
         };
         WebSocketClient.addMessageListener(listener);
         return () => WebSocketClient.removeMessageListener(listener);
-    }, [enabled, refresh]);
-
-    // Authors of reports may have left the team or be past the first member page: load their profiles by id.
-    useEffect(() => {
-        const missing = teamReports.map((r) => r.user_id).filter((id) => !profiles[id]);
-        if (missing.length) {
-            dispatch(getMissingProfilesByIds(missing));
-        }
-    }, [dispatch, teamReports, profiles]);
-
-    // Active members (they may owe a report) plus every report author (ex-members keep their reports).
-    const rows = useMemo(() => {
-        const byUser = new Map(teamReports.map((r) => [r.user_id, r]));
-        const users = new Map(members.filter((u) => !u.is_bot && !u.delete_at).map((u) => [u.id, u]));
-        byUser.forEach((_, id) => {
-            if (profiles[id]) {
-                users.set(id, profiles[id]);
-            }
-        });
-        return Array.from(users.values(), (user) => ({user, report: byUser.get(user.id)}));
-    }, [members, profiles, teamReports]);
+    }, [enabled]);
 
     if (!team) {
         return null;
@@ -177,34 +72,11 @@ const DailyReports = () => {
         return <Redirect to={`/${team.name}`}/>;
     }
 
-    const submit = async () => {
-        setError('');
-        try {
-            const saved = await Client4.submitDailyReport(teamId, message);
-            setMine(saved);
-            syncedReport.current = `${saved.id}:${saved.update_at}`;
-            setMessage(saved.message);
-        } catch (e) {
-            setError((e as Error).message);
-        }
-    };
-
-    const approve = async (reportId: string) => {
-        setError('');
-        try {
-            await Client4.approveDailyReport(reportId);
-            refresh();
-        } catch (e) {
-            setError((e as Error).message);
-        }
-    };
-
     const tabs: Array<{id: Tab; label: string}> = [{id: 'mine', label: formatMessage({id: 'daily_reports.tab.mine', defaultMessage: 'My report'})}];
     if (canApprove) {
         tabs.push({id: 'team', label: formatMessage({id: 'daily_reports.tab.team', defaultMessage: 'Team reports'})});
     }
 
-    const locked = mine?.status === 'approved';
     const exportable = Boolean(from && to && from <= to);
 
     return (
@@ -251,88 +123,20 @@ const DailyReports = () => {
                 )}
 
                 {activeTab === 'mine' ? (
-                    <section className='DailyReportsPage__mine'>
-                        <StatusChip status={statusOf(mine)}/>
-                        <textarea
-                            aria-label={formatMessage({id: 'daily_reports.mine.label', defaultMessage: 'Your report for today'})}
-                            placeholder={formatMessage({id: 'daily_reports.mine.placeholder', defaultMessage: 'What did you get done today?'})}
-                            value={message}
-                            readOnly={locked}
-                            onChange={(e) => setMessage(e.target.value)}
-                        />
-                        {mine && mine.tasks.length > 0 && (
-                            <ul className='DailyReportsPage__tasks'>
-                                {mine.tasks.map((t) => (
-                                    <li key={t.id}>{t.section_name ? `${t.section_name}: ${t.title}` : t.title}</li>
-                                ))}
-                            </ul>
-                        )}
-                        {!locked && (
-                            <button
-                                className='btn btn-primary'
-                                disabled={!message.trim()}
-                                onClick={submit}
-                            >
-                                {mine ? (
-                                    <FormattedMessage
-                                        id='daily_reports.update'
-                                        defaultMessage='Update'
-                                    />
-                                ) : (
-                                    <FormattedMessage
-                                        id='daily_reports.submit'
-                                        defaultMessage='Submit'
-                                    />
-                                )}
-                            </button>
-                        )}
-                    </section>
+                    <MyReport
+                        teamId={teamId}
+                        timeZone={team.daily_report_timezone}
+                        currentUserId={currentUserId}
+                        tick={tick}
+                        onError={setError}
+                    />
                 ) : (
-                    <section className='DailyReportsPage__team'>
-                        <label className='DailyReportsPage__field'>
-                            <FormattedMessage
-                                id='daily_reports.date'
-                                defaultMessage='Date'
-                            />
-                            <input
-                                type='date'
-                                value={date}
-                                onChange={(e) => e.target.value && setDate(e.target.value)}
-                            />
-                        </label>
-                        <ul className='DailyReportsPage__rows'>
-                            {rows.map(({user, report}) => (
-                                <li
-                                    key={user.id}
-                                    className='DailyReportsPage__row'
-                                >
-                                    <div className='DailyReportsPage__rowHead'>
-                                        <strong>{displayUsername(user, nameDisplay)}</strong>
-                                        <StatusChip status={statusOf(report)}/>
-                                        {report?.status === 'pending' && (
-                                            <button
-                                                className='btn btn-primary btn-sm'
-                                                onClick={() => approve(report.id)}
-                                            >
-                                                <FormattedMessage
-                                                    id='daily_reports.approve'
-                                                    defaultMessage='Approve'
-                                                />
-                                            </button>
-                                        )}
-                                    </div>
-                                    {report && <p>{report.message}</p>}
-                                    {report && report.tasks.length > 0 && (
-                                        <ul className='DailyReportsPage__tasks'>
-                                            {report.tasks.map((t) => (
-                                                <li key={t.id}>{t.section_name ? `${t.section_name}: ${t.title}` : t.title}</li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
+                    <TeamReports
+                        teamId={teamId}
+                        timeZone={team.daily_report_timezone}
+                        tick={tick}
+                        onError={setError}
+                    />
                 )}
 
                 <div className='DailyReportsPage__export'>
