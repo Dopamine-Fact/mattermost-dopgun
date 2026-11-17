@@ -33,6 +33,7 @@ var MediaContentTypes = [...]string{
 	"video/avi",
 	"video/mpeg",
 	"video/mp4",
+	"video/quicktime",
 	"audio/mpeg",
 	"audio/wav",
 }

@@ -75,7 +75,7 @@ describe('FileThumbnail', () => {
         expect(container.querySelector('div.file-icon')).toBeInTheDocument();
     });
 
-    test('should render an icon for a PSD (MM-67077)', () => {
+    test('should render a thumbnail for a PSD', () => {
         const props = {
             ...baseProps,
             fileInfo: {
@@ -87,6 +87,6 @@ describe('FileThumbnail', () => {
         const {container} = render(
             <FileThumbnail {...props}/>,
         );
-        expect(container.querySelector('div.file-icon')).toBeInTheDocument();
+        expect(container.querySelector('div.post-image')).toBeInTheDocument();
     });
 });

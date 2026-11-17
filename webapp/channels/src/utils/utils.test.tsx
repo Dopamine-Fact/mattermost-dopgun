@@ -64,9 +64,8 @@ describe('Utils.getFileType', () => {
         expect(getFileType('path/to/image.jpg#fragment')).toBe(FileTypes.OTHER);
     });
 
-    test('should not classify PSD files as images (MM-67077)', () => {
-        // PSD preview support was removed due to memory vulnerability in oov/psd package
-        expect(getFileType('psd')).toBe(FileTypes.OTHER);
+    test('should classify PSD files as images, previewed from the server-rendered composite', () => {
+        expect(getFileType('psd')).toBe(FileTypes.IMAGE);
     });
 
     test('should handle null or undefined input', () => {
