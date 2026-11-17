@@ -4499,10 +4499,10 @@ func (s *TimerLayerContentFlaggingStore) SaveReviewerSettings(reviewerSettings m
 	return err
 }
 
-func (s *TimerLayerDailyReportStore) Approve(id string, approverID string, auto bool, approvedAt int64) error {
+func (s *TimerLayerDailyReportStore) Approve(id string, approverID string, auto bool, approvedAt int64, seenUpdateAt int64) error {
 	start := time.Now()
 
-	err := s.DailyReportStore.Approve(id, approverID, auto, approvedAt)
+	err := s.DailyReportStore.Approve(id, approverID, auto, approvedAt, seenUpdateAt)
 
 	elapsed := float64(time.Since(start)) / float64(time.Second)
 	if s.Root.Metrics != nil {
@@ -4527,6 +4527,22 @@ func (s *TimerLayerDailyReportStore) Get(id string) (*model.DailyReport, error) 
 			success = "true"
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.Get", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDailyReportStore) GetAssignees(teamID string) ([]string, error) {
+	start := time.Now()
+
+	result, err := s.DailyReportStore.GetAssignees(teamID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.GetAssignees", success, elapsed)
 	}
 	return result, err
 }
@@ -4563,10 +4579,10 @@ func (s *TimerLayerDailyReportStore) GetForUserDate(teamID string, userID string
 	return result, err
 }
 
-func (s *TimerLayerDailyReportStore) GetPendingBefore(createdBefore int64) ([]*model.DailyReport, error) {
+func (s *TimerLayerDailyReportStore) GetPendingBefore(updatedBefore int64) ([]*model.DailyReport, error) {
 	start := time.Now()
 
-	result, err := s.DailyReportStore.GetPendingBefore(createdBefore)
+	result, err := s.DailyReportStore.GetPendingBefore(updatedBefore)
 
 	elapsed := float64(time.Since(start)) / float64(time.Second)
 	if s.Root.Metrics != nil {
@@ -4577,6 +4593,22 @@ func (s *TimerLayerDailyReportStore) GetPendingBefore(createdBefore int64) ([]*m
 		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.GetPendingBefore", success, elapsed)
 	}
 	return result, err
+}
+
+func (s *TimerLayerDailyReportStore) Reject(id string, rejecterID string, reason string, rejectedAt int64, seenUpdateAt int64) error {
+	start := time.Now()
+
+	err := s.DailyReportStore.Reject(id, rejecterID, reason, rejectedAt, seenUpdateAt)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.Reject", success, elapsed)
+	}
+	return err
 }
 
 func (s *TimerLayerDailyReportStore) Save(r *model.DailyReport) (*model.DailyReport, error) {
@@ -4593,6 +4625,22 @@ func (s *TimerLayerDailyReportStore) Save(r *model.DailyReport) (*model.DailyRep
 		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.Save", success, elapsed)
 	}
 	return result, err
+}
+
+func (s *TimerLayerDailyReportStore) SetAssignees(teamID string, userIDs []string) error {
+	start := time.Now()
+
+	err := s.DailyReportStore.SetAssignees(teamID, userIDs)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.SetAssignees", success, elapsed)
+	}
+	return err
 }
 
 func (s *TimerLayerDailyReportStore) Update(r *model.DailyReport) (*model.DailyReport, error) {

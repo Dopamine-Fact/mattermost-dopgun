@@ -1,0 +1,14 @@
+ALTER TABLE DailyReports ADD COLUMN IF NOT EXISTS Edited boolean NOT NULL DEFAULT false;
+ALTER TABLE DailyReports ADD COLUMN IF NOT EXISTS PreviousMessage VARCHAR(16000) NOT NULL DEFAULT '';
+ALTER TABLE DailyReports ADD COLUMN IF NOT EXISTS RejectedBy VARCHAR(26) NOT NULL DEFAULT '';
+ALTER TABLE DailyReports ADD COLUMN IF NOT EXISTS RejectedAt bigint NOT NULL DEFAULT 0;
+ALTER TABLE DailyReports ADD COLUMN IF NOT EXISTS RejectReason VARCHAR(1000) NOT NULL DEFAULT '';
+
+DROP INDEX IF EXISTS idx_dailyreports_status_createat;
+CREATE INDEX IF NOT EXISTS idx_dailyreports_status_updateat ON DailyReports (Status, UpdateAt);
+
+CREATE TABLE IF NOT EXISTS DailyReportAssignees (
+    TeamId VARCHAR(26) NOT NULL,
+    UserId VARCHAR(26) NOT NULL,
+    PRIMARY KEY (TeamId, UserId)
+);

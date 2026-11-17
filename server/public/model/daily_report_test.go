@@ -42,6 +42,17 @@ func TestDailyReportIsValid(t *testing.T) {
 	r = validDailyReport()
 	r.Status = "bogus"
 	require.NotNil(t, r.IsValid())
+
+	r = validDailyReport()
+	r.Status = DailyReportStatusRejected
+	r.RejectReason = strings.Repeat("ç", DailyReportRejectReasonMaxRunes)
+	require.Nil(t, r.IsValid())
+	r.RejectReason += "a"
+	require.NotNil(t, r.IsValid())
+
+	r = validDailyReport()
+	r.PreviousMessage = strings.Repeat("a", DailyReportMessageMaxRunes+1)
+	require.NotNil(t, r.IsValid())
 }
 
 func TestParseDailyReportTime(t *testing.T) {

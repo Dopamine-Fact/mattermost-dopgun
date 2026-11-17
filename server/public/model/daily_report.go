@@ -14,8 +14,10 @@ import (
 const (
 	DailyReportStatusPending  = "pending"
 	DailyReportStatusApproved = "approved"
+	DailyReportStatusRejected = "rejected"
 
-	DailyReportMessageMaxRunes = 16000
+	DailyReportMessageMaxRunes      = 16000
+	DailyReportRejectReasonMaxRunes = 1000
 )
 
 var dailyReportTimeRegexp = regexp.MustCompile(`^(\d{2}):(\d{2})$`)
@@ -53,8 +55,14 @@ type DailyReport struct {
 	AutoApproved bool              `json:"auto_approved"`
 	ApprovedBy   string            `json:"approved_by"`
 	ApprovedAt   int64             `json:"approved_at"`
-	CreateAt     int64             `json:"create_at"`
-	UpdateAt     int64             `json:"update_at"`
+	// Edited is set once the author resubmits; PreviousMessage is the text the reviewer last saw.
+	Edited          bool   `json:"edited"`
+	PreviousMessage string `json:"previous_message"`
+	RejectedBy      string `json:"rejected_by"`
+	RejectedAt      int64  `json:"rejected_at"`
+	RejectReason    string `json:"reject_reason"`
+	CreateAt        int64  `json:"create_at"`
+	UpdateAt        int64  `json:"update_at"`
 }
 
 func (r *DailyReport) Auditable() map[string]any {
@@ -101,11 +109,14 @@ func (r *DailyReport) IsValid() *AppError {
 	if _, err := time.Parse(time.DateOnly, r.Date); err != nil {
 		return NewAppError("DailyReport.IsValid", "model.daily_report.is_valid.date.app_error", nil, "id="+r.Id, http.StatusBadRequest)
 	}
-	if utf8.RuneCountInString(r.Message) > DailyReportMessageMaxRunes {
+	if utf8.RuneCountInString(r.Message) > DailyReportMessageMaxRunes || utf8.RuneCountInString(r.PreviousMessage) > DailyReportMessageMaxRunes {
 		return NewAppError("DailyReport.IsValid", "model.daily_report.is_valid.message.app_error", nil, "id="+r.Id, http.StatusBadRequest)
 	}
-	if r.Status != DailyReportStatusPending && r.Status != DailyReportStatusApproved {
+	if r.Status != DailyReportStatusPending && r.Status != DailyReportStatusApproved && r.Status != DailyReportStatusRejected {
 		return NewAppError("DailyReport.IsValid", "model.daily_report.is_valid.status.app_error", nil, "id="+r.Id, http.StatusBadRequest)
+	}
+	if utf8.RuneCountInString(r.RejectReason) > DailyReportRejectReasonMaxRunes {
+		return NewAppError("DailyReport.IsValid", "model.daily_report.is_valid.reject_reason.app_error", nil, "id="+r.Id, http.StatusBadRequest)
 	}
 	if r.CreateAt == 0 || r.UpdateAt == 0 {
 		return NewAppError("DailyReport.IsValid", "model.daily_report.is_valid.create_at.app_error", nil, "id="+r.Id, http.StatusBadRequest)

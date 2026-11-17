@@ -22,28 +22,36 @@ func newSqlDailyReportStore(sqlStore *SqlStore) store.DailyReportStore {
 	return &SqlDailyReportStore{sqlStore}
 }
 
-var dailyReportColumns = []string{"Id", "TeamId", "UserId", "Date", "Message", "Tasks", "Status", "AutoApproved", "ApprovedBy", "ApprovedAt", "CreateAt", "UpdateAt"}
+var dailyReportColumns = []string{"Id", "TeamId", "UserId", "Date", "Message", "Tasks", "Status", "AutoApproved", "ApprovedBy", "ApprovedAt",
+	"Edited", "PreviousMessage", "RejectedBy", "RejectedAt", "RejectReason", "CreateAt", "UpdateAt"}
 
 // dailyReportRow is a DailyReports row as scanned: Tasks is the raw JSON column.
 type dailyReportRow struct {
-	Id           string
-	TeamId       string
-	UserId       string
-	Date         string
-	Message      string
-	Tasks        []byte
-	Status       string
-	AutoApproved bool
-	ApprovedBy   string
-	ApprovedAt   int64
-	CreateAt     int64
-	UpdateAt     int64
+	Id              string
+	TeamId          string
+	UserId          string
+	Date            string
+	Message         string
+	Tasks           []byte
+	Status          string
+	AutoApproved    bool
+	ApprovedBy      string
+	ApprovedAt      int64
+	Edited          bool
+	PreviousMessage string
+	RejectedBy      string
+	RejectedAt      int64
+	RejectReason    string
+	CreateAt        int64
+	UpdateAt        int64
 }
 
 func (row *dailyReportRow) toModel() (*model.DailyReport, error) {
 	r := &model.DailyReport{
 		Id: row.Id, TeamId: row.TeamId, UserId: row.UserId, Date: row.Date, Message: row.Message,
 		Status: row.Status, AutoApproved: row.AutoApproved, ApprovedBy: row.ApprovedBy, ApprovedAt: row.ApprovedAt,
+		Edited: row.Edited, PreviousMessage: row.PreviousMessage,
+		RejectedBy: row.RejectedBy, RejectedAt: row.RejectedAt, RejectReason: row.RejectReason,
 		CreateAt: row.CreateAt, UpdateAt: row.UpdateAt,
 	}
 	if err := json.Unmarshal(row.Tasks, &r.Tasks); err != nil {
@@ -68,7 +76,8 @@ func (s *SqlDailyReportStore) Save(r *model.DailyReport) (*model.DailyReport, er
 	_, err = s.GetMaster().ExecBuilder(s.getQueryBuilder().
 		Insert("DailyReports").
 		Columns(dailyReportColumns...).
-		Values(r.Id, r.TeamId, r.UserId, r.Date, r.Message, string(tasks), r.Status, r.AutoApproved, r.ApprovedBy, r.ApprovedAt, r.CreateAt, r.UpdateAt))
+		Values(r.Id, r.TeamId, r.UserId, r.Date, r.Message, string(tasks), r.Status, r.AutoApproved, r.ApprovedBy, r.ApprovedAt,
+			r.Edited, r.PreviousMessage, r.RejectedBy, r.RejectedAt, r.RejectReason, r.CreateAt, r.UpdateAt))
 	if err != nil {
 		if IsUniqueConstraintError(err, []string{"dailyreports_teamid_userid_date_key"}) {
 			return nil, store.NewErrConflict("DailyReport", err, "team_id="+r.TeamId+" user_id="+r.UserId+" date="+r.Date)
@@ -96,29 +105,59 @@ func (s *SqlDailyReportStore) Update(r *model.DailyReport) (*model.DailyReport, 
 		Set("AutoApproved", r.AutoApproved).
 		Set("ApprovedBy", r.ApprovedBy).
 		Set("ApprovedAt", r.ApprovedAt).
+		Set("Edited", r.Edited).
+		Set("PreviousMessage", r.PreviousMessage).
+		Set("RejectedBy", r.RejectedBy).
+		Set("RejectedAt", r.RejectedAt).
+		Set("RejectReason", r.RejectReason).
 		Set("UpdateAt", r.UpdateAt).
-		Where(sq.Eq{"Id": r.Id, "Status": model.DailyReportStatusPending}))
+		Where(sq.Eq{"Id": r.Id}))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to update DailyReport with id=%s", r.Id)
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
-		return nil, s.missOrConflict(r.Id)
+		return nil, store.NewErrNotFound("DailyReport", r.Id)
 	}
 	return r, nil
 }
 
 // Approve approves a pending report without touching its content; see DailyReportStore.Approve.
-func (s *SqlDailyReportStore) Approve(id, approverID string, auto bool, approvedAt int64) error {
-	res, err := s.GetMaster().ExecBuilder(s.getQueryBuilder().
+func (s *SqlDailyReportStore) Approve(id, approverID string, auto bool, approvedAt, seenUpdateAt int64) error {
+	return s.review(id, "approve", s.getQueryBuilder().
 		Update("DailyReports").
 		Set("Status", model.DailyReportStatusApproved).
 		Set("AutoApproved", auto).
 		Set("ApprovedBy", approverID).
 		Set("ApprovedAt", approvedAt).
 		Set("UpdateAt", model.GetMillis()).
-		Where(sq.Eq{"Id": id, "Status": model.DailyReportStatusPending}))
+		Where(reviewWhere(id, seenUpdateAt, model.DailyReportStatusPending)))
+}
+
+// Reject rejects a pending or approved report; see DailyReportStore.Reject.
+func (s *SqlDailyReportStore) Reject(id, rejecterID, reason string, rejectedAt, seenUpdateAt int64) error {
+	return s.review(id, "reject", s.getQueryBuilder().
+		Update("DailyReports").
+		Set("Status", model.DailyReportStatusRejected).
+		Set("RejectedBy", rejecterID).
+		Set("RejectedAt", rejectedAt).
+		Set("RejectReason", reason).
+		Set("UpdateAt", model.GetMillis()).
+		Where(reviewWhere(id, seenUpdateAt, model.DailyReportStatusPending, model.DailyReportStatusApproved)))
+}
+
+// reviewWhere matches the report in one of the given states and, when seenUpdateAt > 0, only as the reviewer saw it.
+func reviewWhere(id string, seenUpdateAt int64, statuses ...string) sq.And {
+	where := sq.And{sq.Eq{"Id": id, "Status": statuses}}
+	if seenUpdateAt > 0 {
+		where = append(where, sq.Eq{"UpdateAt": seenUpdateAt})
+	}
+	return where
+}
+
+func (s *SqlDailyReportStore) review(id, action string, q sq.UpdateBuilder) error {
+	res, err := s.GetMaster().ExecBuilder(q)
 	if err != nil {
-		return errors.Wrapf(err, "failed to approve DailyReport with id=%s", id)
+		return errors.Wrapf(err, "failed to %s DailyReport with id=%s", action, id)
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
 		return s.missOrConflict(id)
@@ -126,7 +165,7 @@ func (s *SqlDailyReportStore) Approve(id, approverID string, auto bool, approved
 	return nil
 }
 
-// missOrConflict explains a guarded write that matched no row: the report is gone, or it is no longer pending.
+// missOrConflict explains a guarded write that matched no row: the report is gone, or it changed state.
 func (s *SqlDailyReportStore) missOrConflict(id string) error {
 	var n int
 	if err := s.GetMaster().GetBuilder(&n, s.getQueryBuilder().Select("COUNT(*)").From("DailyReports").Where(sq.Eq{"Id": id})); err != nil {
@@ -135,7 +174,7 @@ func (s *SqlDailyReportStore) missOrConflict(id string) error {
 	if n == 0 {
 		return store.NewErrNotFound("DailyReport", id)
 	}
-	return store.NewErrConflict("DailyReport", errors.New("report is no longer pending"), "id="+id)
+	return store.NewErrConflict("DailyReport", errors.New("report changed"), "id="+id)
 }
 
 func (s *SqlDailyReportStore) Get(id string) (*model.DailyReport, error) {
@@ -173,13 +212,13 @@ func (s *SqlDailyReportStore) GetForTeam(teamID, fromDate, toDate, userID string
 	return s.selectReports(q, "team_id="+teamID)
 }
 
-func (s *SqlDailyReportStore) GetPendingBefore(createdBefore int64) ([]*model.DailyReport, error) {
+func (s *SqlDailyReportStore) GetPendingBefore(updatedBefore int64) ([]*model.DailyReport, error) {
 	return s.selectReports(s.getQueryBuilder().
 		Select(dailyReportColumns...).
 		From("DailyReports").
 		Where(sq.Eq{"Status": model.DailyReportStatusPending}).
-		Where(sq.Lt{"CreateAt": createdBefore}).
-		OrderBy("CreateAt ASC", "Id ASC"), "pending")
+		Where(sq.Lt{"UpdateAt": updatedBefore}).
+		OrderBy("UpdateAt ASC", "Id ASC"), "pending")
 }
 
 func (s *SqlDailyReportStore) selectReports(q sq.SelectBuilder, desc string) ([]*model.DailyReport, error) {
@@ -196,4 +235,35 @@ func (s *SqlDailyReportStore) selectReports(q sq.SelectBuilder, desc string) ([]
 		reports = append(reports, r)
 	}
 	return reports, nil
+}
+
+func (s *SqlDailyReportStore) GetAssignees(teamID string) ([]string, error) {
+	userIDs := []string{}
+	if err := s.GetMaster().SelectBuilder(&userIDs, s.getQueryBuilder().
+		Select("UserId").From("DailyReportAssignees").Where(sq.Eq{"TeamId": teamID}).OrderBy("UserId")); err != nil {
+		return nil, errors.Wrapf(err, "failed to get DailyReportAssignees for team_id=%s", teamID)
+	}
+	return userIDs, nil
+}
+
+func (s *SqlDailyReportStore) SetAssignees(teamID string, userIDs []string) (err error) {
+	tx, err := s.GetMaster().Begin()
+	if err != nil {
+		return errors.Wrap(err, "begin_transaction")
+	}
+	defer finalizeTransactionX(tx, &err)
+
+	if _, err = tx.ExecBuilder(s.getQueryBuilder().Delete("DailyReportAssignees").Where(sq.Eq{"TeamId": teamID})); err != nil {
+		return errors.Wrapf(err, "failed to clear DailyReportAssignees for team_id=%s", teamID)
+	}
+	if len(userIDs) > 0 {
+		q := s.getQueryBuilder().Insert("DailyReportAssignees").Columns("TeamId", "UserId")
+		for _, id := range userIDs {
+			q = q.Values(teamID, id)
+		}
+		if _, err = tx.ExecBuilder(q); err != nil {
+			return errors.Wrapf(err, "failed to save DailyReportAssignees for team_id=%s", teamID)
+		}
+	}
+	return errors.Wrap(tx.Commit(), "commit_transaction")
 }

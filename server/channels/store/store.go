@@ -1232,17 +1232,23 @@ type CanvasStore interface {
 type DailyReportStore interface {
 	// Save returns *store.ErrConflict when the user already has a report for that team and date.
 	Save(r *model.DailyReport) (*model.DailyReport, error)
-	// Update only writes while the stored report is still pending: *store.ErrConflict when it has been approved,
-	// *store.ErrNotFound when it does not exist.
+	// Update writes every field whatever the stored state; *store.ErrNotFound when it does not exist.
 	Update(r *model.DailyReport) (*model.DailyReport, error)
-	// Approve marks a pending report approved, leaving its content alone; same errors as Update.
-	Approve(id, approverID string, auto bool, approvedAt int64) error
+	// Approve marks a pending report approved, leaving its content alone. With seenUpdateAt > 0 the stored report
+	// must still have that UpdateAt. *store.ErrConflict when it is not pending or changed, *store.ErrNotFound when missing.
+	Approve(id, approverID string, auto bool, approvedAt, seenUpdateAt int64) error
+	// Reject rejects a pending or approved report; same rules and errors as Approve.
+	Reject(id, rejecterID, reason string, rejectedAt, seenUpdateAt int64) error
+	// GetAssignees lists the users expected to report for the team; empty means every member.
+	GetAssignees(teamID string) ([]string, error)
+	// SetAssignees replaces the team's assignee list.
+	SetAssignees(teamID string, userIDs []string) error
 	Get(id string) (*model.DailyReport, error)
 	GetForUserDate(teamID, userID, date string) (*model.DailyReport, error)
 	// GetForTeam lists reports with fromDate <= Date <= toDate; an empty userID means every user.
 	GetForTeam(teamID, fromDate, toDate, userID string) ([]*model.DailyReport, error)
-	// GetPendingBefore lists pending reports created before the given time, across all teams.
-	GetPendingBefore(createdBefore int64) ([]*model.DailyReport, error)
+	// GetPendingBefore lists pending reports last submitted before the given time, across all teams.
+	GetPendingBefore(updatedBefore int64) ([]*model.DailyReport, error)
 }
 
 type ScheduledPostStore interface {

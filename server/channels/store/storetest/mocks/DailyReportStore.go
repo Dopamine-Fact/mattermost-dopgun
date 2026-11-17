@@ -14,17 +14,17 @@ type DailyReportStore struct {
 	mock.Mock
 }
 
-// Approve provides a mock function with given fields: id, approverID, auto, approvedAt
-func (_m *DailyReportStore) Approve(id string, approverID string, auto bool, approvedAt int64) error {
-	ret := _m.Called(id, approverID, auto, approvedAt)
+// Approve provides a mock function with given fields: id, approverID, auto, approvedAt, seenUpdateAt
+func (_m *DailyReportStore) Approve(id string, approverID string, auto bool, approvedAt int64, seenUpdateAt int64) error {
+	ret := _m.Called(id, approverID, auto, approvedAt, seenUpdateAt)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Approve")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string, bool, int64) error); ok {
-		r0 = rf(id, approverID, auto, approvedAt)
+	if rf, ok := ret.Get(0).(func(string, string, bool, int64, int64) error); ok {
+		r0 = rf(id, approverID, auto, approvedAt, seenUpdateAt)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -55,6 +55,36 @@ func (_m *DailyReportStore) Get(id string) (*model.DailyReport, error) {
 
 	if rf, ok := ret.Get(1).(func(string) error); ok {
 		r1 = rf(id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetAssignees provides a mock function with given fields: teamID
+func (_m *DailyReportStore) GetAssignees(teamID string) ([]string, error) {
+	ret := _m.Called(teamID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAssignees")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]string, error)); ok {
+		return rf(teamID)
+	}
+	if rf, ok := ret.Get(0).(func(string) []string); ok {
+		r0 = rf(teamID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(teamID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -122,9 +152,9 @@ func (_m *DailyReportStore) GetForUserDate(teamID string, userID string, date st
 	return r0, r1
 }
 
-// GetPendingBefore provides a mock function with given fields: createdBefore
-func (_m *DailyReportStore) GetPendingBefore(createdBefore int64) ([]*model.DailyReport, error) {
-	ret := _m.Called(createdBefore)
+// GetPendingBefore provides a mock function with given fields: updatedBefore
+func (_m *DailyReportStore) GetPendingBefore(updatedBefore int64) ([]*model.DailyReport, error) {
+	ret := _m.Called(updatedBefore)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetPendingBefore")
@@ -133,10 +163,10 @@ func (_m *DailyReportStore) GetPendingBefore(createdBefore int64) ([]*model.Dail
 	var r0 []*model.DailyReport
 	var r1 error
 	if rf, ok := ret.Get(0).(func(int64) ([]*model.DailyReport, error)); ok {
-		return rf(createdBefore)
+		return rf(updatedBefore)
 	}
 	if rf, ok := ret.Get(0).(func(int64) []*model.DailyReport); ok {
-		r0 = rf(createdBefore)
+		r0 = rf(updatedBefore)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*model.DailyReport)
@@ -144,12 +174,30 @@ func (_m *DailyReportStore) GetPendingBefore(createdBefore int64) ([]*model.Dail
 	}
 
 	if rf, ok := ret.Get(1).(func(int64) error); ok {
-		r1 = rf(createdBefore)
+		r1 = rf(updatedBefore)
 	} else {
 		r1 = ret.Error(1)
 	}
 
 	return r0, r1
+}
+
+// Reject provides a mock function with given fields: id, rejecterID, reason, rejectedAt, seenUpdateAt
+func (_m *DailyReportStore) Reject(id string, rejecterID string, reason string, rejectedAt int64, seenUpdateAt int64) error {
+	ret := _m.Called(id, rejecterID, reason, rejectedAt, seenUpdateAt)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Reject")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, string, int64, int64) error); ok {
+		r0 = rf(id, rejecterID, reason, rejectedAt, seenUpdateAt)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // Save provides a mock function with given fields: r
@@ -180,6 +228,24 @@ func (_m *DailyReportStore) Save(r *model.DailyReport) (*model.DailyReport, erro
 	}
 
 	return r0, r1
+}
+
+// SetAssignees provides a mock function with given fields: teamID, userIDs
+func (_m *DailyReportStore) SetAssignees(teamID string, userIDs []string) error {
+	ret := _m.Called(teamID, userIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetAssignees")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, []string) error); ok {
+		r0 = rf(teamID, userIDs)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // Update provides a mock function with given fields: r

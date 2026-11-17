@@ -175,7 +175,7 @@ func (a *App) ApproveDailyReport(rctx request.CTX, reportID, approverID string) 
 	if report.Status == model.DailyReportStatusApproved {
 		return report, nil
 	}
-	err := a.Srv().Store().DailyReport().Approve(reportID, approverID, false, model.GetMillis())
+	err := a.Srv().Store().DailyReport().Approve(reportID, approverID, false, model.GetMillis(), 0)
 	var conflictErr *store.ErrConflict
 	if errors.As(err, &conflictErr) {
 		// Someone approved it first; their approval stands.
@@ -262,7 +262,7 @@ func (a *App) RunDailyReportTick(rctx request.CTX, now time.Time) {
 		return
 	}
 	for _, report := range pending {
-		err := a.Srv().Store().DailyReport().Approve(report.Id, "", true, now.UnixMilli())
+		err := a.Srv().Store().DailyReport().Approve(report.Id, "", true, now.UnixMilli(), report.UpdateAt)
 		var conflictErr *store.ErrConflict
 		var nfErr *store.ErrNotFound
 		if errors.As(err, &conflictErr) || errors.As(err, &nfErr) {

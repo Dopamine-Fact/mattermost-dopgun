@@ -19,6 +19,9 @@ func TestDailyReportStore(t *testing.T, rctx request.CTX, ss store.Store) {
 	t.Run("Conflict", func(t *testing.T) { testDailyReportConflict(t, ss) })
 	t.Run("GetForTeam", func(t *testing.T) { testDailyReportGetForTeam(t, ss) })
 	t.Run("GetPendingBefore", func(t *testing.T) { testDailyReportGetPendingBefore(t, ss) })
+	t.Run("Reject", func(t *testing.T) { testDailyReportReject(t, ss) })
+	t.Run("SeenUpdateAt", func(t *testing.T) { testDailyReportSeenUpdateAt(t, ss) })
+	t.Run("Assignees", func(t *testing.T) { testDailyReportAssignees(t, ss) })
 }
 
 func newDailyReport(teamID, userID, date string) *model.DailyReport {
@@ -68,21 +71,27 @@ func testDailyReportSaveGetUpdate(t *testing.T, ss store.Store) {
 	var nfErr *store.ErrNotFound
 	require.ErrorAs(t, err, &nfErr)
 
-	// An approved report is frozen: neither Update nor Approve may change it.
+	// An approved report can be edited back to pending; Approve only acts on pending reports.
 	var conflictErr *store.ErrConflict
-	stale := *again
-	stale.Message = "late edit"
-	_, err = ss.DailyReport().Update(&stale)
-	require.ErrorAs(t, err, &conflictErr)
-	require.ErrorAs(t, ss.DailyReport().Approve(again.Id, model.NewId(), false, 1), &conflictErr)
-	frozen, err := ss.DailyReport().Get(again.Id)
+	require.ErrorAs(t, ss.DailyReport().Approve(again.Id, model.NewId(), false, 1, 0), &conflictErr)
+	edited := *again
+	edited.Message = "late edit"
+	edited.PreviousMessage = again.Message
+	edited.Edited = true
+	edited.Status = model.DailyReportStatusPending
+	edited.AutoApproved, edited.ApprovedBy, edited.ApprovedAt = false, "", 0
+	_, err = ss.DailyReport().Update(&edited)
 	require.NoError(t, err)
-	require.Equal(t, again, frozen)
-	require.ErrorAs(t, ss.DailyReport().Approve(model.NewId(), model.NewId(), false, 1), &nfErr)
+	reread, err := ss.DailyReport().Get(again.Id)
+	require.NoError(t, err)
+	require.Equal(t, &edited, reread)
+	_, err = ss.DailyReport().Update(&model.DailyReport{Id: model.NewId(), TeamId: teamID, UserId: userID, Date: "2026-11-20", Status: model.DailyReportStatusPending, CreateAt: 1})
+	require.ErrorAs(t, err, &nfErr)
+	require.ErrorAs(t, ss.DailyReport().Approve(model.NewId(), model.NewId(), false, 1, 0), &nfErr)
 
 	pending, err := ss.DailyReport().Save(newDailyReport(teamID, userID, "2026-11-19"))
 	require.NoError(t, err)
-	require.NoError(t, ss.DailyReport().Approve(pending.Id, "approver", true, 42))
+	require.NoError(t, ss.DailyReport().Approve(pending.Id, "approver", true, 42, 0))
 	approved, err := ss.DailyReport().Get(pending.Id)
 	require.NoError(t, err)
 	require.Equal(t, model.DailyReportStatusApproved, approved.Status)
@@ -173,5 +182,82 @@ func testDailyReportGetPendingBefore(t *testing.T, ss store.Store) {
 	}
 	require.True(t, ids[old.Id])
 	require.False(t, ids[approved.Id])
-	require.False(t, ids[newer.Id], "rows created after the cutoff are excluded")
+	require.False(t, ids[newer.Id], "rows updated after the cutoff are excluded")
+
+	// Editing restarts the clock: the cutoff is measured from UpdateAt, not CreateAt.
+	old.Message = "edited"
+	_, err = ss.DailyReport().Update(old)
+	require.NoError(t, err)
+	list, err = ss.DailyReport().GetPendingBefore(cutoff)
+	require.NoError(t, err)
+	for _, r := range list {
+		require.NotEqual(t, old.Id, r.Id)
+	}
+}
+
+func testDailyReportReject(t *testing.T, ss store.Store) {
+	teamID := model.NewId()
+	var conflictErr *store.ErrConflict
+	var nfErr *store.ErrNotFound
+
+	pending, err := ss.DailyReport().Save(newDailyReport(teamID, model.NewId(), "2026-11-16"))
+	require.NoError(t, err)
+	require.NoError(t, ss.DailyReport().Reject(pending.Id, "boss", "missing details", 77, 0))
+	got, err := ss.DailyReport().Get(pending.Id)
+	require.NoError(t, err)
+	require.Equal(t, model.DailyReportStatusRejected, got.Status)
+	require.Equal(t, "boss", got.RejectedBy)
+	require.Equal(t, "missing details", got.RejectReason)
+	require.EqualValues(t, 77, got.RejectedAt)
+	require.Equal(t, pending.Message, got.Message)
+
+	require.ErrorAs(t, ss.DailyReport().Reject(pending.Id, "boss", "again", 78, 0), &conflictErr)
+	require.ErrorAs(t, ss.DailyReport().Reject(model.NewId(), "boss", "x", 1, 0), &nfErr)
+
+	approved, err := ss.DailyReport().Save(newDailyReport(teamID, model.NewId(), "2026-11-16"))
+	require.NoError(t, err)
+	require.NoError(t, ss.DailyReport().Approve(approved.Id, "", true, 5, 0))
+	require.NoError(t, ss.DailyReport().Reject(approved.Id, "boss", "not really done", 80, 0))
+	got, err = ss.DailyReport().Get(approved.Id)
+	require.NoError(t, err)
+	require.Equal(t, model.DailyReportStatusRejected, got.Status)
+}
+
+func testDailyReportSeenUpdateAt(t *testing.T, ss store.Store) {
+	var conflictErr *store.ErrConflict
+	r, err := ss.DailyReport().Save(newDailyReport(model.NewId(), model.NewId(), "2026-11-16"))
+	require.NoError(t, err)
+
+	require.ErrorAs(t, ss.DailyReport().Approve(r.Id, "boss", false, 1, r.UpdateAt-1), &conflictErr)
+	require.ErrorAs(t, ss.DailyReport().Reject(r.Id, "boss", "why", 1, r.UpdateAt-1), &conflictErr)
+	require.NoError(t, ss.DailyReport().Approve(r.Id, "boss", false, 1, r.UpdateAt))
+}
+
+func testDailyReportAssignees(t *testing.T, ss store.Store) {
+	teamID, otherTeam := model.NewId(), model.NewId()
+	a, b, c := model.NewId(), model.NewId(), model.NewId()
+
+	got, err := ss.DailyReport().GetAssignees(teamID)
+	require.NoError(t, err)
+	require.Empty(t, got)
+
+	require.NoError(t, ss.DailyReport().SetAssignees(otherTeam, []string{c}))
+	require.NoError(t, ss.DailyReport().SetAssignees(teamID, []string{b, a}))
+	got, err = ss.DailyReport().GetAssignees(teamID)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{a, b}, got)
+
+	require.NoError(t, ss.DailyReport().SetAssignees(teamID, []string{c}))
+	got, err = ss.DailyReport().GetAssignees(teamID)
+	require.NoError(t, err)
+	require.Equal(t, []string{c}, got)
+
+	require.NoError(t, ss.DailyReport().SetAssignees(teamID, []string{}))
+	got, err = ss.DailyReport().GetAssignees(teamID)
+	require.NoError(t, err)
+	require.Empty(t, got)
+
+	got, err = ss.DailyReport().GetAssignees(otherTeam)
+	require.NoError(t, err)
+	require.Equal(t, []string{c}, got)
 }
