@@ -291,6 +291,12 @@ func (fs SqlFileInfoStore) GetWithOptions(page, perPage int, opt *model.GetFileI
 		query = query.Where("(FileInfo.Content IS NULL OR FileInfo.Content = '')")
 	}
 
+	if opt.ChatAttachmentsOnly {
+		query = query.
+			Where(sq.Or{sq.Eq{"FileInfo.CreatorId": model.BookmarkFileOwner}, sq.NotEq{"FileInfo.PostId": ""}}).
+			Where(sq.Expr("NOT EXISTS (SELECT 1 FROM TemporaryPosts WHERE TemporaryPosts.PostId = FileInfo.PostId)"))
+	}
+
 	if opt.SortBy == "" {
 		opt.SortBy = model.FileinfoSortByCreated
 	}
@@ -304,6 +310,8 @@ func (fs SqlFileInfoStore) GetWithOptions(page, perPage int, opt *model.GetFileI
 		query = query.OrderBy("FileInfo.CreateAt " + sortDirection)
 	case model.FileinfoSortBySize:
 		query = query.OrderBy("FileInfo.Size " + sortDirection)
+	case model.FileinfoSortByName:
+		query = query.OrderBy("lower(FileInfo.Name) " + sortDirection)
 	default:
 		return nil, store.NewErrInvalidInput("FileInfo", "<sortOption>", opt.SortBy)
 	}
@@ -441,6 +449,8 @@ func (fs SqlFileInfoStore) AttachToPost(rctx request.CTX, fileId, postId, channe
 				sq.Eq{"CreatorId": creatorId},
 				sq.Eq{"CreatorId": "nouser"},
 			},
+			// a channel drive file must never be attached to a post
+			sq.Expr("NOT EXISTS (SELECT 1 FROM DriveItems WHERE DriveItems.FileId = FileInfo.Id)"),
 		})
 
 	queryString, args, err := query.ToSql()

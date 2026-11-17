@@ -39,6 +39,7 @@ type RetryLayer struct {
 	DeliveryTrackingStore           store.DeliveryTrackingStore
 	DesktopTokensStore              store.DesktopTokensStore
 	DraftStore                      store.DraftStore
+	DriveItemStore                  store.DriveItemStore
 	EmojiStore                      store.EmojiStore
 	FileInfoStore                   store.FileInfoStore
 	GroupStore                      store.GroupStore
@@ -165,6 +166,10 @@ func (s *RetryLayer) DesktopTokens() store.DesktopTokensStore {
 
 func (s *RetryLayer) Draft() store.DraftStore {
 	return s.DraftStore
+}
+
+func (s *RetryLayer) DriveItem() store.DriveItemStore {
+	return s.DriveItemStore
 }
 
 func (s *RetryLayer) Emoji() store.EmojiStore {
@@ -448,6 +453,11 @@ type RetryLayerDesktopTokensStore struct {
 
 type RetryLayerDraftStore struct {
 	store.DraftStore
+	Root *RetryLayer
+}
+
+type RetryLayerDriveItemStore struct {
+	store.DriveItemStore
 	Root *RetryLayer
 }
 
@@ -5948,6 +5958,321 @@ func (s *RetryLayerDraftStore) Upsert(d *model.Draft) (*model.Draft, error) {
 		if tries >= 3 {
 			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
 			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDriveItemStore) Get(id string) (*model.DriveItem, error) {
+
+	tries := 0
+	for {
+		result, err := s.DriveItemStore.Get(id)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDriveItemStore) GetAncestors(id string) ([]*model.DriveItem, error) {
+
+	tries := 0
+	for {
+		result, err := s.DriveItemStore.GetAncestors(id)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDriveItemStore) GetByFileId(fileID string) (*model.DriveItem, error) {
+
+	tries := 0
+	for {
+		result, err := s.DriveItemStore.GetByFileId(fileID)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDriveItemStore) GetChildren(channelID string, parentID string, limit int) ([]*model.DriveItem, error) {
+
+	tries := 0
+	for {
+		result, err := s.DriveItemStore.GetChildren(channelID, parentID, limit)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDriveItemStore) GetDangling(limit int) ([]*model.DriveItem, error) {
+
+	tries := 0
+	for {
+		result, err := s.DriveItemStore.GetDangling(limit)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDriveItemStore) GetDescendants(channelID string, folderID string) ([]*model.DriveItem, error) {
+
+	tries := 0
+	for {
+		result, err := s.DriveItemStore.GetDescendants(channelID, folderID)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDriveItemStore) GetExpiredTrash(before int64, limit int) ([]*model.DriveItem, error) {
+
+	tries := 0
+	for {
+		result, err := s.DriveItemStore.GetExpiredTrash(before, limit)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDriveItemStore) GetMany(ids []string) ([]*model.DriveItem, error) {
+
+	tries := 0
+	for {
+		result, err := s.DriveItemStore.GetMany(ids)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDriveItemStore) GetTrash(channelID string) ([]*model.DriveItem, error) {
+
+	tries := 0
+	for {
+		result, err := s.DriveItemStore.GetTrash(channelID)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDriveItemStore) NameExists(channelID string, parentID string, name string, excludeID string) (bool, error) {
+
+	tries := 0
+	for {
+		result, err := s.DriveItemStore.NameExists(channelID, parentID, name, excludeID)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDriveItemStore) PermanentDelete(ids []string) error {
+
+	tries := 0
+	for {
+		err := s.DriveItemStore.PermanentDelete(ids)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDriveItemStore) PermanentDeleteByChannel(channelID string) error {
+
+	tries := 0
+	for {
+		err := s.DriveItemStore.PermanentDeleteByChannel(channelID)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDriveItemStore) Save(item *model.DriveItem) (*model.DriveItem, error) {
+
+	tries := 0
+	for {
+		result, err := s.DriveItemStore.Save(item)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDriveItemStore) Update(item *model.DriveItem) (*model.DriveItem, error) {
+
+	tries := 0
+	for {
+		result, err := s.DriveItemStore.Update(item)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDriveItemStore) UpdateMany(items []*model.DriveItem) error {
+
+	tries := 0
+	for {
+		err := s.DriveItemStore.UpdateMany(items)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
 		}
 		timepkg.Sleep(100 * timepkg.Millisecond)
 	}
@@ -21656,6 +21981,7 @@ func New(childStore store.Store) *RetryLayer {
 	newStore.DeliveryTrackingStore = &RetryLayerDeliveryTrackingStore{DeliveryTrackingStore: childStore.DeliveryTracking(), Root: &newStore}
 	newStore.DesktopTokensStore = &RetryLayerDesktopTokensStore{DesktopTokensStore: childStore.DesktopTokens(), Root: &newStore}
 	newStore.DraftStore = &RetryLayerDraftStore{DraftStore: childStore.Draft(), Root: &newStore}
+	newStore.DriveItemStore = &RetryLayerDriveItemStore{DriveItemStore: childStore.DriveItem(), Root: &newStore}
 	newStore.EmojiStore = &RetryLayerEmojiStore{EmojiStore: childStore.Emoji(), Root: &newStore}
 	newStore.FileInfoStore = &RetryLayerFileInfoStore{FileInfoStore: childStore.FileInfo(), Root: &newStore}
 	newStore.GroupStore = &RetryLayerGroupStore{GroupStore: childStore.Group(), Root: &newStore}

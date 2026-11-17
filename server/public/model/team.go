@@ -49,6 +49,7 @@ type Team struct {
 	DailyReportsEnabled bool    `json:"daily_reports_enabled"`
 	DailyReportTime     string  `json:"daily_report_time"` // "HH:MM" in DailyReportTimezone
 	DailyReportTimezone string  `json:"daily_report_timezone"`
+	FilesEnabled        bool    `json:"files_enabled"`
 
 	// Not persisted; derived by the store via EXISTS on AccessControlPolicies(Type='team').
 	// Use HasMembershipPolicyAction for enforcement — this is a read-path signal only.
@@ -100,6 +101,7 @@ func (o *Team) Auditable() map[string]any {
 		"daily_reports_enabled": o.DailyReportsEnabled,
 		"daily_report_time":     o.DailyReportTime,
 		"daily_report_timezone": o.DailyReportTimezone,
+		"files_enabled":         o.FilesEnabled,
 	}
 }
 
@@ -121,6 +123,7 @@ type TeamPatch struct {
 	DailyReportsEnabled *bool   `json:"daily_reports_enabled"`
 	DailyReportTime     *string `json:"daily_report_time"`
 	DailyReportTimezone *string `json:"daily_report_timezone"`
+	FilesEnabled        *bool   `json:"files_enabled"`
 }
 
 func (o *TeamPatch) Auditable() map[string]any {
@@ -134,6 +137,7 @@ func (o *TeamPatch) Auditable() map[string]any {
 		"daily_reports_enabled": o.DailyReportsEnabled,
 		"daily_report_time":     o.DailyReportTime,
 		"daily_report_timezone": o.DailyReportTimezone,
+		"files_enabled":         o.FilesEnabled,
 	}
 }
 
@@ -382,6 +386,10 @@ func (o *Team) Patch(patch *TeamPatch) {
 
 	if patch.DailyReportTimezone != nil {
 		o.DailyReportTimezone = *patch.DailyReportTimezone
+	}
+
+	if patch.FilesEnabled != nil {
+		o.FilesEnabled = *patch.FilesEnabled
 	}
 }
 

@@ -445,6 +445,26 @@ func (_m *Store) Draft() store.DraftStore {
 	return r0
 }
 
+// DriveItem provides a mock function with no fields
+func (_m *Store) DriveItem() store.DriveItemStore {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for DriveItem")
+	}
+
+	var r0 store.DriveItemStore
+	if rf, ok := ret.Get(0).(func() store.DriveItemStore); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.DriveItemStore)
+		}
+	}
+
+	return r0
+}
+
 // DropAllTables provides a mock function with no fields
 func (_m *Store) DropAllTables() {
 	_m.Called()

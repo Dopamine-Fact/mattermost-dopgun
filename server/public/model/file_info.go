@@ -16,6 +16,7 @@ import (
 const (
 	FileinfoSortByCreated = "CreateAt"
 	FileinfoSortBySize    = "Size"
+	FileinfoSortByName    = "Name"
 
 	// MaxFilenameLength is the maximum length, in Unicode codepoints, of a
 	// sanitized FileInfo.Name. It matches the VARCHAR(256) width of the
@@ -53,6 +54,9 @@ type GetFileInfosOptions struct {
 	SortDescending bool `json:"sort_descending"`
 	// OnlyEmptyContent limits results to files that have no extracted content stored.
 	OnlyEmptyContent bool `json:"only_empty_content"`
+	// ChatAttachmentsOnly limits results to files posted in chat or attached to bookmarks,
+	// excluding unattached uploads (such as channel drive files) and burn-on-read posts.
+	ChatAttachmentsOnly bool `json:"chat_attachments_only"`
 }
 
 type FileInfo struct {

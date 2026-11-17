@@ -18377,6 +18377,46 @@
     "description": "API validation error when syncing a message draft whose author user ID is malformed."
   },
   {
+    "id": "model.drive_item.is_valid.channel_id.app_error",
+    "translation": "Invalid channel id for the drive item.",
+    "description": "API validation error when a channel drive file or folder does not belong to a valid channel."
+  },
+  {
+    "id": "model.drive_item.is_valid.create_at.app_error",
+    "translation": "Invalid creation time for the drive item.",
+    "description": "API validation error when a channel drive item has no creation or update timestamp."
+  },
+  {
+    "id": "model.drive_item.is_valid.creator_id.app_error",
+    "translation": "Invalid creator id for the drive item.",
+    "description": "API validation error when a channel drive file or folder has a malformed creator user ID."
+  },
+  {
+    "id": "model.drive_item.is_valid.file_id.app_error",
+    "translation": "Invalid file reference for the drive item.",
+    "description": "API validation error when a drive file has no valid uploaded file, or a drive folder references a file."
+  },
+  {
+    "id": "model.drive_item.is_valid.id.app_error",
+    "translation": "Invalid drive item id.",
+    "description": "API validation error when a channel drive item's ID is malformed."
+  },
+  {
+    "id": "model.drive_item.is_valid.name.app_error",
+    "translation": "Invalid name. Names cannot be empty, longer than 255 characters, end with a space or dot, or contain \\ / : * ? \" < > |.",
+    "description": "Validation error shown in the file explorer when a user names a file or folder with characters or a length that are not allowed."
+  },
+  {
+    "id": "model.drive_item.is_valid.parent_id.app_error",
+    "translation": "Invalid parent folder for the drive item.",
+    "description": "API validation error when a channel drive file or folder points to a malformed parent folder ID."
+  },
+  {
+    "id": "model.drive_item.is_valid.type.app_error",
+    "translation": "Invalid drive item type.",
+    "description": "API validation error when a channel drive item is neither a file nor a folder."
+  },
+  {
     "id": "model.emoji.create_at.app_error",
     "translation": "Create at must be a valid time.",
     "description": "API validation error when saving a custom emoji whose creation timestamp field (CreateAt) is unset."

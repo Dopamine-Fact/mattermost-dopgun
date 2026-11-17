@@ -38,6 +38,7 @@ type TimerLayer struct {
 	DeliveryTrackingStore           store.DeliveryTrackingStore
 	DesktopTokensStore              store.DesktopTokensStore
 	DraftStore                      store.DraftStore
+	DriveItemStore                  store.DriveItemStore
 	EmojiStore                      store.EmojiStore
 	FileInfoStore                   store.FileInfoStore
 	GroupStore                      store.GroupStore
@@ -164,6 +165,10 @@ func (s *TimerLayer) DesktopTokens() store.DesktopTokensStore {
 
 func (s *TimerLayer) Draft() store.DraftStore {
 	return s.DraftStore
+}
+
+func (s *TimerLayer) DriveItem() store.DriveItemStore {
+	return s.DriveItemStore
 }
 
 func (s *TimerLayer) Emoji() store.EmojiStore {
@@ -447,6 +452,11 @@ type TimerLayerDesktopTokensStore struct {
 
 type TimerLayerDraftStore struct {
 	store.DraftStore
+	Root *TimerLayer
+}
+
+type TimerLayerDriveItemStore struct {
+	store.DriveItemStore
 	Root *TimerLayer
 }
 
@@ -4928,6 +4938,246 @@ func (s *TimerLayerDraftStore) Upsert(d *model.Draft) (*model.Draft, error) {
 		s.Root.Metrics.ObserveStoreMethodDuration("DraftStore.Upsert", success, elapsed)
 	}
 	return result, err
+}
+
+func (s *TimerLayerDriveItemStore) Get(id string) (*model.DriveItem, error) {
+	start := time.Now()
+
+	result, err := s.DriveItemStore.Get(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.Get", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDriveItemStore) GetAncestors(id string) ([]*model.DriveItem, error) {
+	start := time.Now()
+
+	result, err := s.DriveItemStore.GetAncestors(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.GetAncestors", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDriveItemStore) GetByFileId(fileID string) (*model.DriveItem, error) {
+	start := time.Now()
+
+	result, err := s.DriveItemStore.GetByFileId(fileID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.GetByFileId", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDriveItemStore) GetChildren(channelID string, parentID string, limit int) ([]*model.DriveItem, error) {
+	start := time.Now()
+
+	result, err := s.DriveItemStore.GetChildren(channelID, parentID, limit)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.GetChildren", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDriveItemStore) GetDangling(limit int) ([]*model.DriveItem, error) {
+	start := time.Now()
+
+	result, err := s.DriveItemStore.GetDangling(limit)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.GetDangling", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDriveItemStore) GetDescendants(channelID string, folderID string) ([]*model.DriveItem, error) {
+	start := time.Now()
+
+	result, err := s.DriveItemStore.GetDescendants(channelID, folderID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.GetDescendants", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDriveItemStore) GetExpiredTrash(before int64, limit int) ([]*model.DriveItem, error) {
+	start := time.Now()
+
+	result, err := s.DriveItemStore.GetExpiredTrash(before, limit)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.GetExpiredTrash", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDriveItemStore) GetMany(ids []string) ([]*model.DriveItem, error) {
+	start := time.Now()
+
+	result, err := s.DriveItemStore.GetMany(ids)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.GetMany", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDriveItemStore) GetTrash(channelID string) ([]*model.DriveItem, error) {
+	start := time.Now()
+
+	result, err := s.DriveItemStore.GetTrash(channelID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.GetTrash", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDriveItemStore) NameExists(channelID string, parentID string, name string, excludeID string) (bool, error) {
+	start := time.Now()
+
+	result, err := s.DriveItemStore.NameExists(channelID, parentID, name, excludeID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.NameExists", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDriveItemStore) PermanentDelete(ids []string) error {
+	start := time.Now()
+
+	err := s.DriveItemStore.PermanentDelete(ids)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.PermanentDelete", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerDriveItemStore) PermanentDeleteByChannel(channelID string) error {
+	start := time.Now()
+
+	err := s.DriveItemStore.PermanentDeleteByChannel(channelID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.PermanentDeleteByChannel", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerDriveItemStore) Save(item *model.DriveItem) (*model.DriveItem, error) {
+	start := time.Now()
+
+	result, err := s.DriveItemStore.Save(item)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.Save", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDriveItemStore) Update(item *model.DriveItem) (*model.DriveItem, error) {
+	start := time.Now()
+
+	result, err := s.DriveItemStore.Update(item)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.Update", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDriveItemStore) UpdateMany(items []*model.DriveItem) error {
+	start := time.Now()
+
+	err := s.DriveItemStore.UpdateMany(items)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.UpdateMany", success, elapsed)
+	}
+	return err
 }
 
 func (s *TimerLayerEmojiStore) Delete(emoji *model.Emoji, timestamp int64) error {
@@ -17133,6 +17383,7 @@ func New(childStore store.Store, metrics einterfaces.MetricsInterface) *TimerLay
 	newStore.DeliveryTrackingStore = &TimerLayerDeliveryTrackingStore{DeliveryTrackingStore: childStore.DeliveryTracking(), Root: &newStore}
 	newStore.DesktopTokensStore = &TimerLayerDesktopTokensStore{DesktopTokensStore: childStore.DesktopTokens(), Root: &newStore}
 	newStore.DraftStore = &TimerLayerDraftStore{DraftStore: childStore.Draft(), Root: &newStore}
+	newStore.DriveItemStore = &TimerLayerDriveItemStore{DriveItemStore: childStore.DriveItem(), Root: &newStore}
 	newStore.EmojiStore = &TimerLayerEmojiStore{EmojiStore: childStore.Emoji(), Root: &newStore}
 	newStore.FileInfoStore = &TimerLayerFileInfoStore{FileInfoStore: childStore.FileInfo(), Root: &newStore}
 	newStore.GroupStore = &TimerLayerGroupStore{GroupStore: childStore.Group(), Root: &newStore}

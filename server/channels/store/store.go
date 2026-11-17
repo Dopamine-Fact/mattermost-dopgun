@@ -94,6 +94,7 @@ type Store interface {
 	Task() TaskStore
 	Canvas() CanvasStore
 	DailyReport() DailyReportStore
+	DriveItem() DriveItemStore
 	View() ViewStore
 	PropertyGroup() PropertyGroupStore
 	PropertyField() PropertyFieldStore
@@ -1243,6 +1244,33 @@ type DailyReportStore interface {
 	GetForTeam(teamID, fromDate, toDate, userID string) ([]*model.DailyReport, error)
 	// GetPendingBefore lists pending reports created before the given time, across all teams.
 	GetPendingBefore(createdBefore int64) ([]*model.DailyReport, error)
+}
+
+type DriveItemStore interface {
+	// Save returns *store.ErrConflict when a live item with the same name (case-insensitive) exists in the folder.
+	Save(item *model.DriveItem) (*model.DriveItem, error)
+	Get(id string) (*model.DriveItem, error)
+	GetMany(ids []string) ([]*model.DriveItem, error)
+	// GetChildren lists live items in a folder ("" = channel root): folders first, then by lower(Name).
+	GetChildren(channelID, parentID string, limit int) ([]*model.DriveItem, error)
+	// GetDescendants lists every live item below folderID, recursively.
+	GetDescendants(channelID, folderID string) ([]*model.DriveItem, error)
+	// GetAncestors lists the folders above an item, root first.
+	GetAncestors(id string) ([]*model.DriveItem, error)
+	// NameExists reports whether a live item other than excludeID has this name (case-insensitive) in the folder.
+	NameExists(channelID, parentID, name, excludeID string) (bool, error)
+	Update(item *model.DriveItem) (*model.DriveItem, error)
+	// UpdateMany updates the items in one transaction.
+	UpdateMany(items []*model.DriveItem) error
+	// GetTrash lists deleted items of a channel, newest first.
+	GetTrash(channelID string) ([]*model.DriveItem, error)
+	// GetExpiredTrash lists items deleted before the given time, across all channels.
+	GetExpiredTrash(before int64, limit int) ([]*model.DriveItem, error)
+	GetByFileId(fileID string) (*model.DriveItem, error)
+	// GetDangling lists file items whose FileInfo is missing or soft-deleted.
+	GetDangling(limit int) ([]*model.DriveItem, error)
+	PermanentDelete(ids []string) error
+	PermanentDeleteByChannel(channelID string) error
 }
 
 type ScheduledPostStore interface {
