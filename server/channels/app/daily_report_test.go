@@ -77,11 +77,199 @@ func TestSubmitDailyReport(t *testing.T) {
 	assert.Equal(t, report.Id, again.Id)
 	assert.Equal(t, "second", again.Message)
 
-	_, appErr = th.App.ApproveDailyReport(th.Context, report.Id, th.BasicUser2.Id)
+	_, appErr = th.App.ApproveDailyReport(th.Context, report.Id, th.BasicUser2.Id, 0)
 	require.Nil(t, appErr)
-	_, appErr = th.App.SubmitDailyReport(th.Context, team.Id, th.BasicUser.Id, "third")
+	edited, appErr := th.App.SubmitDailyReport(th.Context, team.Id, th.BasicUser.Id, "third")
+	require.Nil(t, appErr)
+	assert.Equal(t, model.DailyReportStatusPending, edited.Status)
+	assert.True(t, edited.Edited)
+	assert.Equal(t, "second", edited.PreviousMessage, "previous is the text the reviewer approved")
+	assert.Empty(t, edited.ApprovedBy)
+	assert.Zero(t, edited.ApprovedAt)
+}
+
+func TestEditPendingKeepsFirstPrevious(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	team := enableDailyReports(t, th)
+
+	for _, msg := range []string{"A", "B", "C"} {
+		_, appErr := th.App.SubmitDailyReport(th.Context, team.Id, th.BasicUser.Id, msg)
+		require.Nil(t, appErr)
+	}
+	date, err := DailyReportDate(team, time.Now())
+	require.NoError(t, err)
+	got, err := th.App.Srv().Store().DailyReport().GetForUserDate(team.Id, th.BasicUser.Id, date)
+	require.NoError(t, err)
+	assert.Equal(t, "C", got.Message)
+	assert.Equal(t, "A", got.PreviousMessage, "nobody reviewed B, so the reviewer last saw nothing newer than A")
+	assert.True(t, got.Edited)
+}
+
+func TestRejectDailyReport(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	team := enableDailyReports(t, th)
+
+	report, appErr := th.App.SubmitDailyReport(th.Context, team.Id, th.BasicUser.Id, "msg")
+	require.Nil(t, appErr)
+
+	_, appErr = th.App.RejectDailyReport(th.Context, report.Id, th.BasicUser2.Id, "   ", 0)
 	require.NotNil(t, appErr)
-	assert.Equal(t, "app.daily_report.approved.app_error", appErr.Id)
+	assert.Equal(t, "app.daily_report.reject_reason.app_error", appErr.Id)
+	assert.Equal(t, 400, appErr.StatusCode)
+
+	// An auto-approved report can still be rejected.
+	th.App.RunDailyReportTick(th.Context, time.UnixMilli(report.UpdateAt).Add(31*time.Minute))
+	approved, appErr := th.App.GetDailyReport(report.Id)
+	require.Nil(t, appErr)
+	require.True(t, approved.AutoApproved)
+
+	rejected, appErr := th.App.RejectDailyReport(th.Context, report.Id, th.BasicUser2.Id, " add the ticket links ", approved.UpdateAt)
+	require.Nil(t, appErr)
+	assert.Equal(t, model.DailyReportStatusRejected, rejected.Status)
+	assert.Equal(t, "add the ticket links", rejected.RejectReason)
+	assert.Equal(t, th.BasicUser2.Id, rejected.RejectedBy)
+	assert.NotZero(t, rejected.RejectedAt)
+
+	dms := func() int {
+		n := 0
+		for _, m := range systemBotDMTexts(t, th, th.BasicUser) {
+			if strings.Contains(m, "add the ticket links") {
+				n++
+			}
+		}
+		return n
+	}
+	assert.Equal(t, 1, dms())
+
+	again, appErr := th.App.RejectDailyReport(th.Context, report.Id, th.BasicUser.Id, "other", 0)
+	require.Nil(t, appErr)
+	assert.Equal(t, th.BasicUser2.Id, again.RejectedBy, "a second reject leaves the first one")
+	assert.Equal(t, 1, dms(), "no second DM")
+
+	// The author fixes it: pending again, edited, previous = the rejected text, the last rejection kept.
+	fixed, appErr := th.App.UpdateDailyReport(th.Context, report.Id, th.BasicUser.Id, "msg with links")
+	require.Nil(t, appErr)
+	assert.Equal(t, model.DailyReportStatusPending, fixed.Status)
+	assert.Equal(t, "msg", fixed.PreviousMessage)
+	assert.Equal(t, "add the ticket links", fixed.RejectReason)
+}
+
+func TestReviewDailyReportStale(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	team := enableDailyReports(t, th)
+
+	report, appErr := th.App.SubmitDailyReport(th.Context, team.Id, th.BasicUser.Id, "msg")
+	require.Nil(t, appErr)
+
+	_, appErr = th.App.ApproveDailyReport(th.Context, report.Id, th.BasicUser2.Id, report.UpdateAt-1)
+	require.NotNil(t, appErr)
+	assert.Equal(t, "app.daily_report.changed.app_error", appErr.Id)
+	assert.Equal(t, 409, appErr.StatusCode)
+	_, appErr = th.App.RejectDailyReport(th.Context, report.Id, th.BasicUser2.Id, "why", report.UpdateAt-1)
+	require.NotNil(t, appErr)
+	assert.Equal(t, "app.daily_report.changed.app_error", appErr.Id)
+
+	approved, appErr := th.App.ApproveDailyReport(th.Context, report.Id, th.BasicUser2.Id, report.UpdateAt)
+	require.Nil(t, appErr)
+	assert.Equal(t, model.DailyReportStatusApproved, approved.Status)
+}
+
+func TestRejectedNotAutoApproved(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	team := enableDailyReports(t, th)
+
+	report, appErr := th.App.SubmitDailyReport(th.Context, team.Id, th.BasicUser.Id, "msg")
+	require.Nil(t, appErr)
+	rejected, appErr := th.App.RejectDailyReport(th.Context, report.Id, th.BasicUser2.Id, "no", 0)
+	require.Nil(t, appErr)
+
+	th.App.RunDailyReportTick(th.Context, time.UnixMilli(rejected.UpdateAt).Add(31*time.Minute))
+	got, appErr := th.App.GetDailyReport(report.Id)
+	require.Nil(t, appErr)
+	assert.Equal(t, model.DailyReportStatusRejected, got.Status)
+}
+
+func TestUpdateDailyReportNotAuthor(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	team := enableDailyReports(t, th)
+
+	report, appErr := th.App.SubmitDailyReport(th.Context, team.Id, th.BasicUser.Id, "msg")
+	require.Nil(t, appErr)
+	_, appErr = th.App.UpdateDailyReport(th.Context, report.Id, th.BasicUser2.Id, "hijack")
+	require.NotNil(t, appErr)
+	assert.Equal(t, "app.daily_report.not_author.app_error", appErr.Id)
+	assert.Equal(t, 403, appErr.StatusCode)
+}
+
+func TestDailyReportAssignees(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	team := enableDailyReports(t, th)
+	outsider := th.CreateUser(t)
+	bot := th.CreateBot(t)
+	_, _, appErr := th.App.AddUserToTeam(th.Context, team.Id, bot.UserId, "")
+	require.Nil(t, appErr)
+
+	ok, appErr := th.App.IsDailyReportAssignee(team.Id, th.BasicUser.Id)
+	require.Nil(t, appErr)
+	assert.True(t, ok, "an empty list means everyone")
+
+	ids, appErr := th.App.SetDailyReportAssignees(th.Context, team.Id, []string{th.BasicUser2.Id, outsider.Id, bot.UserId, th.BasicUser2.Id})
+	require.Nil(t, appErr)
+	assert.Equal(t, []string{th.BasicUser2.Id}, ids, "non-members and bots are dropped, duplicates collapsed")
+	got, appErr := th.App.GetDailyReportAssignees(team.Id)
+	require.Nil(t, appErr)
+	assert.Equal(t, ids, got)
+
+	_, appErr = th.App.SubmitDailyReport(th.Context, team.Id, th.BasicUser.Id, "not expected")
+	require.NotNil(t, appErr)
+	assert.Equal(t, "app.daily_report.not_assignee.app_error", appErr.Id)
+	assert.Equal(t, 403, appErr.StatusCode)
+
+	// 2026-11-16 is a Monday: only the assignee is reminded.
+	loc, err := time.LoadLocation("Europe/Istanbul")
+	require.NoError(t, err)
+	th.App.RunDailyReportTick(th.Context, time.Date(2026, 11, 16, 17, 50, 0, 0, loc))
+	reminded := func(u *model.User) bool {
+		return strings.Contains(strings.Join(systemBotDMTexts(t, th, u), "\n"), "18:00")
+	}
+	assert.True(t, reminded(th.BasicUser2))
+	assert.False(t, reminded(th.BasicUser))
+
+	ids, appErr = th.App.SetDailyReportAssignees(th.Context, team.Id, []string{})
+	require.Nil(t, appErr)
+	assert.Empty(t, ids)
+	_, appErr = th.App.SubmitDailyReport(th.Context, team.Id, th.BasicUser.Id, "back to everyone")
+	require.Nil(t, appErr)
+}
+
+func TestAutoApproveUsesUpdateAt(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	team := enableDailyReports(t, th)
+
+	report, appErr := th.App.SubmitDailyReport(th.Context, team.Id, th.BasicUser.Id, "first")
+	require.Nil(t, appErr)
+	time.Sleep(5 * time.Millisecond)
+	edited, appErr := th.App.SubmitDailyReport(th.Context, team.Id, th.BasicUser.Id, "second")
+	require.Nil(t, appErr)
+	require.Greater(t, edited.UpdateAt, report.CreateAt+1)
+
+	// 30 minutes after the first submit but not after the edit: still pending.
+	th.App.RunDailyReportTick(th.Context, time.UnixMilli(report.CreateAt+1).Add(30*time.Minute))
+	got, appErr := th.App.GetDailyReport(report.Id)
+	require.Nil(t, appErr)
+	assert.Equal(t, model.DailyReportStatusPending, got.Status)
+
+	th.App.RunDailyReportTick(th.Context, time.UnixMilli(edited.UpdateAt).Add(31*time.Minute))
+	got, appErr = th.App.GetDailyReport(report.Id)
+	require.Nil(t, appErr)
+	assert.Equal(t, model.DailyReportStatusApproved, got.Status)
 }
 
 func TestSubmitDailyReportDisabled(t *testing.T) {
@@ -100,14 +288,14 @@ func TestApproveDailyReport(t *testing.T) {
 	report, appErr := th.App.SubmitDailyReport(th.Context, team.Id, th.BasicUser.Id, "msg")
 	require.Nil(t, appErr)
 
-	approved, appErr := th.App.ApproveDailyReport(th.Context, report.Id, th.BasicUser2.Id)
+	approved, appErr := th.App.ApproveDailyReport(th.Context, report.Id, th.BasicUser2.Id, 0)
 	require.Nil(t, appErr)
 	assert.Equal(t, model.DailyReportStatusApproved, approved.Status)
 	assert.Equal(t, th.BasicUser2.Id, approved.ApprovedBy)
 	assert.False(t, approved.AutoApproved)
 	assert.NotZero(t, approved.ApprovedAt)
 
-	again, appErr := th.App.ApproveDailyReport(th.Context, report.Id, th.BasicUser.Id)
+	again, appErr := th.App.ApproveDailyReport(th.Context, report.Id, th.BasicUser.Id, 0)
 	require.Nil(t, appErr)
 	assert.Equal(t, th.BasicUser2.Id, again.ApprovedBy, "re-approving keeps the first approver")
 }
@@ -183,14 +371,18 @@ func TestExportDailyReportsCSV(t *testing.T) {
 		Date: "2026-11-16", UserId: th.BasicUser.Id, Message: "line one, \"quoted\"\nline two",
 		Tasks:  []model.DailyReportTask{{Title: "A"}, {Title: "B"}},
 		Status: model.DailyReportStatusApproved, ApprovedBy: th.BasicUser2.Id, ApprovedAt: 1000, CreateAt: 2000,
-	}, {Date: "2026-11-17", UserId: th.BasicUser.Id, Message: "=cmd|' /c calc", Status: model.DailyReportStatusPending, CreateAt: 3000}}
+	}, {Date: "2026-11-17", UserId: th.BasicUser.Id, Message: "=cmd|' /c calc", Status: model.DailyReportStatusPending, CreateAt: 3000},
+		{Date: "2026-11-18", UserId: th.BasicUser.Id, Message: "m", Status: model.DailyReportStatusRejected, Edited: true,
+			RejectedBy: th.BasicUser2.Id, RejectReason: "=bad", CreateAt: 4000}}
 	var sb strings.Builder
 	require.Nil(t, th.App.ExportDailyReportsCSV(&sb, reports))
 
-	assert.True(t, strings.HasPrefix(sb.String(), "date,user,message,finished_tasks,status,auto_approved,approved_by,approved_at,submitted_at\n"))
+	assert.True(t, strings.HasPrefix(sb.String(),
+		"date,user,message,finished_tasks,status,rejected_by,reject_reason,edited,auto_approved,approved_by,approved_at,submitted_at\n"))
 	assert.Contains(t, sb.String(), `2026-11-16,`+th.BasicUser.Username+`,"line one, ""quoted""`)
 	assert.Contains(t, sb.String(), `'=cmd|' /c calc`)
-	assert.Contains(t, sb.String(), `A; B,approved,false,`+th.BasicUser2.Username+`,1970-01-01T00:00:01Z,1970-01-01T00:00:02Z`)
+	assert.Contains(t, sb.String(), `A; B,approved,,,false,false,`+th.BasicUser2.Username+`,1970-01-01T00:00:01Z,1970-01-01T00:00:02Z`)
+	assert.Contains(t, sb.String(), `,rejected,`+th.BasicUser2.Username+`,'=bad,true,false,`)
 }
 
 func TestDailyReportEventHasNoContent(t *testing.T) {

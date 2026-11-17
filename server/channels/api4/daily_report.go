@@ -134,7 +134,7 @@ func approveDailyReport(c *Context, w http.ResponseWriter, r *http.Request) {
 	defer c.LogAuditRec(auditRec)
 	auditRec.AddEventPriorState(report)
 
-	approved, appErr := c.App.ApproveDailyReport(c.AppContext, report.Id, c.AppContext.Session().UserId)
+	approved, appErr := c.App.ApproveDailyReport(c.AppContext, report.Id, c.AppContext.Session().UserId, 0)
 	if appErr != nil {
 		c.Err = appErr
 		return

@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/shared/i18n"
@@ -100,15 +102,50 @@ func (a *App) publishDailyReport(rctx request.CTX, report *model.DailyReport) {
 	a.publishTaskEvent(rctx, model.WebsocketDailyReportUpdated, report.TeamId, "report", dailyReportEvent(report), "")
 }
 
-// SubmitDailyReport creates today's report for the user, or rewrites it (and re-snapshots the tasks) until it is approved.
+// resubmit rewrites a report the author changed: back to pending and marked edited. PreviousMessage keeps the text the
+// reviewer last saw: the reviewed version, or the first submission while nobody has acted yet. The last rejection stays.
+func resubmit(r *model.DailyReport, message string, tasks []model.DailyReportTask) {
+	if r.Status != model.DailyReportStatusPending || r.PreviousMessage == "" {
+		r.PreviousMessage = r.Message
+	}
+	r.Message = message
+	r.Tasks = tasks
+	r.Edited = true
+	r.Status = model.DailyReportStatusPending
+	r.AutoApproved, r.ApprovedBy, r.ApprovedAt = false, "", 0
+}
+
+func teamLocation(where string, team *model.Team) (*time.Location, *model.AppError) {
+	loc, err := time.LoadLocation(team.DailyReportTimezone)
+	if err != nil {
+		return nil, model.NewAppError(where, "model.team.is_valid.daily_report_timezone.app_error", nil, "team_id="+team.Id, http.StatusBadRequest).Wrap(err)
+	}
+	return loc, nil
+}
+
+func (a *App) requireDailyReportAssignee(where, teamID, userID string) *model.AppError {
+	ok, appErr := a.IsDailyReportAssignee(teamID, userID)
+	if appErr != nil {
+		return appErr
+	}
+	if !ok {
+		return model.NewAppError(where, "app.daily_report.not_assignee.app_error", nil, "team_id="+teamID+" user_id="+userID, http.StatusForbidden)
+	}
+	return nil
+}
+
+// SubmitDailyReport creates today's report for the user, or resubmits it (and re-snapshots the tasks) whatever its state.
 func (a *App) SubmitDailyReport(rctx request.CTX, teamID, userID, message string) (*model.DailyReport, *model.AppError) {
 	team, appErr := a.RequireDailyReportsEnabled(teamID)
 	if appErr != nil {
 		return nil, appErr
 	}
-	loc, err := time.LoadLocation(team.DailyReportTimezone)
-	if err != nil {
-		return nil, model.NewAppError("SubmitDailyReport", "model.team.is_valid.daily_report_timezone.app_error", nil, "team_id="+teamID, http.StatusBadRequest).Wrap(err)
+	if appErr = a.requireDailyReportAssignee("SubmitDailyReport", teamID, userID); appErr != nil {
+		return nil, appErr
+	}
+	loc, appErr := teamLocation("SubmitDailyReport", team)
+	if appErr != nil {
+		return nil, appErr
 	}
 	date := time.Now().In(loc).Format(time.DateOnly)
 	tasks, appErr := a.finishedTasksForDay(teamID, userID, loc, date)
@@ -127,18 +164,44 @@ func (a *App) SubmitDailyReport(rctx request.CTX, teamID, userID, message string
 		}
 	}
 	if err == nil && saved == nil {
-		if existing.Status == model.DailyReportStatusApproved {
-			return nil, model.NewAppError("SubmitDailyReport", "app.daily_report.approved.app_error", nil, "id="+existing.Id, http.StatusBadRequest)
-		}
-		existing.Message = message
-		existing.Tasks = tasks
+		resubmit(existing, message, tasks)
 		saved, err = a.Srv().Store().DailyReport().Update(existing)
-		if errors.As(err, &conflictErr) { // approved between the read and the write
-			return nil, model.NewAppError("SubmitDailyReport", "app.daily_report.approved.app_error", nil, "id="+existing.Id, http.StatusBadRequest)
-		}
 	}
 	if err != nil {
 		return nil, dailyReportStoreError("SubmitDailyReport", teamID, err)
+	}
+	a.publishDailyReport(rctx, saved)
+	return saved, nil
+}
+
+// UpdateDailyReport lets the author resubmit any of their own reports, e.g. yesterday's rejected one.
+func (a *App) UpdateDailyReport(rctx request.CTX, reportID, userID, message string) (*model.DailyReport, *model.AppError) {
+	report, appErr := a.GetDailyReport(reportID)
+	if appErr != nil {
+		return nil, appErr
+	}
+	if report.UserId != userID {
+		return nil, model.NewAppError("UpdateDailyReport", "app.daily_report.not_author.app_error", nil, "id="+reportID, http.StatusForbidden)
+	}
+	team, appErr := a.RequireDailyReportsEnabled(report.TeamId)
+	if appErr != nil {
+		return nil, appErr
+	}
+	if appErr = a.requireDailyReportAssignee("UpdateDailyReport", report.TeamId, userID); appErr != nil {
+		return nil, appErr
+	}
+	loc, appErr := teamLocation("UpdateDailyReport", team)
+	if appErr != nil {
+		return nil, appErr
+	}
+	tasks, appErr := a.finishedTasksForDay(report.TeamId, userID, loc, report.Date)
+	if appErr != nil {
+		return nil, appErr
+	}
+	resubmit(report, message, tasks)
+	saved, err := a.Srv().Store().DailyReport().Update(report)
+	if err != nil {
+		return nil, dailyReportStoreError("UpdateDailyReport", reportID, err)
 	}
 	a.publishDailyReport(rctx, saved)
 	return saved, nil
@@ -164,32 +227,144 @@ func (a *App) GetDailyReports(teamID, fromDate, toDate, userID string) ([]*model
 }
 
 // ApproveDailyReport marks the report approved by approverID; an already approved report is returned unchanged.
-func (a *App) ApproveDailyReport(rctx request.CTX, reportID, approverID string) (*model.DailyReport, *model.AppError) {
-	report, appErr := a.GetDailyReport(reportID)
+// seenUpdateAt > 0 is the UpdateAt the reviewer looked at: if the report changed since, nothing happens and it is a 409.
+func (a *App) ApproveDailyReport(rctx request.CTX, reportID, approverID string, seenUpdateAt int64) (*model.DailyReport, *model.AppError) {
+	report, _, appErr := a.reviewDailyReport(rctx, "ApproveDailyReport", reportID, model.DailyReportStatusApproved,
+		func(s store.DailyReportStore) error {
+			return s.Approve(reportID, approverID, false, model.GetMillis(), seenUpdateAt)
+		})
+	return report, appErr
+}
+
+// RejectDailyReport sends the report back to its author with a required reason and DMs them. Pending and approved
+// (including auto-approved) reports can be rejected; an already rejected report is returned unchanged.
+func (a *App) RejectDailyReport(rctx request.CTX, reportID, rejecterID, reason string, seenUpdateAt int64) (*model.DailyReport, *model.AppError) {
+	reason = strings.TrimSpace(reason)
+	if reason == "" || utf8.RuneCountInString(reason) > model.DailyReportRejectReasonMaxRunes {
+		return nil, model.NewAppError("RejectDailyReport", "app.daily_report.reject_reason.app_error",
+			map[string]any{"Max": model.DailyReportRejectReasonMaxRunes}, "id="+reportID, http.StatusBadRequest)
+	}
+	report, wrote, appErr := a.reviewDailyReport(rctx, "RejectDailyReport", reportID, model.DailyReportStatusRejected,
+		func(s store.DailyReportStore) error {
+			return s.Reject(reportID, rejecterID, reason, model.GetMillis(), seenUpdateAt)
+		})
+	if appErr != nil || !wrote {
+		return report, appErr
+	}
+	if appErr := a.postDailyReportRejected(rctx, report); appErr != nil {
+		rctx.Logger().Warn("RejectDailyReport: failed to DM the author", mlog.String("report_id", reportID), mlog.Err(appErr))
+	}
+	return report, nil
+}
+
+// reviewDailyReport moves the report to status through write. A report already in that status is returned as is;
+// any other conflict means it changed under the reviewer, which is a 409. wrote tells whether this call made the change.
+func (a *App) reviewDailyReport(rctx request.CTX, where, reportID, status string, write func(store.DailyReportStore) error) (report *model.DailyReport, wrote bool, appErr *model.AppError) {
+	report, appErr = a.GetDailyReport(reportID)
 	if appErr != nil {
-		return nil, appErr
+		return nil, false, appErr
 	}
-	if _, appErr := a.RequireDailyReportsEnabled(report.TeamId); appErr != nil {
-		return nil, appErr
+	if _, appErr = a.RequireDailyReportsEnabled(report.TeamId); appErr != nil {
+		return nil, false, appErr
 	}
-	if report.Status == model.DailyReportStatusApproved {
-		return report, nil
+	if report.Status == status {
+		return report, false, nil
 	}
-	err := a.Srv().Store().DailyReport().Approve(reportID, approverID, false, model.GetMillis(), 0)
+	err := write(a.Srv().Store().DailyReport())
 	var conflictErr *store.ErrConflict
 	if errors.As(err, &conflictErr) {
-		// Someone approved it first; their approval stands.
-		return a.GetDailyReport(reportID)
+		current, appErr := a.GetDailyReport(reportID)
+		if appErr != nil {
+			return nil, false, appErr
+		}
+		if current.Status == status { // another reviewer got there first; theirs stands
+			return current, false, nil
+		}
+		return nil, false, model.NewAppError(where, "app.daily_report.changed.app_error", nil, "id="+reportID, http.StatusConflict).Wrap(err)
 	}
 	if err != nil {
-		return nil, dailyReportStoreError("ApproveDailyReport", reportID, err)
+		return nil, false, dailyReportStoreError(where, reportID, err)
 	}
 	updated, appErr := a.GetDailyReport(reportID)
 	if appErr != nil {
-		return nil, appErr
+		return nil, true, appErr
 	}
 	a.publishDailyReport(rctx, updated)
-	return updated, nil
+	return updated, true, nil
+}
+
+func (a *App) postDailyReportRejected(rctx request.CTX, report *model.DailyReport) *model.AppError {
+	author, appErr := a.GetUser(rctx, report.UserId)
+	if appErr != nil {
+		return appErr
+	}
+	reviewer, appErr := a.GetUser(rctx, report.RejectedBy)
+	if appErr != nil {
+		return appErr
+	}
+	team, appErr := a.GetTeam(report.TeamId)
+	if appErr != nil {
+		return appErr
+	}
+	T := i18n.GetUserTranslations(author.Locale)
+	return a.postDailyReportDM(rctx, author, T("app.daily_report.rejected_dm", map[string]any{
+		"Date":     report.Date,
+		"Reviewer": reviewer.Username,
+		"Reason":   report.RejectReason,
+		"Link":     fmt.Sprintf("%s/%s/daily_reports", a.GetSiteURL(), team.Name),
+	}))
+}
+
+// GetDailyReportAssignees lists who must report for the team; empty means every member.
+func (a *App) GetDailyReportAssignees(teamID string) ([]string, *model.AppError) {
+	ids, err := a.Srv().Store().DailyReport().GetAssignees(teamID)
+	if err != nil {
+		return nil, dailyReportStoreError("GetDailyReportAssignees", teamID, err)
+	}
+	return ids, nil
+}
+
+func (a *App) IsDailyReportAssignee(teamID, userID string) (bool, *model.AppError) {
+	ids, appErr := a.GetDailyReportAssignees(teamID)
+	if appErr != nil {
+		return false, appErr
+	}
+	return len(ids) == 0 || slices.Contains(ids, userID), nil
+}
+
+// SetDailyReportAssignees replaces the team's list. Ids that are not active, non-bot team members are dropped.
+func (a *App) SetDailyReportAssignees(rctx request.CTX, teamID string, userIDs []string) ([]string, *model.AppError) {
+	if _, appErr := a.RequireDailyReportsEnabled(teamID); appErr != nil {
+		return nil, appErr
+	}
+	keep := []string{}
+	if len(userIDs) > 0 {
+		members, err := a.Srv().Store().Team().GetMembersByIds(teamID, userIDs, nil)
+		if err != nil {
+			return nil, dailyReportStoreError("SetDailyReportAssignees", teamID, err)
+		}
+		memberIDs := make([]string, 0, len(members))
+		for _, m := range members {
+			if m.DeleteAt == 0 {
+				memberIDs = append(memberIDs, m.UserId)
+			}
+		}
+		users, err := a.Srv().Store().User().GetProfileByIds(rctx, memberIDs, &store.UserGetByIdsOpts{}, false)
+		if err != nil {
+			return nil, dailyReportStoreError("SetDailyReportAssignees", teamID, err)
+		}
+		for _, u := range users {
+			if !u.IsBot && u.DeleteAt == 0 && !slices.Contains(keep, u.Id) {
+				keep = append(keep, u.Id)
+			}
+		}
+		slices.Sort(keep)
+	}
+	if err := a.Srv().Store().DailyReport().SetAssignees(teamID, keep); err != nil {
+		return nil, dailyReportStoreError("SetDailyReportAssignees", teamID, err)
+	}
+	a.publishTaskEvent(rctx, model.WebsocketDailyReportUpdated, teamID, "assignees", keep, "")
+	return keep, nil
 }
 
 // ExportDailyReportsCSV writes the reports as CSV. csv.Writer quotes cells, so text cannot break out of its column,
@@ -212,7 +387,8 @@ func (a *App) ExportDailyReportsCSV(w io.Writer, reports []*model.DailyReport) *
 	}
 
 	cw := csv.NewWriter(w)
-	_ = cw.Write([]string{"date", "user", "message", "finished_tasks", "status", "auto_approved", "approved_by", "approved_at", "submitted_at"})
+	_ = cw.Write([]string{"date", "user", "message", "finished_tasks", "status", "rejected_by", "reject_reason", "edited",
+		"auto_approved", "approved_by", "approved_at", "submitted_at"})
 	for _, r := range reports {
 		titles := make([]string, len(r.Tasks))
 		for i, t := range r.Tasks {
@@ -224,6 +400,7 @@ func (a *App) ExportDailyReportsCSV(w io.Writer, reports []*model.DailyReport) *
 		}
 		_ = cw.Write([]string{
 			r.Date, csvSafe(name(r.UserId)), csvSafe(r.Message), csvSafe(strings.Join(titles, "; ")), r.Status,
+			csvSafe(name(r.RejectedBy)), csvSafe(r.RejectReason), strconv.FormatBool(r.Edited),
 			strconv.FormatBool(r.AutoApproved), name(r.ApprovedBy), approvedAt,
 			time.UnixMilli(r.CreateAt).UTC().Format(time.RFC3339),
 		})
@@ -312,12 +489,17 @@ func (a *App) sendDailyReportReminders(rctx request.CTX, team *model.Team, now t
 		logger.Error("Daily report reminders: failed to load the reports", mlog.Err(err))
 		return
 	}
+	assignees, err := a.Srv().Store().DailyReport().GetAssignees(team.Id)
+	if err != nil {
+		logger.Error("Daily report reminders: failed to load the assignees", mlog.Err(err))
+		return
+	}
 	reported := make(map[string]bool, len(reports))
 	for _, r := range reports {
 		reported[r.UserId] = true
 	}
 	for _, user := range users {
-		if user.IsBot || reported[user.Id] {
+		if user.IsBot || reported[user.Id] || (len(assignees) > 0 && !slices.Contains(assignees, user.Id)) {
 			continue
 		}
 		if appErr := a.postDailyReportReminder(rctx, team, user, minutes); appErr != nil {
@@ -327,6 +509,16 @@ func (a *App) sendDailyReportReminders(rctx request.CTX, team *model.Team, now t
 }
 
 func (a *App) postDailyReportReminder(rctx request.CTX, team *model.Team, user *model.User, minutes int) *model.AppError {
+	T := i18n.GetUserTranslations(user.Locale)
+	return a.postDailyReportDM(rctx, user, T("app.daily_report.reminder", map[string]any{
+		"Minutes": minutes,
+		"Time":    team.DailyReportTime,
+		"Link":    fmt.Sprintf("%s/%s/daily_reports", a.GetSiteURL(), team.Name),
+	}))
+}
+
+// postDailyReportDM sends the user a direct message from the system bot.
+func (a *App) postDailyReportDM(rctx request.CTX, user *model.User, message string) *model.AppError {
 	bot, appErr := a.GetSystemBot(rctx)
 	if appErr != nil {
 		return appErr
@@ -335,16 +527,6 @@ func (a *App) postDailyReportReminder(rctx request.CTX, team *model.Team, user *
 	if appErr != nil {
 		return appErr
 	}
-	T := i18n.GetUserTranslations(user.Locale)
-	post := &model.Post{
-		UserId:    bot.UserId,
-		ChannelId: channel.Id,
-		Message: T("app.daily_report.reminder", map[string]any{
-			"Minutes": minutes,
-			"Time":    team.DailyReportTime,
-			"Link":    fmt.Sprintf("%s/%s/daily_reports", a.GetSiteURL(), team.Name),
-		}),
-	}
-	_, _, appErr = a.CreatePost(rctx, post, channel, model.CreatePostFlags{})
+	_, _, appErr = a.CreatePost(rctx, &model.Post{UserId: bot.UserId, ChannelId: channel.Id, Message: message}, channel, model.CreatePostFlags{})
 	return appErr
 }

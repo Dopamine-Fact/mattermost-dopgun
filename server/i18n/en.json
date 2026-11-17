@@ -7920,9 +7920,9 @@
     "description": "Internal API error converting a generic property field into a User Attribute field; 'User Attribute' is the custom profile attributes feature name."
   },
   {
-    "id": "app.daily_report.approved.app_error",
-    "translation": "This report is already approved and can no longer be changed.",
-    "description": "Error returned when a user tries to submit or edit today's daily report after it has been approved."
+    "id": "app.daily_report.changed.app_error",
+    "translation": "This report changed since you opened it. Refresh and review it again.",
+    "description": "Error returned when a reviewer approves or rejects a daily report that its author edited (or someone else reviewed) after the reviewer loaded it."
   },
   {
     "id": "app.daily_report.conflict.app_error",
@@ -7945,9 +7945,29 @@
     "description": "Error returned when the day used to collect a report's finished tasks is not a valid YYYY-MM-DD date."
   },
   {
+    "id": "app.daily_report.not_assignee.app_error",
+    "translation": "No daily report is expected from you in this team.",
+    "description": "Error returned when a user who is not on the team's daily report reporter list tries to write a report."
+  },
+  {
+    "id": "app.daily_report.not_author.app_error",
+    "translation": "Only the author can edit this report.",
+    "description": "Error returned when someone other than its author tries to edit a daily report."
+  },
+  {
     "id": "app.daily_report.not_found.app_error",
     "translation": "Unable to find the daily report.",
     "description": "Error returned when a daily report id does not exist."
+  },
+  {
+    "id": "app.daily_report.reject_reason.app_error",
+    "translation": "A reason of 1 to {{.Max}} characters is required to reject a report.",
+    "description": "Error returned when a reviewer rejects a daily report without a reason or with one that is too long. Max is the character limit."
+  },
+  {
+    "id": "app.daily_report.rejected_dm",
+    "translation": "Your daily report for {{.Date}} was sent back by @{{.Reviewer}}:\n> {{.Reason}}\n\n[Fix it]({{.Link}})",
+    "description": "Direct message the system bot sends to a report's author when a reviewer rejects it. Date is the report day (YYYY-MM-DD), Reviewer the reviewer's username, Reason the text they gave, Link opens the daily reports page."
   },
   {
     "id": "app.daily_report.reminder",
@@ -18270,6 +18290,11 @@
     "id": "model.daily_report.is_valid.message.app_error",
     "translation": "The report message is too long.",
     "description": "API validation error when a daily report's message exceeds the maximum length."
+  },
+  {
+    "id": "model.daily_report.is_valid.reject_reason.app_error",
+    "translation": "The reject reason is too long.",
+    "description": "Validation error when a daily report's reject reason is longer than the allowed limit."
   },
   {
     "id": "model.daily_report.is_valid.status.app_error",

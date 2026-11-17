@@ -116,9 +116,11 @@ func TestDailyReportsAPI(t *testing.T) {
 		require.Equal(t, model.DailyReportStatusApproved, approved.Status)
 		require.Equal(t, admin.Id, approved.ApprovedBy)
 
-		_, resp, err = th.Client.SubmitDailyReport(ctx, teamID, "late edit")
-		require.Error(t, err)
-		CheckBadRequestStatus(t, resp)
+		edited, _, err := th.Client.SubmitDailyReport(ctx, teamID, "late edit")
+		require.NoError(t, err)
+		require.Equal(t, model.DailyReportStatusPending, edited.Status)
+		require.True(t, edited.Edited)
+		require.Equal(t, "my day", edited.PreviousMessage)
 	})
 
 	t.Run("bad dates return 400", func(t *testing.T) {
