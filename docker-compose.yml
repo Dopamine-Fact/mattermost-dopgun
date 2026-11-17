@@ -37,8 +37,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "${MM_PORT:-8065}:8065"
+    # No host port: Coolify's proxy routes the domain to port 8065 on the compose network.
+    # To reach it directly outside Coolify, add a docker-compose.override.yml with
+    #   ports: ["8065:8065"]
+    expose:
+      - "8065"
     environment:
       # Server clock; the daily backup time in System Console > Backups follows it.
       TZ: ${TZ:-Europe/Istanbul}
