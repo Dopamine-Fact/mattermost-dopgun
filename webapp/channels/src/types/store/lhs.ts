@@ -22,6 +22,7 @@ export enum LhsPage {
     DailyReports = 'daily_reports',
     Dashboard = 'dashboard',
     Drafts = 'drafts',
+    Files = 'files',
     Recaps = 'recaps',
     Tasks = 'tasks',
     Threads = 'threads',

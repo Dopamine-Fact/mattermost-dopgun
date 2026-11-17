@@ -15,6 +15,7 @@ import {imageURLForTeam} from 'utils/utils';
 
 import TeamDailyReportsSection from './team_daily_reports_section';
 import TeamDescriptionSection from './team_description_section';
+import TeamFilesSection from './team_files_section';
 import TeamNameSection from './team_name_section';
 import TeamPictureSection from './team_picture_section';
 import TeamTasksSection from './team_tasks_section';
@@ -60,6 +61,7 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
     const [canvasEnabled, setCanvasEnabled] = useState<boolean>(Boolean(team.canvas_enabled));
     const [dailyReportsEnabled, setDailyReportsEnabled] = useState<boolean>(Boolean(team.daily_reports_enabled));
     const [dailyReportTime, setDailyReportTime] = useState<string>(team.daily_report_time || DEFAULT_DAILY_REPORT_TIME);
+    const [filesEnabled, setFilesEnabled] = useState<boolean>(Boolean(team.files_enabled));
     const [teamIconFile, setTeamIconFile] = useState<File | undefined>();
     const [loading, setLoading] = useState<boolean>(false);
     const [imageClientError, setImageClientError] = useState<BaseSettingItemProps['error'] | undefined>();
@@ -67,7 +69,7 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
     const [saveChangesPanelState, setSaveChangesPanelState] = useState<SaveChangesPanelState>();
 
     const handleNameDescriptionSubmit = useCallback(async (): Promise<boolean> => {
-        if (name.trim() === team.display_name && description === team.description && tasksEnabled === Boolean(team.tasks_enabled) && revisionsEnabled === Boolean(team.revisions_enabled) && canvasEnabled === Boolean(team.canvas_enabled) && dailyReportsEnabled === Boolean(team.daily_reports_enabled) && dailyReportTime === (team.daily_report_time || DEFAULT_DAILY_REPORT_TIME)) {
+        if (name.trim() === team.display_name && description === team.description && tasksEnabled === Boolean(team.tasks_enabled) && revisionsEnabled === Boolean(team.revisions_enabled) && canvasEnabled === Boolean(team.canvas_enabled) && dailyReportsEnabled === Boolean(team.daily_reports_enabled) && dailyReportTime === (team.daily_report_time || DEFAULT_DAILY_REPORT_TIME) && filesEnabled === Boolean(team.files_enabled)) {
             return true;
         }
 
@@ -94,12 +96,13 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
                 daily_report_time: dailyReportTime,
                 daily_report_timezone: new Intl.DateTimeFormat().resolvedOptions().timeZone,
             }),
+            ...(filesEnabled !== Boolean(team.files_enabled) && {files_enabled: filesEnabled}),
         });
         if (error) {
             return false;
         }
         return true;
-    }, [actions, description, name, tasksEnabled, revisionsEnabled, canvasEnabled, dailyReportsEnabled, dailyReportTime, team.description, team.display_name, team.id, team.tasks_enabled, team.revisions_enabled, team.canvas_enabled, team.daily_reports_enabled, team.daily_report_time]);
+    }, [actions, description, name, tasksEnabled, revisionsEnabled, canvasEnabled, dailyReportsEnabled, dailyReportTime, filesEnabled, team.description, team.display_name, team.id, team.tasks_enabled, team.revisions_enabled, team.canvas_enabled, team.daily_reports_enabled, team.daily_report_time, team.files_enabled]);
 
     const handleTeamIconSubmit = useCallback(async (): Promise<boolean> => {
         if (!teamIconFile) {
@@ -142,11 +145,12 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
         setCanvasEnabled(Boolean(team.canvas_enabled));
         setDailyReportsEnabled(Boolean(team.daily_reports_enabled));
         setDailyReportTime(team.daily_report_time || DEFAULT_DAILY_REPORT_TIME);
+        setFilesEnabled(Boolean(team.files_enabled));
         setTeamIconFile(undefined);
         setImageClientError(undefined);
         setNameClientError(undefined);
         handleClose();
-    }, [handleClose, team.description, team.display_name, team.name, team.tasks_enabled, team.revisions_enabled, team.canvas_enabled, team.daily_reports_enabled, team.daily_report_time]);
+    }, [handleClose, team.description, team.display_name, team.name, team.tasks_enabled, team.revisions_enabled, team.canvas_enabled, team.daily_reports_enabled, team.daily_report_time, team.files_enabled]);
 
     const handleTeamIconRemove = useCallback(async () => {
         setLoading(true);
@@ -219,6 +223,12 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
         setDailyReportsEnabled(enabled);
     }, [setAreThereUnsavedChanges]);
 
+    const handleFilesEnabledChange = useCallback((enabled: boolean) => {
+        setAreThereUnsavedChanges(true);
+        setSaveChangesPanelState('editing');
+        setFilesEnabled(enabled);
+    }, [setAreThereUnsavedChanges]);
+
     const handleDailyReportTimeChange = useCallback((time: string) => {
         setAreThereUnsavedChanges(true);
         setSaveChangesPanelState('editing');
@@ -269,6 +279,10 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
                     dailyReportTime={dailyReportTime}
                     dailyReportTimezone={team.daily_report_timezone ?? ''}
                     handleDailyReportTimeChange={handleDailyReportTimeChange}
+                />
+                <TeamFilesSection
+                    filesEnabled={filesEnabled}
+                    handleFilesEnabledChange={handleFilesEnabledChange}
                 />
             </div>
             {(areThereUnsavedChanges || saveChangesPanelState === 'saved') && (

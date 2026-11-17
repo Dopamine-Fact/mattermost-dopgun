@@ -24351,6 +24351,14 @@
     "defaultMessage": "File access blocked: {reason}",
     "description": "Toast notification shown when a plugin blocks the user from accessing or downloading a file; {reason} is the rejection reason supplied by the plugin."
   },
+  "file_explorer.sidebarLink": {
+    "defaultMessage": "Files",
+    "description": "Sidebar link to the team file explorer, where channels appear as folders."
+  },
+  "file_explorer.title": {
+    "defaultMessage": "Files",
+    "description": "Page title of the team file explorer."
+  },
   "file_info_preview.size": {
     "defaultMessage": "Size ",
     "description": "Label prefix concatenated directly with a formatted file size (e.g. 'Size 2.5MB') in the file details preview; keep the trailing space."
@@ -24710,6 +24718,18 @@
   "general_tab.dailyReportTimezone": {
     "defaultMessage": "Timezone: {timezone}",
     "description": "Help text under the daily report deadline input in Team Settings > Info; {timezone} is the team's saved timezone, e.g. Europe/Istanbul."
+  },
+  "general_tab.filesEnabled": {
+    "defaultMessage": "Enable the file explorer for this team",
+    "description": "Checkbox label in Team Settings that turns the file explorer on for the team."
+  },
+  "general_tab.filesInfo": {
+    "defaultMessage": "When enabled, team members get a file explorer in the sidebar where every channel they belong to is a folder for uploading, organising and previewing files.",
+    "description": "Help text under the Files setting in Team Settings."
+  },
+  "general_tab.filesTitle": {
+    "defaultMessage": "Files",
+    "description": "Title of the file explorer setting in Team Settings."
   },
   "general_tab.regenerate": {
     "defaultMessage": "Regenerate",
