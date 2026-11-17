@@ -9,8 +9,11 @@
 #   MM_ROOT/logs
 #   MM_ROOT/plugins         server-side plugins
 #   MM_ROOT/client-plugins  webapp plugin bundles
-# These folders must be owned by uid/gid 2000 (the image's mattermost user):
+#   MM_ROOT/push-proxy/config  mattermost-push-proxy.json + firebase-service-account.json
+# These folders must be owned by uid/gid 2000 (the image's mattermost user), except
+# push-proxy, which runs as nobody (65534):
 #   sudo mkdir -p $MM_ROOT/{config,data,logs,plugins,client-plugins} && sudo chown -R 2000:2000 $MM_ROOT
+#   sudo mkdir -p $MM_ROOT/push-proxy/config && sudo chown -R 65534:65534 $MM_ROOT/push-proxy
 services:
   postgres:
     image: postgres:17
@@ -37,6 +40,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      push-proxy:
+        condition: service_started
     # No host port: Coolify's proxy routes the domain to port 8065 on the compose network.
     # To reach it directly outside Coolify, add a docker-compose.override.yml with
     #   ports: ["8065:8065"]
@@ -53,12 +58,28 @@ services:
       MM_PLUGINSETTINGS_DIRECTORY: ./plugins
       MM_PLUGINSETTINGS_CLIENTDIRECTORY: ./client/plugins
       MM_LOGSETTINGS_FILELOCATION: ./logs
+      # Server-to-server only: mobile devices never call the push proxy, so it needs no public domain.
+      MM_EMAILSETTINGS_PUSHNOTIFICATIONSERVER: http://push-proxy:8066
     volumes:
       - ${MM_ROOT:-/mnt/data/mattermost}/config:/mattermost/config
       - ${MM_ROOT:-/mnt/data/mattermost}/data:/mattermost/data
       - ${MM_ROOT:-/mnt/data/mattermost}/logs:/mattermost/logs
       - ${MM_ROOT:-/mnt/data/mattermost}/plugins:/mattermost/plugins
       - ${MM_ROOT:-/mnt/data/mattermost}/client-plugins:/mattermost/client/plugins
+    security_opt:
+      - no-new-privileges:true
+
+  # Relays notifications to Firebase (Android) for the custom mobile app.
+  push-proxy:
+    image: mattermost/mattermost-push-proxy:6.4.0
+    restart: unless-stopped
+    command: ["-config=config/mattermost-push-proxy.json"]
+    expose:
+      - "8066"
+    environment:
+      TZ: ${TZ:-Europe/Istanbul}
+    volumes:
+      - ${MM_ROOT:-/mnt/data/mattermost}/push-proxy/config:/mattermost-push-proxy/config
     security_opt:
       - no-new-privileges:true
 
