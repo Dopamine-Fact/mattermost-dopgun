@@ -493,5 +493,9 @@ channels/db/migrations/postgres/000248_create_canvases.down.sql
 channels/db/migrations/postgres/000248_create_canvases.up.sql
 channels/db/migrations/postgres/000249_create_daily_reports.down.sql
 channels/db/migrations/postgres/000249_create_daily_reports.up.sql
+channels/db/migrations/postgres/000250_create_drive_items.down.sql
+channels/db/migrations/postgres/000250_create_drive_items.up.sql
 channels/db/migrations/postgres/000251_daily_reports_v2.down.sql
 channels/db/migrations/postgres/000251_daily_reports_v2.up.sql
+channels/db/migrations/postgres/000252_drive_items_unique_fileid.down.sql
+channels/db/migrations/postgres/000252_drive_items_unique_fileid.up.sql

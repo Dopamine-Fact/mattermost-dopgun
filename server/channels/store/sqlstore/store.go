@@ -110,6 +110,7 @@ type SqlStoreStores struct {
 	task                       store.TaskStore
 	canvas                     store.CanvasStore
 	dailyReport                store.DailyReportStore
+	driveItem                  store.DriveItemStore
 	view                       store.ViewStore
 	propertyGroup              store.PropertyGroupStore
 	propertyField              store.PropertyFieldStore
@@ -309,6 +310,7 @@ func New(settings model.SqlSettings, logger mlog.LoggerIFace, metrics einterface
 	store.stores.task = newSqlTaskStore(store)
 	store.stores.canvas = newSqlCanvasStore(store)
 	store.stores.dailyReport = newSqlDailyReportStore(store)
+	store.stores.driveItem = newSqlDriveItemStore(store)
 	store.stores.view = newSqlViewStore(store)
 	store.stores.propertyGroup = newPropertyGroupStore(store)
 	store.stores.propertyField = newPropertyFieldStore(store)
@@ -1181,6 +1183,10 @@ func (ss *SqlStore) Canvas() store.CanvasStore {
 
 func (ss *SqlStore) DailyReport() store.DailyReportStore {
 	return ss.stores.dailyReport
+}
+
+func (ss *SqlStore) DriveItem() store.DriveItemStore {
+	return ss.stores.driveItem
 }
 
 func (ss *SqlStore) ContentFlagging() store.ContentFlaggingStore {

@@ -60,6 +60,7 @@ import type {
 } from '@mattermost/types/config';
 import type {ContentFlaggingConfig} from '@mattermost/types/content_flagging';
 import type {DailyReport} from '@mattermost/types/daily_reports';
+import type {DriveChatFileSort, DriveItem, DriveListing} from '@mattermost/types/drive';
 import type {
     DataRetentionCustomPolicies,
     CreateDataRetentionCustomPolicy,
@@ -5174,6 +5175,64 @@ export default class Client4 {
 
     getDailyReportsExportUrl = (teamId: string, from: string, to: string) => {
         return `${this.getTeamRoute(teamId)}/daily_reports/export${buildQueryString({from, to})}`;
+    };
+
+    // Channel drive methods
+    getDriveRoute(channelId: string) {
+        return `${this.getChannelRoute(channelId)}/drive`;
+    }
+
+    getDriveFolder = (channelId: string, parentId = '') => {
+        return this.doFetch<DriveListing>(`${this.getDriveRoute(channelId)}/items${buildQueryString({parent_id: parentId})}`, {method: 'get'});
+    };
+
+    createDriveFolder = (channelId: string, parentId: string, name: string) => {
+        return this.doFetch<DriveItem>(`${this.getDriveRoute(channelId)}/items`, {method: 'post', body: JSON.stringify({type: 'folder', parent_id: parentId, name})});
+    };
+
+    /** Places an upload made with uploadFile (and never posted) into the drive. */
+    addDriveFile = (channelId: string, parentId: string, fileId: string) => {
+        return this.doFetch<DriveItem>(`${this.getDriveRoute(channelId)}/items`, {method: 'post', body: JSON.stringify({type: 'file', parent_id: parentId, file_id: fileId})});
+    };
+
+    renameDriveItem = (channelId: string, itemId: string, name: string) => {
+        return this.doFetch<DriveItem>(`${this.getDriveRoute(channelId)}/items/${itemId}`, {method: 'PATCH', body: JSON.stringify({name})});
+    };
+
+    moveDriveItems = (channelId: string, itemIds: string[], targetChannelId: string, targetParentId: string) => {
+        return this.doFetch<StatusOK>(`${this.getDriveRoute(channelId)}/move`, {method: 'post', body: JSON.stringify({item_ids: itemIds, target_channel_id: targetChannelId, target_parent_id: targetParentId})});
+    };
+
+    /** Copies drive items and chat files (fileIds) into another folder, possibly in another channel. */
+    copyDriveItems = (channelId: string, itemIds: string[], fileIds: string[], targetChannelId: string, targetParentId: string) => {
+        return this.doFetch<StatusOK>(`${this.getDriveRoute(channelId)}/copy`, {method: 'post', body: JSON.stringify({item_ids: itemIds, file_ids: fileIds, target_channel_id: targetChannelId, target_parent_id: targetParentId})});
+    };
+
+    deleteDriveItems = (channelId: string, itemIds: string[], permanent = false) => {
+        return this.doFetch<StatusOK>(`${this.getDriveRoute(channelId)}/delete`, {method: 'post', body: JSON.stringify({item_ids: itemIds, permanent})});
+    };
+
+    getDriveTrash = (channelId: string) => {
+        return this.doFetch<DriveItem[]>(`${this.getDriveRoute(channelId)}/trash`, {method: 'get'});
+    };
+
+    restoreDriveItems = (channelId: string, itemIds: string[]) => {
+        return this.doFetch<StatusOK>(`${this.getDriveRoute(channelId)}/trash/restore`, {method: 'post', body: JSON.stringify({item_ids: itemIds})});
+    };
+
+    emptyDriveTrash = (channelId: string) => {
+        return this.doFetch<StatusOK>(`${this.getDriveRoute(channelId)}/trash/empty`, {method: 'post'});
+    };
+
+    getDriveChatFiles = (channelId: string, page = 0, perPage = PER_PAGE_DEFAULT, sortBy: DriveChatFileSort = 'create_at', sortDesc = true) => {
+        return this.doFetch<FileInfo[]>(
+            `${this.getDriveRoute(channelId)}/chat_files${buildQueryString({page, per_page: perPage, sort_by: sortBy, sort_desc: sortDesc})}`,
+            {method: 'get'},
+        );
+    };
+
+    downloadDriveZip = (channelId: string, itemIds: string[]) => {
+        return this.doFetch<Blob>(`${this.getDriveRoute(channelId)}/download`, {method: 'post', body: JSON.stringify({item_ids: itemIds})});
     };
 
     // Task methods

@@ -125,6 +125,14 @@ func (s LocalCacheFileInfoStore) Upsert(rctx request.CTX, info *model.FileInfo) 
 	return result, err
 }
 
+func (s LocalCacheFileInfoStore) SetChannelId(rctx request.CTX, fileID, channelID string) error {
+	err := s.FileInfoStore.SetChannelId(rctx, fileID, channelID)
+	if err == nil {
+		s.invalidateFileInfoCache(fileID)
+	}
+	return err
+}
+
 func (s LocalCacheFileInfoStore) GetStorageUsage(allowFromCache, includeDeleted bool) (int64, error) {
 	storageUsageKey := "storage_usage"
 	if includeDeleted {

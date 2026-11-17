@@ -69,6 +69,7 @@ type Store struct {
 	TaskStore                       mocks.TaskStore
 	CanvasStore                     mocks.CanvasStore
 	DailyReportStore                mocks.DailyReportStore
+	DriveItemStore                  mocks.DriveItemStore
 	PropertyGroupStore              mocks.PropertyGroupStore
 	PropertyFieldStore              mocks.PropertyFieldStore
 	PropertyValueStore              mocks.PropertyValueStore
@@ -140,6 +141,7 @@ func (s *Store) ScheduledPost() store.ScheduledPostStore     { return &s.Schedul
 func (s *Store) Task() store.TaskStore                       { return &s.TaskStore }
 func (s *Store) Canvas() store.CanvasStore                   { return &s.CanvasStore }
 func (s *Store) DailyReport() store.DailyReportStore         { return &s.DailyReportStore }
+func (s *Store) DriveItem() store.DriveItemStore             { return &s.DriveItemStore }
 func (s *Store) PropertyGroup() store.PropertyGroupStore     { return &s.PropertyGroupStore }
 func (s *Store) PropertyField() store.PropertyFieldStore     { return &s.PropertyFieldStore }
 func (s *Store) PropertyValue() store.PropertyValueStore     { return &s.PropertyValueStore }
@@ -268,6 +270,7 @@ func (s *Store) AssertExpectations(t mock.TestingT) bool {
 		&s.TaskStore,
 		&s.CanvasStore,
 		&s.DailyReportStore,
+		&s.DriveItemStore,
 		&s.AccessControlPolicyStore,
 		&s.AttributesStore,
 		&s.SessionAttributeStore,

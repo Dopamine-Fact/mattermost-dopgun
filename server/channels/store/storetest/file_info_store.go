@@ -42,6 +42,10 @@ func TestFileInfoStore(t *testing.T, rctx request.CTX, ss store.Store, s SqlStor
 	t.Run("FileInfoDeleteForPostByIds", func(t *testing.T) { testDeleteForPostByIds(t, rctx, ss) })
 	t.Run("FileInfoRestoreForPostByIds", func(t *testing.T) { testRestoreUndeleteForPostByIds(t, rctx, ss) })
 	t.Run("FileInfoSearch", func(t *testing.T) { testFileInfoSearch(t, rctx, ss) })
+	t.Run("GetWithOptionsSortByName", func(t *testing.T) { testFileInfoGetWithOptionsSortByName(t, rctx, ss) })
+	t.Run("GetWithOptionsChatAttachmentsOnly", func(t *testing.T) { testFileInfoGetWithOptionsChatAttachmentsOnly(t, rctx, ss) })
+	t.Run("AttachToPostRejectsDriveFile", func(t *testing.T) { testFileInfoAttachToPostRejectsDriveFile(t, rctx, ss) })
+	t.Run("SetChannelIdUnattachedOnly", func(t *testing.T) { testFileInfoSetChannelId(t, rctx, ss) })
 }
 
 func testFileInfoSaveGet(t *testing.T, rctx request.CTX, ss store.Store) {
@@ -1764,4 +1768,85 @@ func testFileInfoSearch(t *testing.T, rctx request.CTX, ss store.Store) {
 		}
 		assert.True(t, foundFileIds[fileInfo.Id], "fileInfo should be included after TemporaryPost is deleted")
 	})
+}
+
+func testFileInfoGetWithOptionsSortByName(t *testing.T, rctx request.CTX, ss store.Store) {
+	channelID := model.NewId()
+	for _, name := range []string{"b.txt", "a.txt", "c.txt"} {
+		info, err := ss.FileInfo().Save(rctx, &model.FileInfo{CreatorId: model.NewId(), Path: name, Name: name, ChannelId: channelID, PostId: model.NewId()})
+		require.NoError(t, err)
+		defer ss.FileInfo().PermanentDelete(rctx, info.Id)
+	}
+
+	infos, err := ss.FileInfo().GetWithOptions(0, 10, &model.GetFileInfosOptions{ChannelIds: []string{channelID}, SortBy: model.FileinfoSortByName})
+	require.NoError(t, err)
+	require.Len(t, infos, 3)
+	require.Equal(t, []string{"a.txt", "b.txt", "c.txt"}, []string{infos[0].Name, infos[1].Name, infos[2].Name})
+}
+
+func testFileInfoGetWithOptionsChatAttachmentsOnly(t *testing.T, rctx request.CTX, ss store.Store) {
+	channelID := model.NewId()
+	save := func(name, postID, creatorID string) *model.FileInfo {
+		info, err := ss.FileInfo().Save(rctx, &model.FileInfo{CreatorId: creatorID, Path: name, Name: name, ChannelId: channelID, PostId: postID})
+		require.NoError(t, err)
+		t.Cleanup(func() { ss.FileInfo().PermanentDelete(rctx, info.Id) })
+		return info
+	}
+	posted := save("posted.txt", model.NewId(), model.NewId())
+	bookmark := save("bookmark.txt", "", model.BookmarkFileOwner)
+	save("unattached.txt", "", model.NewId())
+	burnPostID := model.NewId()
+	burn := save("burn.txt", burnPostID, model.NewId())
+	_, err := ss.TemporaryPost().Save(rctx, &model.TemporaryPost{ID: burnPostID, Type: model.PostTypeBurnOnRead, ExpireAt: model.GetMillis() + 3600000, Message: "m", FileIDs: []string{burn.Id}})
+	require.NoError(t, err)
+	defer ss.TemporaryPost().Delete(rctx, burnPostID)
+
+	infos, err := ss.FileInfo().GetWithOptions(0, 10, &model.GetFileInfosOptions{ChannelIds: []string{channelID}, ChatAttachmentsOnly: true})
+	require.NoError(t, err)
+	ids := []string{}
+	for _, i := range infos {
+		ids = append(ids, i.Id)
+	}
+	require.ElementsMatch(t, []string{posted.Id, bookmark.Id}, ids)
+}
+
+func testFileInfoAttachToPostRejectsDriveFile(t *testing.T, rctx request.CTX, ss store.Store) {
+	userID := model.NewId()
+	info, err := ss.FileInfo().Save(rctx, &model.FileInfo{CreatorId: userID, Path: "drive.txt"})
+	require.NoError(t, err)
+	defer ss.FileInfo().PermanentDelete(rctx, info.Id)
+	item, err := ss.DriveItem().Save(&model.DriveItem{ChannelId: model.NewId(), Type: model.DriveItemTypeFile, Name: "drive.txt", FileId: info.Id, CreatorId: userID})
+	require.NoError(t, err)
+	defer ss.DriveItem().PermanentDelete([]string{item.Id})
+
+	err = ss.FileInfo().AttachToPost(rctx, info.Id, model.NewId(), model.NewId(), userID)
+	require.Error(t, err)
+
+	got, err := ss.FileInfo().Get(info.Id)
+	require.NoError(t, err)
+	require.Equal(t, "", got.PostId)
+}
+
+func testFileInfoSetChannelId(t *testing.T, rctx request.CTX, ss store.Store) {
+	loose, err := ss.FileInfo().Save(rctx, &model.FileInfo{CreatorId: model.NewId(), Path: "loose.txt", ChannelId: model.NewId()})
+	require.NoError(t, err)
+	posted, err := ss.FileInfo().Save(rctx, &model.FileInfo{CreatorId: model.NewId(), Path: "posted.txt", ChannelId: model.NewId(), PostId: model.NewId()})
+	require.NoError(t, err)
+	defer ss.FileInfo().PermanentDelete(rctx, loose.Id)
+	defer ss.FileInfo().PermanentDelete(rctx, posted.Id)
+
+	// prime the cache so a stale ChannelId would show
+	_, err = ss.FileInfo().GetByIds([]string{loose.Id}, false, true, false)
+	require.NoError(t, err)
+
+	dst := model.NewId()
+	require.NoError(t, ss.FileInfo().SetChannelId(rctx, loose.Id, dst))
+	require.NoError(t, ss.FileInfo().SetChannelId(rctx, posted.Id, dst))
+
+	got, err := ss.FileInfo().GetByIds([]string{loose.Id}, false, true, false)
+	require.NoError(t, err)
+	require.Equal(t, dst, got[0].ChannelId)
+	got2, err := ss.FileInfo().Get(posted.Id)
+	require.NoError(t, err)
+	require.Equal(t, posted.ChannelId, got2.ChannelId, "a posted file keeps its channel")
 }

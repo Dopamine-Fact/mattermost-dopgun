@@ -182,6 +182,15 @@ describe('components/TeamSettings', () => {
         expect(patchTeam).toHaveBeenCalledWith(expect.objectContaining({tasks_enabled: false, canvas_enabled: true}));
     });
 
+    test('turning files on sends files_enabled', async () => {
+        renderWithContext(<InfoTab {...defaultProps}/>);
+
+        await userEvent.click(screen.getByTestId('filesEnabledCheckbox'));
+        await userEvent.click(screen.getByTestId('SaveChangesPanel__save-btn'));
+
+        expect(patchTeam).toHaveBeenCalledWith(expect.objectContaining({files_enabled: true}));
+    });
+
     test('cancel restores the canvas toggle', async () => {
         renderWithContext(<InfoTab {...defaultProps}/>);
 

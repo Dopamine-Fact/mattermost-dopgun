@@ -50,6 +50,9 @@ export type Team = {
     daily_report_time?: string;
     daily_report_timezone?: string;
 
+    /** channel file drives (the Files explorer) */
+    files_enabled?: boolean;
+
     /** Data Retention Policy id. Unrelated to access-control policies below. */
     policy_id?: string | null;
     last_team_icon_update?: number;

@@ -2251,6 +2251,54 @@
     "translation": "Günlük raporlara erişilemedi."
   },
   {
+    "id": "app.drive.copy.app_error",
+    "translation": "Dosya kopyalanamadı."
+  },
+  {
+    "id": "app.drive.disabled.app_error",
+    "translation": "Dosya gezgini bu takım için etkin değil."
+  },
+  {
+    "id": "app.drive.forbidden.app_error",
+    "translation": "Bu öğeyi değiştirme izniniz yok."
+  },
+  {
+    "id": "app.drive.invalid_file.app_error",
+    "translation": "Bu dosya kanal dosyalarına eklenemez."
+  },
+  {
+    "id": "app.drive.invalid_name.app_error",
+    "translation": "Geçersiz ad. Adlar boş olamaz, 255 karakterden uzun olamaz, boşluk veya noktayla bitemez ve \\ / : * ? \" < > | içeremez."
+  },
+  {
+    "id": "app.drive.invalid_parent.app_error",
+    "translation": "Hedef klasör mevcut değil."
+  },
+  {
+    "id": "app.drive.move_into_self.app_error",
+    "translation": "Bir klasör kendi içine veya alt klasörlerinden birine taşınamaz."
+  },
+  {
+    "id": "app.drive.name_exists.app_error",
+    "translation": "Bu klasörde aynı adda bir öğe zaten var."
+  },
+  {
+    "id": "app.drive.not_found.app_error",
+    "translation": "Dosya veya klasör bulunamadı."
+  },
+  {
+    "id": "app.drive.store.app_error",
+    "translation": "Kanal dosyaları güncellenemedi."
+  },
+  {
+    "id": "app.drive.zip.app_error",
+    "translation": "Zip dosyası oluşturulamadı."
+  },
+  {
+    "id": "app.drive.zip_too_large.app_error",
+    "translation": "Seçim 200 MB'tan büyük. Aynı anda daha az dosya indirin."
+  },
+  {
     "id": "app.export.export_write_line.io_writer.error",
     "translation": "Dışa aktarma verileri yazılırken bir sorun çıktı."
   },
@@ -3805,6 +3853,38 @@
   {
     "id": "model.daily_report.is_valid.user_id.app_error",
     "translation": "Geçersiz kullanıcı kimliği."
+  },
+  {
+    "id": "model.drive_item.is_valid.channel_id.app_error",
+    "translation": "Geçersiz kanal kimliği."
+  },
+  {
+    "id": "model.drive_item.is_valid.create_at.app_error",
+    "translation": "Oluşturma zamanı geçerli bir zaman olmalı."
+  },
+  {
+    "id": "model.drive_item.is_valid.creator_id.app_error",
+    "translation": "Geçersiz oluşturan kimliği."
+  },
+  {
+    "id": "model.drive_item.is_valid.file_id.app_error",
+    "translation": "Geçersiz dosya kimliği."
+  },
+  {
+    "id": "model.drive_item.is_valid.id.app_error",
+    "translation": "Geçersiz kimlik."
+  },
+  {
+    "id": "model.drive_item.is_valid.name.app_error",
+    "translation": "Geçersiz ad. Adlar boş olamaz, 255 karakterden uzun olamaz, boşluk veya noktayla bitemez ve \\ / : * ? \" < > | içeremez."
+  },
+  {
+    "id": "model.drive_item.is_valid.parent_id.app_error",
+    "translation": "Geçersiz üst klasör kimliği."
+  },
+  {
+    "id": "model.drive_item.is_valid.type.app_error",
+    "translation": "Geçersiz öğe türü."
   },
   {
     "id": "model.emoji.create_at.app_error",

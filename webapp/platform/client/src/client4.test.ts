@@ -17,6 +17,19 @@ describe('Client4', () => {
         nock.restore();
     });
 
+    describe('drive routes', () => {
+        test('renameDriveItem sends an upper-case PATCH, which fetch does not normalize', async () => {
+            const client = new Client4();
+            client.setUrl('http://mattermost.example.com');
+            const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({id: 'i1'}), {status: 200}));
+
+            await client.renameDriveItem('c1', 'i1', 'New name');
+
+            expect(fetchSpy).toHaveBeenCalledWith('http://mattermost.example.com/api/v4/channels/c1/drive/items/i1', expect.objectContaining({method: 'PATCH'}));
+            fetchSpy.mockRestore();
+        });
+    });
+
     describe('property field routes', () => {
         let client: Client4;
 

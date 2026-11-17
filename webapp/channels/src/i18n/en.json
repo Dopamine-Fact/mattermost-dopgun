@@ -24427,6 +24427,282 @@
     "defaultMessage": "File access blocked: {reason}",
     "description": "Toast notification shown when a plugin blocks the user from accessing or downloading a file; {reason} is the rejection reason supplied by the plugin."
   },
+  "file_explorer.back": {
+    "defaultMessage": "Back",
+    "description": "File explorer address bar button that goes to the previous location."
+  },
+  "file_explorer.chatAttachments": {
+    "defaultMessage": "Chat attachments",
+    "description": "Name of the read-only virtual folder in the file explorer listing every file posted in a channel's messages."
+  },
+  "file_explorer.column.creator": {
+    "defaultMessage": "Uploaded by",
+    "description": "File explorer Details view column header and preview pane label: the user who uploaded the file."
+  },
+  "file_explorer.column.deleted": {
+    "defaultMessage": "Date deleted",
+    "description": "File explorer Recycle Bin column header: when the item was moved to the Recycle Bin."
+  },
+  "file_explorer.column.deletedBy": {
+    "defaultMessage": "Deleted by",
+    "description": "File explorer Recycle Bin column header: the user who deleted the item."
+  },
+  "file_explorer.column.location": {
+    "defaultMessage": "Original location",
+    "description": "File explorer Recycle Bin column header: the folder path the item was deleted from, e.g. Town / Docs."
+  },
+  "file_explorer.column.modified": {
+    "defaultMessage": "Date modified",
+    "description": "File explorer Details view column header and preview pane label: when the item last changed."
+  },
+  "file_explorer.column.name": {
+    "defaultMessage": "Name",
+    "description": "File explorer Details view column header for the item name."
+  },
+  "file_explorer.column.size": {
+    "defaultMessage": "Size",
+    "description": "File explorer Details view column header and preview pane label for the file size."
+  },
+  "file_explorer.column.type": {
+    "defaultMessage": "Type",
+    "description": "File explorer Details view column header and preview pane label for the item type."
+  },
+  "file_explorer.copy": {
+    "defaultMessage": "Copy",
+    "description": "File explorer toolbar and context menu action that copies the selected items to the explorer clipboard (Ctrl+C)."
+  },
+  "file_explorer.cut": {
+    "defaultMessage": "Cut",
+    "description": "File explorer toolbar and context menu action that marks the selected items to be moved by the next Paste (Ctrl+X)."
+  },
+  "file_explorer.delete": {
+    "defaultMessage": "Delete",
+    "description": "File explorer toolbar and context menu action that moves the selected items to the channel's Recycle Bin."
+  },
+  "file_explorer.deleted": {
+    "defaultMessage": "Moved {count, plural, one {# item} other {# items}} to the Recycle Bin",
+    "description": "File explorer toast after deleting items; it has an Undo button that restores them."
+  },
+  "file_explorer.dimensions": {
+    "defaultMessage": "Dimensions",
+    "description": "File explorer preview pane label for an image's width × height in pixels."
+  },
+  "file_explorer.download": {
+    "defaultMessage": "Download",
+    "description": "File explorer button that downloads the selected file."
+  },
+  "file_explorer.dropTo": {
+    "defaultMessage": "Drop to upload to {location}",
+    "description": "File explorer hint shown while files from the computer are dragged over a folder; location is the folder path, e.g. Town › Docs."
+  },
+  "file_explorer.empty.channels": {
+    "defaultMessage": "You are not a member of any channel in this team.",
+    "description": "File explorer root empty state: the user belongs to no channel, so there are no channel folders."
+  },
+  "file_explorer.empty.chat": {
+    "defaultMessage": "No files have been shared in this channel yet.",
+    "description": "File explorer empty state of the Chat attachments folder."
+  },
+  "file_explorer.empty.confirm": {
+    "defaultMessage": "Everything in the Recycle Bin that you can delete will be gone for good. This can't be undone.",
+    "description": "File explorer confirmation text before emptying the Recycle Bin; only the user's own items (or all, for channel admins) are removed."
+  },
+  "file_explorer.empty.folder": {
+    "defaultMessage": "This folder is empty. Drop files here or use Upload.",
+    "description": "File explorer empty state of a channel folder; Upload is the toolbar button."
+  },
+  "file_explorer.empty.search": {
+    "defaultMessage": "No items match your search.",
+    "description": "File explorer empty state when the 'Search this folder' filter matches nothing."
+  },
+  "file_explorer.empty.trash": {
+    "defaultMessage": "The Recycle Bin is empty.",
+    "description": "File explorer empty state of a channel's Recycle Bin."
+  },
+  "file_explorer.emptyTrash": {
+    "defaultMessage": "Empty Recycle Bin",
+    "description": "File explorer Recycle Bin action that permanently deletes everything in it the user may delete."
+  },
+  "file_explorer.forward": {
+    "defaultMessage": "Forward",
+    "description": "File explorer address bar button that goes to the next location in history."
+  },
+  "file_explorer.items": {
+    "defaultMessage": "Items",
+    "description": "Accessible name of the file explorer's list of files and folders."
+  },
+  "file_explorer.loading": {
+    "defaultMessage": "Loading…",
+    "description": "File explorer placeholder while a folder loads."
+  },
+  "file_explorer.location": {
+    "defaultMessage": "Location",
+    "description": "Accessible name of the file explorer breadcrumb showing the current folder path."
+  },
+  "file_explorer.menu": {
+    "defaultMessage": "Item actions",
+    "description": "Accessible name of the file explorer right-click menu."
+  },
+  "file_explorer.newFolder": {
+    "defaultMessage": "New folder",
+    "description": "File explorer toolbar and context menu action that creates a folder in the open folder (Ctrl+Shift+N)."
+  },
+  "file_explorer.newFolder.name": {
+    "defaultMessage": "New folder",
+    "description": "Default name of a folder just created in the file explorer; a number is added if taken, e.g. New folder (2)."
+  },
+  "file_explorer.open": {
+    "defaultMessage": "Open",
+    "description": "File explorer button that opens the selected item (file preview or folder)."
+  },
+  "file_explorer.paste": {
+    "defaultMessage": "Paste",
+    "description": "File explorer toolbar and context menu action that moves or copies the cut or copied items into the open folder (Ctrl+V)."
+  },
+  "file_explorer.preview": {
+    "defaultMessage": "Preview",
+    "description": "Accessible name of the file explorer preview pane."
+  },
+  "file_explorer.preview.many": {
+    "defaultMessage": "{count} items selected · {size}",
+    "description": "File explorer preview pane text when several items are selected; {size} is their total size, e.g. 2.5MB."
+  },
+  "file_explorer.preview.none": {
+    "defaultMessage": "Select a file to see its preview.",
+    "description": "File explorer preview pane text when nothing is selected."
+  },
+  "file_explorer.previewPane": {
+    "defaultMessage": "Preview pane",
+    "description": "File explorer toolbar toggle that shows or hides the preview pane."
+  },
+  "file_explorer.purge": {
+    "defaultMessage": "Delete permanently",
+    "description": "File explorer Recycle Bin action that deletes the selected items for good."
+  },
+  "file_explorer.purge.confirm": {
+    "defaultMessage": "Delete",
+    "description": "Confirm button of the file explorer dialog that permanently deletes items."
+  },
+  "file_explorer.purge.message": {
+    "defaultMessage": "{count, plural, one {This item} other {These # items}} will be gone for good. This can't be undone.",
+    "description": "File explorer confirmation text before permanently deleting the selected items."
+  },
+  "file_explorer.purge.title": {
+    "defaultMessage": "Delete permanently?",
+    "description": "Title of the file explorer dialog that confirms a permanent delete or emptying the Recycle Bin."
+  },
+  "file_explorer.recycleBin": {
+    "defaultMessage": "Recycle Bin",
+    "description": "Name of a channel's Recycle Bin folder in the file explorer, holding deleted items for 30 days."
+  },
+  "file_explorer.refresh": {
+    "defaultMessage": "Refresh",
+    "description": "File explorer toolbar button that reloads the current folder."
+  },
+  "file_explorer.rename": {
+    "defaultMessage": "Rename",
+    "description": "File explorer toolbar and context menu action that edits the selected item's name in place (F2)."
+  },
+  "file_explorer.restore": {
+    "defaultMessage": "Restore",
+    "description": "File explorer Recycle Bin action that puts the selected items back where they were deleted from."
+  },
+  "file_explorer.retry": {
+    "defaultMessage": "Retry",
+    "description": "File explorer button shown with a load error; tries loading the folder again."
+  },
+  "file_explorer.search": {
+    "defaultMessage": "Search this folder",
+    "description": "File explorer search box placeholder; filters the items of the open folder by name."
+  },
+  "file_explorer.sidebarLink": {
+    "defaultMessage": "Files",
+    "description": "Sidebar link to the team file explorer, where channels appear as folders."
+  },
+  "file_explorer.status.items": {
+    "defaultMessage": "{count, plural, one {# item} other {# items}}",
+    "description": "File explorer status bar: number of items in the open folder."
+  },
+  "file_explorer.status.selected": {
+    "defaultMessage": "{count} selected ({size})",
+    "description": "File explorer status bar: number of selected items and their total size, e.g. 2.5MB."
+  },
+  "file_explorer.title": {
+    "defaultMessage": "Files",
+    "description": "Page title of the team file explorer."
+  },
+  "file_explorer.toolbar": {
+    "defaultMessage": "File actions",
+    "description": "Accessible name of the file explorer toolbar."
+  },
+  "file_explorer.tree": {
+    "defaultMessage": "Folders",
+    "description": "Accessible name of the file explorer folder tree on the left."
+  },
+  "file_explorer.type.channel": {
+    "defaultMessage": "Channel",
+    "description": "File explorer Type column value for a channel folder."
+  },
+  "file_explorer.type.file": {
+    "defaultMessage": "{ext} file",
+    "description": "File explorer Type column value for a file; {ext} is its upper-case extension, e.g. PDF file."
+  },
+  "file_explorer.type.folder": {
+    "defaultMessage": "File folder",
+    "description": "File explorer Type column value for a folder."
+  },
+  "file_explorer.up": {
+    "defaultMessage": "Up",
+    "description": "File explorer address bar button that goes to the parent folder."
+  },
+  "file_explorer.upload": {
+    "defaultMessage": "Upload",
+    "description": "File explorer toolbar button that opens a menu to upload files or a folder from the computer into the open folder."
+  },
+  "file_explorer.upload.files": {
+    "defaultMessage": "Files",
+    "description": "File explorer Upload menu item that opens the file picker to upload files."
+  },
+  "file_explorer.upload.folder": {
+    "defaultMessage": "Folder",
+    "description": "File explorer Upload menu item that opens a folder picker to upload a whole folder with its sub-folders."
+  },
+  "file_explorer.uploads": {
+    "defaultMessage": "Uploads",
+    "description": "Accessible name of the file explorer upload panel in the bottom-right corner."
+  },
+  "file_explorer.uploads.cancel": {
+    "defaultMessage": "Cancel upload of {name}",
+    "description": "Accessible label of the button that cancels one file's upload in the file explorer upload panel."
+  },
+  "file_explorer.uploads.cancelled": {
+    "defaultMessage": "Cancelled",
+    "description": "Status of an upload the user cancelled in the file explorer upload panel."
+  },
+  "file_explorer.uploads.close": {
+    "defaultMessage": "Close uploads",
+    "description": "Accessible label of the button that closes the file explorer upload panel once every upload has finished."
+  },
+  "file_explorer.uploads.done": {
+    "defaultMessage": "Uploaded",
+    "description": "Status of a finished upload in the file explorer upload panel."
+  },
+  "file_explorer.uploads.progress": {
+    "defaultMessage": "{done} of {total} uploaded",
+    "description": "Header of the file explorer upload panel counting finished uploads, e.g. 3 of 5 uploaded."
+  },
+  "file_explorer.uploads.queued": {
+    "defaultMessage": "Waiting",
+    "description": "Status of an upload waiting for the ones before it in the file explorer upload panel."
+  },
+  "file_explorer.view.details": {
+    "defaultMessage": "Details",
+    "description": "File explorer toolbar button that shows items as a table with columns."
+  },
+  "file_explorer.view.icons": {
+    "defaultMessage": "Large icons",
+    "description": "File explorer toolbar button that shows items as large icons and thumbnails."
+  },
   "file_info_preview.size": {
     "defaultMessage": "Size ",
     "description": "Label prefix concatenated directly with a formatted file size (e.g. 'Size 2.5MB') in the file details preview; keep the trailing space."
@@ -24786,6 +25062,18 @@
   "general_tab.dailyReportTimezone": {
     "defaultMessage": "Timezone: {timezone}",
     "description": "Help text under the daily report deadline input in Team Settings > Info; {timezone} is the team's saved timezone, e.g. Europe/Istanbul."
+  },
+  "general_tab.filesEnabled": {
+    "defaultMessage": "Enable the file explorer for this team",
+    "description": "Checkbox label in Team Settings that turns the file explorer on for the team."
+  },
+  "general_tab.filesInfo": {
+    "defaultMessage": "When enabled, team members get a file explorer in the sidebar where every channel they belong to is a folder for uploading, organising and previewing files.",
+    "description": "Help text under the Files setting in Team Settings."
+  },
+  "general_tab.filesTitle": {
+    "defaultMessage": "Files",
+    "description": "Title of the file explorer setting in Team Settings."
   },
   "general_tab.regenerate": {
     "defaultMessage": "Regenerate",
