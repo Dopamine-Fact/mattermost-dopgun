@@ -64,7 +64,8 @@ func TestDriveRuleAccess(t *testing.T) {
 // driveRulesWorld is the BG/ANIM fixture of the episode folder rules tests.
 type driveRulesWorld struct {
 	BG, Anim         *model.Department
-	BGUser, AnimUser *model.User // hold a rank of BG / ANIM
+	BGUser, AnimUser *model.User // hold a rank of BG / ANIM; BGUser is th.BasicUser, a channel manager
+	BGMember         *model.User // a plain channel member holding a BG rank
 	Admin            *model.User // channel admin, no rank
 	Channel          *model.Channel
 	Folders          map[string]*model.DriveItem // by name; "Anim/Layout" is the mirror, "BG/Layout" its source
@@ -83,6 +84,10 @@ func driveRulesFixture(t *testing.T, th *TestHelper) *driveRulesWorld {
 	giveRanks(t, th, team, f.BGUser, newRank(t, th, team, f.BG.Id, "Artist"))
 	giveRanks(t, th, team, f.AnimUser, newRank(t, th, team, f.Anim.Id, "Animator"))
 	th.AddUserToChannel(t, th.BasicUser2, th.BasicChannel)
+	f.BGMember = th.CreateUser(t)
+	th.LinkUserToTeam(t, f.BGMember, th.BasicTeam)
+	th.AddUserToChannel(t, f.BGMember, th.BasicChannel)
+	giveRanks(t, th, team, f.BGMember, newRank(t, th, team, f.BG.Id, "Colorist"))
 	f.Admin = th.CreateUser(t)
 	th.LinkUserToTeam(t, f.Admin, th.BasicTeam)
 	th.AddUserToChannel(t, f.Admin, th.BasicChannel)
@@ -215,7 +220,7 @@ func TestDriveListRules(t *testing.T) {
 	assert.Equal(t, model.DriveAccessRead, l.Access)
 	assert.False(t, l.SourceMissing)
 
-	l, appErr = listAs(t, th, f.BGUser, f.Channel, f.Folders["BG/Layout"].Id)
+	l, appErr = listAs(t, th, f.BGMember, f.Channel, f.Folders["BG/Layout"].Id)
 	require.Nil(t, appErr)
 	assert.Equal(t, model.DriveAccessDefault, l.Access)
 	assert.Len(t, l.Items, 3)
@@ -230,7 +235,7 @@ func TestDriveListRules(t *testing.T) {
 	item.WriteDepartments = []string{f.BG.Id}
 	_, err = th.App.Srv().Store().DriveItem().Update(item)
 	require.NoError(t, err)
-	l, appErr = listAs(t, th, f.BGUser, f.Channel, item.Id)
+	l, appErr = listAs(t, th, f.BGMember, f.Channel, item.Id)
 	require.Nil(t, appErr)
 	assert.Equal(t, model.DriveAccessWrite, l.Access)
 	l, appErr = listAs(t, th, f.AnimUser, f.Channel, item.Id)
@@ -259,12 +264,30 @@ func TestDriveTrashRules(t *testing.T) {
 	trash, appErr := th.App.GetDriveTrash(th.Context, driveSession(f.AnimUser), f.Channel)
 	require.Nil(t, appErr)
 	assert.Empty(t, trash)
-	trash, appErr = th.App.GetDriveTrash(th.Context, driveSession(f.BGUser), f.Channel)
+	trash, appErr = th.App.GetDriveTrash(th.Context, driveSession(f.BGMember), f.Channel)
 	require.Nil(t, appErr)
 	assert.Equal(t, []string{"gone.txt"}, itemNames(trash))
 	trash, appErr = th.App.GetDriveTrash(th.Context, driveSession(f.Admin), f.Channel)
 	require.Nil(t, appErr)
 	assert.Len(t, trash, 1)
+}
+
+func TestDriveTrashBrokenChain(t *testing.T) {
+	th := setupDrive(t)
+	f := driveRulesFixture(t, th)
+	file := driveAddFile(t, th, f.BGUser, f.Channel, f.Folders["BG/Layout"].Id, "orphan.txt")
+	require.Nil(t, th.App.DeleteDriveItems(th.Context, driveSession(f.Admin), f.Channel, []string{file.Id}, false))
+	require.Nil(t, th.App.DeleteDriveItems(th.Context, driveSession(f.Admin), f.Channel, []string{f.Folders["BG/Layout"].Id}, true))
+
+	// the rules above the orphan are gone, so only managers may still see it
+	for _, u := range []*model.User{f.AnimUser, f.BGMember} {
+		trash, appErr := th.App.GetDriveTrash(th.Context, driveSession(u), f.Channel)
+		require.Nil(t, appErr)
+		assert.NotContains(t, itemNames(trash), "orphan.txt")
+	}
+	trash, appErr := th.App.GetDriveTrash(th.Context, driveSession(f.Admin), f.Channel)
+	require.Nil(t, appErr)
+	assert.Contains(t, itemNames(trash), "orphan.txt")
 }
 
 func zipNames(t *testing.T, buf *bytes.Buffer) []string {
@@ -296,7 +319,7 @@ func TestDriveZipRules(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, appErr.StatusCode)
 
 	buf.Reset()
-	require.Nil(t, th.App.WriteDriveZip(th.Context, driveSession(f.BGUser), f.Channel, []string{f.Folders["BG/Layout"].Id}, &buf))
+	require.Nil(t, th.App.WriteDriveZip(th.Context, driveSession(f.BGMember), f.Channel, []string{f.Folders["BG/Layout"].Id}, &buf))
 	assert.Len(t, zipNames(t, &buf), 3)
 }
 
@@ -343,4 +366,16 @@ func TestDriveCopyOutOfMirror(t *testing.T) {
 		}
 	}
 	assert.GreaterOrEqual(t, copies, 5)
+
+	// the copy of the mirror (by AnimUser) holds sub and plan.txt but not secret
+	var layout *model.DriveItem
+	for _, it := range all {
+		if it.CreatorId == f.AnimUser.Id && it.Name == "Layout" && it.ParentId == "" {
+			layout = it
+		}
+	}
+	require.NotNil(t, layout)
+	l, appErr = listAs(t, th, f.Admin, f.Channel, layout.Id)
+	require.Nil(t, appErr)
+	assert.ElementsMatch(t, []string{"sub", "plan.txt"}, itemNames(l.Items))
 }

@@ -849,6 +849,9 @@ func (a *App) GetDriveTrash(rctx request.CTX, session model.Session, channel *mo
 			if err != nil {
 				return nil, driveStoreError("GetDriveTrash", err)
 			}
+			if it.ParentId != "" && (len(path) == 0 || path[0].ParentId != "") {
+				continue // a permanently deleted ancestor took its rules with it: only managers still see this
+			}
 			if it.IsFolder() {
 				path = append(path, it)
 			}
