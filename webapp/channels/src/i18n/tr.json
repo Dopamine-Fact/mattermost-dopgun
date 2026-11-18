@@ -5883,6 +5883,7 @@
   "forward_post_modal.notification.private_channel": "Bu ileti özel bir kanalda bulunuyor ve yalnızca <strong>{channelName}</strong> ile paylaşılabilir",
   "forward_post_modal.preview.footer_message": "Özgün ileti ~{channel} içine gönderilmiş",
   "forward_post_modal.preview.title": "İleti ön izlemesi",
+  "forward_post_modal.task.label": "Görev",
   "forward_post_modal.title": "İletiyi ilet",
   "free.banner.downgraded": "Çalışma alanınıza şu anda bazı kısıtlamalar uygulanıyor ve bazı verileriniz arşivlendi",
   "free.professional_feature.professional": "Ücretli özellik",

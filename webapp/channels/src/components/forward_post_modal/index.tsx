@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import classNames from 'classnames';
-import React, {useCallback, useRef, useState, useMemo} from 'react';
+import React, {useCallback, useEffect, useRef, useState, useMemo} from 'react';
 import {FormattedList, FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import type {OnChangeValue} from 'react-select';
@@ -13,10 +13,12 @@ import type {Post, PostPreviewMetadata} from '@mattermost/types/posts';
 import {General, Permissions} from 'mattermost-redux/constants';
 import {getMyChannelMember, makeGetChannel} from 'mattermost-redux/selectors/entities/channels';
 import {haveIChannelPermission, haveITeamPermission} from 'mattermost-redux/selectors/entities/roles';
+import {getTaskSectionForChannel, makeGetTasksForTeam} from 'mattermost-redux/selectors/entities/tasks';
 import {getCurrentTeam} from 'mattermost-redux/selectors/entities/teams';
 import type {ActionResult} from 'mattermost-redux/types/actions';
 
 import {openDirectChannelToUserId} from 'actions/channel_actions';
+import {fetchTeamTasks} from 'actions/tasks';
 import {joinChannelById, switchToChannel} from 'actions/views/channel';
 import {forwardPost} from 'actions/views/posts';
 import {getPermalinkURL} from 'selectors/urls';
@@ -108,7 +110,27 @@ const ForwardPostModal = ({onExited, post}: Props) => {
         },
     );
 
-    const canForwardPost = (isPrivateConversation || canPostInSelectedChannel) && !postError;
+    // A task-list channel takes only messages about one of its tasks, so forwarding there names one.
+    const targetChannelId = isPrivateConversation ? post.channel_id : selectedChannelId;
+    const targetTeamId = (isPrivateConversation ? channel?.team_id : selectedChannel?.details?.team_id) || '';
+    const section = useSelector((state: GlobalState) => getTaskSectionForChannel(state, targetChannelId));
+    const getTasks = useMemo(() => makeGetTasksForTeam(), []);
+    const teamTasks = useSelector((state: GlobalState) => getTasks(state, section?.team_id ?? ''));
+    const tasks = useMemo(() => (section ? teamTasks.filter((t) => t.section_id === section.id) : []), [teamTasks, section]);
+    const [taskId, setTaskId] = useState('');
+    useEffect(() => setTaskId(''), [targetChannelId]);
+
+    const needsTeamTasks = useSelector((state: GlobalState) => (
+        Boolean(state.entities.teams.teams[targetTeamId]?.revisions_enabled) &&
+        !Object.values(state.entities.tasks.sectionsById).some((s) => s.team_id === targetTeamId)
+    ));
+    useEffect(() => {
+        if (needsTeamTasks) {
+            dispatch(fetchTeamTasks(targetTeamId));
+        }
+    }, [dispatch, targetTeamId, needsTeamTasks]);
+
+    const canForwardPost = (isPrivateConversation || canPostInSelectedChannel) && !postError && (!section || tasks.some((t) => t.id === taskId));
 
     const onHide = useCallback(() => {
         onExited?.();
@@ -231,6 +253,7 @@ const ForwardPostModal = ({onExited, post}: Props) => {
                 post,
                 channelToForward.details,
                 comment,
+                section ? taskId : '',
             ));
         }).then(() => {
             // only switch channels when we are not in a private conversation
@@ -293,6 +316,29 @@ const ForwardPostModal = ({onExited, post}: Props) => {
                         value={selectedChannel}
                         currentBodyHeight={bodyHeight}
                     />
+                )}
+                {section && (
+                    <select
+                        className='forward-post__task'
+                        aria-label={formatMessage({id: 'forward_post_modal.task.label', defaultMessage: 'Task'})}
+                        value={taskId}
+                        onChange={(e) => setTaskId(e.target.value)}
+                    >
+                        <option
+                            value=''
+                            disabled={true}
+                        >
+                            {formatMessage({id: 'advanced_text_editor.task_picker.placeholder', defaultMessage: 'Pick a task'})}
+                        </option>
+                        {tasks.map((t) => (
+                            <option
+                                key={t.id}
+                                value={t.id}
+                            >
+                                {t.title}
+                            </option>
+                        ))}
+                    </select>
                 )}
                 <ForwardPostCommentInput
                     canForwardPost={canForwardPost}

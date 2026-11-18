@@ -38,7 +38,8 @@ export function editPost(post: Post): ActionFuncAsync<Post> {
     };
 }
 
-export function forwardPost(post: Post, channel: Channel, message = ''): ActionFuncAsync<PostActions.CreatePostReturnType> {
+// taskId names the task the forwarded message is about; a task-list channel requires one.
+export function forwardPost(post: Post, channel: Channel, message = '', taskId = ''): ActionFuncAsync<PostActions.CreatePostReturnType> {
     return async (dispatch, getState) => {
         const state = getState();
         const channelId = channel.id;
@@ -73,6 +74,9 @@ export function forwardPost(post: Post, channel: Channel, message = ''): ActionF
         newPost.create_at = time;
         newPost.metadata = {} as PostMetadata;
         newPost.props = {};
+        if (taskId) {
+            newPost.props.task_id = taskId;
+        }
 
         if (!useChannelMentions && containsAtChannel(newPost.message, {checkAllMentions: true})) {
             newPost.props.mentionHighlightDisabled = true;

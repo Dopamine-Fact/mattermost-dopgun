@@ -24999,6 +24999,10 @@
     "defaultMessage": "Message preview",
     "description": "Label above the preview of the message being forwarded in the Forward Message modal."
   },
+  "forward_post_modal.task.label": {
+    "defaultMessage": "Task",
+    "description": "Accessible label of the required task picker in the Forward Message modal, shown when the chosen channel is linked to a task list; the forwarded message is about the picked task."
+  },
   "forward_post_modal.title": {
     "defaultMessage": "Forward message",
     "description": "Title of the modal for forwarding a message to another channel."
