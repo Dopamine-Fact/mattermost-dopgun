@@ -1,0 +1,95 @@
+.custom-roles {
+    &__list {
+        padding: 0;
+        margin: 0;
+        list-style: none;
+    }
+
+    &__row {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        border-bottom: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+        background: var(--center-channel-bg);
+        gap: 12px;
+    }
+
+    &__handle {
+        display: flex;
+        color: rgba(var(--center-channel-color-rgb), 0.56);
+        cursor: grab;
+    }
+
+    &__dot {
+        width: 12px;
+        height: 12px;
+        flex: none;
+        border-radius: 50%;
+    }
+
+    &__name {
+        flex: 1;
+        font-weight: 600;
+    }
+
+    &__department,
+    &__members {
+        min-width: 120px;
+        color: rgba(var(--center-channel-color-rgb), 0.72);
+    }
+
+    &__empty {
+        padding: 16px;
+        color: rgba(var(--center-channel-color-rgb), 0.72);
+    }
+}
+
+.custom-role-modal {
+    &__form {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    &__field {
+        display: flex;
+        flex-direction: column;
+        font-weight: normal;
+        gap: 4px;
+    }
+
+    &__color {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        input[type='color'] {
+            width: 40px;
+            height: 32px;
+            padding: 0;
+            border: none;
+            background: none;
+        }
+    }
+
+    &__permissions {
+        legend {
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+    }
+
+    &__permission {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 8px;
+        font-weight: normal;
+        gap: 8px;
+
+        span {
+            display: flex;
+            flex-direction: column;
+        }
+    }
+}
