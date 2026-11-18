@@ -16,8 +16,8 @@ import (
 func TestTasks(t *testing.T) {
 	mainHelper.Parallel(t)
 	th := Setup(t).InitBasic(t)
-	// Assigning to or reviewing BasicUser2 needs a custom role that outranks them.
-	giveRankingRole(t, th, th.BasicUser)
+	// Assigning to or reviewing BasicUser2 needs a rank that outranks them and carries the permission.
+	rank := giveRankingRole(t, th, th.BasicUser)
 	ctx := context.Background()
 	teamId := th.BasicTeam.Id
 
@@ -78,8 +78,8 @@ func TestTasks(t *testing.T) {
 	})
 
 	t.Run("crud and section delete", func(t *testing.T) {
-		th.AddPermissionToRole(t, model.PermissionManageTasks.Id, model.TeamUserRoleId)
-		defer th.RemovePermissionFromRole(t, model.PermissionManageTasks.Id, model.TeamUserRoleId)
+		th.AddPermissionToRole(t, model.PermissionManageTasks.Id, rank.RoleName)
+		defer th.RemovePermissionFromRole(t, model.PermissionManageTasks.Id, rank.RoleName)
 
 		section, resp, err := th.Client.CreateTaskSection(ctx, &model.TaskSection{TeamId: teamId, Name: "Yapılacak"})
 		require.NoError(t, err)
@@ -376,16 +376,16 @@ func TestTasks(t *testing.T) {
 func TestTaskPermissionSplit(t *testing.T) {
 	mainHelper.Parallel(t)
 	th := Setup(t).InitBasic(t)
-	// Assigning to or reviewing BasicUser2 needs a custom role that outranks them.
-	giveRankingRole(t, th, th.BasicUser)
+	// Assigning to or reviewing BasicUser2 needs a rank that outranks them and carries the permission.
+	rank := giveRankingRole(t, th, th.BasicUser)
 	ctx := context.Background()
 	teamId := th.BasicTeam.Id
 	_, _, err := th.SystemAdminClient.PatchTeam(ctx, teamId, &model.TeamPatch{TasksEnabled: new(true), RevisionsEnabled: new(true)})
 	require.NoError(t, err)
 
 	t.Run("manage_tasks alone: plain tasks only", func(t *testing.T) {
-		th.AddPermissionToRole(t, model.PermissionManageTasks.Id, model.TeamUserRoleId)
-		defer th.RemovePermissionFromRole(t, model.PermissionManageTasks.Id, model.TeamUserRoleId)
+		th.AddPermissionToRole(t, model.PermissionManageTasks.Id, rank.RoleName)
+		defer th.RemovePermissionFromRole(t, model.PermissionManageTasks.Id, rank.RoleName)
 
 		task, resp, err := th.Client.CreateTask(ctx, &model.Task{TeamId: teamId, Title: "plain"})
 		require.NoError(t, err)
@@ -399,8 +399,8 @@ func TestTaskPermissionSplit(t *testing.T) {
 	})
 
 	t.Run("manage_revisions alone: revision sections and their tasks only", func(t *testing.T) {
-		th.AddPermissionToRole(t, model.PermissionManageRevisions.Id, model.TeamUserRoleId)
-		defer th.RemovePermissionFromRole(t, model.PermissionManageRevisions.Id, model.TeamUserRoleId)
+		th.AddPermissionToRole(t, model.PermissionManageRevisions.Id, rank.RoleName)
+		defer th.RemovePermissionFromRole(t, model.PermissionManageRevisions.Id, rank.RoleName)
 
 		section, resp, err := th.Client.CreateTaskSection(ctx, &model.TaskSection{TeamId: teamId, Name: "rev", ChannelId: th.BasicChannel.Id})
 		require.NoError(t, err)

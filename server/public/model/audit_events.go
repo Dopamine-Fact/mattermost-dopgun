@@ -456,13 +456,17 @@ const (
 	AuditEventSetTaskSectionVideo = "setTaskSectionVideo" // upload the video of a revision channel
 )
 
-// Custom roles
+// Departments and ranks
 const (
-	AuditEventCreateCustomRole   = "createCustomRole"   // create a studio role
-	AuditEventPatchCustomRole    = "patchCustomRole"    // update a studio role's name, color, department or permissions
-	AuditEventDeleteCustomRole   = "deleteCustomRole"   // delete a studio role and strip it from every user
-	AuditEventReorderCustomRoles = "reorderCustomRoles" // change the studio role hierarchy
-	AuditEventSetUserCustomRoles = "setUserCustomRoles" // replace the studio roles a user holds
+	AuditEventCreateDepartment   = "createDepartment"   // add a department to a team
+	AuditEventPatchDepartment    = "patchDepartment"    // rename or recolor a department
+	AuditEventDeleteDepartment   = "deleteDepartment"   // delete a department and strip its ranks from every member
+	AuditEventReorderDepartments = "reorderDepartments" // change a team's department order
+	AuditEventCreateRank         = "createRank"         // add a rank to a department
+	AuditEventPatchRank          = "patchRank"          // update a rank's name, color or permissions
+	AuditEventDeleteRank         = "deleteRank"         // delete a rank and strip it from every member
+	AuditEventReorderRanks       = "reorderRanks"       // change the rank order inside a department
+	AuditEventSetMemberRanks     = "setMemberRanks"     // replace the ranks a team member holds
 )
 
 // Schemes

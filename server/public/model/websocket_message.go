@@ -105,7 +105,7 @@ const (
 	WebsocketEventCanvasUpdated                       WebsocketEventType = "canvas_updated"
 	WebsocketEventCanvasAwareness                     WebsocketEventType = "canvas_awareness"
 	WebsocketDailyReportUpdated                       WebsocketEventType = "daily_report_updated"
-	WebsocketEventCustomRolesChanged                  WebsocketEventType = "custom_roles_changed"
+	WebsocketEventDepartmentsChanged                  WebsocketEventType = "departments_changed"
 	WebsocketEventCPAFieldCreated                     WebsocketEventType = "custom_profile_attributes_field_created"
 	WebsocketEventCPAFieldUpdated                     WebsocketEventType = "custom_profile_attributes_field_updated"
 	WebsocketEventCPAFieldDeleted                     WebsocketEventType = "custom_profile_attributes_field_deleted"

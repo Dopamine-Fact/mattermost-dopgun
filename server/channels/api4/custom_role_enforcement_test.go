@@ -12,7 +12,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 )
 
-func TestCustomRoleHierarchyEnforcement(t *testing.T) {
+func TestCustomRoleEnforcement(t *testing.T) {
 	mainHelper.Parallel(t)
 	th := Setup(t).InitBasic(t)
 	ctx := context.Background()
@@ -23,31 +23,14 @@ func TestCustomRoleHierarchyEnforcement(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	mkRole := func(name, dept string, perms ...string) *model.CustomRole {
-		r, appErr := th.App.CreateCustomRole(th.Context, &model.CustomRole{DisplayName: name + " " + model.NewId()[:6], Color: "#123456", Department: dept, Permissions: perms})
-		require.Nil(t, appErr)
-		return r
-	}
-	leadAnim := mkRole("LeadAnim", "Anim", model.PermissionManageTasks.Id, model.PermissionManageRevisions.Id, model.PermissionManageDailyReports.Id)
-	leadProg := mkRole("LeadProg", "Prog")
-	anim := mkRole("Anim", "Anim")
-	prog := mkRole("Prog", "Prog")
-
-	// member creates a team member holding roles and logs them in (after the roles are set, so the session has them).
-	member := func(roles ...*model.CustomRole) (*model.Client4, *model.User) {
-		u := th.CreateUser(t)
-		th.LinkUserToTeam(t, u, th.BasicTeam)
-		th.AddUserToChannel(t, u, th.BasicChannel)
-		ids := []string{}
-		for _, r := range roles {
-			ids = append(ids, r.Id)
-		}
-		_, appErr := th.App.SetUserCustomRoles(th.Context, th.SystemAdminUser.Id, u.Id, ids)
-		require.Nil(t, appErr)
-		client := th.CreateClient()
-		_, _, err := client.Login(ctx, u.Email, u.Password)
-		require.NoError(t, err)
-		return client, u
+	animDept := newTestDepartment(t, th, teamID, "Anim")
+	progDept := newTestDepartment(t, th, teamID, "Prog")
+	leadAnim := newTestRank(t, th, teamID, animDept.Id, "LeadAnim", model.PermissionManageTasks.Id, model.PermissionManageRevisions.Id, model.PermissionManageDailyReports.Id)
+	leadProg := newTestRank(t, th, teamID, progDept.Id, "LeadProg")
+	anim := newTestRank(t, th, teamID, animDept.Id, "Anim")
+	prog := newTestRank(t, th, teamID, progDept.Id, "Prog")
+	member := func(ranks ...*model.CustomRole) (*model.Client4, *model.User) {
+		return rankedClient(t, th, th.BasicTeam, ranks...)
 	}
 	leadClient, lead := member(leadAnim)
 	animClient, animUser := member(anim)
@@ -151,12 +134,4 @@ func TestCustomRoleHierarchyEnforcement(t *testing.T) {
 		_, _, err = adminClient.ApproveDailyReport(ctx, progReport.Id, progReport.UpdateAt)
 		require.NoError(t, err)
 	})
-}
-
-// giveRankingRole gives user a permission-less custom role, so they outrank the role-less users of the basic setup.
-func giveRankingRole(t *testing.T, th *TestHelper, user *model.User) {
-	r, appErr := th.App.CreateCustomRole(th.Context, &model.CustomRole{DisplayName: "Rank " + model.NewId()[:6], Color: "#123456"})
-	require.Nil(t, appErr)
-	_, appErr = th.App.SetUserCustomRoles(th.Context, th.SystemAdminUser.Id, user.Id, []string{r.Id})
-	require.Nil(t, appErr)
 }

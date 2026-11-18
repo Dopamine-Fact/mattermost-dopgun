@@ -7917,7 +7917,7 @@
   {
     "id": "app.custom_role.invalid_order.app_error",
     "translation": "The role order must list every role exactly once.",
-    "description": "API error when a system admin reorders custom roles in the System Console Roles page and the submitted order omits, repeats or adds roles."
+    "description": "API error when a team admin reorders departments or ranks in the team's Departmanlar settings tab and the submitted order omits, repeats or adds entries."
   },
   {
     "id": "app.custom_role.invalid_target.app_error",
@@ -7938,6 +7938,11 @@
     "id": "app.custom_role.not_outranked.app_error",
     "translation": "You can only give or remove roles below your own, for people below you.",
     "description": "API error when a user with permission to assign custom roles tries to give or remove a role that does not sit below one of their own roles, or to change the roles of someone their roles do not outrank."
+  },
+  {
+    "id": "app.custom_role.one_per_department.app_error",
+    "translation": "A member can hold only one rank per department.",
+    "description": "API error when someone sets a team member's ranks in the profile popover and picks two ranks from the same department."
   },
   {
     "id": "app.custom_role.permission_not_allowed.app_error",
@@ -8639,6 +8644,21 @@
     "id": "app.delivery_tracking.save_config.app_error",
     "translation": "Failed to save the post delivery audit logging settings to the database.",
     "description": "Error when the post delivery audit logging settings cannot be written to the database."
+  },
+  {
+    "id": "app.department.not_found.app_error",
+    "translation": "Department not found.",
+    "description": "API error when a department id in a request to the team's Departmanlar settings tab does not match a department of that team."
+  },
+  {
+    "id": "app.department.studio_delete.app_error",
+    "translation": "The studio-wide department cannot be deleted.",
+    "description": "API error when a team admin tries to delete the Stüdyo geneli (studio-wide) department in the team's Departmanlar settings tab."
+  },
+  {
+    "id": "app.department.studio_first.app_error",
+    "translation": "The studio-wide department must stay first.",
+    "description": "API error when a team admin reorders departments in the team's Departmanlar settings tab and moves another department above Stüdyo geneli (studio-wide)."
   },
   {
     "id": "app.desktop_token.generateServerToken.invalid_or_expired",
@@ -18364,37 +18384,42 @@
   {
     "id": "model.custom_role.is_valid.color.app_error",
     "translation": "Color must be a hex color like #ff00aa.",
-    "description": "Validation error when a system admin creates or edits a custom role in the System Console Roles page and its color is not a lowercase six-digit hex color."
+    "description": "Validation error when a team admin creates or edits a rank in the team's Departmanlar settings tab and its color is not a lowercase six-digit hex color."
   },
   {
     "id": "model.custom_role.is_valid.create_at.app_error",
     "translation": "Create at must be a valid time.",
-    "description": "Validation error when a system admin creates or edits a custom role in the System Console Roles page and its creation timestamp is unset."
+    "description": "Validation error when a team admin creates or edits a rank in the team's Departmanlar settings tab and its creation timestamp is unset."
   },
   {
-    "id": "model.custom_role.is_valid.department.app_error",
-    "translation": "Department must be at most {{.Max}} characters.",
-    "description": "Validation error when a system admin creates or edits a custom role in the System Console Roles page and its department name is longer than 64 characters."
+    "id": "model.custom_role.is_valid.department_id.app_error",
+    "translation": "Invalid department id.",
+    "description": "Validation error when a team admin creates a rank in the team's Departmanlar settings tab and its department id is not a valid 26-character id."
   },
   {
     "id": "model.custom_role.is_valid.display_name.app_error",
     "translation": "Name must be between 1 and {{.Max}} characters.",
-    "description": "Validation error when a system admin creates or edits a custom role in the System Console Roles page and its display name is empty or longer than 64 characters."
+    "description": "Validation error when a team admin creates or edits a rank in the team's Departmanlar settings tab and its display name is empty or longer than 64 characters."
   },
   {
     "id": "model.custom_role.is_valid.id.app_error",
     "translation": "Invalid custom role id.",
-    "description": "Validation error when a system admin creates or edits a custom role in the System Console Roles page and its id is not a valid 26-character id."
+    "description": "Validation error when a team admin creates or edits a rank in the team's Departmanlar settings tab and its id is not a valid 26-character id."
   },
   {
     "id": "model.custom_role.is_valid.position.app_error",
     "translation": "Position must not be negative.",
-    "description": "Validation error when a system admin creates or edits a custom role in the System Console Roles page and its position in the role list is negative."
+    "description": "Validation error when a team admin creates or edits a rank in the team's Departmanlar settings tab and its position in the role list is negative."
   },
   {
     "id": "model.custom_role.is_valid.role_name.app_error",
     "translation": "Invalid role name.",
-    "description": "Validation error when a system admin creates or edits a custom role in the System Console Roles page and its underlying native role name does not match its id."
+    "description": "Validation error when a team admin creates or edits a rank in the team's Departmanlar settings tab and its underlying native role name does not match its id."
+  },
+  {
+    "id": "model.custom_role.is_valid.team_id.app_error",
+    "translation": "Invalid team id.",
+    "description": "Validation error when a team admin creates a rank in the team's Departmanlar settings tab and its team id is not a valid 26-character id."
   },
   {
     "id": "model.daily_report.is_valid.create_at.app_error",
@@ -18480,6 +18505,36 @@
     "id": "model.delivery_tracking.is_valid.missing_toggle.app_error",
     "translation": "The post delivery audit logging settings are incomplete.",
     "description": "Validation error when the post delivery audit logging settings are saved without stating whether the feature is on."
+  },
+  {
+    "id": "model.department.is_valid.color.app_error",
+    "translation": "Color must be a hex color like #ff00aa.",
+    "description": "Validation error when a team admin creates or edits a department in the team's Departmanlar settings tab and its color is not a lowercase six-digit hex color."
+  },
+  {
+    "id": "model.department.is_valid.create_at.app_error",
+    "translation": "Create at must be a valid time.",
+    "description": "Validation error when a department in the team's Departmanlar settings tab is saved with its creation timestamp unset."
+  },
+  {
+    "id": "model.department.is_valid.id.app_error",
+    "translation": "Invalid department id.",
+    "description": "Validation error when a department in the team's Departmanlar settings tab is saved and its id is not a valid 26-character id."
+  },
+  {
+    "id": "model.department.is_valid.name.app_error",
+    "translation": "Name must be between 1 and {{.Max}} characters.",
+    "description": "Validation error when a team admin creates or edits a department in the team's Departmanlar settings tab and its name is empty or longer than 64 characters."
+  },
+  {
+    "id": "model.department.is_valid.position.app_error",
+    "translation": "Position cannot be negative.",
+    "description": "Validation error when a department in the team's Departmanlar settings tab is saved with a negative position in the department order."
+  },
+  {
+    "id": "model.department.is_valid.team_id.app_error",
+    "translation": "Invalid team id.",
+    "description": "Validation error when a department in the team's Departmanlar settings tab is saved and its team id is not a valid 26-character id."
   },
   {
     "id": "model.draft.is_valid.channel_id.app_error",

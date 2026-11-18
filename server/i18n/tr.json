@@ -2243,6 +2243,10 @@
     "translation": "Yalnızca kendi rolünüzün altındaki rolleri, altınızdaki kişilere verebilir veya kaldırabilirsiniz."
   },
   {
+    "id": "app.custom_role.one_per_department.app_error",
+    "translation": "Bir üye her departmanda yalnızca bir rütbe taşıyabilir."
+  },
+  {
     "id": "app.custom_role.permission_not_allowed.app_error",
     "translation": "Özel bir rol {{.Permission}} iznini taşıyamaz."
   },
@@ -2281,6 +2285,18 @@
   {
     "id": "app.daily_report.store.app_error",
     "translation": "Günlük raporlara erişilemedi."
+  },
+  {
+    "id": "app.department.not_found.app_error",
+    "translation": "Departman bulunamadı."
+  },
+  {
+    "id": "app.department.studio_delete.app_error",
+    "translation": "Stüdyo geneli departmanı silinemez."
+  },
+  {
+    "id": "app.department.studio_first.app_error",
+    "translation": "Stüdyo geneli departmanı en üstte kalmalıdır."
   },
   {
     "id": "app.drive.copy.app_error",
@@ -3867,8 +3883,8 @@
     "translation": "Eklenme zamanı geçerli bir zaman olmalıdır."
   },
   {
-    "id": "model.custom_role.is_valid.department.app_error",
-    "translation": "Departman en fazla {{.Max}} karakter olabilir."
+    "id": "model.custom_role.is_valid.department_id.app_error",
+    "translation": "Geçersiz departman kimliği."
   },
   {
     "id": "model.custom_role.is_valid.display_name.app_error",
@@ -3885,6 +3901,10 @@
   {
     "id": "model.custom_role.is_valid.role_name.app_error",
     "translation": "Geçersiz rol adı."
+  },
+  {
+    "id": "model.custom_role.is_valid.team_id.app_error",
+    "translation": "Geçersiz takım kimliği."
   },
   {
     "id": "model.daily_report.is_valid.create_at.app_error",
@@ -3913,6 +3933,30 @@
   {
     "id": "model.daily_report.is_valid.user_id.app_error",
     "translation": "Geçersiz kullanıcı kimliği."
+  },
+  {
+    "id": "model.department.is_valid.color.app_error",
+    "translation": "Renk #ff00aa gibi bir onaltılık renk olmalıdır."
+  },
+  {
+    "id": "model.department.is_valid.create_at.app_error",
+    "translation": "Eklenme zamanı geçerli bir zaman olmalıdır."
+  },
+  {
+    "id": "model.department.is_valid.id.app_error",
+    "translation": "Geçersiz departman kimliği."
+  },
+  {
+    "id": "model.department.is_valid.name.app_error",
+    "translation": "Ad 1 ile {{.Max}} karakter arasında olmalıdır."
+  },
+  {
+    "id": "model.department.is_valid.position.app_error",
+    "translation": "Sıra negatif olamaz."
+  },
+  {
+    "id": "model.department.is_valid.team_id.app_error",
+    "translation": "Geçersiz takım kimliği."
   },
   {
     "id": "model.drive_item.is_valid.channel_id.app_error",

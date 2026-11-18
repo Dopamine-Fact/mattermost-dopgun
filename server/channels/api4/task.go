@@ -57,25 +57,28 @@ func sectionPermission(section *model.TaskSection) *model.Permission {
 	return model.PermissionManageTasks
 }
 
-// requireTaskPermission: creating, assigning and deleting a task needs the permission of the section it is in.
-func requireTaskPermission(c *Context, teamID, sectionID string) {
+// requireTaskPermission: creating, assigning and deleting a task needs the permission of the section it is in, which
+// it returns.
+func requireTaskPermission(c *Context, teamID, sectionID string) *model.Permission {
 	permission := model.PermissionManageTasks
 	if sectionID != "" {
 		section, appErr := c.App.GetTaskSection(sectionID)
 		if appErr != nil && appErr.StatusCode != http.StatusNotFound {
 			c.Err = appErr
-			return
+			return permission
 		}
 		if appErr == nil {
 			permission = sectionPermission(section)
 		}
 	}
 	requireTeamPermission(c, teamID, permission)
+	return permission
 }
 
-// requireCanAssign: giving a task to someone else needs a custom role that outranks them (admins bypass).
-func requireCanAssign(c *Context, teamID, assigneeID string) {
-	if assigneeID != "" && !c.App.CanActOnUser(c.AppContext, c.AppContext.Session().UserId, assigneeID, teamID) {
+// requireCanAssign: giving a task to someone else needs a rank that carries permission and outranks them (admins
+// bypass).
+func requireCanAssign(c *Context, teamID, assigneeID string, permission *model.Permission) {
+	if assigneeID != "" && !c.App.CanActOnUser(c.AppContext, c.AppContext.Session().UserId, assigneeID, teamID, permission) {
 		c.Err = model.NewAppError("requireCanAssign", "api.task.assignee_not_outranked.app_error", nil, "", http.StatusForbidden)
 	}
 }
@@ -140,10 +143,11 @@ func createTask(c *Context, w http.ResponseWriter, r *http.Request) {
 		c.SetInvalidParamWithErr("task", err)
 		return
 	}
-	if requireTaskPermission(c, c.Params.TeamId, task.SectionId); c.Err != nil {
+	permission := requireTaskPermission(c, c.Params.TeamId, task.SectionId)
+	if c.Err != nil {
 		return
 	}
-	if requireCanAssign(c, c.Params.TeamId, task.AssigneeId); c.Err != nil {
+	if requireCanAssign(c, c.Params.TeamId, task.AssigneeId, permission); c.Err != nil {
 		return
 	}
 	task.Id = ""
@@ -182,10 +186,11 @@ func patchTask(c *Context, w http.ResponseWriter, r *http.Request) {
 		if patch.SectionId != nil {
 			sectionID = *patch.SectionId
 		}
-		if requireTaskPermission(c, task.TeamId, sectionID); c.Err != nil {
+		permission := requireTaskPermission(c, task.TeamId, sectionID)
+		if c.Err != nil {
 			return
 		}
-		if requireCanAssign(c, task.TeamId, *patch.AssigneeId); c.Err != nil {
+		if requireCanAssign(c, task.TeamId, *patch.AssigneeId, permission); c.Err != nil {
 			return
 		}
 	}

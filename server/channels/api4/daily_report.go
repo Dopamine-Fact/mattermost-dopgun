@@ -79,7 +79,7 @@ func dailyReportFilter(c *Context, r *http.Request, team *model.Team) (from, to,
 	if !c.App.SessionHasPermissionToTeam(*c.AppContext.Session(), team.Id, model.PermissionManageDailyReports) {
 		userID = sessionUserID
 	}
-	if userID != "" && !c.App.CanActOnUser(c.AppContext, sessionUserID, userID, team.Id) {
+	if userID != "" && !c.App.CanActOnUser(c.AppContext, sessionUserID, userID, team.Id, model.PermissionManageDailyReports) {
 		c.SetPermissionError(model.PermissionManageDailyReports)
 		return
 	}
@@ -103,7 +103,7 @@ func getVisibleDailyReports(c *Context, teamID, from, to, userID string) []*mode
 			authors = append(authors, r.UserId)
 		}
 	}
-	allowed := c.App.ActionableUserIDs(c.AppContext, c.AppContext.Session().UserId, teamID, authors)
+	allowed := c.App.ActionableUserIDs(c.AppContext, c.AppContext.Session().UserId, teamID, authors, model.PermissionManageDailyReports)
 	return slices.DeleteFunc(reports, func(r *model.DailyReport) bool { return !slices.Contains(allowed, r.UserId) })
 }
 
@@ -180,7 +180,7 @@ func loadReviewableReport(c *Context, r *http.Request) (*model.DailyReport, revi
 		c.SetPermissionError(model.PermissionManageTeam)
 		return nil, body
 	}
-	if !c.App.CanActOnUser(c.AppContext, c.AppContext.Session().UserId, report.UserId, report.TeamId) {
+	if !c.App.CanActOnUser(c.AppContext, c.AppContext.Session().UserId, report.UserId, report.TeamId, model.PermissionManageDailyReports) {
 		c.SetPermissionError(model.PermissionManageDailyReports)
 		return nil, body
 	}

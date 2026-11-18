@@ -13,14 +13,19 @@ import (
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 )
 
-func (api *API) InitCustomRoles() {
-	api.BaseRoutes.APIRoot.Handle("/custom_roles", api.APISessionRequired(getCustomRoles)).Methods(http.MethodGet)
-	api.BaseRoutes.APIRoot.Handle("/custom_roles", api.APISessionRequired(createCustomRole)).Methods(http.MethodPost)
-	api.BaseRoutes.APIRoot.Handle("/custom_roles/order", api.APISessionRequired(reorderCustomRoles)).Methods(http.MethodPut)
-	api.BaseRoutes.APIRoot.Handle("/custom_roles/{custom_role_id:[A-Za-z0-9]+}", api.APISessionRequired(patchCustomRole)).Methods(http.MethodPatch)
-	api.BaseRoutes.APIRoot.Handle("/custom_roles/{custom_role_id:[A-Za-z0-9]+}", api.APISessionRequired(deleteCustomRole)).Methods(http.MethodDelete)
-	api.BaseRoutes.User.Handle("/custom_roles", api.APISessionRequired(setUserCustomRoles)).Methods(http.MethodPut)
-	api.BaseRoutes.Team.Handle("/custom_roles/actionable_users", api.APISessionRequired(getActionableUsers)).Methods(http.MethodGet)
+func (api *API) InitDepartments() {
+	api.BaseRoutes.Team.Handle("/departments", api.APISessionRequired(getTeamDepartments)).Methods(http.MethodGet)
+	api.BaseRoutes.Team.Handle("/departments", api.APISessionRequired(createDepartment)).Methods(http.MethodPost)
+	api.BaseRoutes.Team.Handle("/departments/order", api.APISessionRequired(reorderDepartments)).Methods(http.MethodPut)
+	api.BaseRoutes.Team.Handle("/departments/{department_id:[A-Za-z0-9]+}", api.APISessionRequired(patchDepartment)).Methods(http.MethodPatch)
+	api.BaseRoutes.Team.Handle("/departments/{department_id:[A-Za-z0-9]+}", api.APISessionRequired(deleteDepartment)).Methods(http.MethodDelete)
+	api.BaseRoutes.Team.Handle("/departments/{department_id:[A-Za-z0-9]+}/ranks", api.APISessionRequired(createRank)).Methods(http.MethodPost)
+	api.BaseRoutes.Team.Handle("/departments/{department_id:[A-Za-z0-9]+}/ranks/order", api.APISessionRequired(reorderRanks)).Methods(http.MethodPut)
+	api.BaseRoutes.Team.Handle("/ranks/{rank_id:[A-Za-z0-9]+}", api.APISessionRequired(patchRank)).Methods(http.MethodPatch)
+	api.BaseRoutes.Team.Handle("/ranks/{rank_id:[A-Za-z0-9]+}", api.APISessionRequired(deleteRank)).Methods(http.MethodDelete)
+	api.BaseRoutes.TeamMember.Handle("/ranks", api.APISessionRequired(setMemberRanks)).Methods(http.MethodPut)
+	api.BaseRoutes.TeamMember.Handle("/assignable_ranks", api.APISessionRequired(getAssignableRanks)).Methods(http.MethodGet)
+	api.BaseRoutes.Team.Handle("/actionable_user_ids", api.APISessionRequired(getActionableUserIds)).Methods(http.MethodGet)
 }
 
 func writeCustomRoleJSON(w http.ResponseWriter, status int, v any) {
@@ -30,158 +35,299 @@ func writeCustomRoleJSON(w http.ResponseWriter, status int, v any) {
 	}
 }
 
-// publishCustomRolesChanged tells every client to reload the role list.
-func publishCustomRolesChanged(c *Context) {
-	c.App.Publish(model.NewWebSocketEvent(model.WebsocketEventCustomRolesChanged, "", "", "", nil, ""))
+// publishDepartmentsChanged tells the team's clients to reload its departments and ranks.
+func publishDepartmentsChanged(c *Context, teamID string) {
+	event := model.NewWebSocketEvent(model.WebsocketEventDepartmentsChanged, teamID, "", "", nil, "")
+	event.Add("team_id", teamID)
+	c.App.Publish(event)
 }
 
-func requireManageSystem(c *Context) {
-	if !c.App.SessionHasPermissionTo(*c.AppContext.Session(), model.PermissionManageSystem) {
-		c.SetPermissionError(model.PermissionManageSystem)
+// requireTeamManager resolves {team_id} and checks the caller may manage the team's departments.
+func requireTeamManager(c *Context) {
+	if c.RequireTeamId(); c.Err != nil {
+		return
 	}
+	requireTeamPermission(c, c.Params.TeamId, model.PermissionManageTeam)
 }
 
-func getCustomRoles(c *Context, w http.ResponseWriter, r *http.Request) {
-	roles, appErr := c.App.GetCustomRoles()
+// departmentAudit starts a failed audit record for a department or rank change in {team_id}.
+func departmentAudit(c *Context, event string) *model.AuditRecord {
+	auditRec := c.MakeAuditRecord(event, model.AuditStatusFail)
+	model.AddEventParameterToAuditRec(auditRec, "team_id", c.Params.TeamId)
+	return auditRec
+}
+
+func getTeamDepartments(c *Context, w http.ResponseWriter, r *http.Request) {
+	if c.RequireTeamId(); c.Err != nil {
+		return
+	}
+	if requireTaskTeamMember(c, c.Params.TeamId); c.Err != nil {
+		return
+	}
+	deps, appErr := c.App.GetTeamDepartments(c.AppContext, c.Params.TeamId)
 	if appErr != nil {
 		c.Err = appErr
 		return
 	}
-	writeCustomRoleJSON(w, http.StatusOK, roles)
+	writeCustomRoleJSON(w, http.StatusOK, deps)
 }
 
-func createCustomRole(c *Context, w http.ResponseWriter, r *http.Request) {
-	if requireManageSystem(c); c.Err != nil {
+func createDepartment(c *Context, w http.ResponseWriter, r *http.Request) {
+	if requireTeamManager(c); c.Err != nil {
 		return
 	}
-	var role model.CustomRole
-	if err := json.NewDecoder(r.Body).Decode(&role); err != nil {
-		c.SetInvalidParamWithErr("custom_role", err)
+	var d model.Department
+	if err := json.NewDecoder(r.Body).Decode(&d); err != nil {
+		c.SetInvalidParamWithErr("department", err)
 		return
 	}
-
-	auditRec := c.MakeAuditRecord(model.AuditEventCreateCustomRole, model.AuditStatusFail)
+	auditRec := departmentAudit(c, model.AuditEventCreateDepartment)
 	defer c.LogAuditRec(auditRec)
-	model.AddEventParameterAuditableToAuditRec(auditRec, "custom_role", &role)
+	model.AddEventParameterToAuditRec(auditRec, "name", d.Name)
 
-	created, appErr := c.App.CreateCustomRole(c.AppContext, &role)
+	created, appErr := c.App.CreateDepartment(c.AppContext, c.Params.TeamId, d.Name, d.Color)
 	if appErr != nil {
 		c.Err = appErr
 		return
 	}
 	auditRec.Success()
 	auditRec.AddEventResultState(created)
-	auditRec.AddEventObjectType("custom_role")
-	publishCustomRolesChanged(c)
+	auditRec.AddEventObjectType("department")
+	publishDepartmentsChanged(c, c.Params.TeamId)
 	writeCustomRoleJSON(w, http.StatusCreated, created)
 }
 
-func patchCustomRole(c *Context, w http.ResponseWriter, r *http.Request) {
-	if requireManageSystem(c); c.Err != nil {
+func patchDepartment(c *Context, w http.ResponseWriter, r *http.Request) {
+	if requireTeamManager(c); c.Err != nil {
 		return
 	}
-	id := mux.Vars(r)["custom_role_id"]
-	var patch model.CustomRolePatch
+	id := mux.Vars(r)["department_id"]
+	var patch model.DepartmentPatch
 	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
-		c.SetInvalidParamWithErr("custom_role", err)
+		c.SetInvalidParamWithErr("department", err)
 		return
 	}
-
-	auditRec := c.MakeAuditRecord(model.AuditEventPatchCustomRole, model.AuditStatusFail)
+	auditRec := departmentAudit(c, model.AuditEventPatchDepartment)
 	defer c.LogAuditRec(auditRec)
-	model.AddEventParameterToAuditRec(auditRec, "custom_role_id", id)
+	model.AddEventParameterToAuditRec(auditRec, "department_id", id)
 
-	updated, appErr := c.App.PatchCustomRole(c.AppContext, id, &patch)
+	updated, appErr := c.App.PatchDepartment(c.AppContext, c.Params.TeamId, id, &patch)
 	if appErr != nil {
 		c.Err = appErr
 		return
 	}
 	auditRec.Success()
 	auditRec.AddEventResultState(updated)
-	auditRec.AddEventObjectType("custom_role")
-	publishCustomRolesChanged(c)
+	auditRec.AddEventObjectType("department")
+	publishDepartmentsChanged(c, c.Params.TeamId)
 	writeCustomRoleJSON(w, http.StatusOK, updated)
 }
 
-func deleteCustomRole(c *Context, w http.ResponseWriter, r *http.Request) {
-	if requireManageSystem(c); c.Err != nil {
+func deleteDepartment(c *Context, w http.ResponseWriter, r *http.Request) {
+	if requireTeamManager(c); c.Err != nil {
 		return
 	}
-	id := mux.Vars(r)["custom_role_id"]
-
-	auditRec := c.MakeAuditRecord(model.AuditEventDeleteCustomRole, model.AuditStatusFail)
+	id := mux.Vars(r)["department_id"]
+	auditRec := departmentAudit(c, model.AuditEventDeleteDepartment)
 	defer c.LogAuditRec(auditRec)
-	model.AddEventParameterToAuditRec(auditRec, "custom_role_id", id)
+	model.AddEventParameterToAuditRec(auditRec, "department_id", id)
 
-	if appErr := c.App.DeleteCustomRole(c.AppContext, id); appErr != nil {
+	if appErr := c.App.DeleteDepartment(c.AppContext, c.Params.TeamId, id); appErr != nil {
 		c.Err = appErr
 		return
 	}
 	auditRec.Success()
-	publishCustomRolesChanged(c)
+	publishDepartmentsChanged(c, c.Params.TeamId)
 	ReturnStatusOK(w)
 }
 
-func reorderCustomRoles(c *Context, w http.ResponseWriter, r *http.Request) {
-	if requireManageSystem(c); c.Err != nil {
-		return
-	}
+// decodeIDs reads an {"ids": [...]} body.
+func decodeIDs(c *Context, r *http.Request) []string {
 	var body struct {
 		IDs []string `json:"ids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		c.SetInvalidParamWithErr("ids", err)
+	}
+	return body.IDs
+}
+
+func reorderDepartments(c *Context, w http.ResponseWriter, r *http.Request) {
+	if requireTeamManager(c); c.Err != nil {
 		return
 	}
-
-	auditRec := c.MakeAuditRecord(model.AuditEventReorderCustomRoles, model.AuditStatusFail)
+	ids := decodeIDs(c, r)
+	if c.Err != nil {
+		return
+	}
+	auditRec := departmentAudit(c, model.AuditEventReorderDepartments)
 	defer c.LogAuditRec(auditRec)
-	model.AddEventParameterToAuditRec(auditRec, "ids", body.IDs)
+	model.AddEventParameterToAuditRec(auditRec, "ids", ids)
 
-	roles, appErr := c.App.ReorderCustomRoles(c.AppContext, body.IDs)
+	deps, appErr := c.App.ReorderDepartments(c.AppContext, c.Params.TeamId, ids)
 	if appErr != nil {
 		c.Err = appErr
 		return
 	}
 	auditRec.Success()
-	publishCustomRolesChanged(c)
-	writeCustomRoleJSON(w, http.StatusOK, roles)
+	publishDepartmentsChanged(c, c.Params.TeamId)
+	writeCustomRoleJSON(w, http.StatusOK, deps)
 }
 
-func setUserCustomRoles(c *Context, w http.ResponseWriter, r *http.Request) {
-	if c.RequireUserId(); c.Err != nil {
+func createRank(c *Context, w http.ResponseWriter, r *http.Request) {
+	if requireTeamManager(c); c.Err != nil {
 		return
 	}
-	if !c.App.SessionHasPermissionTo(*c.AppContext.Session(), model.PermissionAssignCustomRoles) {
-		c.SetPermissionError(model.PermissionAssignCustomRoles)
+	departmentID := mux.Vars(r)["department_id"]
+	var rank model.CustomRole
+	if err := json.NewDecoder(r.Body).Decode(&rank); err != nil {
+		c.SetInvalidParamWithErr("rank", err)
+		return
+	}
+	auditRec := departmentAudit(c, model.AuditEventCreateRank)
+	defer c.LogAuditRec(auditRec)
+	model.AddEventParameterToAuditRec(auditRec, "department_id", departmentID)
+	model.AddEventParameterAuditableToAuditRec(auditRec, "rank", &rank)
+
+	created, appErr := c.App.CreateRank(c.AppContext, c.Params.TeamId, departmentID, &rank)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	auditRec.Success()
+	auditRec.AddEventResultState(created)
+	auditRec.AddEventObjectType("rank")
+	publishDepartmentsChanged(c, c.Params.TeamId)
+	writeCustomRoleJSON(w, http.StatusCreated, created)
+}
+
+func patchRank(c *Context, w http.ResponseWriter, r *http.Request) {
+	if requireTeamManager(c); c.Err != nil {
+		return
+	}
+	id := mux.Vars(r)["rank_id"]
+	var patch model.CustomRolePatch
+	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
+		c.SetInvalidParamWithErr("rank", err)
+		return
+	}
+	auditRec := departmentAudit(c, model.AuditEventPatchRank)
+	defer c.LogAuditRec(auditRec)
+	model.AddEventParameterToAuditRec(auditRec, "rank_id", id)
+
+	updated, appErr := c.App.PatchRank(c.AppContext, c.Params.TeamId, id, &patch)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	auditRec.Success()
+	auditRec.AddEventResultState(updated)
+	auditRec.AddEventObjectType("rank")
+	publishDepartmentsChanged(c, c.Params.TeamId)
+	writeCustomRoleJSON(w, http.StatusOK, updated)
+}
+
+func deleteRank(c *Context, w http.ResponseWriter, r *http.Request) {
+	if requireTeamManager(c); c.Err != nil {
+		return
+	}
+	id := mux.Vars(r)["rank_id"]
+	auditRec := departmentAudit(c, model.AuditEventDeleteRank)
+	defer c.LogAuditRec(auditRec)
+	model.AddEventParameterToAuditRec(auditRec, "rank_id", id)
+
+	if appErr := c.App.DeleteRank(c.AppContext, c.Params.TeamId, id); appErr != nil {
+		c.Err = appErr
+		return
+	}
+	auditRec.Success()
+	publishDepartmentsChanged(c, c.Params.TeamId)
+	ReturnStatusOK(w)
+}
+
+func reorderRanks(c *Context, w http.ResponseWriter, r *http.Request) {
+	if requireTeamManager(c); c.Err != nil {
+		return
+	}
+	departmentID := mux.Vars(r)["department_id"]
+	ids := decodeIDs(c, r)
+	if c.Err != nil {
+		return
+	}
+	auditRec := departmentAudit(c, model.AuditEventReorderRanks)
+	defer c.LogAuditRec(auditRec)
+	model.AddEventParameterToAuditRec(auditRec, "department_id", departmentID)
+	model.AddEventParameterToAuditRec(auditRec, "ids", ids)
+
+	deps, appErr := c.App.ReorderRanks(c.AppContext, c.Params.TeamId, departmentID, ids)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	auditRec.Success()
+	publishDepartmentsChanged(c, c.Params.TeamId)
+	writeCustomRoleJSON(w, http.StatusOK, deps)
+}
+
+func setMemberRanks(c *Context, w http.ResponseWriter, r *http.Request) {
+	if c.RequireTeamId().RequireUserId(); c.Err != nil {
+		return
+	}
+	if requireTeamPermission(c, c.Params.TeamId, model.PermissionAssignCustomRoles); c.Err != nil {
 		return
 	}
 	var body struct {
-		RoleIDs []string `json:"role_ids"`
+		RankIDs []string `json:"rank_ids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		c.SetInvalidParamWithErr("role_ids", err)
+		c.SetInvalidParamWithErr("rank_ids", err)
 		return
 	}
-
-	auditRec := c.MakeAuditRecord(model.AuditEventSetUserCustomRoles, model.AuditStatusFail)
+	auditRec := departmentAudit(c, model.AuditEventSetMemberRanks)
 	defer c.LogAuditRec(auditRec)
 	model.AddEventParameterToAuditRec(auditRec, "user_id", c.Params.UserId)
-	model.AddEventParameterToAuditRec(auditRec, "role_ids", body.RoleIDs)
+	model.AddEventParameterToAuditRec(auditRec, "rank_ids", body.RankIDs)
 
-	user, appErr := c.App.SetUserCustomRoles(c.AppContext, c.AppContext.Session().UserId, c.Params.UserId, body.RoleIDs)
+	member, appErr := c.App.SetMemberRanks(c.AppContext, c.AppContext.Session().UserId, c.Params.TeamId, c.Params.UserId, body.RankIDs)
 	if appErr != nil {
 		c.Err = appErr
 		return
 	}
 	auditRec.Success()
-	c.App.SanitizeProfile(user, c.IsSystemAdmin())
-	writeCustomRoleJSON(w, http.StatusOK, user)
+	publishDepartmentsChanged(c, c.Params.TeamId) // member counts changed
+	writeCustomRoleJSON(w, http.StatusOK, member)
 }
 
-// getActionableUsers lists the team members the caller may assign tasks to and review, for the assignee picker.
-func getActionableUsers(c *Context, w http.ResponseWriter, r *http.Request) {
+func getAssignableRanks(c *Context, w http.ResponseWriter, r *http.Request) {
+	if c.RequireTeamId().RequireUserId(); c.Err != nil {
+		return
+	}
+	if requireTaskTeamMember(c, c.Params.TeamId); c.Err != nil {
+		return
+	}
+	ids, appErr := c.App.AssignableRanks(c.AppContext, c.AppContext.Session().UserId, c.Params.TeamId, c.Params.UserId)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	writeCustomRoleJSON(w, http.StatusOK, ids)
+}
+
+// actionablePermissions are the permissions a rank's reach is asked about.
+var actionablePermissions = map[string]*model.Permission{
+	model.PermissionManageTasks.Id:        model.PermissionManageTasks,
+	model.PermissionManageRevisions.Id:    model.PermissionManageRevisions,
+	model.PermissionManageDailyReports.Id: model.PermissionManageDailyReports,
+}
+
+// getActionableUserIds lists the team members the caller may act on with ?permission=, for assignee pickers.
+func getActionableUserIds(c *Context, w http.ResponseWriter, r *http.Request) {
 	if c.RequireTeamId(); c.Err != nil {
+		return
+	}
+	permission, ok := actionablePermissions[r.URL.Query().Get("permission")]
+	if !ok {
+		c.SetInvalidURLParam("permission")
 		return
 	}
 	if requireTaskTeamMember(c, c.Params.TeamId); c.Err != nil {
@@ -204,7 +350,7 @@ func getActionableUsers(c *Context, w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	ids = c.App.ActionableUserIDs(c.AppContext, c.AppContext.Session().UserId, c.Params.TeamId, ids)
+	ids = c.App.ActionableUserIDs(c.AppContext, c.AppContext.Session().UserId, c.Params.TeamId, ids, permission)
 	if ids == nil {
 		ids = []string{}
 	}

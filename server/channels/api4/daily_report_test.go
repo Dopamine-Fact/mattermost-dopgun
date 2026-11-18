@@ -17,8 +17,8 @@ import (
 func TestDailyReportsAPI(t *testing.T) {
 	mainHelper.Parallel(t)
 	th := Setup(t).InitBasic(t)
-	// Assigning to or reviewing BasicUser2 needs a custom role that outranks them.
-	giveRankingRole(t, th, th.BasicUser)
+	// Assigning to or reviewing BasicUser2 needs a rank that outranks them and carries the permission.
+	rank := giveRankingRole(t, th, th.BasicUser)
 	ctx := context.Background()
 	teamID := th.BasicTeam.Id
 
@@ -184,14 +184,14 @@ func TestDailyReportsAPI(t *testing.T) {
 		report, _, err := client2.SubmitDailyReport(ctx, teamID, "split day")
 		require.NoError(t, err)
 
-		th.AddPermissionToRole(t, model.PermissionManageTasks.Id, model.TeamUserRoleId)
+		th.AddPermissionToRole(t, model.PermissionManageTasks.Id, rank.RoleName)
 		_, resp, err := th.Client.ApproveDailyReport(ctx, report.Id, report.UpdateAt)
 		require.Error(t, err)
 		CheckForbiddenStatus(t, resp)
-		th.RemovePermissionFromRole(t, model.PermissionManageTasks.Id, model.TeamUserRoleId)
+		th.RemovePermissionFromRole(t, model.PermissionManageTasks.Id, rank.RoleName)
 
-		th.AddPermissionToRole(t, model.PermissionManageDailyReports.Id, model.TeamUserRoleId)
-		defer th.RemovePermissionFromRole(t, model.PermissionManageDailyReports.Id, model.TeamUserRoleId)
+		th.AddPermissionToRole(t, model.PermissionManageDailyReports.Id, rank.RoleName)
+		defer th.RemovePermissionFromRole(t, model.PermissionManageDailyReports.Id, rank.RoleName)
 		list, _, err := th.Client.GetDailyReports(ctx, teamID, "", "", th.BasicUser2.Id)
 		require.NoError(t, err)
 		require.NotEmpty(t, list)

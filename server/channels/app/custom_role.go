@@ -312,3 +312,28 @@ func (a *App) SetMemberRanks(rctx request.CTX, actorID, teamID, userID string, r
 	}
 	return a.updateTeamMemberRolesInternal(rctx, teamID, userID, strings.Join(names, " "), false)
 }
+
+// AssignableRanks returns the ids of the team's ranks actorID may give userID or take away: none for guests, bots,
+// non-members and, unless a system admin, the actor themself.
+func (a *App) AssignableRanks(rctx request.CTX, actorID, teamID, userID string) ([]string, *model.AppError) {
+	user, appErr := a.GetUser(rctx, userID)
+	if appErr != nil {
+		return nil, appErr
+	}
+	member, appErr := a.GetTeamMember(rctx, teamID, userID)
+	if user.IsGuest() || user.IsBot || appErr != nil || member.DeleteAt != 0 || (actorID == userID && !user.IsSystemAdmin()) {
+		return []string{}, nil
+	}
+	ranks, err := a.Srv().Store().CustomRole().GetForTeam(teamID)
+	if err != nil {
+		return nil, customRoleStoreError("AssignableRanks", err)
+	}
+	ids := []string{}
+	// shortcut: CanAssignRank reloads the team's ranks per rank; fine for tens of ranks, batch it if teams grow far past that.
+	for _, r := range ranks {
+		if a.CanAssignRank(rctx, actorID, userID, r.Id) {
+			ids = append(ids, r.Id)
+		}
+	}
+	return ids, nil
+}
