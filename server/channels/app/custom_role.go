@@ -22,6 +22,12 @@ func customRoleStoreError(where string, err error) *model.AppError {
 	if _, ok := errors.AsType[*store.ErrInvalidInput](err); ok {
 		return model.NewAppError(where, "app.custom_role.invalid_order.app_error", nil, "", http.StatusBadRequest).Wrap(err)
 	}
+	if _, ok := errors.AsType[*store.ErrConflict](err); ok {
+		return model.NewAppError(where, "app.custom_role.name_taken.app_error", nil, "", http.StatusBadRequest).Wrap(err)
+	}
+	if appErr, ok := errors.AsType[*model.AppError](err); ok {
+		return appErr
+	}
 	return model.NewAppError(where, "app.custom_role.store.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
 }
 
@@ -34,28 +40,30 @@ func checkCustomRolePermissions(where string, perms []string) *model.AppError {
 	return nil
 }
 
-// checkCustomRoleNameFree rejects a display name another live role already uses, ignoring case and surrounding spaces.
-func checkCustomRoleNameFree(where string, roles []*model.CustomRole, name, exceptID string) *model.AppError {
-	name = strings.TrimSpace(name)
-	for _, r := range roles {
-		if r.Id != exceptID && strings.EqualFold(r.DisplayName, name) {
-			return model.NewAppError(where, "app.custom_role.name_taken.app_error", nil, "", http.StatusBadRequest)
-		}
+// teamRank returns a live rank of teamID; another team's rank is reported as missing.
+func (a *App) teamRank(where, teamID, id string) (*model.CustomRole, *model.AppError) {
+	r, err := a.Srv().Store().CustomRole().Get(id)
+	if err != nil {
+		return nil, customRoleStoreError(where, err)
 	}
-	return nil
+	if r.TeamId != teamID {
+		return nil, model.NewAppError(where, "app.custom_role.not_found.app_error", nil, "id="+id, http.StatusNotFound)
+	}
+	return r, nil
 }
 
-// GetCustomRoles returns the live custom roles in list order, with permissions taken from their native roles.
-func (a *App) GetCustomRoles() ([]*model.CustomRole, *model.AppError) {
-	roles, err := a.Srv().Store().CustomRole().GetAll()
+// teamRanksWithPermissions returns the team's live ranks, ordered by department then position, with the permissions
+// of their native roles.
+func (a *App) teamRanksWithPermissions(teamID string) ([]*model.CustomRole, *model.AppError) {
+	ranks, err := a.Srv().Store().CustomRole().GetForTeam(teamID)
 	if err != nil {
-		return nil, customRoleStoreError("GetCustomRoles", err)
+		return nil, customRoleStoreError("teamRanksWithPermissions", err)
 	}
-	if len(roles) == 0 {
-		return roles, nil
+	if len(ranks) == 0 {
+		return ranks, nil
 	}
-	names := make([]string, len(roles))
-	for i, r := range roles {
+	names := make([]string, len(ranks))
+	for i, r := range ranks {
 		names[i] = r.RoleName
 	}
 	natives, appErr := a.GetRolesByNames(names)
@@ -66,33 +74,41 @@ func (a *App) GetCustomRoles() ([]*model.CustomRole, *model.AppError) {
 	for _, n := range natives {
 		perms[n.Name] = n.Permissions
 	}
-	for _, r := range roles {
+	for _, r := range ranks {
 		r.Permissions = perms[r.RoleName]
 		if r.Permissions == nil {
 			r.Permissions = []string{}
 		}
 	}
-	return roles, nil
+	return ranks, nil
 }
 
-// CreateCustomRole adds a role at the bottom of the list, backed by a native system-scope role named cr_<id>.
-func (a *App) CreateCustomRole(rctx request.CTX, r *model.CustomRole) (*model.CustomRole, *model.AppError) {
-	if appErr := checkCustomRolePermissions("CreateCustomRole", r.Permissions); appErr != nil {
+// CreateRank adds a rank at the bottom of its department, backed by a native role named rk_<id> that members hold
+// through their team roles.
+func (a *App) CreateRank(rctx request.CTX, teamID, departmentID string, r *model.CustomRole) (*model.CustomRole, *model.AppError) {
+	if appErr := checkCustomRolePermissions("CreateRank", r.Permissions); appErr != nil {
 		return nil, appErr
 	}
-	existing, appErr := a.GetCustomRoles()
-	if appErr != nil {
+	if _, appErr := a.teamDepartment("CreateRank", teamID, departmentID); appErr != nil {
 		return nil, appErr
 	}
-	if appErr = checkCustomRoleNameFree("CreateCustomRole", existing, r.DisplayName, ""); appErr != nil {
-		return nil, appErr
+	ranks, err := a.Srv().Store().CustomRole().GetForTeam(teamID)
+	if err != nil {
+		return nil, customRoleStoreError("CreateRank", err)
 	}
 
 	r.Id = ""
-	// shortcut: two concurrent creates can share a position; GetAll orders ties by CreateAt and a reorder fixes it.
-	r.Position = len(existing)
+	r.TeamId = teamID
+	r.DepartmentId = departmentID
+	// shortcut: two concurrent creates can share a position; GetForTeam orders ties by CreateAt and a reorder fixes it.
+	r.Position = 0
+	for _, other := range ranks {
+		if other.DepartmentId == departmentID {
+			r.Position++
+		}
+	}
 	r.PreSave()
-	if appErr = r.IsValid(); appErr != nil {
+	if appErr := r.IsValid(); appErr != nil {
 		return nil, appErr
 	}
 	perms := r.Permissions
@@ -107,188 +123,192 @@ func (a *App) CreateCustomRole(rctx request.CTX, r *model.CustomRole) (*model.Cu
 	saved, err := a.Srv().Store().CustomRole().Save(r)
 	if err != nil {
 		if _, delErr := a.DeleteRole(native.Id); delErr != nil {
-			rctx.Logger().Warn("Failed to roll back native role of a custom role", mlog.String("role", native.Name), mlog.Err(delErr))
+			rctx.Logger().Warn("Failed to roll back native role of a rank", mlog.String("role", native.Name), mlog.Err(delErr))
 		}
-		return nil, customRoleStoreError("CreateCustomRole", err)
+		return nil, customRoleStoreError("CreateRank", err)
 	}
 	saved.Permissions = native.Permissions
 	return saved, nil
 }
 
-// PatchCustomRole changes a role's metadata and, through the native role, its permissions.
-func (a *App) PatchCustomRole(rctx request.CTX, id string, p *model.CustomRolePatch) (*model.CustomRole, *model.AppError) {
+// PatchRank changes a rank's name, color and, through its native role, permissions.
+func (a *App) PatchRank(rctx request.CTX, teamID, id string, p *model.CustomRolePatch) (*model.CustomRole, *model.AppError) {
 	if p.Permissions != nil {
-		if appErr := checkCustomRolePermissions("PatchCustomRole", *p.Permissions); appErr != nil {
+		if appErr := checkCustomRolePermissions("PatchRank", *p.Permissions); appErr != nil {
 			return nil, appErr
 		}
 	}
-	roles, appErr := a.GetCustomRoles()
+	rank, appErr := a.teamRank("PatchRank", teamID, id)
 	if appErr != nil {
 		return nil, appErr
 	}
-	idx := slices.IndexFunc(roles, func(r *model.CustomRole) bool { return r.Id == id })
-	if idx < 0 {
-		return nil, model.NewAppError("PatchCustomRole", "app.custom_role.not_found.app_error", nil, "id="+id, http.StatusNotFound)
-	}
-	role := roles[idx]
-	if p.DisplayName != nil {
-		if appErr = checkCustomRoleNameFree("PatchCustomRole", roles, *p.DisplayName, id); appErr != nil {
-			return nil, appErr
-		}
-	}
-
-	role.Patch(p)
-	role.PreUpdate()
-	if appErr = role.IsValid(); appErr != nil {
+	rank.Patch(p)
+	rank.PreUpdate()
+	if appErr = rank.IsValid(); appErr != nil {
 		return nil, appErr
 	}
-
-	if p.Permissions != nil {
-		native, appErr := a.GetRoleByName(rctx, role.RoleName)
-		if appErr != nil {
-			return nil, appErr
-		}
-		native, appErr = a.PatchRole(native, &model.RolePatch{Permissions: p.Permissions})
-		if appErr != nil {
-			return nil, appErr
-		}
-		role.Permissions = native.Permissions
-	}
-
-	updated, err := a.Srv().Store().CustomRole().Update(role)
+	// The row goes first: a taken name stops the patch before the native role changes.
+	updated, err := a.Srv().Store().CustomRole().Update(rank)
 	if err != nil {
-		return nil, customRoleStoreError("PatchCustomRole", err)
+		return nil, customRoleStoreError("PatchRank", err)
 	}
-	updated.Permissions = role.Permissions
+
+	native, appErr := a.GetRoleByName(rctx, rank.RoleName)
+	if appErr != nil {
+		return nil, appErr
+	}
+	native.DisplayName = rank.DisplayName
+	if p.Permissions != nil {
+		native.Permissions = *p.Permissions
+	}
+	if native, appErr = a.UpdateRole(native); appErr != nil {
+		return nil, appErr
+	}
+	if appErr = a.sendUpdatedRoleEvent(native); appErr != nil {
+		return nil, appErr
+	}
+	updated.Permissions = native.Permissions
 	return updated, nil
 }
 
-// ReorderCustomRoles sets the list order; orderedIDs must name every live role exactly once.
-func (a *App) ReorderCustomRoles(rctx request.CTX, orderedIDs []string) ([]*model.CustomRole, *model.AppError) {
-	if err := a.Srv().Store().CustomRole().SetPositions(orderedIDs, model.GetMillis()); err != nil {
-		return nil, customRoleStoreError("ReorderCustomRoles", err)
+// ReorderRanks sets a department's rank order; orderedIDs must name every rank of it once.
+func (a *App) ReorderRanks(rctx request.CTX, teamID, departmentID string, orderedIDs []string) ([]*model.DepartmentWithRanks, *model.AppError) {
+	if _, appErr := a.teamDepartment("ReorderRanks", teamID, departmentID); appErr != nil {
+		return nil, appErr
 	}
-	return a.GetCustomRoles()
+	if err := a.Srv().Store().CustomRole().SetPositions(departmentID, orderedIDs, model.GetMillis()); err != nil {
+		return nil, customRoleStoreError("ReorderRanks", err)
+	}
+	return a.GetTeamDepartments(rctx, teamID)
 }
 
-// DeleteCustomRole removes a role, strips it from every user and closes the gap in the list.
-func (a *App) DeleteCustomRole(rctx request.CTX, id string) *model.AppError {
-	role, err := a.Srv().Store().CustomRole().Get(id)
-	if err != nil {
-		return customRoleStoreError("DeleteCustomRole", err)
+// DeleteRank removes a rank, strips it from every member and closes the gap in its department.
+func (a *App) DeleteRank(rctx request.CTX, teamID, id string) *model.AppError {
+	rank, appErr := a.teamRank("DeleteRank", teamID, id)
+	if appErr != nil {
+		return appErr
 	}
-	// The native role goes first so its permissions drop at once, even if a later step fails; a retry still finds
-	// the metadata row and finishes the job.
-	if native, appErr := a.GetRoleByName(rctx, role.RoleName); appErr == nil && native.DeleteAt == 0 {
-		if _, appErr = a.DeleteRole(native.Id); appErr != nil {
-			return appErr
+	if appErr = a.deleteRank(rctx, rank); appErr != nil {
+		return appErr
+	}
+
+	ranks, err := a.Srv().Store().CustomRole().GetForTeam(teamID)
+	if err != nil {
+		return customRoleStoreError("DeleteRank", err)
+	}
+	var ids []string
+	for _, r := range ranks {
+		if r.DepartmentId == rank.DepartmentId {
+			ids = append(ids, r.Id)
 		}
 	}
-	now := model.GetMillis()
-	// Metadata goes next so the role can no longer be assigned while users are stripped.
-	if err = a.Srv().Store().CustomRole().Delete(id, now); err != nil {
-		return customRoleStoreError("DeleteCustomRole", err)
-	}
-
-	userIDs, err := a.Srv().Store().User().RemoveRoleFromAll(role.RoleName)
-	if err != nil {
-		return customRoleStoreError("DeleteCustomRole", err)
-	}
-	for _, userID := range userIDs {
-		a.refreshUserRoles(rctx, userID)
-	}
-
-	remaining, err := a.Srv().Store().CustomRole().GetAll()
-	if err != nil {
-		return customRoleStoreError("DeleteCustomRole", err)
-	}
-	ids := make([]string, len(remaining))
-	for i, r := range remaining {
-		ids[i] = r.Id
-	}
-	if err = a.Srv().Store().CustomRole().SetPositions(ids, now); err != nil {
-		rctx.Logger().Warn("Failed to compact custom role positions", mlog.Err(err))
+	if err = a.Srv().Store().CustomRole().SetPositions(rank.DepartmentId, ids, model.GetMillis()); err != nil {
+		rctx.Logger().Warn("Failed to compact rank positions", mlog.Err(err))
 	}
 	return nil
 }
 
-// refreshUserRoles pushes a user's stored roles to their sessions, caches and clients after a bulk change.
-func (a *App) refreshUserRoles(rctx request.CTX, userID string) {
-	// The bulk update bypassed the user cache, so drop it before reading the new roles back.
-	a.InvalidateCacheForUser(userID)
-	user, err := a.Srv().Store().User().Get(rctx, userID)
+// deleteRank deletes the rank and strips it from the team's members, leaving positions alone.
+func (a *App) deleteRank(rctx request.CTX, rank *model.CustomRole) *model.AppError {
+	// The native role goes first so its permissions drop at once, even if a later step fails; a retry still finds
+	// the metadata row and finishes the job.
+	if native, appErr := a.GetRoleByName(rctx, rank.RoleName); appErr == nil && native.DeleteAt == 0 {
+		if _, appErr = a.DeleteRole(native.Id); appErr != nil {
+			return appErr
+		}
+	}
+	// Metadata goes next so the rank can no longer be assigned while members are stripped.
+	if err := a.Srv().Store().CustomRole().Delete(rank.Id, model.GetMillis()); err != nil {
+		return customRoleStoreError("DeleteRank", err)
+	}
+	userIDs, err := a.Srv().Store().Team().RemoveRoleFromAllMembers(rank.TeamId, rank.RoleName)
 	if err != nil {
-		rctx.Logger().Warn("Failed to reload user after custom role removal", mlog.String("user_id", userID), mlog.Err(err))
-		return
+		return customRoleStoreError("DeleteRank", err)
 	}
-	if _, err = a.Srv().Store().Session().UpdateRoles(userID, user.Roles); err != nil {
-		rctx.Logger().Warn("Failed to update session roles", mlog.String("user_id", userID), mlog.Err(err))
+	for _, userID := range userIDs {
+		a.ClearSessionCacheForUser(userID)
+		a.invalidateCacheForUserTeams(userID)
+		member, appErr := a.GetTeamMember(rctx, rank.TeamId, userID)
+		if appErr != nil {
+			rctx.Logger().Warn("Failed to reload team member after rank removal", mlog.String("user_id", userID), mlog.Err(appErr))
+			continue
+		}
+		if appErr = a.sendUpdatedTeamMemberEvent(member); appErr != nil {
+			rctx.Logger().Warn("Failed to send team member update", mlog.String("user_id", userID), mlog.Err(appErr))
+		}
 	}
-	a.ClearSessionCacheForUser(userID)
-	message := model.NewWebSocketEvent(model.WebsocketEventUserRoleUpdated, "", "", userID, nil, "")
-	message.Add("user_id", userID)
-	message.Add("roles", user.Roles)
-	a.Publish(message)
+	return nil
 }
 
-// SetUserCustomRoles replaces the custom roles a user holds. Every role added or removed must be one actorID may
-// assign, on a user actorID may act on.
-func (a *App) SetUserCustomRoles(rctx request.CTX, actorID, userID string, roleIDs []string) (*model.User, *model.AppError) {
+// SetMemberRanks replaces the ranks a member holds in teamID. Every rank added or removed must be one actorID may
+// assign to that member.
+func (a *App) SetMemberRanks(rctx request.CTX, actorID, teamID, userID string, rankIDs []string) (*model.TeamMember, *model.AppError) {
 	user, appErr := a.GetUser(rctx, userID)
 	if appErr != nil {
 		return nil, appErr
 	}
+	invalidTarget := model.NewAppError("SetMemberRanks", "app.custom_role.invalid_target.app_error", nil, "", http.StatusBadRequest)
 	if user.IsGuest() || user.IsBot {
-		return nil, model.NewAppError("SetUserCustomRoles", "app.custom_role.invalid_target.app_error", nil, "", http.StatusBadRequest)
+		return nil, invalidTarget
 	}
-	byID, err := a.customRolesByID()
-	if err != nil {
-		return nil, customRoleStoreError("SetUserCustomRoles", err)
+	member, appErr := a.GetTeamMember(rctx, teamID, userID)
+	if appErr != nil || member.DeleteAt != 0 {
+		return nil, invalidTarget
 	}
+	tr, appErr := a.loadTeamRanks(teamID)
+	if appErr != nil {
+		return nil, appErr
+	}
+
 	want := map[string]bool{}
-	for _, id := range roleIDs {
-		if _, ok := byID[id]; !ok {
-			return nil, model.NewAppError("SetUserCustomRoles", "app.custom_role.not_found.app_error", nil, "id="+id, http.StatusBadRequest)
+	byDept := map[string]string{}
+	for _, id := range rankIDs {
+		r, ok := tr.byID[id]
+		if !ok {
+			return nil, model.NewAppError("SetMemberRanks", "app.custom_role.not_found.app_error", nil, "id="+id, http.StatusBadRequest)
 		}
+		if other, taken := byDept[r.DepartmentId]; taken && other != id {
+			return nil, model.NewAppError("SetMemberRanks", "app.custom_role.one_per_department.app_error", nil, "", http.StatusBadRequest)
+		}
+		byDept[r.DepartmentId] = id
 		want[id] = true
 	}
 	have := map[string]bool{}
-	for _, r := range customRolesOf(user, byID) {
+	for _, r := range tr.of(member) {
 		have[r.Id] = true
 	}
-
 	var changed []string
-	for id := range byID {
+	for id := range tr.byID {
 		if want[id] != have[id] {
 			changed = append(changed, id)
 		}
 	}
-	// Nobody but a system admin changes their own roles: a lead could otherwise take a lower role's permissions.
-	if len(changed) > 0 && actorID == userID && !user.IsSystemAdmin() {
-		return nil, model.NewAppError("SetUserCustomRoles", "app.custom_role.not_outranked.app_error", nil, "self", http.StatusForbidden)
+	if len(changed) == 0 {
+		return member, nil
 	}
-	if len(changed) > 0 && !a.CanActOnUser(rctx, actorID, userID, "") {
-		return nil, model.NewAppError("SetUserCustomRoles", "app.custom_role.not_outranked.app_error", nil, "", http.StatusForbidden)
+	// Nobody but a system admin changes their own ranks: a lead could otherwise take a lower rank's permissions.
+	if actorID == userID && !user.IsSystemAdmin() {
+		return nil, model.NewAppError("SetMemberRanks", "app.custom_role.not_outranked.app_error", nil, "self", http.StatusForbidden)
 	}
 	for _, id := range changed {
-		if !a.CanAssignRole(rctx, actorID, id) {
-			return nil, model.NewAppError("SetUserCustomRoles", "app.custom_role.not_outranked.app_error", nil, "role_id="+id, http.StatusForbidden)
+		if !a.CanAssignRank(rctx, actorID, userID, id) {
+			return nil, model.NewAppError("SetMemberRanks", "app.custom_role.not_outranked.app_error", nil, "rank_id="+id, http.StatusForbidden)
 		}
 	}
 
-	var names []string
-	for name := range strings.FieldsSeq(user.Roles) {
-		if !model.IsCustomRoleName(name) {
-			names = append(names, name)
-		}
-	}
 	ordered := make([]*model.CustomRole, 0, len(want))
 	for id := range want {
-		ordered = append(ordered, byID[id])
+		ordered = append(ordered, tr.byID[id])
 	}
-	slices.SortFunc(ordered, func(x, y *model.CustomRole) int { return x.Position - y.Position })
+	slices.SortFunc(ordered, func(x, y *model.CustomRole) int {
+		if d := tr.deptPos[x.DepartmentId] - tr.deptPos[y.DepartmentId]; d != 0 {
+			return d
+		}
+		return x.Position - y.Position
+	})
+	names := strings.Fields(model.RemoveRankRoles(member.Roles))
 	for _, r := range ordered {
 		names = append(names, r.RoleName)
 	}
-	return a.updateUserRolesWithUser(rctx, user, strings.Join(names, " "), true)
+	return a.updateTeamMemberRolesInternal(rctx, teamID, userID, strings.Join(names, " "), false)
 }

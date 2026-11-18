@@ -12,6 +12,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -58,6 +59,11 @@ func (a *App) CreateTeam(rctx request.CTX, team *model.Team) (*model.Team, *mode
 		default:
 			return nil, model.NewAppError("CreateTeam", "app.team.save.app_error", nil, "", http.StatusInternalServerError).Wrap(err)
 		}
+	}
+
+	// GetTeamDepartments creates it later if this fails, so the team stands either way.
+	if _, appErr := a.ensureStudioDepartment(rteam.Id); appErr != nil {
+		rctx.Logger().Warn("Failed to create the studio department", mlog.String("team_id", rteam.Id), mlog.Err(appErr))
 	}
 
 	return rteam, nil
@@ -295,7 +301,17 @@ func (a *App) GetSchemeRolesForTeam(teamID string) (string, string, string, *mod
 // UpdateTeamMemberRoles updates the roles for a team member.
 // This is the public API used by REST endpoints and plugins.
 // It enforces strict validation requiring either SchemeUser or SchemeGuest to be true.
+//
+// Ranks (rk_*) the member holds are kept when newRoles names none, so callers that only know scheme roles cannot drop
+// them; SetMemberRanks manages them. A guest holds no ranks.
 func (a *App) UpdateTeamMemberRoles(rctx request.CTX, teamID string, userID string, newRoles string) (*model.TeamMember, *model.AppError) {
+	if len(model.RankIdsFromRoles(newRoles)) == 0 && !slices.Contains(strings.Fields(newRoles), model.TeamGuestRoleId) {
+		if member, err := a.Srv().Store().Team().GetMember(rctx, teamID, userID); err == nil {
+			for _, id := range model.RankIdsFromRoles(member.ExplicitRoles) {
+				newRoles += " " + model.RankRoleNameFromId(id)
+			}
+		}
+	}
 	return a.updateTeamMemberRolesInternal(rctx, teamID, userID, newRoles, false)
 }
 

@@ -29,6 +29,12 @@ type Department struct {
 	DeleteAt int64  `json:"delete_at"`
 }
 
+// DepartmentWithRanks is a department and its ranks in order, as the Departmanlar tab shows them.
+type DepartmentWithRanks struct {
+	*Department
+	Ranks []*CustomRole `json:"ranks"`
+}
+
 type DepartmentPatch struct {
 	Name  *string `json:"name"`
 	Color *string `json:"color"`

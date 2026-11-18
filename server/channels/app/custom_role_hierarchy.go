@@ -11,44 +11,79 @@ import (
 	"github.com/mattermost/mattermost/server/public/shared/request"
 )
 
-// outranks reports whether role a sits above role b in the list and the two do not belong to different departments.
-func outranks(a, b *model.CustomRole) bool {
-	return a.Position < b.Position && (a.Department == "" || b.Department == "" || a.Department == b.Department)
+// rankOutranks reports whether rank a sits above rank b: a is studio-wide and b is not, or both are in one department
+// and a comes first. studio holds the ids of Stüdyo geneli departments.
+func rankOutranks(a, b *model.CustomRole, studio map[string]bool) bool {
+	if studio[a.DepartmentId] && !studio[b.DepartmentId] {
+		return true
+	}
+	return a.DepartmentId == b.DepartmentId && a.Position < b.Position
 }
 
-// canActOn reports whether one of the actor's roles outranks every role of the target. A target without custom roles
-// can be acted on by anyone holding at least one.
-func canActOn(actor, target []*model.CustomRole) bool {
-	if len(target) == 0 {
-		return len(actor) > 0
+// rankOutranksTarget reports whether rank r outranks a person holding target: they hold no rank; or they hold a
+// studio rank and r outranks it; or they hold none and r outranks their rank in at least one department.
+func rankOutranksTarget(r *model.CustomRole, target []*model.CustomRole, studio map[string]bool) bool {
+	if i := slices.IndexFunc(target, func(t *model.CustomRole) bool { return studio[t.DepartmentId] }); i >= 0 {
+		return rankOutranks(r, target[i], studio)
 	}
-	return slices.ContainsFunc(actor, func(a *model.CustomRole) bool {
-		return !slices.ContainsFunc(target, func(t *model.CustomRole) bool { return !outranks(a, t) })
+	return len(target) == 0 || slices.ContainsFunc(target, func(t *model.CustomRole) bool { return rankOutranks(r, t, studio) })
+}
+
+// canActWithRanks reports whether one of actor's ranks both carries permission and outranks target.
+func canActWithRanks(actor, target []*model.CustomRole, permission *model.Permission, studio map[string]bool) bool {
+	return slices.ContainsFunc(actor, func(r *model.CustomRole) bool {
+		return slices.Contains(r.Permissions, permission.Id) && rankOutranksTarget(r, target, studio)
 	})
 }
 
-// customRolesOf returns the live custom roles a user holds; roles missing from byID are ignored.
-func customRolesOf(user *model.User, byID map[string]*model.CustomRole) []*model.CustomRole {
-	var roles []*model.CustomRole
-	for _, id := range model.CustomRoleIdsFromRoles(user.Roles) {
-		if r, ok := byID[id]; ok {
-			roles = append(roles, r)
-		}
-	}
-	return roles
+// teamRanks is a team's live ranks with their permissions, and where its departments sit.
+type teamRanks struct {
+	byID    map[string]*model.CustomRole
+	studio  map[string]bool
+	deptPos map[string]int
 }
 
-// customRolesByID loads the live custom roles without their permissions.
-func (a *App) customRolesByID() (map[string]*model.CustomRole, error) {
-	roles, err := a.Srv().Store().CustomRole().GetAll()
+func (a *App) loadTeamRanks(teamID string) (*teamRanks, *model.AppError) {
+	ranks, appErr := a.teamRanksWithPermissions(teamID)
+	if appErr != nil {
+		return nil, appErr
+	}
+	deps, err := a.Srv().Store().Department().GetForTeam(teamID)
 	if err != nil {
-		return nil, err
+		return nil, customRoleStoreError("loadTeamRanks", err)
 	}
-	byID := make(map[string]*model.CustomRole, len(roles))
-	for _, r := range roles {
-		byID[r.Id] = r
+	tr := &teamRanks{byID: make(map[string]*model.CustomRole, len(ranks)), studio: map[string]bool{}, deptPos: make(map[string]int, len(deps))}
+	for _, r := range ranks {
+		tr.byID[r.Id] = r
 	}
-	return byID, nil
+	for _, d := range deps {
+		tr.studio[d.Id] = d.IsStudio
+		tr.deptPos[d.Id] = d.Position
+	}
+	return tr, nil
+}
+
+// of returns the live ranks a team member holds; nil for a missing or departed member.
+func (tr *teamRanks) of(member *model.TeamMember) []*model.CustomRole {
+	if member == nil || member.DeleteAt != 0 {
+		return nil
+	}
+	var ranks []*model.CustomRole
+	for _, id := range model.RankIdsFromRoles(member.ExplicitRoles) {
+		if r, ok := tr.byID[id]; ok {
+			ranks = append(ranks, r)
+		}
+	}
+	return ranks
+}
+
+// memberRanks returns the ranks userID holds in the team; none when they are not a member.
+func (a *App) memberRanks(rctx request.CTX, tr *teamRanks, teamID, userID string) []*model.CustomRole {
+	member, appErr := a.GetTeamMember(rctx, teamID, userID)
+	if appErr != nil {
+		return nil
+	}
+	return tr.of(member)
 }
 
 // bypassesHierarchy reports whether the actor is a system admin, or a team admin of teamID when it is set.
@@ -63,9 +98,9 @@ func (a *App) bypassesHierarchy(rctx request.CTX, actor *model.User, teamID stri
 	return appErr == nil && member.DeleteAt == 0 && member.SchemeAdmin
 }
 
-// CanActOnUser applies the custom role hierarchy: may actorID act on targetID within teamID ("" for no team)?
-// Admins who bypass the hierarchy rank above every custom role, so only other admins act on them.
-func (a *App) CanActOnUser(rctx request.CTX, actorID, targetID, teamID string) bool {
+// CanActOnUser applies the rank hierarchy: may actorID act on targetID within teamID with permission? The permission
+// must come from a rank that outranks the target. Admins rank above every rank, so only other admins act on them.
+func (a *App) CanActOnUser(rctx request.CTX, actorID, targetID, teamID string, permission *model.Permission) bool {
 	if actorID == targetID {
 		return true
 	}
@@ -77,41 +112,20 @@ func (a *App) CanActOnUser(rctx request.CTX, actorID, targetID, teamID string) b
 		return true
 	}
 	target, appErr := a.GetUser(rctx, targetID)
-	if appErr != nil || a.bypassesHierarchy(rctx, target, teamID) {
+	if appErr != nil || teamID == "" || a.bypassesHierarchy(rctx, target, teamID) {
 		return false
 	}
-	byID, err := a.customRolesByID()
-	if err != nil {
-		rctx.Logger().Warn("Failed to load custom roles", mlog.Err(err))
-		return false
-	}
-	return canActOn(customRolesOf(actor, byID), customRolesOf(target, byID))
-}
-
-// CanAssignRole reports whether actorID may give or remove the custom role roleID: one of the actor's roles must
-// outrank it.
-func (a *App) CanAssignRole(rctx request.CTX, actorID, roleID string) bool {
-	actor, appErr := a.GetUser(rctx, actorID)
+	tr, appErr := a.loadTeamRanks(teamID)
 	if appErr != nil {
+		rctx.Logger().Warn("Failed to load ranks", mlog.Err(appErr))
 		return false
 	}
-	byID, err := a.customRolesByID()
-	if err != nil {
-		rctx.Logger().Warn("Failed to load custom roles", mlog.Err(err))
-		return false
-	}
-	role, ok := byID[roleID]
-	if !ok {
-		return false
-	}
-	if actor.IsSystemAdmin() {
-		return true
-	}
-	return slices.ContainsFunc(customRolesOf(actor, byID), func(r *model.CustomRole) bool { return outranks(r, role) })
+	return canActWithRanks(a.memberRanks(rctx, tr, teamID, actorID), a.memberRanks(rctx, tr, teamID, targetID), permission, tr.studio)
 }
 
-// ActionableUserIDs returns, in their original order, the candidates actorID may act on within teamID.
-func (a *App) ActionableUserIDs(rctx request.CTX, actorID, teamID string, candidates []string) []string {
+// ActionableUserIDs returns, in their original order, the candidates actorID may act on within teamID with
+// permission.
+func (a *App) ActionableUserIDs(rctx request.CTX, actorID, teamID string, candidates []string, permission *model.Permission) []string {
 	actor, appErr := a.GetUser(rctx, actorID)
 	if appErr != nil {
 		return nil
@@ -119,32 +133,73 @@ func (a *App) ActionableUserIDs(rctx request.CTX, actorID, teamID string, candid
 	if a.bypassesHierarchy(rctx, actor, teamID) {
 		return candidates
 	}
-	byID, err := a.customRolesByID()
-	if err != nil {
-		rctx.Logger().Warn("Failed to load custom roles", mlog.Err(err))
-		return nil
+	self := slices.DeleteFunc(slices.Clone(candidates), func(id string) bool { return id != actorID })
+	if teamID == "" {
+		return self
+	}
+	tr, appErr := a.loadTeamRanks(teamID)
+	if appErr != nil {
+		rctx.Logger().Warn("Failed to load ranks", mlog.Err(appErr))
+		return self
+	}
+	mine := a.memberRanks(rctx, tr, teamID, actorID)
+	if len(mine) == 0 {
+		return self
 	}
 	users, appErr := a.GetUsers(rctx, slices.Clone(candidates)) // GetMany may reorder its input
 	if appErr != nil {
 		rctx.Logger().Warn("Failed to load users", mlog.Err(appErr))
-		return nil
+		return self
 	}
-	teamAdmins := map[string]bool{}
-	if teamID != "" {
-		members, appErr := a.GetTeamMembersByIds(teamID, slices.Clone(candidates), nil)
-		if appErr != nil {
-			rctx.Logger().Warn("Failed to load team members", mlog.Err(appErr))
-			return nil
-		}
-		for _, m := range members {
-			teamAdmins[m.UserId] = m.DeleteAt == 0 && m.SchemeAdmin
-		}
+	members, appErr := a.GetTeamMembersByIds(teamID, slices.Clone(candidates), nil)
+	if appErr != nil {
+		rctx.Logger().Warn("Failed to load team members", mlog.Err(appErr))
+		return self
 	}
-	mine := customRolesOf(actor, byID)
+	byUser := make(map[string]*model.TeamMember, len(members))
+	for _, m := range members {
+		byUser[m.UserId] = m
+	}
 	allowed := make(map[string]bool, len(users))
 	for _, u := range users {
-		admin := u.IsSystemAdmin() || teamAdmins[u.Id]
-		allowed[u.Id] = u.Id == actorID || (!admin && canActOn(mine, customRolesOf(u, byID)))
+		m := byUser[u.Id]
+		admin := u.IsSystemAdmin() || (m != nil && m.DeleteAt == 0 && m.SchemeAdmin)
+		allowed[u.Id] = u.Id == actorID || (!admin && canActWithRanks(mine, tr.of(m), permission, tr.studio))
 	}
 	return slices.DeleteFunc(slices.Clone(candidates), func(id string) bool { return !allowed[id] })
+}
+
+// CanAssignRank reports whether actorID may give rankID to targetID or take it away. Unless an admin, the actor
+// needs one rank carrying assign_custom_roles that outranks the rank itself, the target's current rank in its
+// department, and the target's studio rank if they hold one.
+func (a *App) CanAssignRank(rctx request.CTX, actorID, targetID, rankID string) bool {
+	k, err := a.Srv().Store().CustomRole().Get(rankID)
+	if err != nil {
+		return false
+	}
+	actor, appErr := a.GetUser(rctx, actorID)
+	if appErr != nil {
+		return false
+	}
+	if a.bypassesHierarchy(rctx, actor, k.TeamId) {
+		return true
+	}
+	target, appErr := a.GetUser(rctx, targetID)
+	if appErr != nil || a.bypassesHierarchy(rctx, target, k.TeamId) {
+		return false
+	}
+	tr, appErr := a.loadTeamRanks(k.TeamId)
+	if appErr != nil {
+		rctx.Logger().Warn("Failed to load ranks", mlog.Err(appErr))
+		return false
+	}
+	held := a.memberRanks(rctx, tr, k.TeamId, targetID)
+	return slices.ContainsFunc(a.memberRanks(rctx, tr, k.TeamId, actorID), func(r *model.CustomRole) bool {
+		if !slices.Contains(r.Permissions, model.PermissionAssignCustomRoles.Id) || !rankOutranks(r, k, tr.studio) {
+			return false
+		}
+		return !slices.ContainsFunc(held, func(t *model.CustomRole) bool {
+			return (t.DepartmentId == k.DepartmentId || tr.studio[t.DepartmentId]) && !rankOutranks(r, t, tr.studio)
+		})
+	})
 }

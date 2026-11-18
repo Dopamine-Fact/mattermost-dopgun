@@ -11,7 +11,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -2090,18 +2089,7 @@ func (a *App) UpdateUserRoles(rctx request.CTX, userID string, newRoles string, 
 	return a.UpdateUserRolesWithUser(rctx, user, newRoles, sendWebSocketEvent)
 }
 
-// UpdateUserRolesWithUser sets a user's roles. Custom roles (cr_*) the user holds are kept when newRoles names none,
-// so callers that only know built-in roles cannot drop them; SetUserCustomRoles manages them.
 func (a *App) UpdateUserRolesWithUser(rctx request.CTX, user *model.User, newRoles string, sendWebSocketEvent bool) (*model.User, *model.AppError) {
-	if len(model.CustomRoleIdsFromRoles(newRoles)) == 0 && !slices.Contains(strings.Fields(newRoles), model.SystemGuestRoleId) {
-		for _, id := range model.CustomRoleIdsFromRoles(user.Roles) {
-			newRoles += " " + model.CustomRoleNameFromId(id)
-		}
-	}
-	return a.updateUserRolesWithUser(rctx, user, newRoles, sendWebSocketEvent)
-}
-
-func (a *App) updateUserRolesWithUser(rctx request.CTX, user *model.User, newRoles string, sendWebSocketEvent bool) (*model.User, *model.AppError) {
 	if err := a.CheckRolesExist(strings.Fields(newRoles)); err != nil {
 		return nil, err
 	}
