@@ -4810,6 +4810,11 @@
     "description": "Internal/log error when recording that a user has viewed in-product notices fails."
   },
   {
+    "id": "api.task.assignee_not_outranked.app_error",
+    "translation": "You can only assign tasks to yourself or to people your role outranks.",
+    "description": "API error when a user assigns a task (on the Tasks page or a revision) to someone whose custom roles are not below the user's own role in the role hierarchy."
+  },
+  {
     "id": "api.team.access_control.added.system_message",
     "translation": "You have been added to the team **{{.TeamName}}** because you now meet its membership requirements.",
     "description": "Direct message from the system bot telling a user they were automatically added to a team by attribute-based access rules; {{.TeamName}} is the team's display name and ** ** is Markdown bold."

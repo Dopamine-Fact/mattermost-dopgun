@@ -1495,6 +1495,10 @@
     "translation": "Kullanıcı bulunamadı."
   },
   {
+    "id": "api.task.assignee_not_outranked.app_error",
+    "translation": "Görevleri yalnızca kendinize veya rolünüzün altındaki kişilere atayabilirsiniz."
+  },
+  {
     "id": "api.team.add_user_to_team.added",
     "translation": "%v takıma %v tarafından eklendi."
   },

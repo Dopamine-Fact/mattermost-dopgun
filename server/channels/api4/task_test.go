@@ -16,6 +16,8 @@ import (
 func TestTasks(t *testing.T) {
 	mainHelper.Parallel(t)
 	th := Setup(t).InitBasic(t)
+	// Assigning to or reviewing BasicUser2 needs a custom role that outranks them.
+	giveRankingRole(t, th, th.BasicUser)
 	ctx := context.Background()
 	teamId := th.BasicTeam.Id
 
@@ -374,6 +376,8 @@ func TestTasks(t *testing.T) {
 func TestTaskPermissionSplit(t *testing.T) {
 	mainHelper.Parallel(t)
 	th := Setup(t).InitBasic(t)
+	// Assigning to or reviewing BasicUser2 needs a custom role that outranks them.
+	giveRankingRole(t, th, th.BasicUser)
 	ctx := context.Background()
 	teamId := th.BasicTeam.Id
 	_, _, err := th.SystemAdminClient.PatchTeam(ctx, teamId, &model.TeamPatch{TasksEnabled: new(true), RevisionsEnabled: new(true)})

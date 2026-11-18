@@ -17,6 +17,8 @@ import (
 func TestDailyReportsAPI(t *testing.T) {
 	mainHelper.Parallel(t)
 	th := Setup(t).InitBasic(t)
+	// Assigning to or reviewing BasicUser2 needs a custom role that outranks them.
+	giveRankingRole(t, th, th.BasicUser)
 	ctx := context.Background()
 	teamID := th.BasicTeam.Id
 

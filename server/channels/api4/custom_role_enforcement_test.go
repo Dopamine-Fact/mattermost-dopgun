@@ -1,0 +1,150 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+package api4
+
+import (
+	"context"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/mattermost/mattermost/server/public/model"
+)
+
+func TestCustomRoleHierarchyEnforcement(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	ctx := context.Background()
+	teamID := th.BasicTeam.Id
+	_, _, err := th.SystemAdminClient.PatchTeam(ctx, teamID, &model.TeamPatch{
+		TasksEnabled: new(true), RevisionsEnabled: new(true),
+		DailyReportsEnabled: new(true), DailyReportTime: new("18:00"), DailyReportTimezone: new("Europe/Istanbul"),
+	})
+	require.NoError(t, err)
+
+	mkRole := func(name, dept string, perms ...string) *model.CustomRole {
+		r, appErr := th.App.CreateCustomRole(th.Context, &model.CustomRole{DisplayName: name + " " + model.NewId()[:6], Color: "#123456", Department: dept, Permissions: perms})
+		require.Nil(t, appErr)
+		return r
+	}
+	leadAnim := mkRole("LeadAnim", "Anim", model.PermissionManageTasks.Id, model.PermissionManageRevisions.Id, model.PermissionManageDailyReports.Id)
+	leadProg := mkRole("LeadProg", "Prog")
+	anim := mkRole("Anim", "Anim")
+	prog := mkRole("Prog", "Prog")
+
+	// member creates a team member holding roles and logs them in (after the roles are set, so the session has them).
+	member := func(roles ...*model.CustomRole) (*model.Client4, *model.User) {
+		u := th.CreateUser(t)
+		th.LinkUserToTeam(t, u, th.BasicTeam)
+		th.AddUserToChannel(t, u, th.BasicChannel)
+		ids := []string{}
+		for _, r := range roles {
+			ids = append(ids, r.Id)
+		}
+		_, appErr := th.App.SetUserCustomRoles(th.Context, th.SystemAdminUser.Id, u.Id, ids)
+		require.Nil(t, appErr)
+		client := th.CreateClient()
+		_, _, err := client.Login(ctx, u.Email, u.Password)
+		require.NoError(t, err)
+		return client, u
+	}
+	leadClient, lead := member(leadAnim)
+	animClient, animUser := member(anim)
+	progClient, progUser := member(prog)
+	_, leadProgUser := member(leadProg)
+
+	adminClient, admin := member()
+	_, appErr := th.App.UpdateTeamMemberRoles(th.Context, teamID, admin.Id, model.TeamUserRoleId+" "+model.TeamAdminRoleId)
+	require.Nil(t, appErr)
+
+	t.Run("task assignee must be outranked", func(t *testing.T) {
+		task, resp, err := leadClient.CreateTask(ctx, &model.Task{TeamId: teamID, Title: "anim", AssigneeId: animUser.Id})
+		require.NoError(t, err)
+		CheckCreatedStatus(t, resp)
+		_, resp, err = leadClient.CreateTask(ctx, &model.Task{TeamId: teamID, Title: "prog", AssigneeId: progUser.Id})
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		_, resp, err = leadClient.CreateTask(ctx, &model.Task{TeamId: teamID, Title: "mine", AssigneeId: lead.Id})
+		require.NoError(t, err)
+		CheckCreatedStatus(t, resp)
+		_, resp, err = leadClient.PatchTask(ctx, task.Id, &model.TaskPatch{AssigneeId: &leadProgUser.Id})
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+
+		section, _, err := leadClient.CreateTaskSection(ctx, &model.TaskSection{TeamId: teamID, Name: "rev", ChannelId: th.BasicChannel.Id})
+		require.NoError(t, err)
+		rev, resp, err := leadClient.CreateTask(ctx, &model.Task{TeamId: teamID, SectionId: section.Id, Title: "frame 12", AssigneeId: animUser.Id})
+		require.NoError(t, err)
+		CheckCreatedStatus(t, resp)
+		_, resp, err = leadClient.CreateTask(ctx, &model.Task{TeamId: teamID, SectionId: section.Id, Title: "frame 13", AssigneeId: progUser.Id})
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		_, resp, err = leadClient.PatchTask(ctx, rev.Id, &model.TaskPatch{AssigneeId: &progUser.Id})
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+
+		// A team admin without custom roles keeps every action.
+		_, resp, err = adminClient.CreateTask(ctx, &model.Task{TeamId: teamID, Title: "admin", AssigneeId: progUser.Id})
+		require.NoError(t, err)
+		CheckCreatedStatus(t, resp)
+		_, _, err = adminClient.PatchTask(ctx, task.Id, &model.TaskPatch{AssigneeId: &leadProgUser.Id})
+		require.NoError(t, err)
+	})
+
+	t.Run("daily reports are limited to outranked users", func(t *testing.T) {
+		animReport, _, err := animClient.SubmitDailyReport(ctx, teamID, "anim day")
+		require.NoError(t, err)
+		progReport, _, err := progClient.SubmitDailyReport(ctx, teamID, "prog day")
+		require.NoError(t, err)
+		_, _, err = leadClient.SubmitDailyReport(ctx, teamID, "lead day")
+		require.NoError(t, err)
+
+		authors := func(list []*model.DailyReport) map[string]bool {
+			m := map[string]bool{}
+			for _, r := range list {
+				m[r.UserId] = true
+			}
+			return m
+		}
+		list, _, err := leadClient.GetDailyReports(ctx, teamID, "", "", "")
+		require.NoError(t, err)
+		require.Equal(t, map[string]bool{lead.Id: true, animUser.Id: true}, authors(list))
+
+		list, _, err = leadClient.GetDailyReports(ctx, teamID, "", "", animUser.Id)
+		require.NoError(t, err)
+		require.Len(t, list, 1)
+		_, resp, err := leadClient.GetDailyReports(ctx, teamID, "", "", progUser.Id)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+
+		csv, _, err := leadClient.ExportDailyReports(ctx, teamID, "", "")
+		require.NoError(t, err)
+		require.Contains(t, string(csv), animUser.Username)
+		require.NotContains(t, string(csv), progUser.Username)
+
+		_, resp, err = leadClient.ApproveDailyReport(ctx, progReport.Id, progReport.UpdateAt)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		_, resp, err = leadClient.RejectDailyReport(ctx, progReport.Id, "no", progReport.UpdateAt)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		approved, _, err := leadClient.ApproveDailyReport(ctx, animReport.Id, animReport.UpdateAt)
+		require.NoError(t, err)
+		require.Equal(t, model.DailyReportStatusApproved, approved.Status)
+
+		list, _, err = adminClient.GetDailyReports(ctx, teamID, "", "", "")
+		require.NoError(t, err)
+		require.True(t, authors(list)[progUser.Id])
+		_, _, err = adminClient.ApproveDailyReport(ctx, progReport.Id, progReport.UpdateAt)
+		require.NoError(t, err)
+	})
+}
+
+// giveRankingRole gives user a permission-less custom role, so they outrank the role-less users of the basic setup.
+func giveRankingRole(t *testing.T, th *TestHelper, user *model.User) {
+	r, appErr := th.App.CreateCustomRole(th.Context, &model.CustomRole{DisplayName: "Rank " + model.NewId()[:6], Color: "#123456"})
+	require.Nil(t, appErr)
+	_, appErr = th.App.SetUserCustomRoles(th.Context, th.SystemAdminUser.Id, user.Id, []string{r.Id})
+	require.Nil(t, appErr)
+}

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -74,10 +75,36 @@ func dailyReportFilter(c *Context, r *http.Request, team *model.Team) (from, to,
 		c.SetInvalidParam("to")
 		return
 	}
+	sessionUserID := c.AppContext.Session().UserId
 	if !c.App.SessionHasPermissionToTeam(*c.AppContext.Session(), team.Id, model.PermissionManageDailyReports) {
-		userID = c.AppContext.Session().UserId
+		userID = sessionUserID
+	}
+	if userID != "" && !c.App.CanActOnUser(c.AppContext, sessionUserID, userID, team.Id) {
+		c.SetPermissionError(model.PermissionManageDailyReports)
+		return
 	}
 	return from, to, userID, true
+}
+
+// getVisibleDailyReports lists reports for the filter; an unfiltered list keeps only the caller's own reports and
+// those of people the caller outranks.
+func getVisibleDailyReports(c *Context, teamID, from, to, userID string) []*model.DailyReport {
+	reports, appErr := c.App.GetDailyReports(teamID, from, to, userID)
+	if appErr != nil {
+		c.Err = appErr
+		return nil
+	}
+	if userID != "" {
+		return reports
+	}
+	var authors []string
+	for _, r := range reports {
+		if !slices.Contains(authors, r.UserId) {
+			authors = append(authors, r.UserId)
+		}
+	}
+	allowed := c.App.ActionableUserIDs(c.AppContext, c.AppContext.Session().UserId, teamID, authors)
+	return slices.DeleteFunc(reports, func(r *model.DailyReport) bool { return !slices.Contains(allowed, r.UserId) })
 }
 
 func getDailyReports(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -92,9 +119,8 @@ func getDailyReports(c *Context, w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	reports, appErr := c.App.GetDailyReports(team.Id, from, to, userID)
-	if appErr != nil {
-		c.Err = appErr
+	reports := getVisibleDailyReports(c, team.Id, from, to, userID)
+	if c.Err != nil {
 		return
 	}
 	writeTaskJSON(w, http.StatusOK, reports)
@@ -146,6 +172,10 @@ func loadReviewableReport(c *Context, r *http.Request) (*model.DailyReport, revi
 		return nil, body
 	}
 	if requireTeamPermission(c, report.TeamId, model.PermissionManageDailyReports); c.Err != nil {
+		return nil, body
+	}
+	if !c.App.CanActOnUser(c.AppContext, c.AppContext.Session().UserId, report.UserId, report.TeamId) {
+		c.SetPermissionError(model.PermissionManageDailyReports)
 		return nil, body
 	}
 	return report, body
@@ -290,9 +320,8 @@ func exportDailyReports(c *Context, w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	reports, appErr := c.App.GetDailyReports(team.Id, from, to, userID)
-	if appErr != nil {
-		c.Err = appErr
+	reports := getVisibleDailyReports(c, team.Id, from, to, userID)
+	if c.Err != nil {
 		return
 	}
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")

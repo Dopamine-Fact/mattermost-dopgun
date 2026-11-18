@@ -73,6 +73,13 @@ func requireTaskPermission(c *Context, teamID, sectionID string) {
 	requireTeamPermission(c, teamID, permission)
 }
 
+// requireCanAssign: giving a task to someone else needs a custom role that outranks them (admins bypass).
+func requireCanAssign(c *Context, teamID, assigneeID string) {
+	if assigneeID != "" && !c.App.CanActOnUser(c.AppContext, c.AppContext.Session().UserId, assigneeID, teamID) {
+		c.Err = model.NewAppError("requireCanAssign", "api.task.assignee_not_outranked.app_error", nil, "", http.StatusForbidden)
+	}
+}
+
 func writeTaskJSON(w http.ResponseWriter, status int, v any) {
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(v); err != nil {
@@ -136,6 +143,9 @@ func createTask(c *Context, w http.ResponseWriter, r *http.Request) {
 	if requireTaskPermission(c, c.Params.TeamId, task.SectionId); c.Err != nil {
 		return
 	}
+	if requireCanAssign(c, c.Params.TeamId, task.AssigneeId); c.Err != nil {
+		return
+	}
 	task.Id = ""
 	task.TeamId = c.Params.TeamId
 	task.CreatorId = c.AppContext.Session().UserId
@@ -173,6 +183,9 @@ func patchTask(c *Context, w http.ResponseWriter, r *http.Request) {
 			sectionID = *patch.SectionId
 		}
 		if requireTaskPermission(c, task.TeamId, sectionID); c.Err != nil {
+			return
+		}
+		if requireCanAssign(c, task.TeamId, *patch.AssigneeId); c.Err != nil {
 			return
 		}
 	}
