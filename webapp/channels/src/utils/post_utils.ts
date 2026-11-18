@@ -122,12 +122,12 @@ export function canDeletePost(state: GlobalState, post: Post, channel?: Channel)
         return false;
     }
 
-    if (canManageTaskPost(state, post)) {
-        return true;
-    }
-
+    // Same order as the server: the author goes by delete_post, then a task manager, then delete_others_posts.
     if (isPostOwner(state, post)) {
         return haveIChannelPermission(state, channel && channel.team_id, post.channel_id, Permissions.DELETE_POST);
+    }
+    if (canManageTaskPost(state, post)) {
+        return true;
     }
     return haveIChannelPermission(state, channel && channel.team_id, post.channel_id, Permissions.DELETE_OTHERS_POSTS);
 }

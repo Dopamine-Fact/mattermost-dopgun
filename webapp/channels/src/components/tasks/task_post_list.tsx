@@ -5,7 +5,7 @@ import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {FormattedMessage} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 
-import type {PostList} from '@mattermost/types/posts';
+import type {PaginatedPostList} from '@mattermost/types/posts';
 
 import {makeGetTaskRootPosts} from 'mattermost-redux/selectors/entities/tasks';
 
@@ -20,10 +20,13 @@ const PAGE_SIZE = 60;
 type Props = {
     taskId: string;
     channelId?: string;
+
+    // startAtEnd scrolls the parent to the newest message once the first page shows, like a channel opens.
+    startAtEnd?: boolean;
 };
 
 // TaskPostList shows one task's messages oldest first, a page at a time; replies open in the RHS like search results.
-const TaskPostList = ({taskId, channelId}: Props) => {
+const TaskPostList = ({taskId, channelId, startAtEnd}: Props) => {
     const dispatch = useDispatch();
     const getTaskRootPosts = useMemo(() => makeGetTaskRootPosts(), []);
     const posts = useSelector((state: GlobalState) => getTaskRootPosts(state, taskId, channelId));
@@ -33,17 +36,25 @@ const TaskPostList = ({taskId, channelId}: Props) => {
     const [cursor, setCursor] = useState(0);
     const [hasMore, setHasMore] = useState(false);
     const request = useRef(0);
+    const root = useRef<HTMLDivElement>(null);
+    const [scrollPending, setScrollPending] = useState(false);
 
     const load = async (before?: number) => {
         const id = ++request.current;
-        const {data} = await dispatch(fetchTaskPosts(taskId, {channelId, before, perPage: PAGE_SIZE})) as {data?: PostList};
+        const {data} = await dispatch(fetchTaskPosts(taskId, {channelId, before, perPage: PAGE_SIZE})) as {data?: PaginatedPostList};
         if (id !== request.current || !data) {
             return;
         }
         const page = Object.values(data.posts);
-        setHasMore(page.length >= PAGE_SIZE);
+
+        // The server knows whether its page was full; the reader may see fewer posts than that. A page with nothing
+        // readable leaves no cursor to go on from.
+        setHasMore(Boolean(data.has_next) && page.length > 0);
         if (page.length) {
             setCursor(Math.min(...page.map((p) => p.create_at)));
+        }
+        if (before === undefined) {
+            setScrollPending(Boolean(startAtEnd));
         }
     };
 
@@ -53,12 +64,23 @@ const TaskPostList = ({taskId, channelId}: Props) => {
         load();
     }, [taskId, channelId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    useEffect(() => {
+        const panel = root.current?.parentElement;
+        if (scrollPending && panel) {
+            panel.scrollTop = panel.scrollHeight;
+            setScrollPending(false);
+        }
+    }, [scrollPending, posts]);
+
     if (!posts.length) {
         return null;
     }
 
     return (
-        <div className='TaskPostList'>
+        <div
+            className='TaskPostList'
+            ref={root}
+        >
             {hasMore && (
                 <button
                     className='btn btn-tertiary btn-sm TaskPostList__older'

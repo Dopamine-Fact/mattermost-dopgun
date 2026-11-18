@@ -20,7 +20,7 @@ const state = {
         teams: {currentTeamId: 'team1', teams: {team1: {id: 'team1', tasks_enabled: true, revisions_enabled: true}}},
         tasks: {
             byId: {T: task('T', 'Storyboard'), U: task('U', 'Animatic'), X: task('X', 'Elsewhere', 'other')},
-            sectionsById: {sec1: section},
+            sectionsById: {sec1: section, sec2: {...section, id: 'sec2', channel_id: 'chan2'}},
         },
     },
 };
@@ -84,6 +84,17 @@ describe('useTaskPicker', () => {
 
     test('a task from another section is not sendable', () => {
         renderPicker({value: draft({task_id: 'X'}), onChange: jest.fn()});
+        expect(screen.getByTestId('sendable').textContent).toBe('false');
+    });
+
+    test('a slash command can send without a task: the server holds whatever it posts to the rule', () => {
+        renderPicker({value: {...draft(), message: '/mute'}, onChange: jest.fn()});
+        expect(screen.getByTestId('sendable').textContent).toBe('true');
+    });
+
+    test('a section without tasks says so in the picker', () => {
+        renderPicker({value: draft(), onChange: jest.fn(), channelId: 'chan2'});
+        expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['No tasks yet: add one in Tasks']);
         expect(screen.getByTestId('sendable').textContent).toBe('false');
     });
 

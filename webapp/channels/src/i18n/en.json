@@ -17943,6 +17943,10 @@
     "defaultMessage": "Task",
     "description": "Accessibility (aria) label of the task picker in the message box of a task-list (episode or revision) channel, where every message must name one of the channel's tasks."
   },
+  "advanced_text_editor.task_picker.none": {
+    "defaultMessage": "No tasks yet: add one in Tasks",
+    "description": "Only, unselectable entry of the task picker in the message box of a task-list channel whose list has no tasks yet; a message can be sent only after a task is added on the channel's Tasks tab."
+  },
   "advanced_text_editor.task_picker.placeholder": {
     "defaultMessage": "Pick a task",
     "description": "First, unselectable entry of the task picker in the message box of a task-list channel; shown until the user picks which task the message is about."
@@ -33138,6 +33142,10 @@
   "tasks.conversation.private": {
     "defaultMessage": "Only members of this channel can see and join its conversation.",
     "description": "Note in a task's detail panel, in place of the message box, when the task's list is linked to a private channel the viewer is not in."
+  },
+  "tasks.conversation.readOnly": {
+    "defaultMessage": "You can't post in this channel.",
+    "description": "Note in a task's detail panel, in place of the message box, when the viewer is in the task's linked channel but may not post there (no permission, or the channel is archived)."
   },
   "tasks.conversation.send": {
     "defaultMessage": "Send",

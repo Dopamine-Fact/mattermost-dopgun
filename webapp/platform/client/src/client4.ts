@@ -5368,7 +5368,7 @@ export default class Client4 {
     // getTaskPosts pages back through a task's messages, newest first; before is a create_at.
     getTaskPosts = (taskId: string, options: {channelId?: string; before?: number; perPage?: number} = {}) => {
         const query = buildQueryString({channel_id: options.channelId, before: options.before, per_page: options.perPage});
-        return this.doFetch<PostList>(`${this.getBaseRoute()}/tasks/${taskId}/posts${query}`, {method: 'get'});
+        return this.doFetch<PaginatedPostList>(`${this.getBaseRoute()}/tasks/${taskId}/posts${query}`, {method: 'get'});
     };
 
     getTaskComments = (taskId: string) => {

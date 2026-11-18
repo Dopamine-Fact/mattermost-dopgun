@@ -10,7 +10,7 @@ import {Client4} from 'mattermost-redux/client';
 
 import {createTask} from 'actions/tasks';
 
-import {fireEvent, renderWithContext, screen, waitFor} from 'tests/react_testing_utils';
+import {act, fireEvent, renderWithContext, screen, waitFor} from 'tests/react_testing_utils';
 import {TestHelper} from 'utils/test_helper';
 
 import ChannelTabs from './channel_tabs';
@@ -26,7 +26,7 @@ jest.mock('mattermost-redux/actions/users', () => ({
 }));
 jest.mock('components/tasks/task_post_list', () => ({
     __esModule: true,
-    default: ({taskId, channelId}: {taskId: string; channelId: string}) => <div>{`task posts ${taskId} ${channelId}`}</div>,
+    default: ({taskId, channelId, startAtEnd}: {taskId: string; channelId: string; startAtEnd?: boolean}) => <div>{`task posts ${taskId} ${channelId}${startAtEnd ? ' from the end' : ''}`}</div>,
 }));
 jest.mock('components/canvas/canvas_board', () => ({
     __esModule: true,
@@ -126,7 +126,7 @@ describe('ChannelTabs', () => {
 
         fireEvent.change(filter, {target: {value: 't2'}});
         expect(screen.queryByText('chat')).toBeNull();
-        expect(screen.getByText('task posts t2 chan1')).toBeInTheDocument();
+        expect(screen.getByText('task posts t2 chan1 from the end')).toBeInTheDocument();
         expect(screen.getByText('composer')).toBeInTheDocument();
 
         fireEvent.change(filter, {target: {value: ''}});
@@ -245,6 +245,73 @@ describe('ChannelTabs', () => {
         renderTabs('chan1', {url: '/team-one/channels/trailer?task=t2'});
         expect(screen.getByRole('tab', {name: 'Tasks'})).toHaveAttribute('aria-selected', 'true');
         expect(screen.getByRole('complementary', {name: 'Task details'})).toBeInTheDocument();
+    });
+
+    test('the filter keeps a task moved out of the section while this channel has messages about it', () => {
+        renderWithContext(
+            <ChannelTabs
+                channelId='chan1'
+                composer={<div>{'composer'}</div>}
+            >
+                <div>{'chat'}</div>
+            </ChannelTabs>,
+            {
+                entities: {
+                    users: {currentUserId: 'me', profiles: {me: TestHelper.getUserMock({id: 'me', roles: 'system_user'})}},
+                    teams: {
+                        currentTeamId: 'team1',
+                        teams: {team1: TestHelper.getTeamMock({id: 'team1', name: 'team-one', tasks_enabled: true, revisions_enabled: true})},
+                        myMembers: {team1: TestHelper.getTeamMembershipMock({team_id: 'team1', user_id: 'me', roles: 'team_user'})},
+                    },
+                    channels: {
+                        channels: {chan1: TestHelper.getChannelMock({id: 'chan1', team_id: 'team1'})},
+                        myMembers: {chan1: TestHelper.getChannelMembershipMock({channel_id: 'chan1', user_id: 'me', roles: ''})},
+                    },
+                    posts: {
+                        posts: {p1: TestHelper.getPostMock({id: 'p1', channel_id: 'chan1', props: {task_id: 't3'}})},
+                        postsInChannel: {chan1: [{order: ['p1'], recent: true, oldest: false}]},
+                    },
+                    roles: {roles: {team_user: TestHelper.getRoleMock({name: 'team_user', permissions: ['create_post']})}},
+                    tasks: {byId: tasks, sectionsById: {sec1: section}},
+                },
+            },
+        );
+        expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['All', 'Logo too small', 'Storyboard', 'Unrelated']);
+    });
+
+    test('following the same task link again reopens it', () => {
+        const url = '/team-one/channels/trailer?task=t2';
+        const history = createMemoryHistory({initialEntries: [url]});
+        renderWithContext(
+            <ChannelTabs
+                channelId='chan1'
+                composer={<div>{'composer'}</div>}
+            >
+                <div>{'chat'}</div>
+            </ChannelTabs>,
+            {
+                entities: {
+                    users: {currentUserId: 'me', profiles: {me: TestHelper.getUserMock({id: 'me', roles: 'system_user'})}},
+                    teams: {
+                        currentTeamId: 'team1',
+                        teams: {team1: TestHelper.getTeamMock({id: 'team1', name: 'team-one', tasks_enabled: true, revisions_enabled: true})},
+                        myMembers: {team1: TestHelper.getTeamMembershipMock({team_id: 'team1', user_id: 'me', roles: 'team_user'})},
+                    },
+                    channels: {
+                        channels: {chan1: TestHelper.getChannelMock({id: 'chan1', team_id: 'team1'})},
+                        myMembers: {chan1: TestHelper.getChannelMembershipMock({channel_id: 'chan1', user_id: 'me', roles: ''})},
+                    },
+                    roles: {roles: {team_user: TestHelper.getRoleMock({name: 'team_user', permissions: ['create_post']})}},
+                    tasks: {byId: tasks, sectionsById: {sec1: section}},
+                },
+            },
+            {history},
+        );
+        fireEvent.click(screen.getByRole('tab', {name: 'Messages'}));
+        expect(screen.getByRole('tab', {name: 'Messages'})).toHaveAttribute('aria-selected', 'true');
+
+        act(() => history.push(url));
+        expect(screen.getByRole('tab', {name: 'Tasks'})).toHaveAttribute('aria-selected', 'true');
     });
 
     test('a canvas channel switches between messages and the board', async () => {

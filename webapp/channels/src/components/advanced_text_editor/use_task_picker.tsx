@@ -53,7 +53,7 @@ export default function useTaskPicker(
                 value=''
                 disabled={true}
             >
-                {formatMessage({id: 'advanced_text_editor.task_picker.placeholder', defaultMessage: 'Pick a task'})}
+                {tasks.length ? formatMessage({id: 'advanced_text_editor.task_picker.placeholder', defaultMessage: 'Pick a task'}) : formatMessage({id: 'advanced_text_editor.task_picker.none', defaultMessage: 'No tasks yet: add one in Tasks'})}
             </option>
             {tasks.map((t) => (
                 <option
@@ -65,5 +65,8 @@ export default function useTaskPicker(
             ))}
         </select>
     );
-    return {control, isTaskSendable: tasks.some((t) => t.id === taskId)};
+
+    // A slash command may post nothing (/mute, /join); whatever it does post the server holds to the rule.
+    const isCommand = draft.message.trimStart().startsWith('/');
+    return {control, isTaskSendable: isCommand || tasks.some((t) => t.id === taskId)};
 }

@@ -19,7 +19,7 @@ const state = {
                 t2: {id: 't2', team_id: 'team1', section_id: 'sec1', title: 'Storyboard', video_file_id: ''},
                 t1: {id: 't1', team_id: 'team1', section_id: 'sec1', title: 'Logo too small', video_file_id: 'file1'},
             },
-            sectionsById: {},
+            sectionsById: {sec1: {id: 'sec1', team_id: 'team1', name: 'Ep 1', sort_order: 0, channel_id: 'chan1', video_file_id: '', create_at: 1, update_at: 1}},
         },
     },
 };
@@ -40,5 +40,11 @@ describe('TaskPostLabel', () => {
         renderWithContext(<TaskPostLabel post={post('gone')}/>, state as any);
         expect(screen.getByText('Deleted task')).toBeInTheDocument();
         expect(screen.queryByRole('link')).toBeNull();
+    });
+
+    test('before the team tasks arrive nothing is claimed about the task', () => {
+        const loading = {entities: {...state.entities, tasks: {byId: {}, sectionsById: {}}}};
+        renderWithContext(<TaskPostLabel post={post('t2')}/>, loading as any);
+        expect(screen.queryByText('Deleted task')).toBeNull();
     });
 });

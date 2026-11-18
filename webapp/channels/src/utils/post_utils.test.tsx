@@ -1690,7 +1690,7 @@ describe('PostUtils.canDeletePost for task messages', () => {
     const task = {id: 't1', team_id: 'team1', section_id: 'sec1', title: 'Storyboard', video_file_id: ''};
     const post = TestHelper.getPostMock({id: 'p1', user_id: 'other', channel_id: 'chan1', props: {task_id: 't1'}});
     const channel = TestHelper.getChannelMock({id: 'chan1', team_id: 'team1'});
-    const state = (teamPermissions: string[], sectionChannel = 'chan1') => makeInitialState({
+    const state = (teamPermissions: string[], sectionChannel = 'chan1', channelPermissions = ['delete_post']) => makeInitialState({
         entities: {
             users: {currentUserId: 'me', profiles: {me: TestHelper.getUserMock({id: 'me', roles: 'system_user'})}},
             teams: {currentTeamId: 'team1', myMembers: {team1: TestHelper.getTeamMembershipMock({team_id: 'team1', user_id: 'me', roles: 'team_user'})}},
@@ -1698,7 +1698,7 @@ describe('PostUtils.canDeletePost for task messages', () => {
             roles: {roles: {
                 system_user: TestHelper.getRoleMock({name: 'system_user', permissions: []}),
                 team_user: TestHelper.getRoleMock({name: 'team_user', permissions: teamPermissions}),
-                channel_user: TestHelper.getRoleMock({name: 'channel_user', permissions: ['delete_post']}),
+                channel_user: TestHelper.getRoleMock({name: 'channel_user', permissions: channelPermissions}),
             }},
             tasks: {byId: {t1: task}, sectionsById: {sec1: {...section, channel_id: sectionChannel}}},
         },
@@ -1710,6 +1710,11 @@ describe('PostUtils.canDeletePost for task messages', () => {
 
     test('without manage_tasks it stays the author\'s or a moderator\'s', () => {
         expect(PostUtils.canDeletePost(state([]), post, channel)).toBe(false);
+    });
+
+    test('the author goes by delete_post, as on the server, even when managing the task', () => {
+        const own = {...post, user_id: 'me'};
+        expect(PostUtils.canDeletePost(state(['manage_tasks'], 'chan1', []), own, channel)).toBe(false);
     });
 
     test('only in the channel the task\'s list is linked to', () => {

@@ -18,6 +18,7 @@ WHERE Id IN (
         AND p.UserId = tc.UserId
         AND p.Type = ''
         AND p.DeleteAt = 0
+        AND p.Props->>'task_id' IS NULL
         AND p.CreateAt BETWEEN tc.CreateAt AND tc.CreateAt + 5000
         -- No question mark here: sqlx rebinds it to a placeholder even inside a literal. A task id is 26 random
         -- characters, so "revision=<id>" is as specific as the full link.

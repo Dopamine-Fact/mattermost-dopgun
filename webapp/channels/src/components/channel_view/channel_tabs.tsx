@@ -74,8 +74,25 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
     const section = useSelector((state: GlobalState) => getTaskSectionForChannel(state, channelId));
     const sectionTasks = useMemo(() => tasks.filter((t) => section && t.section_id === section.id && !t.video_file_id), [tasks, section]);
 
-    // The Messages filter offers every task of the section, revisions included, like the post box's task picker.
-    const filterTasks = useMemo(() => tasks.filter((t) => section && t.section_id === section.id), [tasks, section]);
+    // The Messages filter offers every task of the section, revisions included, like the post box's task picker, and
+    // any task the loaded messages name, so a task moved to another section can still be filtered here.
+    const postedTaskIds = useSelector((state: GlobalState) => {
+        const {posts, postsInChannel} = state.entities.posts;
+        const ids = new Set<string>();
+        for (const block of postsInChannel[channelId] ?? []) {
+            for (const id of block.order) {
+                const taskId = posts[id]?.props?.task_id;
+                if (typeof taskId === 'string' && taskId) {
+                    ids.add(taskId);
+                }
+            }
+        }
+        return [...ids].sort().join(',');
+    });
+    const filterTasks = useMemo(() => {
+        const posted = new Set(postedTaskIds.split(','));
+        return tasks.filter((t) => section && (t.section_id === section.id || posted.has(t.id)));
+    }, [tasks, section, postedTaskIds]);
     const [filterTaskId, setFilterTaskId] = useState('');
 
     // Same rule as the post textbox, plus archived channels.
@@ -105,7 +122,8 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
 
     // ?revision=<task id> (assignment messages) opens Revisions on that revision, ?task=<task id> (a message's task
     // label) opens Tasks on that task; ?canvas=1 (after creating) opens Canvas.
-    const params = new URLSearchParams(useLocation().search);
+    const location = useLocation();
+    const params = new URLSearchParams(location.search);
     const linkedRevision = params.get('revision') ?? '';
     const linkedTask = params.get('task') ?? '';
     const linkedCanvas = params.get('canvas') === '1';
@@ -113,10 +131,12 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
     const linkedId = linkedRevision || linkedTask;
     const [tab, setTab] = useState<Tab>(linkedTab);
     const [selectedId, setSelectedId] = useState(linkedId);
+
+    // location.key: following the same link again re-opens it after the user moved away.
     useEffect(() => {
         setTab(linkedTab);
         setSelectedId(linkedId);
-    }, [channelId, linkedTab, linkedId]);
+    }, [channelId, linkedTab, linkedId, location.key]);
     useEffect(() => setFilterTaskId(''), [channelId]);
 
     useEffect(() => {
@@ -183,6 +203,7 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
                         key={filterTask.id}
                         taskId={filterTask.id}
                         channelId={channelId}
+                        startAtEnd={true}
                     />
                 </div>
             ) : children}

@@ -514,6 +514,9 @@ func canManageTaskPost(c *Context, post *model.Post) bool {
 	if appErr != nil || section.ChannelId != post.ChannelId {
 		return false
 	}
+	if canRead, _ := c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), post.ChannelId, model.PermissionReadChannelContent); !canRead {
+		return false
+	}
 	return c.App.SessionHasPermissionToTeam(*c.AppContext.Session(), task.TeamId, taskPermission(task))
 }
 

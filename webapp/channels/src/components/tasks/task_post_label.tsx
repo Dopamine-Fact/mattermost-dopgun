@@ -17,14 +17,20 @@ import type {GlobalState} from 'types/store';
 import './task_post_label.scss';
 
 // TaskPostLabel names the task a message is about and opens it in the channel's Revisions or Tasks tab.
-// shortcut: a task not yet loaded shows as deleted until fetchTeamTasks finishes.
+// A missing task counts as deleted only once the team's task lists are in (they arrive with its tasks); before that
+// the label waits. shortcut: a team whose lists are all gone shows nothing for its old messages; track loaded teams if
+// that matters.
 const TaskPostLabel = ({post}: {post: Post}) => {
     const {formatMessage} = useIntl();
     const taskId = typeof post.props?.task_id === 'string' ? post.props.task_id : '';
     const task = useSelector((state: GlobalState) => getTask(state, taskId));
     const channel = useSelector((state: GlobalState) => getChannel(state, post.channel_id));
     const team = useSelector((state: GlobalState) => (channel ? getTeam(state, channel.team_id) : undefined));
+    const teamTasksLoaded = useSelector((state: GlobalState) => Boolean(channel) && Object.values(state.entities.tasks.sectionsById).some((s) => s.team_id === channel!.team_id));
 
+    if (!task && !teamTasksLoaded) {
+        return null;
+    }
     if (!task) {
         return (
             <span className='TaskPostLabel TaskPostLabel--deleted'>

@@ -582,10 +582,13 @@ func TestGetTaskPosts(t *testing.T) {
 	require.NoError(t, err)
 	CheckOKStatus(t, resp)
 	require.Equal(t, []string{second.Id, first.Id}, list.Order)
+	require.False(t, *list.HasNext)
 
 	list, _, err = th.Client.GetTaskPosts(ctx, task.Id, th.BasicChannel.Id, 0, 1)
 	require.NoError(t, err)
 	require.Equal(t, []string{second.Id}, list.Order)
+	// A full page says more may follow, even when the reader cannot see every post on it.
+	require.True(t, *list.HasNext)
 
 	list, _, err = th.Client.GetTaskPosts(ctx, task.Id, "", second.CreateAt, 0)
 	require.NoError(t, err)
@@ -626,4 +629,20 @@ func TestDeleteTaskPostAsManager(t *testing.T) {
 	resp, err = th.Client.DeletePost(ctx, tagged.Id)
 	require.NoError(t, err)
 	CheckOKStatus(t, resp)
+
+	// Managing tasks does not reach into a private channel the manager cannot read.
+	private := th.BasicPrivateChannel
+	section, _, err := th.SystemAdminClient.CreateTaskSection(ctx, &model.TaskSection{TeamId: th.BasicTeam.Id, Name: "Private", ChannelId: private.Id})
+	require.NoError(t, err)
+	hidden, _, err := th.SystemAdminClient.CreateTask(ctx, &model.Task{TeamId: th.BasicTeam.Id, SectionId: section.Id, Title: "H"})
+	require.NoError(t, err)
+	th.AddUserToChannel(t, th.BasicUser2, private)
+	th.LoginBasic2(t)
+	secret := taskChannelPost(t, th.Client, private.Id, hidden.Id, "")
+	th.LoginBasic(t)
+	_, err = th.SystemAdminClient.RemoveUserFromChannel(ctx, private.Id, th.BasicUser.Id)
+	require.NoError(t, err)
+	resp, err = th.Client.DeletePost(ctx, secret.Id)
+	require.Error(t, err)
+	CheckForbiddenStatus(t, resp)
 }

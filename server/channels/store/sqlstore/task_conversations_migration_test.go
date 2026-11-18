@@ -73,6 +73,9 @@ func TestTaskConversationsMigration(t *testing.T) {
 	echo1 := post(":speech_balloon: Comment on [R]("+link+"):\nfirst", 1100)
 	echo2 := post(":speech_balloon: Comment on [R]("+link+"):\nsecond", 3050)
 	pasted := post("see "+link, 20000)
+	// A message already about a task is a conversation, never an echo, even when it quotes the link right after a comment.
+	tagged, err := store.Post().Save(rctx, &model.Post{ChannelId: channel.Id, UserId: userId, Message: "re " + link, CreateAt: 3020, Props: model.StringInterface{"task_id": revision.Id}})
+	require.NoError(t, err)
 	// An echo someone replied to stays, so its thread is not left without a root.
 	answered := post(":speech_balloon: Comment on [R]("+link+"):\nanswered", 6050)
 	_, err = store.Post().Save(rctx, &model.Post{ChannelId: channel.Id, UserId: userId, RootId: answered.Id, Message: "on it", CreateAt: 7000})
@@ -104,7 +107,7 @@ func TestTaskConversationsMigration(t *testing.T) {
 
 	var postCount int
 	require.NoError(t, store.GetMaster().Get(&postCount, "SELECT count(*) FROM Posts WHERE ChannelId = $1 AND Props->>'task_id' IS NOT NULL", channel.Id))
-	require.Equal(t, 4, postCount)
+	require.Equal(t, 5, postCount)
 
 	movedFile, err := store.FileInfo().Get(file.Id)
 	require.NoError(t, err)
@@ -120,6 +123,7 @@ func TestTaskConversationsMigration(t *testing.T) {
 	require.NotZero(t, deleteAt(echo1.Id))
 	require.NotZero(t, deleteAt(echo2.Id))
 	require.Zero(t, deleteAt(pasted.Id))
+	require.Zero(t, deleteAt(tagged.Id))
 	require.Zero(t, deleteAt(answered.Id))
 
 	left, err := store.Task().GetCommentsForTask(boardTask.Id)

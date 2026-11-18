@@ -760,6 +760,7 @@ describe('PostComponent', () => {
                     post={taskPost}
                     compactDisplay={false}
                 />,
+                {entities: {tasks: {byId: {T: {id: 'T', title: 'Storyboard'}}}}} as any,
             );
             expect(container.querySelector('.TaskPostLabel')).not.toBeNull();
         });

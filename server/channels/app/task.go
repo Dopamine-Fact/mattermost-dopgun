@@ -588,6 +588,8 @@ func (a *App) GetTaskPosts(rctx request.CTX, task *model.Task, userID, channelID
 		return nil, model.NewAppError("GetTaskPosts", "app.post.get.app_error", nil, "task_id="+task.Id, http.StatusInternalServerError).Wrap(err)
 	}
 	list := model.NewPostList()
+	// A full page of ids means more may follow, though the reader may see fewer posts than that.
+	list.HasNext = model.NewPointer(len(ids) == perPage)
 	if len(ids) == 0 {
 		return list, nil
 	}

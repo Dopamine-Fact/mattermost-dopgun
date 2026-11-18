@@ -24,16 +24,17 @@ jest.mock('mattermost-redux/actions/channels', () => ({
 
 const channel = TestHelper.getChannelMock({id: 'chan1', team_id: 'team1', type: 'O'});
 
-const renderComposer = ({member = true, known = true} = {}) => renderWithContext(
+const renderComposer = ({member = true, known = true, canPost = true, archived = false} = {}) => renderWithContext(
     <TaskPostComposer
         taskId='T'
         channelId='chan1'
     />,
     {
         entities: {
-            users: {currentUserId: 'me'},
+            users: {currentUserId: 'me', profiles: {me: TestHelper.getUserMock({id: 'me', roles: 'system_user'})}},
+            roles: {roles: {system_user: TestHelper.getRoleMock({name: 'system_user', permissions: canPost ? ['create_post'] : []})}},
             channels: {
-                channels: known ? {chan1: channel} : {},
+                channels: known ? {chan1: {...channel, delete_at: archived ? 1 : 0}} : {},
                 myMembers: member ? {chan1: TestHelper.getChannelMembershipMock({channel_id: 'chan1', user_id: 'me'})} : {},
             },
         },
@@ -84,10 +85,38 @@ describe('TaskPostComposer', () => {
         await waitFor(() => expect(joinChannel).toHaveBeenCalledWith('me', 'team1', 'chan1'));
     });
 
+    test('a member who may not post, or an archived channel, gets no box', () => {
+        renderComposer({canPost: false});
+        expect(screen.queryByRole('textbox')).toBeNull();
+        expect(screen.getByText("You can't post in this channel.")).toBeInTheDocument();
+    });
+
+    test('an archived channel gets no box', () => {
+        renderComposer({archived: true});
+        expect(screen.queryByRole('textbox')).toBeNull();
+        expect(screen.getByText("You can't post in this channel.")).toBeInTheDocument();
+    });
+
+    test('a refused message stays in the box with the reason', async () => {
+        (createPost as jest.Mock).mockImplementationOnce(() => () => Promise.resolve({error: {message: 'nope'}}));
+        renderComposer();
+        fireEvent.change(screen.getByRole('textbox', {name: 'Message'}), {target: {value: 'keep me'}});
+        fireEvent.click(screen.getByRole('button', {name: 'Send'}));
+
+        await waitFor(() => expect(screen.getByText('nope')).toBeInTheDocument());
+        expect(screen.getByRole('textbox', {name: 'Message'})).toHaveValue('keep me');
+    });
+
+    test('while the channel is still loading nothing claims it is private', () => {
+        (getChannel as jest.Mock).mockImplementationOnce(() => () => new Promise(() => {}));
+        renderComposer({member: false, known: false});
+        expect(screen.queryByText('Only members of this channel can see and join its conversation.')).toBeNull();
+    });
+
     test('a channel the user cannot see explains why there is no box', async () => {
         renderComposer({member: false, known: false});
-        await waitFor(() => expect(getChannel).toHaveBeenCalledWith('chan1'));
-        expect(screen.getByText('Only members of this channel can see and join its conversation.')).toBeInTheDocument();
+        expect(getChannel).toHaveBeenCalledWith('chan1');
+        expect(await screen.findByText('Only members of this channel can see and join its conversation.')).toBeInTheDocument();
         expect(screen.queryByRole('button', {name: 'Join the channel to comment'})).toBeNull();
     });
 });
