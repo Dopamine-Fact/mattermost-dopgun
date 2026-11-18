@@ -13531,6 +13531,22 @@ func (s *TimerLayerTaskStore) GetSection(id string) (*model.TaskSection, error) 
 	return result, err
 }
 
+func (s *TimerLayerTaskStore) GetSectionVideos(sectionId string) ([]*model.TaskSectionVideo, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.GetSectionVideos(sectionId)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.GetSectionVideos", success, elapsed)
+	}
+	return result, err
+}
+
 func (s *TimerLayerTaskStore) GetSectionsForTeam(teamId string) ([]*model.TaskSection, error) {
 	start := time.Now()
 
@@ -13591,6 +13607,22 @@ func (s *TimerLayerTaskStore) SaveSection(section *model.TaskSection) (*model.Ta
 			success = "true"
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.SaveSection", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerTaskStore) SaveSectionVideo(video *model.TaskSectionVideo) (*model.TaskSectionVideo, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.SaveSectionVideo(video)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.SaveSectionVideo", success, elapsed)
 	}
 	return result, err
 }

@@ -17120,6 +17120,27 @@ func (s *RetryLayerTaskStore) GetSection(id string) (*model.TaskSection, error) 
 
 }
 
+func (s *RetryLayerTaskStore) GetSectionVideos(sectionId string) ([]*model.TaskSectionVideo, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.GetSectionVideos(sectionId)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
 func (s *RetryLayerTaskStore) GetSectionsForTeam(teamId string) ([]*model.TaskSection, error) {
 
 	tries := 0
@@ -17188,6 +17209,27 @@ func (s *RetryLayerTaskStore) SaveSection(section *model.TaskSection) (*model.Ta
 	tries := 0
 	for {
 		result, err := s.TaskStore.SaveSection(section)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTaskStore) SaveSectionVideo(video *model.TaskSectionVideo) (*model.TaskSectionVideo, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.SaveSectionVideo(video)
 		if err == nil {
 			return result, nil
 		}

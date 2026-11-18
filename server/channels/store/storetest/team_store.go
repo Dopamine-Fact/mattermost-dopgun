@@ -31,6 +31,7 @@ func TestTeamStore(t *testing.T, rctx request.CTX, ss store.Store) {
 	t.Run("Save", func(t *testing.T) { testTeamStoreSave(t, rctx, ss) })
 	t.Run("Update", func(t *testing.T) { testTeamStoreUpdate(t, rctx, ss) })
 	t.Run("FilesEnabledRoundTrip", func(t *testing.T) { testTeamStoreFilesEnabled(t, rctx, ss) })
+	t.Run("EpisodeTemplatesRoundTrip", func(t *testing.T) { testTeamStoreEpisodeTemplates(t, rctx, ss) })
 	t.Run("Get", func(t *testing.T) { testTeamStoreGet(t, rctx, ss) })
 	t.Run("GetMany", func(t *testing.T) { testTeamStoreGetMany(t, rctx, ss) })
 	t.Run("GetByName", func(t *testing.T) { testTeamStoreGetByName(t, rctx, ss) })
@@ -4034,6 +4035,24 @@ func testTeamStoreFilesEnabled(t *testing.T, rctx request.CTX, ss store.Store) {
 	got, err = ss.Team().Get(team.Id)
 	require.NoError(t, err)
 	require.False(t, got.FilesEnabled)
+}
+
+func testTeamStoreEpisodeTemplates(t *testing.T, rctx request.CTX, ss store.Store) {
+	team, err := ss.Team().Save(&model.Team{DisplayName: "Episodes", Name: NewTestID(), Email: MakeEmail(), Type: model.TeamOpen, EpisodeFolders: "Animasyon/Layout\nSes", EpisodeTasks: "Storyboard"})
+	require.NoError(t, err)
+	got, err := ss.Team().Get(team.Id)
+	require.NoError(t, err)
+	require.Equal(t, "Animasyon/Layout\nSes", got.EpisodeFolders)
+	require.Equal(t, "Storyboard", got.EpisodeTasks)
+
+	got.EpisodeFolders = "Kurgu"
+	got.EpisodeTasks = "Layout\nRender"
+	_, err = ss.Team().Update(got)
+	require.NoError(t, err)
+	got, err = ss.Team().Get(team.Id)
+	require.NoError(t, err)
+	require.Equal(t, "Kurgu", got.EpisodeFolders)
+	require.Equal(t, "Layout\nRender", got.EpisodeTasks)
 }
 
 func saveTeamMemberWithRoles(t *testing.T, rctx request.CTX, ss store.Store, teamID, roles string) *model.TeamMember {

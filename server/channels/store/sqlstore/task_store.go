@@ -21,7 +21,7 @@ func newSqlTaskStore(sqlStore *SqlStore) store.TaskStore {
 	return &SqlTaskStore{sqlStore}
 }
 
-var taskColumns = []string{"Id", "TeamId", "SectionId", "Title", "Description", "AssigneeId", "StartAt", "DueAt", "Status", "SortOrder", "VideoTime", "CreatorId", "CreateAt", "UpdateAt"}
+var taskColumns = []string{"Id", "TeamId", "SectionId", "Title", "Description", "AssigneeId", "StartAt", "DueAt", "Status", "SortOrder", "VideoTime", "VideoFileId", "CreatorId", "CreateAt", "UpdateAt"}
 
 var taskCommentColumns = []string{"Id", "TaskId", "UserId", "Message", "FileIds", "CreateAt"}
 
@@ -36,7 +36,7 @@ func (s *SqlTaskStore) Save(task *model.Task) (*model.Task, error) {
 	_, err := s.GetMaster().ExecBuilder(s.getQueryBuilder().
 		Insert("Tasks").
 		Columns(taskColumns...).
-		Values(task.Id, task.TeamId, task.SectionId, task.Title, task.Description, task.AssigneeId, task.StartAt, task.DueAt, task.Status, task.SortOrder, task.VideoTime, task.CreatorId, task.CreateAt, task.UpdateAt))
+		Values(task.Id, task.TeamId, task.SectionId, task.Title, task.Description, task.AssigneeId, task.StartAt, task.DueAt, task.Status, task.SortOrder, task.VideoTime, task.VideoFileId, task.CreatorId, task.CreateAt, task.UpdateAt))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to save Task with id=%s", task.Id)
 	}
@@ -174,7 +174,7 @@ func (s *SqlTaskStore) UpdateSection(section *model.TaskSection) (*model.TaskSec
 	return section, nil
 }
 
-// DeleteSection removes the section and moves its tasks to "no section" in one transaction.
+// DeleteSection removes the section and its video versions, and moves its tasks to "no section" as ordinary tasks, in one transaction.
 func (s *SqlTaskStore) DeleteSection(id string) (err error) {
 	transaction, err := s.GetMaster().Begin()
 	if err != nil {
@@ -185,9 +185,14 @@ func (s *SqlTaskStore) DeleteSection(id string) (err error) {
 	if _, err = transaction.ExecBuilder(s.getQueryBuilder().
 		Update("Tasks").
 		Set("SectionId", "").
+		Set("VideoFileId", "").
 		Set("UpdateAt", model.GetMillis()).
 		Where(sq.Eq{"SectionId": id})); err != nil {
 		return errors.Wrapf(err, "failed to unassign Tasks from section_id=%s", id)
+	}
+
+	if _, err = transaction.ExecBuilder(s.getQueryBuilder().Delete("TaskSectionVideos").Where(sq.Eq{"SectionId": id})); err != nil {
+		return errors.Wrapf(err, "failed to delete TaskSectionVideos for section_id=%s", id)
 	}
 
 	if _, err = transaction.ExecBuilder(s.getQueryBuilder().Delete("TaskSections").Where(sq.Eq{"Id": id})); err != nil {
@@ -195,6 +200,31 @@ func (s *SqlTaskStore) DeleteSection(id string) (err error) {
 	}
 
 	return transaction.Commit()
+}
+
+// SaveSectionVideo stores a new version of the section's video, numbered one past the section's latest in the same statement.
+func (s *SqlTaskStore) SaveSectionVideo(video *model.TaskSectionVideo) (*model.TaskSectionVideo, error) {
+	video.PreSave()
+	err := s.GetMaster().Get(&video.Version, `INSERT INTO TaskSectionVideos (Id, SectionId, FileId, Version, CreatorId, CreateAt)
+		SELECT $1, $2, $3, COALESCE(MAX(Version), 0) + 1, $4, $5 FROM TaskSectionVideos WHERE SectionId = $6
+		RETURNING Version`, video.Id, video.SectionId, video.FileId, video.CreatorId, video.CreateAt, video.SectionId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to save TaskSectionVideo for section_id=%s", video.SectionId)
+	}
+	return video, nil
+}
+
+func (s *SqlTaskStore) GetSectionVideos(sectionId string) ([]*model.TaskSectionVideo, error) {
+	videos := []*model.TaskSectionVideo{}
+	err := s.GetReplica().SelectBuilder(&videos, s.getQueryBuilder().
+		Select("Id", "SectionId", "FileId", "Version", "CreatorId", "CreateAt").
+		From("TaskSectionVideos").
+		Where(sq.Eq{"SectionId": sectionId}).
+		OrderBy("Version ASC"))
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get TaskSectionVideos for section_id=%s", sectionId)
+	}
+	return videos, nil
 }
 
 func (s *SqlTaskStore) SaveComment(comment *model.TaskComment) (*model.TaskComment, error) {

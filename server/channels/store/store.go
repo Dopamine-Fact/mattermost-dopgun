@@ -1226,6 +1226,8 @@ type TaskStore interface {
 	GetSectionsForTeam(teamId string) ([]*model.TaskSection, error)
 	UpdateSection(section *model.TaskSection) (*model.TaskSection, error)
 	DeleteSection(id string) error
+	SaveSectionVideo(video *model.TaskSectionVideo) (*model.TaskSectionVideo, error)
+	GetSectionVideos(sectionId string) ([]*model.TaskSectionVideo, error)
 	SaveComment(comment *model.TaskComment) (*model.TaskComment, error)
 	GetComment(id string) (*model.TaskComment, error)
 	GetCommentsForTask(taskId string) ([]*model.TaskComment, error)

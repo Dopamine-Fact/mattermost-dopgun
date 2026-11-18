@@ -503,3 +503,5 @@ channels/db/migrations/postgres/000253_custom_roles.down.sql
 channels/db/migrations/postgres/000253_custom_roles.up.sql
 channels/db/migrations/postgres/000254_team_departments.down.sql
 channels/db/migrations/postgres/000254_team_departments.up.sql
+channels/db/migrations/postgres/000255_task_video_versions.down.sql
+channels/db/migrations/postgres/000255_task_video_versions.up.sql

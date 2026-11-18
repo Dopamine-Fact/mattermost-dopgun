@@ -218,6 +218,36 @@ func (_m *TaskStore) GetSection(id string) (*model.TaskSection, error) {
 	return r0, r1
 }
 
+// GetSectionVideos provides a mock function with given fields: sectionId
+func (_m *TaskStore) GetSectionVideos(sectionId string) ([]*model.TaskSectionVideo, error) {
+	ret := _m.Called(sectionId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSectionVideos")
+	}
+
+	var r0 []*model.TaskSectionVideo
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]*model.TaskSectionVideo, error)); ok {
+		return rf(sectionId)
+	}
+	if rf, ok := ret.Get(0).(func(string) []*model.TaskSectionVideo); ok {
+		r0 = rf(sectionId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.TaskSectionVideo)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(sectionId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetSectionsForTeam provides a mock function with given fields: teamId
 func (_m *TaskStore) GetSectionsForTeam(teamId string) ([]*model.TaskSection, error) {
 	ret := _m.Called(teamId)
@@ -331,6 +361,36 @@ func (_m *TaskStore) SaveSection(section *model.TaskSection) (*model.TaskSection
 
 	if rf, ok := ret.Get(1).(func(*model.TaskSection) error); ok {
 		r1 = rf(section)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SaveSectionVideo provides a mock function with given fields: video
+func (_m *TaskStore) SaveSectionVideo(video *model.TaskSectionVideo) (*model.TaskSectionVideo, error) {
+	ret := _m.Called(video)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveSectionVideo")
+	}
+
+	var r0 *model.TaskSectionVideo
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*model.TaskSectionVideo) (*model.TaskSectionVideo, error)); ok {
+		return rf(video)
+	}
+	if rf, ok := ret.Get(0).(func(*model.TaskSectionVideo) *model.TaskSectionVideo); ok {
+		r0 = rf(video)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.TaskSectionVideo)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*model.TaskSectionVideo) error); ok {
+		r1 = rf(video)
 	} else {
 		r1 = ret.Error(1)
 	}

@@ -17,6 +17,73 @@ import (
 func TestTaskStore(t *testing.T, rctx request.CTX, ss store.Store) {
 	t.Run("TaskCRUD", func(t *testing.T) { testTaskCRUD(t, ss) })
 	t.Run("DeleteSectionUnassignsTasks", func(t *testing.T) { testDeleteTaskSection(t, ss) })
+	t.Run("SectionVideos", func(t *testing.T) { testTaskStoreSectionVideos(t, ss) })
+	t.Run("DeleteSectionClearsVersions", func(t *testing.T) { testTaskStoreDeleteSectionClearsVersions(t, ss) })
+	t.Run("SaveKeepsVideoFileId", func(t *testing.T) { testTaskStoreSaveKeepsVideoFileId(t, ss) })
+}
+
+func testTaskStoreSectionVideos(t *testing.T, ss store.Store) {
+	sectionId := model.NewId()
+	var fileIds []string
+	for i := 1; i <= 3; i++ {
+		fileId := model.NewId()
+		fileIds = append(fileIds, fileId)
+		saved, err := ss.Task().SaveSectionVideo(&model.TaskSectionVideo{SectionId: sectionId, FileId: fileId, CreatorId: model.NewId()})
+		require.NoError(t, err)
+		require.Equal(t, i, saved.Version)
+		require.NotEmpty(t, saved.Id)
+	}
+
+	videos, err := ss.Task().GetSectionVideos(sectionId)
+	require.NoError(t, err)
+	require.Len(t, videos, 3)
+	for i, v := range videos {
+		require.Equal(t, i+1, v.Version)
+		require.Equal(t, fileIds[i], v.FileId)
+		require.Nil(t, v.File)
+	}
+
+	other, err := ss.Task().SaveSectionVideo(&model.TaskSectionVideo{SectionId: model.NewId(), FileId: model.NewId(), CreatorId: model.NewId()})
+	require.NoError(t, err)
+	require.Equal(t, 1, other.Version)
+}
+
+func testTaskStoreDeleteSectionClearsVersions(t *testing.T, ss store.Store) {
+	teamId := model.NewId()
+	fileId := model.NewId()
+	section, err := ss.Task().SaveSection(&model.TaskSection{TeamId: teamId, Name: "Episode", ChannelId: model.NewId(), VideoFileId: fileId})
+	require.NoError(t, err)
+	_, err = ss.Task().SaveSectionVideo(&model.TaskSectionVideo{SectionId: section.Id, FileId: fileId, CreatorId: model.NewId()})
+	require.NoError(t, err)
+	task, err := ss.Task().Save(&model.Task{TeamId: teamId, SectionId: section.Id, CreatorId: model.NewId(), Title: "revision", VideoFileId: fileId})
+	require.NoError(t, err)
+
+	require.NoError(t, ss.Task().DeleteSection(section.Id))
+
+	videos, err := ss.Task().GetSectionVideos(section.Id)
+	require.NoError(t, err)
+	require.Empty(t, videos)
+	got, err := ss.Task().Get(task.Id)
+	require.NoError(t, err)
+	require.Empty(t, got.VideoFileId)
+	require.Empty(t, got.SectionId)
+}
+
+func testTaskStoreSaveKeepsVideoFileId(t *testing.T, ss store.Store) {
+	fileId := model.NewId()
+	task, err := ss.Task().Save(&model.Task{TeamId: model.NewId(), CreatorId: model.NewId(), Title: "revision", VideoFileId: fileId})
+	require.NoError(t, err)
+
+	got, err := ss.Task().Get(task.Id)
+	require.NoError(t, err)
+	require.Equal(t, fileId, got.VideoFileId)
+
+	got.VideoFileId = model.NewId()
+	_, err = ss.Task().Update(got)
+	require.NoError(t, err)
+	got, err = ss.Task().Get(task.Id)
+	require.NoError(t, err)
+	require.Equal(t, fileId, got.VideoFileId, "Update must not change VideoFileId")
 }
 
 func testTaskCRUD(t *testing.T, ss store.Store) {
