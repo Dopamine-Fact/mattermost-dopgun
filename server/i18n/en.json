@@ -19737,6 +19737,16 @@
     "description": "API error when a team's contact email address is invalid."
   },
   {
+    "id": "model.team.is_valid.episode_folders.app_error",
+    "translation": "Invalid default episode folders. Use at most 100 lines and 4000 characters, one folder path per line with valid folder names separated by /.",
+    "description": "API error when a team's default episode folder list is too long or has a line whose folder names are empty or contain characters not allowed in file names."
+  },
+  {
+    "id": "model.team.is_valid.episode_tasks.app_error",
+    "translation": "Invalid default episode tasks. Use at most 100 lines and 4000 characters.",
+    "description": "API error when a team's default episode task list has more than 100 lines or more than 4000 characters."
+  },
+  {
     "id": "model.team.is_valid.id.app_error",
     "translation": "Invalid Id.",
     "description": "API error when a team record's ID field is malformed."

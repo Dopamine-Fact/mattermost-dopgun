@@ -209,3 +209,45 @@ func TestTeamSanitizePreservesPolicyEnforced(t *testing.T) {
 		require.Empty(t, team.InviteId, "InviteId must be cleared by Sanitize")
 	})
 }
+
+func TestEpisodeTemplateLines(t *testing.T) {
+	require.Equal(t, []string{"a", "b/c"}, EpisodeTemplateLines(" a \n\n b/c \r\n"))
+	require.Empty(t, EpisodeTemplateLines(""))
+}
+
+func TestTeamEpisodeTemplatesIsValid(t *testing.T) {
+	validTeam := func() Team {
+		return Team{Id: NewId(), CreateAt: GetMillis(), UpdateAt: GetMillis(), Email: "a@b.com", DisplayName: "T", Name: "zzzzz", Type: TeamOpen, InviteId: NewId()}
+	}
+	lines := func(n int) string {
+		return strings.TrimSuffix(strings.Repeat("x\n", n), "\n")
+	}
+
+	for _, folders := range []string{"Animasyon/Layout\nSes", lines(100), ""} {
+		o := validTeam()
+		o.EpisodeFolders = folders
+		require.Nil(t, o.IsValid(), folders)
+	}
+
+	for _, folders := range []string{lines(101), strings.Repeat("a", 4001), "../x", "a//b", "/a", strings.Repeat("é", 256)} {
+		o := validTeam()
+		o.EpisodeFolders = folders
+		appErr := o.IsValid()
+		require.NotNil(t, appErr, folders)
+		require.Equal(t, "model.team.is_valid.episode_folders.app_error", appErr.Id)
+	}
+
+	o := validTeam()
+	o.EpisodeTasks = lines(100)
+	require.Nil(t, o.IsValid())
+	o.EpisodeTasks = "../x\na//b"
+	require.Nil(t, o.IsValid(), "task lines are not paths")
+
+	for _, tasks := range []string{lines(101), strings.Repeat("a", 4001)} {
+		o := validTeam()
+		o.EpisodeTasks = tasks
+		appErr := o.IsValid()
+		require.NotNil(t, appErr)
+		require.Equal(t, "model.team.is_valid.episode_tasks.app_error", appErr.Id)
+	}
+}

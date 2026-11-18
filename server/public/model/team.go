@@ -18,6 +18,8 @@ const (
 	TeamAllowedDomainsMaxLength = 500
 	TeamCompanyNameMaxLength    = 64
 	TeamDescriptionMaxLength    = 255
+	TeamEpisodeTemplateMaxRunes = 4000
+	TeamEpisodeTemplateMaxLines = 100
 	TeamDisplayNameMaxRunes     = 64
 	TeamEmailMaxLength          = 128
 	TeamNameMaxLength           = 64
@@ -50,6 +52,8 @@ type Team struct {
 	DailyReportTime     string  `json:"daily_report_time"` // "HH:MM" in DailyReportTimezone
 	DailyReportTimezone string  `json:"daily_report_timezone"`
 	FilesEnabled        bool    `json:"files_enabled"`
+	EpisodeFolders      string  `json:"episode_folders"` // newline-separated drive paths seeded into each new episode
+	EpisodeTasks        string  `json:"episode_tasks"`   // newline-separated task titles seeded into each new episode
 
 	// Not persisted; derived by the store via EXISTS on AccessControlPolicies(Type='team').
 	// Use HasMembershipPolicyAction for enforcement — this is a read-path signal only.
@@ -102,6 +106,8 @@ func (o *Team) Auditable() map[string]any {
 		"daily_report_time":     o.DailyReportTime,
 		"daily_report_timezone": o.DailyReportTimezone,
 		"files_enabled":         o.FilesEnabled,
+		"episode_folders":       len(EpisodeTemplateLines(o.EpisodeFolders)),
+		"episode_tasks":         len(EpisodeTemplateLines(o.EpisodeTasks)),
 	}
 }
 
@@ -124,6 +130,8 @@ type TeamPatch struct {
 	DailyReportTime     *string `json:"daily_report_time"`
 	DailyReportTimezone *string `json:"daily_report_timezone"`
 	FilesEnabled        *bool   `json:"files_enabled"`
+	EpisodeFolders      *string `json:"episode_folders"`
+	EpisodeTasks        *string `json:"episode_tasks"`
 }
 
 func (o *TeamPatch) Auditable() map[string]any {
@@ -138,7 +146,48 @@ func (o *TeamPatch) Auditable() map[string]any {
 		"daily_report_time":     o.DailyReportTime,
 		"daily_report_timezone": o.DailyReportTimezone,
 		"files_enabled":         o.FilesEnabled,
+		"episode_folders":       episodeTemplatePatchLines(o.EpisodeFolders),
+		"episode_tasks":         episodeTemplatePatchLines(o.EpisodeTasks),
 	}
+}
+
+func episodeTemplatePatchLines(text *string) any {
+	if text == nil {
+		return nil
+	}
+	return len(EpisodeTemplateLines(*text))
+}
+
+// EpisodeTemplateLines returns the trimmed, non-empty lines of an episode template, in order.
+func EpisodeTemplateLines(text string) []string {
+	var lines []string
+	for line := range strings.SplitSeq(text, "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			lines = append(lines, line)
+		}
+	}
+	return lines
+}
+
+// isValidEpisodeTemplate checks the size limits; with paths, each line's "/"-separated segments must be valid drive names.
+func isValidEpisodeTemplate(text string, paths bool) bool {
+	if utf8.RuneCountInString(text) > TeamEpisodeTemplateMaxRunes {
+		return false
+	}
+	lines := EpisodeTemplateLines(text)
+	if len(lines) > TeamEpisodeTemplateMaxLines {
+		return false
+	}
+	if paths {
+		for _, line := range lines {
+			for segment := range strings.SplitSeq(line, "/") {
+				if !IsValidDriveItemName(segment) {
+					return false
+				}
+			}
+		}
+	}
+	return true
 }
 
 type TeamForExport struct {
@@ -238,6 +287,13 @@ func (o *Team) IsValid() *AppError {
 		if _, err := time.LoadLocation(o.DailyReportTimezone); err != nil || o.DailyReportTimezone == "" {
 			return NewAppError("Team.IsValid", "model.team.is_valid.daily_report_timezone.app_error", nil, "id="+o.Id, http.StatusBadRequest)
 		}
+	}
+
+	if !isValidEpisodeTemplate(o.EpisodeFolders, true) {
+		return NewAppError("Team.IsValid", "model.team.is_valid.episode_folders.app_error", nil, "id="+o.Id, http.StatusBadRequest)
+	}
+	if !isValidEpisodeTemplate(o.EpisodeTasks, false) {
+		return NewAppError("Team.IsValid", "model.team.is_valid.episode_tasks.app_error", nil, "id="+o.Id, http.StatusBadRequest)
 	}
 
 	return nil
@@ -390,6 +446,14 @@ func (o *Team) Patch(patch *TeamPatch) {
 
 	if patch.FilesEnabled != nil {
 		o.FilesEnabled = *patch.FilesEnabled
+	}
+
+	if patch.EpisodeFolders != nil {
+		o.EpisodeFolders = *patch.EpisodeFolders
+	}
+
+	if patch.EpisodeTasks != nil {
+		o.EpisodeTasks = *patch.EpisodeTasks
 	}
 }
 

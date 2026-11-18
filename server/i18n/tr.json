@@ -15028,5 +15028,13 @@
   {
     "id": "app.canvas.too_large.app_error",
     "translation": "Tuval verisi çok büyük."
+  },
+  {
+    "id": "model.team.is_valid.episode_folders.app_error",
+    "translation": "Varsayılan bölüm klasörleri geçersiz. En fazla 100 satır ve 4000 karakter kullanın; her satıra / ile ayrılmış geçerli klasör adlarından oluşan bir yol yazın."
+  },
+  {
+    "id": "model.team.is_valid.episode_tasks.app_error",
+    "translation": "Varsayılan bölüm görevleri geçersiz. En fazla 100 satır ve 4000 karakter kullanın."
   }
 ]

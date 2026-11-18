@@ -47,7 +47,8 @@ type Task struct {
 	DueAt       int64   `json:"due_at"`
 	Status      string  `json:"status"`
 	SortOrder   float64 `json:"sort_order"`
-	VideoTime   int64   `json:"video_time"` // ms into the section's video, for revisions
+	VideoTime   int64   `json:"video_time"`    // ms into the section's video, for revisions
+	VideoFileId string  `json:"video_file_id"` // the video version a revision was written on; empty for ordinary tasks. Set on create only.
 	CreatorId   string  `json:"creator_id"`
 	CreateAt    int64   `json:"create_at"`
 	UpdateAt    int64   `json:"update_at"`
@@ -76,6 +77,24 @@ type TaskSection struct {
 	VideoFileId string `json:"video_file_id"`
 	CreateAt    int64  `json:"create_at"`
 	UpdateAt    int64  `json:"update_at"`
+}
+
+// TaskSectionVideo is one uploaded version of a linked section's video. Version counts up from 1 per section.
+type TaskSectionVideo struct {
+	Id        string    `json:"id"`
+	SectionId string    `json:"section_id"`
+	FileId    string    `json:"file_id"`
+	Version   int       `json:"version"`
+	CreatorId string    `json:"creator_id"`
+	CreateAt  int64     `json:"create_at"`
+	File      *FileInfo `json:"file,omitempty" db:"-"`
+}
+
+func (v *TaskSectionVideo) PreSave() {
+	if v.Id == "" {
+		v.Id = NewId()
+	}
+	v.CreateAt = GetMillis()
 }
 
 type TaskSectionPatch struct {
