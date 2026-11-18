@@ -980,13 +980,79 @@
         background: #000;
     }
 
-    &__hint {
+    &__bar {
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 12px;
+    }
+
+    &__split {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    &__player,
+    &__panel {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    &__moment {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    &__momentLabel {
         color: rgba(var(--center-channel-color-rgb), 0.64);
         font-size: 12px;
-        gap: 12px;
+    }
+
+    &__momentTime {
+        padding: 2px 8px;
+        border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+        border-radius: 4px;
+        font-family: monospace;
+    }
+
+    &__pin--on {
+        background: rgba(var(--button-bg-rgb), 0.12);
+    }
+
+    // Ten frames across the video; a click seeks to that point.
+    &__strip {
+        position: relative;
+        display: flex;
+        overflow: hidden;
+        border-radius: 4px;
+        background: #000;
+        cursor: pointer;
+    }
+
+    &__frame {
+        flex: 1;
+        aspect-ratio: 16 / 9;
+
+        img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
+        }
+    }
+
+    &__marker {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--button-bg);
+        pointer-events: none;
     }
 
     &__versions {
@@ -1006,9 +1072,140 @@
         }
     }
 
-    &__add {
+    &__form {
         display: flex;
+        flex-direction: column;
         gap: 8px;
+
+        textarea {
+            resize: vertical;
+        }
+    }
+
+    &__label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 4px;
+        font-weight: 600;
+
+        label {
+            margin: 0;
+        }
+
+        > span {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        svg {
+            fill: currentColor;
+        }
+    }
+
+    // The required mark is decoration; the textarea itself is required.
+    &__required::after {
+        margin-left: 2px;
+        color: var(--error-text);
+        content: '*';
+    }
+
+    &__count,
+    &__optional,
+    &__types {
+        color: rgba(var(--center-channel-color-rgb), 0.56);
+        font-size: 12px;
+        font-weight: 400;
+    }
+
+    &__images {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    &__drop {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 16px;
+        border: 1px dashed rgba(var(--center-channel-color-rgb), 0.24);
+        border-radius: 8px;
+        margin: 0;
+        cursor: pointer;
+        font-weight: 400;
+        gap: 4px;
+        text-align: center;
+
+        &:hover {
+            border-color: var(--button-bg);
+        }
+
+        b {
+            color: var(--button-bg);
+        }
+
+        svg {
+            color: rgba(var(--center-channel-color-rgb), 0.56);
+            fill: currentColor;
+        }
+
+        // global form styles show file inputs even when [hidden]
+        input {
+            display: none;
+        }
+    }
+
+    &__preview {
+        display: flex;
+        align-items: center;
+        padding: 6px;
+        border: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+        border-radius: 6px;
+        gap: 8px;
+
+        img {
+            width: 48px;
+            height: 48px;
+            border-radius: 4px;
+            object-fit: cover;
+        }
+    }
+
+    &__file {
+        display: flex;
+        min-width: 0;
+        flex: 1;
+        flex-direction: column;
+        font-size: 12px;
+
+        span:first-child {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        span:last-child {
+            color: rgba(var(--center-channel-color-rgb), 0.56);
+        }
+    }
+
+    &__actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 4px;
+        gap: 8px;
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        svg {
+            fill: currentColor;
+        }
     }
 }
 

@@ -3,10 +3,10 @@
 
 import classNames from 'classnames';
 import React, {useEffect, useMemo, useRef, useState} from 'react';
-import {FormattedMessage, useIntl} from 'react-intl';
+import {defineMessage, FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch} from 'react-redux';
 
-import {DotsVerticalIcon, MagnifyIcon, PlayIcon, PlusIcon} from '@mattermost/compass-icons/components';
+import {CloseIcon, DotsVerticalIcon, ImageOutlineIcon, MagnifyIcon, PlayIcon, PlusIcon, SendIcon, UploadOutlineIcon} from '@mattermost/compass-icons/components';
 import type {Task, TaskSection, TaskSectionVideo, TaskStatus} from '@mattermost/types/tasks';
 import type {UserProfile} from '@mattermost/types/users';
 
@@ -21,6 +21,13 @@ import {useFrameThumbnails} from './use_frame_thumbnails';
 
 // shortcut: browsers do not expose a video's frame rate, so arrow keys step 1/30 s; read it from the file if other rates matter.
 const FRAME_SECONDS = 1 / 30;
+
+// The revision description is its title; the form caps it below the title's own 512.
+const TITLE_MAX = 500;
+const STRIP_FRAMES = 10;
+const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+const imageRule = defineMessage({id: 'tasks.revisions.imageRule', defaultMessage: 'PNG, JPG or WEBP up to 10 MB'});
 
 type Props = {
     teamId: string;
@@ -67,7 +74,28 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
     const videoUrl = Client4.getTaskSectionVideoUrl(section.id, selected);
     const [replacing, setReplacing] = useState(false);
     const [replaceError, setReplaceError] = useState('');
-    const stills = useFrameThumbnails(videoUrl, revisions.filter((r) => r.video_file_id === selected).map((r) => r.video_time));
+
+    // duration and now (ms) follow the player; pinned is the moment "Use current time" fixed for the next revision.
+    const [duration, setDuration] = useState(0);
+    const [now, setNow] = useState(0);
+    const [pinned, setPinned] = useState<number | null>(null);
+    const moment = pinned ?? now;
+    const stripTimes = useMemo(() => (duration > 0 ? Array.from({length: STRIP_FRAMES}, (_, i) => Math.round(((i + 0.5) * duration * 1000) / STRIP_FRAMES)) : []), [duration]);
+    const stills = useFrameThumbnails(videoUrl, [...revisions.filter((r) => r.video_file_id === selected).map((r) => r.video_time), ...stripTimes]);
+
+    const [image, setImage] = useState<File>();
+    const [preview, setPreview] = useState('');
+    const [imageError, setImageError] = useState('');
+    const [creating, setCreating] = useState(false);
+    useEffect(() => {
+        if (!image) {
+            setPreview('');
+            return undefined;
+        }
+        const url = URL.createObjectURL(image);
+        setPreview(url);
+        return () => URL.revokeObjectURL(url);
+    }, [image]);
 
     const video = useRef<HTMLVideoElement>(null);
 
@@ -108,25 +136,67 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
         onSelect(revision.id);
     };
     const onLoadedMetadata = () => {
+        const length = video.current?.duration ?? 0;
+        setDuration(Number.isFinite(length) ? length : 0);
         if (pendingSeek.current !== null) {
             seek(pendingSeek.current);
             pendingSeek.current = null;
         }
     };
 
-    const addRevision = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!title.trim()) {
+    const trackTime = () => setNow(Math.round((video.current?.currentTime ?? 0) * 1000));
+    const seekStrip = (e: React.MouseEvent<HTMLElement>) => {
+        const box = e.currentTarget.getBoundingClientRect();
+        if (duration > 0 && box.width > 0) {
+            seek(Math.min(1, Math.max(0, (e.clientX - box.left) / box.width)) * duration * 1000);
+        }
+    };
+
+    const pickImage = (file?: File) => {
+        if (!file) {
             return;
         }
-        const videoTime = Math.round((video.current?.currentTime ?? 0) * 1000);
+        if (!IMAGE_TYPES.includes(file.type) || file.size > IMAGE_MAX_BYTES) {
+            setImageError(formatMessage(imageRule));
+            return;
+        }
+        setImageError('');
+        setImage(file);
+    };
+    const clearForm = () => {
+        setTitle('');
+        setImage(undefined);
+        setPinned(null);
+    };
+    const cancel = () => {
+        clearForm();
+        setImageError('');
+    };
+
+    const addRevision = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!title.trim() || creating) {
+            return;
+        }
+        setCreating(true);
+        setImageError('');
+        const videoTime = pinned ?? Math.round((video.current?.currentTime ?? 0) * 1000);
         const result = await dispatch(createTask({team_id: teamId, title: title.trim(), section_id: section.id, video_time: videoTime, video_file_id: selected}));
         if (result.data) {
-            setTitle('');
+            // The image goes up before the revision opens, so its comments load with it.
+            if (image) {
+                try {
+                    await Client4.createTaskComment(result.data.id, '', [image]);
+                } catch {
+                    setImageError(formatMessage({id: 'tasks.revisions.imageFailed', defaultMessage: 'The revision was created but the image could not be attached'}));
+                }
+            }
+            clearForm();
 
             // Open the new revision so it can be assigned straight away.
             onSelect(result.data.id);
         }
+        setCreating(false);
     };
 
     const replaceVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -309,16 +379,7 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
         <div className='TaskRevisions'>
             {list}
             <section className='TaskRevisions__stage'>
-                <video
-                    key={videoUrl}
-                    ref={video}
-                    className='TaskRevisions__video'
-                    src={videoUrl}
-                    controls={true}
-                    preload='metadata'
-                    onLoadedMetadata={onLoadedMetadata}
-                />
-                <div className='TaskRevisions__hint'>
+                <div className='TaskRevisions__bar'>
                     <select
                         className='form-control TaskRevisions__versions'
                         value={selected}
@@ -338,10 +399,6 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
                             </option>
                         ))}
                     </select>
-                    <FormattedMessage
-                        id='tasks.revisions.frameHint'
-                        defaultMessage='Use ← and → to step one frame.'
-                    />
                     {canManage && (
                         <label className={classNames('btn btn-tertiary btn-xs TaskRevisions__replace', {disabled: replacing})}>
                             {replacing ? (
@@ -367,32 +424,214 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
                     )}
                 </div>
                 {replaceError && <div className='TaskRevisions__error error-text'>{replaceError}</div>}
-
-                {canManage && (
-                    <form
-                        className='TaskRevisions__add'
-                        onSubmit={addRevision}
+                {imageError && (
+                    <div
+                        className='TaskRevisions__error error-text'
+                        role='alert'
                     >
-                        <input
-                            className='form-control'
-                            value={title}
-                            maxLength={512}
-                            onChange={(e) => setTitle(e.target.value)}
-                            placeholder={formatMessage({id: 'tasks.revisions.placeholder', defaultMessage: 'Describe the revision at the current moment'})}
-                            aria-label={formatMessage({id: 'tasks.revisions.title', defaultMessage: 'Revision'})}
-                        />
-                        <button
-                            type='submit'
-                            className='btn btn-primary btn-sm'
-                            disabled={!title.trim()}
-                        >
-                            <FormattedMessage
-                                id='tasks.revisions.add'
-                                defaultMessage='Add revision'
-                            />
-                        </button>
-                    </form>
+                        {imageError}
+                    </div>
                 )}
+
+                <div className='TaskRevisions__split'>
+                    <div className='TaskRevisions__player'>
+                        <video
+                            key={videoUrl}
+                            ref={video}
+                            className='TaskRevisions__video'
+                            src={videoUrl}
+                            controls={true}
+                            preload='metadata'
+                            title={formatMessage({id: 'tasks.revisions.frameHint', defaultMessage: 'Use ← and → to step one frame.'})}
+                            onLoadedMetadata={onLoadedMetadata}
+                            onTimeUpdate={trackTime}
+                            onSeeked={trackTime}
+                        />
+                        <div className='TaskRevisions__moment'>
+                            <span className='TaskRevisions__momentLabel'>
+                                <FormattedMessage
+                                    id='tasks.revisions.moment'
+                                    defaultMessage='Moment'
+                                />
+                            </span>
+                            <span className='TaskRevisions__momentTime'>{formatVideoTime(moment)}</span>
+                            {canManage && (
+                                <button
+                                    type='button'
+                                    className={classNames('btn btn-tertiary btn-xs', {'TaskRevisions__pin--on': pinned !== null})}
+                                    onClick={() => setPinned(Math.round((video.current?.currentTime ?? 0) * 1000))}
+                                >
+                                    <FormattedMessage
+                                        id='tasks.revisions.useCurrent'
+                                        defaultMessage='Use current time'
+                                    />
+                                </button>
+                            )}
+                        </div>
+                        <div
+                            className='TaskRevisions__strip'
+                            role='presentation'
+                            onClick={seekStrip}
+                        >
+                            {stripTimes.map((t) => (
+                                <span
+                                    key={t}
+                                    className='TaskRevisions__frame'
+                                >
+                                    {stills[t] && (
+                                        <img
+                                            src={stills[t]}
+                                            alt=''
+                                        />
+                                    )}
+                                </span>
+                            ))}
+                            {duration > 0 && (
+                                <span
+                                    className='TaskRevisions__marker'
+                                    style={{left: `${Math.min(100, (moment / (duration * 1000)) * 100)}%`}}
+                                />
+                            )}
+                        </div>
+                    </div>
+
+                    <div className='TaskRevisions__panel'>
+                        {canManage && (
+                            <form
+                                className='TaskRevisions__form'
+                                onSubmit={addRevision}
+                            >
+                                <div className='TaskRevisions__label'>
+                                    <label htmlFor='revisionDescription'>
+                                        <FormattedMessage
+                                            id='tasks.revisions.description'
+                                            defaultMessage='Revision description'
+                                        />
+                                        <span
+                                            className='TaskRevisions__required'
+                                            aria-hidden={true}
+                                        />
+                                    </label>
+                                    <span className='TaskRevisions__count'>
+                                        <FormattedMessage
+                                            id='tasks.revisions.count'
+                                            defaultMessage='{count} / {max}'
+                                            values={{count: title.length, max: TITLE_MAX}}
+                                        />
+                                    </span>
+                                </div>
+                                <textarea
+                                    id='revisionDescription'
+                                    className='form-control'
+                                    rows={5}
+                                    value={title}
+                                    maxLength={TITLE_MAX}
+                                    required={true}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    placeholder={formatMessage({id: 'tasks.revisions.placeholder', defaultMessage: 'Describe the change you want in detail…'})}
+                                    aria-label={formatMessage({id: 'tasks.revisions.description', defaultMessage: 'Revision description'})}
+                                />
+
+                                <div className='TaskRevisions__label'>
+                                    <span>
+                                        <ImageOutlineIcon size={16}/>
+                                        <FormattedMessage
+                                            id='tasks.revisions.image'
+                                            defaultMessage='Reference image'
+                                        />
+                                        <span className='TaskRevisions__optional'>
+                                            <FormattedMessage
+                                                id='tasks.revisions.optional'
+                                                defaultMessage='(optional)'
+                                            />
+                                        </span>
+                                    </span>
+                                </div>
+                                <div className='TaskRevisions__images'>
+                                    <label
+                                        className='TaskRevisions__drop'
+                                        onDragOver={(e) => e.preventDefault()}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            pickImage(e.dataTransfer.files[0]);
+                                        }}
+                                    >
+                                        <UploadOutlineIcon size={20}/>
+                                        <FormattedMessage
+                                            id='tasks.revisions.drop'
+                                            defaultMessage='Drag an image here or <b>choose one</b>'
+                                            values={{b: (chunks: React.ReactNode) => <b>{chunks}</b>}}
+                                        />
+                                        <span className='TaskRevisions__types'>
+                                            <FormattedMessage {...imageRule}/>
+                                        </span>
+                                        <input
+                                            type='file'
+                                            hidden={true}
+                                            accept={IMAGE_TYPES.join(',')}
+                                            aria-label={formatMessage({id: 'tasks.revisions.image', defaultMessage: 'Reference image'})}
+                                            onChange={(e) => {
+                                                pickImage(e.target.files?.[0]);
+                                                e.target.value = '';
+                                            }}
+                                        />
+                                    </label>
+                                    {image && (
+                                        <div className='TaskRevisions__preview'>
+                                            {preview && (
+                                                <img
+                                                    src={preview}
+                                                    alt=''
+                                                />
+                                            )}
+                                            <span className='TaskRevisions__file'>
+                                                <span>{image.name}</span>
+                                                <FormattedMessage
+                                                    id='tasks.revisions.imageSize'
+                                                    defaultMessage='{size} MB'
+                                                    values={{size: (image.size / (1024 * 1024)).toFixed(1)}}
+                                                    tagName='span'
+                                                />
+                                            </span>
+                                            <button
+                                                type='button'
+                                                className='btn btn-icon btn-xs'
+                                                onClick={() => setImage(undefined)}
+                                                aria-label={formatMessage({id: 'tasks.revisions.removeImage', defaultMessage: 'Remove image'})}
+                                            >
+                                                <CloseIcon size={14}/>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className='TaskRevisions__actions'>
+                                    <button
+                                        type='button'
+                                        className='btn btn-tertiary'
+                                        onClick={cancel}
+                                    >
+                                        <FormattedMessage
+                                            id='tasks.revisions.cancel'
+                                            defaultMessage='Cancel'
+                                        />
+                                    </button>
+                                    <button
+                                        type='submit'
+                                        className='btn btn-primary'
+                                        disabled={!title.trim() || creating}
+                                    >
+                                        <SendIcon size={16}/>
+                                        <FormattedMessage
+                                            id='tasks.revisions.create'
+                                            defaultMessage='Create revision'
+                                        />
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
             </section>
         </div>
     );

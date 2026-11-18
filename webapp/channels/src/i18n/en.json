@@ -33255,17 +33255,33 @@
     "defaultMessage": "New revision",
     "description": "Heading of the card posted in a revision channel's chat when someone adds a revision; the revision's time in the video follows it."
   },
-  "tasks.revisions.add": {
-    "defaultMessage": "Add revision",
-    "description": "Button in the Revisions view that adds a revision task at the video's current time."
-  },
   "tasks.revisions.allStatuses": {
     "defaultMessage": "All statuses",
     "description": "Option of the revision status filter that shows every status."
   },
+  "tasks.revisions.cancel": {
+    "defaultMessage": "Cancel",
+    "description": "Button that clears the create revision form."
+  },
+  "tasks.revisions.count": {
+    "defaultMessage": "{count} / {max}",
+    "description": "Character counter under the revision description label; count is the typed length, max the limit."
+  },
+  "tasks.revisions.create": {
+    "defaultMessage": "Create revision",
+    "description": "Submit button of the create revision form on a revision channel."
+  },
   "tasks.revisions.delete": {
     "defaultMessage": "Delete",
     "description": "Menu item on a revision card that deletes the revision."
+  },
+  "tasks.revisions.description": {
+    "defaultMessage": "Revision description",
+    "description": "Label of the box where a user describes what must change at the chosen moment of the video."
+  },
+  "tasks.revisions.drop": {
+    "defaultMessage": "Drag an image here or <b>choose one</b>",
+    "description": "Drop zone text for the optional reference image of a new revision; <b> wraps the clickable part."
   },
   "tasks.revisions.frameHint": {
     "defaultMessage": "Use ← and → to step one frame.",
@@ -33274,6 +33290,26 @@
   "tasks.revisions.heading": {
     "defaultMessage": "Revisions",
     "description": "Heading of the revision list on a revision channel's Revisions tab."
+  },
+  "tasks.revisions.image": {
+    "defaultMessage": "Reference image",
+    "description": "Label of the optional image attached to a new revision as its first comment."
+  },
+  "tasks.revisions.imageFailed": {
+    "defaultMessage": "The revision was created but the image could not be attached",
+    "description": "Error shown when a new revision was saved but uploading its reference image failed."
+  },
+  "tasks.revisions.imageRule": {
+    "defaultMessage": "PNG, JPG or WEBP up to 10 MB",
+    "description": "Allowed reference image types and size; also shown as the error when a picked file breaks the rule."
+  },
+  "tasks.revisions.imageSize": {
+    "defaultMessage": "{size} MB",
+    "description": "Size of the picked reference image in megabytes."
+  },
+  "tasks.revisions.moment": {
+    "defaultMessage": "Moment",
+    "description": "Label of the video moment a new revision will point at."
   },
   "tasks.revisions.more": {
     "defaultMessage": "More actions",
@@ -33295,9 +33331,17 @@
     "defaultMessage": "Made on an earlier version; open it to watch that version",
     "description": "Tooltip of the version badge on a revision that was made on an earlier video version."
   },
+  "tasks.revisions.optional": {
+    "defaultMessage": "(optional)",
+    "description": "Marks the reference image field of the create revision form as optional."
+  },
   "tasks.revisions.placeholder": {
-    "defaultMessage": "Describe the revision at the current moment",
-    "description": "Placeholder of the field where a user describes what must change at the paused moment of the video."
+    "defaultMessage": "Describe the change you want in detail…",
+    "description": "Placeholder of the revision description box in the create revision form."
+  },
+  "tasks.revisions.removeImage": {
+    "defaultMessage": "Remove image",
+    "description": "Accessible label of the button that removes the picked reference image."
   },
   "tasks.revisions.replacing": {
     "defaultMessage": "Uploading…",
@@ -33331,13 +33375,13 @@
     "defaultMessage": "All revisions made on this channel's video",
     "description": "Line under the Revisions heading saying what the list holds."
   },
-  "tasks.revisions.title": {
-    "defaultMessage": "Revision",
-    "description": "Accessible label of the field for a new revision's description."
-  },
   "tasks.revisions.uploadVersion": {
     "defaultMessage": "Upload new version",
     "description": "Button in a revision channel's Revisions tab that uploads a new version of the video; earlier versions and their revisions are kept."
+  },
+  "tasks.revisions.useCurrent": {
+    "defaultMessage": "Use current time",
+    "description": "Button that fixes the video's current time as the moment of the next revision."
   },
   "tasks.revisions.version": {
     "defaultMessage": "Version",

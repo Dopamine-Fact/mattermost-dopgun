@@ -85,6 +85,8 @@ const renderRevisions = (canManage = true, extra: Task[] = []) => {
 describe('Revisions', () => {
     beforeEach(() => {
         jest.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+        URL.createObjectURL = jest.fn(() => 'blob:preview');
+        URL.revokeObjectURL = jest.fn();
         jest.spyOn(Client4, 'getTaskSectionVideos').mockResolvedValue(versions);
     });
     afterEach(() => jest.clearAllMocks());
@@ -132,23 +134,23 @@ describe('Revisions', () => {
         expect(time()).toBeCloseTo(10 - (1 / 30));
         expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled();
 
-        fireEvent.keyDown(screen.getByRole('textbox', {name: 'Revision'}), {key: 'ArrowRight'});
+        fireEvent.keyDown(screen.getByRole('textbox', {name: 'Revision description'}), {key: 'ArrowRight'});
         expect(time()).toBeCloseTo(10 - (1 / 30));
     });
 
     test('adds a revision at the current moment and opens it', async () => {
         renderRevisions();
-        fireEvent.change(screen.getByRole('textbox', {name: 'Revision'}), {target: {value: ' Logo too small '}});
-        fireEvent.click(screen.getByRole('button', {name: 'Add revision'}));
+        fireEvent.change(screen.getByRole('textbox', {name: 'Revision description'}), {target: {value: ' Logo too small '}});
+        fireEvent.click(screen.getByRole('button', {name: 'Create revision'}));
 
         await waitFor(() => expect(onSelect).toHaveBeenCalledWith('new'));
         expect(createTask).toHaveBeenCalledWith({team_id: 'team1', title: 'Logo too small', section_id: 'sec1', video_time: 10000, video_file_id: 'file1'});
-        expect(screen.getByRole('textbox', {name: 'Revision'})).toHaveValue('');
+        expect(screen.getByRole('textbox', {name: 'Revision description'})).toHaveValue('');
     });
 
     test('members without manage_revisions can watch but not add', () => {
         renderRevisions(false);
-        expect(screen.queryByRole('textbox', {name: 'Revision'})).not.toBeInTheDocument();
+        expect(screen.queryByRole('textbox', {name: 'Revision description'})).not.toBeInTheDocument();
         expect(screen.getByRole('button', {name: 'Revision late'})).toBeInTheDocument();
     });
     test('managers can upload a new version; others cannot', async () => {
@@ -206,8 +208,8 @@ describe('Revisions', () => {
         await waitFor(() => expect(within(screen.getByRole('combobox', {name: 'Version'})).getAllByRole('option')).toHaveLength(2));
         fireEvent.change(screen.getByRole('combobox', {name: 'Version'}), {target: {value: 'file0'}});
         defineTime(document.querySelector('video')!, 2);
-        fireEvent.change(screen.getByRole('textbox', {name: 'Revision'}), {target: {value: 'Earlier cut'}});
-        fireEvent.click(screen.getByRole('button', {name: 'Add revision'}));
+        fireEvent.change(screen.getByRole('textbox', {name: 'Revision description'}), {target: {value: 'Earlier cut'}});
+        fireEvent.click(screen.getByRole('button', {name: 'Create revision'}));
 
         await waitFor(() => expect(createTask).toHaveBeenCalledWith({team_id: 'team1', title: 'Earlier cut', section_id: 'sec1', video_time: 2000, video_file_id: 'file0'}));
     });
@@ -225,8 +227,8 @@ describe('Revisions', () => {
         expect(picker).toHaveValue('file1');
         expect(document.querySelector('video')).toHaveAttribute('src', expect.stringContaining('file_id=file1'));
         defineTime(document.querySelector('video')!, 2);
-        fireEvent.change(screen.getByRole('textbox', {name: 'Revision'}), {target: {value: 'Still on v2'}});
-        fireEvent.click(screen.getByRole('button', {name: 'Add revision'}));
+        fireEvent.change(screen.getByRole('textbox', {name: 'Revision description'}), {target: {value: 'Still on v2'}});
+        fireEvent.click(screen.getByRole('button', {name: 'Create revision'}));
         await waitFor(() => expect(createTask).toHaveBeenCalledWith(expect.objectContaining({title: 'Still on v2', video_file_id: 'file1'})));
     });
 
@@ -277,5 +279,87 @@ describe('Revisions', () => {
     test('viewers get no card menu', () => {
         renderRevisions(false);
         expect(screen.queryByRole('button', {name: 'More actions'})).toBeNull();
+    });
+
+    test('the form pins the current moment when asked and creates the revision there', async () => {
+        const {video} = renderRevisions();
+        video.currentTime = 3.5;
+        fireEvent.click(screen.getByRole('button', {name: 'Use current time'}));
+        expect(screen.getByText('0:03.50')).toBeInTheDocument();
+        video.currentTime = 9;
+        fireEvent.change(screen.getByRole('textbox', {name: 'Revision description'}), {target: {value: 'Logo too small'}});
+        expect(screen.getByText('14 / 500')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', {name: 'Create revision'}));
+
+        await waitFor(() => expect(createTask).toHaveBeenCalledWith(expect.objectContaining({title: 'Logo too small', video_time: 3500})));
+    });
+
+    test('without a pinned moment the revision takes the player time', async () => {
+        const {video} = renderRevisions();
+        video.currentTime = 2;
+        fireEvent.change(screen.getByRole('textbox', {name: 'Revision description'}), {target: {value: 'Shadow'}});
+        fireEvent.click(screen.getByRole('button', {name: 'Create revision'}));
+        await waitFor(() => expect(createTask).toHaveBeenCalledWith(expect.objectContaining({video_time: 2000})));
+    });
+
+    test('a reference image is sent as the first comment of the new revision', async () => {
+        const comment = jest.spyOn(Client4, 'createTaskComment').mockResolvedValue({} as never);
+        renderRevisions();
+        const file = new File(['x'], 'ref.png', {type: 'image/png'});
+        fireEvent.change(screen.getByLabelText('Reference image'), {target: {files: [file]}});
+        expect(screen.getByText('ref.png')).toBeInTheDocument();
+        fireEvent.change(screen.getByRole('textbox', {name: 'Revision description'}), {target: {value: 'Logo'}});
+        fireEvent.click(screen.getByRole('button', {name: 'Create revision'}));
+
+        await waitFor(() => expect(onSelect).toHaveBeenCalledWith('new'));
+        expect(comment).toHaveBeenCalledWith('new', '', [file]);
+        expect(comment.mock.invocationCallOrder[0]).toBeLessThan(onSelect.mock.invocationCallOrder[0]);
+    });
+
+    test('an image that fails to attach keeps the revision and says so', async () => {
+        jest.spyOn(Client4, 'createTaskComment').mockRejectedValue(new Error('too big'));
+        renderRevisions();
+        fireEvent.change(screen.getByLabelText('Reference image'), {target: {files: [new File(['x'], 'ref.png', {type: 'image/png'})]}});
+        fireEvent.change(screen.getByRole('textbox', {name: 'Revision description'}), {target: {value: 'Logo'}});
+        fireEvent.click(screen.getByRole('button', {name: 'Create revision'}));
+
+        await waitFor(() => expect(onSelect).toHaveBeenCalledWith('new'));
+        expect(screen.getByRole('alert')).toHaveTextContent('The revision was created but the image could not be attached');
+    });
+
+    test('a non-image or a file over 10 MB is refused', async () => {
+        const comment = jest.spyOn(Client4, 'createTaskComment').mockResolvedValue({} as never);
+        renderRevisions();
+        fireEvent.change(screen.getByLabelText('Reference image'), {target: {files: [new File(['x'], 'notes.txt', {type: 'text/plain'})]}});
+        expect(screen.getByRole('alert')).toHaveTextContent('PNG, JPG or WEBP up to 10 MB');
+
+        const big = new File(['x'], 'big.png', {type: 'image/png'});
+        Object.defineProperty(big, 'size', {value: (10 * 1024 * 1024) + 1});
+        fireEvent.change(screen.getByLabelText('Reference image'), {target: {files: [big]}});
+        expect(screen.queryByText('big.png')).toBeNull();
+
+        fireEvent.change(screen.getByRole('textbox', {name: 'Revision description'}), {target: {value: 'Logo'}});
+        fireEvent.click(screen.getByRole('button', {name: 'Create revision'}));
+        await waitFor(() => expect(onSelect).toHaveBeenCalledWith('new'));
+        expect(comment).not.toHaveBeenCalled();
+    });
+
+    test('Cancel clears the form', () => {
+        renderRevisions();
+        fireEvent.change(screen.getByRole('textbox', {name: 'Revision description'}), {target: {value: 'Logo'}});
+        fireEvent.change(screen.getByLabelText('Reference image'), {target: {files: [new File(['x'], 'ref.png', {type: 'image/png'})]}});
+        fireEvent.click(screen.getByRole('button', {name: 'Cancel'}));
+        expect(screen.getByRole('textbox', {name: 'Revision description'})).toHaveValue('');
+        expect(screen.queryByRole('button', {name: 'Remove image'})).toBeNull();
+    });
+
+    test('clicking the filmstrip seeks', () => {
+        const {video, time} = renderRevisions();
+        Object.defineProperty(video, 'duration', {value: 10});
+        fireEvent.loadedMetadata(video);
+        const strip = document.querySelector('.TaskRevisions__strip') as HTMLElement;
+        jest.spyOn(strip, 'getBoundingClientRect').mockReturnValue({left: 0, width: 200} as DOMRect);
+        fireEvent.click(strip, {clientX: 100});
+        expect(time()).toBe(5);
     });
 });
