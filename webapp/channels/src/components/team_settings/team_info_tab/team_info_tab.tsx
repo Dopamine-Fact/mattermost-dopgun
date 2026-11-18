@@ -15,11 +15,9 @@ import {imageURLForTeam} from 'utils/utils';
 
 import TeamDailyReportsSection from './team_daily_reports_section';
 import TeamDescriptionSection from './team_description_section';
-import TeamEpisodeTemplatesSection from './team_episode_templates_section';
 import TeamFilesSection from './team_files_section';
 import TeamNameSection from './team_name_section';
 import TeamPictureSection from './team_picture_section';
-import TeamTasksSection from './team_tasks_section';
 
 import type {PropsFromRedux, OwnProps} from '.';
 
@@ -48,14 +46,6 @@ const translations = defineMessages({
         id: 'general_tab.teamIconError',
         defaultMessage: 'An error occurred while selecting the image.',
     },
-    EpisodeFoldersInvalid: {
-        id: 'general_tab.episodeFoldersInvalid',
-        defaultMessage: 'Invalid default episode folders. Use at most 100 lines and 4000 characters, one folder path per line with valid folder names separated by /.',
-    },
-    EpisodeTasksInvalid: {
-        id: 'general_tab.episodeTasksInvalid',
-        defaultMessage: 'Invalid default episode tasks. Use at most 100 lines and 4000 characters.',
-    },
 });
 
 type Props = PropsFromRedux & OwnProps;
@@ -65,17 +55,9 @@ const DEFAULT_DAILY_REPORT_TIME = '18:00';
 const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError, setShowTabSwitchError, setAreThereUnsavedChanges, actions}: Props) => {
     const [name, setName] = useState<Team['display_name']>(team.display_name);
     const [description, setDescription] = useState<Team['description']>(team.description);
-    const [tasksEnabled, setTasksEnabled] = useState<boolean>(Boolean(team.tasks_enabled));
-    const [revisionsEnabled, setRevisionsEnabled] = useState<boolean>(Boolean(team.revisions_enabled));
-    const [canvasEnabled, setCanvasEnabled] = useState<boolean>(Boolean(team.canvas_enabled));
     const [dailyReportsEnabled, setDailyReportsEnabled] = useState<boolean>(Boolean(team.daily_reports_enabled));
     const [dailyReportTime, setDailyReportTime] = useState<string>(team.daily_report_time || DEFAULT_DAILY_REPORT_TIME);
     const [filesEnabled, setFilesEnabled] = useState<boolean>(Boolean(team.files_enabled));
-    const [episodeFolders, setEpisodeFolders] = useState<string>(team.episode_folders ?? '');
-    const [episodeTasks, setEpisodeTasks] = useState<string>(team.episode_tasks ?? '');
-
-    // Which template the server rejected on the last save.
-    const [templateError, setTemplateError] = useState<'folders' | 'tasks'>();
     const [teamIconFile, setTeamIconFile] = useState<File | undefined>();
     const [loading, setLoading] = useState<boolean>(false);
     const [imageClientError, setImageClientError] = useState<BaseSettingItemProps['error'] | undefined>();
@@ -83,7 +65,7 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
     const [saveChangesPanelState, setSaveChangesPanelState] = useState<SaveChangesPanelState>();
 
     const handleNameDescriptionSubmit = useCallback(async (): Promise<boolean> => {
-        if (name.trim() === team.display_name && description === team.description && tasksEnabled === Boolean(team.tasks_enabled) && revisionsEnabled === Boolean(team.revisions_enabled) && canvasEnabled === Boolean(team.canvas_enabled) && dailyReportsEnabled === Boolean(team.daily_reports_enabled) && dailyReportTime === (team.daily_report_time || DEFAULT_DAILY_REPORT_TIME) && filesEnabled === Boolean(team.files_enabled) && episodeFolders === (team.episode_folders ?? '') && episodeTasks === (team.episode_tasks ?? '')) {
+        if (name.trim() === team.display_name && description === team.description && dailyReportsEnabled === Boolean(team.daily_reports_enabled) && dailyReportTime === (team.daily_report_time || DEFAULT_DAILY_REPORT_TIME) && filesEnabled === Boolean(team.files_enabled)) {
             return true;
         }
 
@@ -102,30 +84,15 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
             id: team.id,
             display_name: name,
             description,
-            tasks_enabled: tasksEnabled,
-            revisions_enabled: revisionsEnabled,
-            canvas_enabled: canvasEnabled,
             ...(dailyReportsChanged && {
                 daily_reports_enabled: dailyReportsEnabled,
                 daily_report_time: dailyReportTime,
                 daily_report_timezone: new Intl.DateTimeFormat().resolvedOptions().timeZone,
             }),
             ...(filesEnabled !== Boolean(team.files_enabled) && {files_enabled: filesEnabled}),
-            ...(episodeFolders !== (team.episode_folders ?? '') && {episode_folders: episodeFolders}),
-            ...(episodeTasks !== (team.episode_tasks ?? '') && {episode_tasks: episodeTasks}),
         });
-        if (error) {
-            const errorId = (error as {server_error_id?: string}).server_error_id;
-            if (errorId === 'model.team.is_valid.episode_folders.app_error') {
-                setTemplateError('folders');
-            } else if (errorId === 'model.team.is_valid.episode_tasks.app_error') {
-                setTemplateError('tasks');
-            }
-            return false;
-        }
-        setTemplateError(undefined);
-        return true;
-    }, [actions, description, name, tasksEnabled, revisionsEnabled, canvasEnabled, dailyReportsEnabled, dailyReportTime, filesEnabled, episodeFolders, episodeTasks, team.description, team.display_name, team.id, team.tasks_enabled, team.revisions_enabled, team.canvas_enabled, team.daily_reports_enabled, team.daily_report_time, team.files_enabled, team.episode_folders, team.episode_tasks]);
+        return !error;
+    }, [actions, description, name, dailyReportsEnabled, dailyReportTime, filesEnabled, team.description, team.display_name, team.id, team.daily_reports_enabled, team.daily_report_time, team.files_enabled]);
 
     const handleTeamIconSubmit = useCallback(async (): Promise<boolean> => {
         if (!teamIconFile) {
@@ -163,20 +130,14 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
     const handleCancel = useCallback(() => {
         setName(team.display_name ?? team.name);
         setDescription(team.description);
-        setTasksEnabled(Boolean(team.tasks_enabled));
-        setRevisionsEnabled(Boolean(team.revisions_enabled));
-        setCanvasEnabled(Boolean(team.canvas_enabled));
         setDailyReportsEnabled(Boolean(team.daily_reports_enabled));
         setDailyReportTime(team.daily_report_time || DEFAULT_DAILY_REPORT_TIME);
         setFilesEnabled(Boolean(team.files_enabled));
-        setEpisodeFolders(team.episode_folders ?? '');
-        setEpisodeTasks(team.episode_tasks ?? '');
-        setTemplateError(undefined);
         setTeamIconFile(undefined);
         setImageClientError(undefined);
         setNameClientError(undefined);
         handleClose();
-    }, [handleClose, team.description, team.display_name, team.name, team.tasks_enabled, team.revisions_enabled, team.canvas_enabled, team.daily_reports_enabled, team.daily_report_time, team.files_enabled, team.episode_folders, team.episode_tasks]);
+    }, [handleClose, team.description, team.display_name, team.name, team.daily_reports_enabled, team.daily_report_time, team.files_enabled]);
 
     const handleTeamIconRemove = useCallback(async () => {
         setLoading(true);
@@ -225,24 +186,6 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
         setDescription(description);
     }, [setAreThereUnsavedChanges]);
 
-    const handleTasksEnabledChange = useCallback((enabled: boolean) => {
-        setAreThereUnsavedChanges(true);
-        setSaveChangesPanelState('editing');
-        setTasksEnabled(enabled);
-    }, [setAreThereUnsavedChanges]);
-
-    const handleRevisionsEnabledChange = useCallback((enabled: boolean) => {
-        setAreThereUnsavedChanges(true);
-        setSaveChangesPanelState('editing');
-        setRevisionsEnabled(enabled);
-    }, [setAreThereUnsavedChanges]);
-
-    const handleCanvasEnabledChange = useCallback((enabled: boolean) => {
-        setAreThereUnsavedChanges(true);
-        setSaveChangesPanelState('editing');
-        setCanvasEnabled(enabled);
-    }, [setAreThereUnsavedChanges]);
-
     const handleDailyReportsEnabledChange = useCallback((enabled: boolean) => {
         setAreThereUnsavedChanges(true);
         setSaveChangesPanelState('editing');
@@ -253,18 +196,6 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
         setAreThereUnsavedChanges(true);
         setSaveChangesPanelState('editing');
         setFilesEnabled(enabled);
-    }, [setAreThereUnsavedChanges]);
-
-    const handleEpisodeFoldersChange = useCallback((text: string) => {
-        setAreThereUnsavedChanges(true);
-        setSaveChangesPanelState('editing');
-        setEpisodeFolders(text);
-    }, [setAreThereUnsavedChanges]);
-
-    const handleEpisodeTasksChange = useCallback((text: string) => {
-        setAreThereUnsavedChanges(true);
-        setSaveChangesPanelState('editing');
-        setEpisodeTasks(text);
     }, [setAreThereUnsavedChanges]);
 
     const handleDailyReportTimeChange = useCallback((time: string) => {
@@ -303,24 +234,6 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
                 />
             </div>
             <div className='team-features-container'>
-                <TeamTasksSection
-                    tasksEnabled={tasksEnabled}
-                    handleTasksEnabledChange={handleTasksEnabledChange}
-                    revisionsEnabled={revisionsEnabled}
-                    handleRevisionsEnabledChange={handleRevisionsEnabledChange}
-                    canvasEnabled={canvasEnabled}
-                    handleCanvasEnabledChange={handleCanvasEnabledChange}
-                />
-                {tasksEnabled && revisionsEnabled && (
-                    <TeamEpisodeTemplatesSection
-                        folders={episodeFolders}
-                        tasks={episodeTasks}
-                        handleFoldersChange={handleEpisodeFoldersChange}
-                        handleTasksChange={handleEpisodeTasksChange}
-                        foldersError={templateError === 'folders' ? translations.EpisodeFoldersInvalid : undefined}
-                        tasksError={templateError === 'tasks' ? translations.EpisodeTasksInvalid : undefined}
-                    />
-                )}
                 <TeamDailyReportsSection
                     dailyReportsEnabled={dailyReportsEnabled}
                     handleDailyReportsEnabledChange={handleDailyReportsEnabledChange}
