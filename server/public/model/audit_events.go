@@ -446,6 +446,7 @@ const (
 // Tasks
 const (
 	AuditEventCreateTask          = "createTask"          // create task on a team task list
+	AuditEventCreateEpisode       = "createEpisode"       // create an episode channel with its task section, folders and tasks
 	AuditEventPatchTask           = "patchTask"           // update task
 	AuditEventDeleteTask          = "deleteTask"          // delete task
 	AuditEventCreateTaskSection   = "createTaskSection"   // create task list section

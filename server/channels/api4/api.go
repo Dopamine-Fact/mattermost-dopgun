@@ -416,6 +416,7 @@ func Init(srv *app.Server) (*API, error) {
 	api.InitDailyReports()
 	api.InitDepartments()
 	api.InitDrive()
+	api.InitEpisode()
 	api.InitCustomProfileAttributes()
 	api.InitAuditLogging()
 	api.InitAccessControlPolicy()
