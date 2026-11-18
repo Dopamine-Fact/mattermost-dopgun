@@ -44,18 +44,36 @@ Within one team. Rank A **outranks** rank B when:
 
 Ranks in different ordinary departments never outrank each other.
 
-An actor may act on a target in a team when the actor holds the needed permission and one of:
+Acting on a person needs a permission P (`manage_tasks`, `manage_daily_reports`, `manage_revisions` or `assign_custom_roles`). An actor may act on a target in a team when one of:
 - the actor is a system admin, or a team admin of that team (bypass, as today);
-- the target is the actor, for actions that allow self (self-assigning a task). Changing one's own ranks is refused unless the actor is a system admin; approving one's own daily report needs `manage_team`;
-- the target has no rank in the team, and the actor has at least one rank there;
-- **[open, see end]** the actor outranks the target in the sense below.
+- the target is the actor and the actor holds P, for actions that allow self (self-assigning a task). Changing one's own ranks is refused unless the actor is a system admin; approving one's own daily report needs `manage_team`;
+- the actor holds **one rank that both carries P and outranks the target** (below).
+
+*(User's call: the permission must come from the same rank that outranks the target. Holding `manage_tasks` as Modelleme Lead does not let an Animasyon Senior assign tasks to Animasyon Mids.)*
+
+A rank R **outranks a target** when:
+- the target has no rank in the team, or
+- the target holds a Stüdyo geneli rank, and R outranks that rank (only a higher Stüdyo geneli rank does), or
+- the target holds no Stüdyo geneli rank, and R outranks the target's rank in **at least one** department the target is in.
+
+*(User's call: a shared department is enough. Mert, Animasyon Senior + Modelleme Mid, can be directed by the Animasyon Lead and by the Modelleme Lead. The Stüdyo geneli clause is my call, so a Producer who also sits in Animasyon as Mid is not directed by the Animasyon Lead.)*
 
 A target who is a system admin or a team admin of that team can be acted on only by admins.
 
-Applies to: setting a task's or revision task's assignee to someone else; seeing, exporting, approving and rejecting someone's daily reports (the roster lists only people the viewer may act on); giving or removing a rank. Giving or removing rank R also needs the actor to outrank R itself (admins exempt).
+Applies to: setting a task's or revision task's assignee to someone else; seeing, exporting, approving and rejecting someone's daily reports (the roster lists only people the viewer may act on); giving or removing a rank.
+
+Rights that do not act on a person (creating a task with no assignee, editing sections, uploading a revision video) need P from any of the actor's ranks, as native roles give today.
 
 ### Assigning ranks
-`PUT` sets a member's full rank set in one team. The server refuses two ranks of the same department, ranks of another team, and deleted ranks. Each added or removed rank is checked against the rules above; unchanged ranks are not.
+`PUT` sets a member's full rank set in one team. The server refuses two ranks of the same department, ranks of another team, and deleted ranks. Unchanged ranks are not checked. For each rank K added or removed, the actor (unless an admin) needs one rank R carrying `assign_custom_roles` such that:
+- R outranks K itself (so R is above K in K's department, or R is in Stüdyo geneli), and
+- R outranks the target's current rank in K's department, if they have one (so a peer or senior cannot be demoted), and
+- if the target holds a Stüdyo geneli rank, R outranks it.
+
+*(My call: only K's department is looked at, so the Animasyon Lead can bring a Modelleme Mid into Animasyon as Mid. Cross-department recruiting is a normal studio workflow.)*
+
+### Matrix
+Ticks are independent. The matrix does not force a lower rank to have no more rights than the ranks above it; "fewer rights below" is the studio's convention. *(My call: keeps each tick a single-rank save.)*
 
 ## Design
 
@@ -81,8 +99,9 @@ Defining departments and ranks (create, edit, reorder, delete, tick the matrix) 
 - Renaming a rank updates the native role's `DisplayName` too.
 
 ### Server
-- `App.CanActOnUser(rctx, actorID, targetID, teamID)` and `App.ActionableUserIDs(rctx, actorID, teamID)` keep their signatures; their rank lookup reads the target's and actor's team member explicit roles instead of `Users.Roles`.
-- `App.CanAssignRank(rctx, actorID, rankID)` replaces `CanAssignRole`; the rank's team is the team for the admin bypass.
+- `App.CanActOnUser(rctx, actorID, targetID, teamID, permission)` and `App.ActionableUserIDs(rctx, actorID, teamID, permission)` gain the permission, because it must come from the outranking rank. Every phase 1 caller (task and revision assignee paths, daily report list/export/approve/reject, roster) passes the permission it already checks. Ranks are read from team member explicit roles instead of `Users.Roles`.
+- `App.CanAssignRank(rctx, actorID, targetID, rankID)` replaces `CanAssignRole` and implements the "Assigning ranks" rule.
+- Webapp permission checks (`haveITeamPermission`) still see the union of the user's ranks; they decide whether a control shows at all. Which people a control may target always comes from the server (`actionable_user_ids` per permission), so the UI never offers a person the server would refuse.
 - Store: `DepartmentStore` (save, get, get by team, update, delete, set positions) and the reshaped rank store; `request.CTX` in signatures.
 
 ### API
@@ -90,7 +109,8 @@ Defining departments and ranks (create, edit, reorder, delete, tick the matrix) 
 - `POST /teams/{team_id}/departments`, `PATCH|DELETE /teams/{team_id}/departments/{department_id}`, `PUT /teams/{team_id}/departments/order` — `manage_team`.
 - `POST /teams/{team_id}/departments/{department_id}/ranks`, `PATCH|DELETE /teams/{team_id}/ranks/{rank_id}`, `PUT /teams/{team_id}/departments/{department_id}/ranks/order` — `manage_team`. `PATCH` carries name, color, permissions; the matrix saves one rank per tick.
 - `PUT /teams/{team_id}/members/{user_id}/ranks` `{rank_ids}` — `assign_custom_roles` on the team + hierarchy per added/removed rank.
-- `GET /teams/{team_id}/actionable_user_ids` — unchanged.
+- `GET /teams/{team_id}/actionable_user_ids?permission=<p>` — gains the permission (task assignee picker: `manage_tasks` or `manage_revisions`; daily report roster: `manage_daily_reports`).
+- `GET /teams/{team_id}/members/{user_id}/assignable_ranks` — the ranks the viewer may add or remove for that member, for the edit dropdowns.
 - The phase 1 `/custom_roles` and `/users/{id}/custom_roles` routes and their Go client methods are removed.
 
 ### Webapp
@@ -110,20 +130,13 @@ Defining departments and ranks (create, edit, reorder, delete, tick the matrix) 
   │                                                       [+ Rütbe]
   ```
   Ranks drag within their department; departments drag among themselves below Stüdyo geneli. A tick saves at once. Clicking a rank's name or dot edits name and color inline.
-- **Profile popover**: chips for the user's ranks in the current team (`Animasyon · Lead`, in the rank's color). "Edit ranks" for viewers who may give ranks: one dropdown per department (none, or one rank), listing only ranks the viewer may give; hidden for guests, for the viewer themself (unless system admin), and for targets the viewer may not act on.
+- **Profile popover**: chips for the user's ranks in the current team (`Animasyon · Lead`, in the rank's color). "Edit ranks" for viewers who may give ranks: one dropdown per department (none, or one rank), options from `assignable_ranks`; a department whose current rank the viewer may not change is shown read-only. Hidden for guests, for the viewer themself (unless system admin), and when `assignable_ranks` is empty.
 - Task assignee filter and daily report roster stay; they already pass the team.
 - **Removed**: System Console › Roles page, its sidebar entry and route, the phase 1 roles edit modal.
 
 ### Later phases
 - Channel settings (phase 1 spec, phase 2) are keyed by rank instead of global role; channels belong to a team, so a channel's role settings list that team's ranks.
 - Name colors: the user's highest rank in the current team (Stüdyo geneli first, then department order).
-
-## Open question for the user
-**A person in two departments.** Mert is Animasyon Senior and Modelleme Mid. Ayşe is Animasyon Lead. May Ayşe assign Mert a task and approve his daily report?
-- **(a) Outranks in a shared department** — yes: she outranks him in Animasyon. Matches "the department lead directs department work". Then the Modelleme Lead may too.
-- **(b) Outranks in every department he is in** — no: she has no rank in Modelleme. Phase 1's "every role" rule, stricter; only a Stüdyo geneli rank or an admin could act on Mert.
-
-My pick is (a).
 
 ## Left to the builder
 Exact migration number; whether Stüdyo geneli for existing teams is created in the migration or lazily; DB unique-index syntax; UI copy and colors; how the matrix reports a failed save; batching for large teams.
