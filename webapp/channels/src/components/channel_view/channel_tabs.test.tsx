@@ -35,6 +35,11 @@ jest.mock('components/canvas/canvas_board', () => ({
     ),
 }));
 
+jest.mock('components/file_explorer/file_explorer', () => ({
+    __esModule: true,
+    FileExplorerView: ({channelName, folderId}: {channelName: string; folderId: string}) => <div>{`files ${channelName} [${folderId}]`}</div>,
+}));
+
 const canvas = {id: 'cv1', channel_id: 'chan1', team_id: 'team1', creator_id: 'me', last_seq: 0, snapshot_seq: 0, create_at: 1, update_at: 1};
 const section: TaskSection = {id: 'sec1', team_id: 'team1', name: 'Trailer', sort_order: 0, channel_id: 'chan1', video_file_id: 'file1', create_at: 1, update_at: 1};
 const task = (id: string, title: string, sectionId: string, videoFileId: string): Task => ({
@@ -66,8 +71,9 @@ type Options = {
     url?: string;
     permissions?: string[];
     deleteAt?: number;
+    filesEnabled?: boolean;
 };
-const renderTabs = (channelId: string, {canvasEnabled = true, revisionsEnabled = true, url = '/team-one/channels/trailer', permissions = ['create_post', 'manage_tasks', 'manage_revisions'], deleteAt = 0}: Options = {}) => renderWithContext(
+const renderTabs = (channelId: string, {canvasEnabled = true, revisionsEnabled = true, url = '/team-one/channels/trailer', permissions = ['create_post', 'manage_tasks', 'manage_revisions'], deleteAt = 0, filesEnabled = false}: Options = {}) => renderWithContext(
     <ChannelTabs
         channelId={channelId}
         composer={<div>{'composer'}</div>}
@@ -79,11 +85,11 @@ const renderTabs = (channelId: string, {canvasEnabled = true, revisionsEnabled =
             users: {currentUserId: 'me', profiles: {me: TestHelper.getUserMock({id: 'me', roles: 'system_user'})}},
             teams: {
                 currentTeamId: 'team1',
-                teams: {team1: TestHelper.getTeamMock({id: 'team1', name: 'team-one', tasks_enabled: true, revisions_enabled: revisionsEnabled, canvas_enabled: canvasEnabled})},
+                teams: {team1: TestHelper.getTeamMock({id: 'team1', name: 'team-one', tasks_enabled: true, revisions_enabled: revisionsEnabled, canvas_enabled: canvasEnabled, files_enabled: filesEnabled})},
                 myMembers: {team1: TestHelper.getTeamMembershipMock({team_id: 'team1', user_id: 'me', roles: 'team_user'})},
             },
             channels: {
-                channels: {[channelId]: TestHelper.getChannelMock({id: channelId, team_id: 'team1', delete_at: deleteAt})},
+                channels: {[channelId]: TestHelper.getChannelMock({id: channelId, name: 'trailer', team_id: 'team1', delete_at: deleteAt})},
                 myMembers: {[channelId]: TestHelper.getChannelMembershipMock({channel_id: channelId, user_id: 'me', roles: ''})},
             },
             roles: {roles: {team_user: TestHelper.getRoleMock({name: 'team_user', permissions})}},
@@ -248,6 +254,34 @@ describe('ChannelTabs', () => {
         renderTabs('chan1', {url: '/team-one/channels/trailer?canvas=1'});
         expect(await screen.findByText('board chan1 editable')).toBeInTheDocument();
         expect(screen.getByRole('tab', {name: 'Canvas'})).toHaveAttribute('aria-selected', 'true');
+    });
+
+    test('a channel with a tab bar gets a Files tab when the team has files on', () => {
+        const {unmount} = renderTabs('chan1', {filesEnabled: true});
+        expect(tabNames()).toEqual(['Messages', 'Revisions', 'Tasks', 'Files']);
+        unmount();
+
+        renderTabs('chan1');
+        expect(tabNames()).toEqual(['Messages', 'Revisions', 'Tasks']);
+    });
+
+    test('?folder= opens the Files tab at that folder', async () => {
+        renderTabs('chan1', {filesEnabled: true, url: '/team-one/channels/trailer?folder=f1'});
+        expect(screen.getByRole('tab', {name: 'Files'})).toHaveAttribute('aria-selected', 'true');
+        expect(await screen.findByText('files trailer [f1]')).toBeInTheDocument();
+    });
+
+    test('the Files tab opens the channel root through the address bar', async () => {
+        renderTabs('chan1', {filesEnabled: true});
+        fireEvent.click(screen.getByRole('tab', {name: 'Files'}));
+        expect(await screen.findByText('files trailer []')).toBeInTheDocument();
+        expect((global as unknown as {historyMock: {push: jest.Mock}}).historyMock.push).toHaveBeenCalledWith('/team-one/channels/trailer?folder=');
+    });
+
+    test('?folder= falls back to Messages when files are off', () => {
+        renderTabs('chan1', {url: '/team-one/channels/trailer?folder=f1'});
+        expect(screen.getByRole('tab', {name: 'Messages'})).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByText('chat')).toBeInTheDocument();
     });
 
     test('?task= opens Tasks on that task', () => {

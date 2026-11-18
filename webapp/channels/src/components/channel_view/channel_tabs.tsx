@@ -5,7 +5,7 @@ import classNames from 'classnames';
 import React, {Suspense, useEffect, useMemo, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
-import {useLocation} from 'react-router-dom';
+import {useHistory, useLocation} from 'react-router-dom';
 
 import type {UserProfile} from '@mattermost/types/users';
 
@@ -38,11 +38,12 @@ import 'components/canvas/canvas.scss';
 
 // The board pulls in Pixi and Rough.js; keep them out of the main bundle.
 const LazyCanvasBoard = React.lazy(() => import('components/canvas/canvas_board'));
+const LazyFileExplorer = React.lazy(() => import('components/file_explorer/file_explorer').then((m) => ({default: m.FileExplorerView})));
 
 // shortcut: the assignee picker lists the first 200 team members, like the tasks page.
 const MEMBER_PAGE_SIZE = 200;
 
-type Tab = 'messages' | 'revisions' | 'tasks' | 'canvas';
+type Tab = 'messages' | 'revisions' | 'tasks' | 'canvas' | 'files';
 
 type Props = {
     channelId: string;
@@ -61,6 +62,7 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
     const teamId = team?.id ?? '';
     const revisionsEnabled = Boolean(team?.tasks_enabled && team?.revisions_enabled);
     const canvasEnabled = Boolean(team?.canvas_enabled);
+    const filesEnabled = Boolean(team?.files_enabled);
 
     const getTasks = useMemo(() => makeGetTasksForTeam(), []);
     const getSections = useMemo(() => makeGetTaskSectionsForTeam(), []);
@@ -96,6 +98,7 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
     const [filterTaskId, setFilterTaskId] = useState('');
 
     // Same rule as the post textbox, plus archived channels.
+    const channelName = useSelector((state: GlobalState) => getChannel(state, channelId)?.name ?? '');
     const canPost = useSelector((state: GlobalState) => {
         const channel = getChannel(state, channelId);
         return channel ? !isArchivedChannel(channel) && haveIChannelPermission(state, channel.team_id, channel.id, Permissions.CREATE_POST) : false;
@@ -121,13 +124,16 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
     const isCanvas = canvasChannelId === channelId;
 
     // ?revision=<task id> (assignment messages) opens Revisions on that revision, ?task=<task id> (a message's task
-    // label) opens Tasks on that task; ?canvas=1 (after creating) opens Canvas.
+    // label) opens Tasks on that task; ?canvas=1 (after creating) opens Canvas; ?folder=<id> opens Files at that folder.
     const location = useLocation();
+    const history = useHistory();
     const params = new URLSearchParams(location.search);
     const linkedRevision = params.get('revision') ?? '';
     const linkedTask = params.get('task') ?? '';
     const linkedCanvas = params.get('canvas') === '1';
-    const linkedTab: Tab = (linkedRevision && 'revisions') || (linkedTask && 'tasks') || (linkedCanvas && 'canvas') || 'messages';
+    const linkedFolder = filesEnabled && params.has('folder');
+    const folderId = params.get('folder') ?? '';
+    const linkedTab: Tab = (linkedRevision && 'revisions') || (linkedTask && 'tasks') || (linkedCanvas && 'canvas') || (linkedFolder && 'files') || 'messages';
     const linkedId = linkedRevision || linkedTask;
     const [tab, setTab] = useState<Tab>(linkedTab);
     const [selectedId, setSelectedId] = useState(linkedId);
@@ -162,11 +168,17 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
         );
     }
 
+    const folderUrl = (_: string, folder?: string) => `${location.pathname}?folder=${folder ?? ''}`;
     const switchTab = (id: Tab) => {
         if (id !== tab) {
             setSelectedId('');
         }
         setTab(id);
+
+        // The folder lives in the address so browser Back steps out of a folder instead of out of the tab.
+        if (id === 'files' && !linkedFolder) {
+            history.push(folderUrl(channelName));
+        }
     };
     const tabButton = (id: Tab, label: React.ReactNode) => (
         <button
@@ -269,6 +281,23 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
                 </Suspense>
             </div>
         );
+    } else if (filesEnabled && tab === 'files') {
+        panel = (
+            <div
+                className='ChannelFiles__panel'
+                role='tabpanel'
+            >
+                <Suspense fallback={null}>
+                    <LazyFileExplorer
+                        key={channelId}
+                        channelName={channelName}
+                        folderId={folderId}
+                        urlFor={folderUrl}
+                        embedded={true}
+                    />
+                </Suspense>
+            </div>
+        );
     }
 
     return (
@@ -299,6 +328,12 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
                     <FormattedMessage
                         id='canvas.tabs.canvas'
                         defaultMessage='Canvas'
+                    />
+                ))}
+                {filesEnabled && tabButton('files', (
+                    <FormattedMessage
+                        id='file_explorer.title'
+                        defaultMessage='Files'
                     />
                 ))}
                 {section && tab === 'messages' && (

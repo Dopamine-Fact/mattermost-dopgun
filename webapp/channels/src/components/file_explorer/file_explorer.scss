@@ -530,3 +530,14 @@
 input.FileExplorer__picker[type='file'] {
     display: none;
 }
+
+// The explorer inside an episode channel's Files tab fills the space under the tab bar.
+.ChannelFiles__panel {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+
+    .FileExplorer {
+        flex: 1;
+    }
+}
