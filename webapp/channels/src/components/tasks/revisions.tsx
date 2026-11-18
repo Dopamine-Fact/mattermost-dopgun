@@ -49,7 +49,7 @@ type Props = {
 
 // Revisions shows a revision channel's video versions and their revisions: tasks pinned to a time in one version.
 const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, canManage, detail}: Props) => {
-    const {formatMessage, formatDate} = useIntl();
+    const {formatMessage, formatDate, formatNumber} = useIntl();
     const dispatch = useDispatch();
     const currentUserId = useSelector(getCurrentUserId);
 
@@ -79,7 +79,10 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
     const shown = revisions.filter((r) => r.title.toLowerCase().includes(search.trim().toLowerCase()) && (!statusFilter || r.status === statusFilter));
 
     const videoUrl = Client4.getTaskSectionVideoUrl(section.id, selected);
-    const [replacing, setReplacing] = useState(false);
+
+    // upload follows a new version's bytes; left (seconds) is unknown until some have gone.
+    const [upload, setUpload] = useState<{percent: number; left?: number} | null>(null);
+    const replacing = upload !== null;
     const [replaceError, setReplaceError] = useState('');
 
     // duration and now (ms) follow the player; pinned is the moment "Use current time" fixed for the next revision.
@@ -228,15 +231,33 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
         if (!file || replacing) {
             return;
         }
-        setReplacing(true);
+        setUpload({percent: 0});
         setReplaceError('');
-        const result = await dispatch(setTaskSectionVideo(section.id, file));
-        setReplacing(false);
+        const start = Date.now();
+        const result = await dispatch(setTaskSectionVideo(section.id, file, (loaded, total) => {
+            const elapsed = (Date.now() - start) / 1000;
+            setUpload({
+                percent: total > 0 ? Math.floor((loaded / total) * 100) : 0,
+                left: loaded > 0 && elapsed > 0 ? (elapsed * (total - loaded)) / loaded : undefined,
+            });
+        }));
+        setUpload(null);
         setReplaceError(result.error?.message ?? '');
         if (result.data?.video_file_id) {
             setSelected(result.data.video_file_id);
         }
     };
+
+    const timeLeft = (seconds: number) => (seconds < 60 ? formatNumber(Math.ceil(seconds), {style: 'unit', unit: 'second', unitDisplay: 'long'}) : formatNumber(Math.ceil(seconds / 60), {style: 'unit', unit: 'minute', unitDisplay: 'long'}));
+    let uploadStatus = '';
+    if (upload?.percent === 100) {
+        // Every byte is sent; the server is still storing the video.
+        uploadStatus = formatMessage({id: 'tasks.revisions.processing', defaultMessage: 'Processing…'});
+    } else if (upload && upload.left === undefined) {
+        uploadStatus = formatMessage({id: 'tasks.revisions.uploadPercent', defaultMessage: 'Uploading {percent}%'}, {percent: upload.percent});
+    } else if (upload?.left !== undefined) {
+        uploadStatus = formatMessage({id: 'tasks.revisions.uploadProgress', defaultMessage: 'Uploading {percent}% · {left} left'}, {percent: upload.percent, left: timeLeft(upload.left)});
+    }
 
     const list = (
         <aside className='TaskRevisions__side'>
@@ -424,12 +445,7 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
                     </select>
                     {canManage && (
                         <label className={classNames('btn btn-tertiary btn-xs TaskRevisions__replace', {disabled: replacing})}>
-                            {replacing ? (
-                                <FormattedMessage
-                                    id='tasks.revisions.replacing'
-                                    defaultMessage='Uploading…'
-                                />
-                            ) : (
+                            {replacing ? uploadStatus : (
                                 <FormattedMessage
                                     id='tasks.revisions.uploadVersion'
                                     defaultMessage='Upload new version'
@@ -446,6 +462,14 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
                         </label>
                     )}
                 </div>
+                {upload && (
+                    <progress
+                        className='TaskRevisions__progress'
+                        max={100}
+                        value={upload.percent}
+                        aria-label={uploadStatus}
+                    />
+                )}
                 {replaceError && <div className='TaskRevisions__error error-text'>{replaceError}</div>}
                 {imageError && (
                     <div

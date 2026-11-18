@@ -5346,13 +5346,45 @@ export default class Client4 {
         );
     };
 
-    setTaskSectionVideo = (sectionId: string, video: File, connectionId: string) => {
+    // setTaskSectionVideo uses XMLHttpRequest because fetch cannot report upload progress.
+    setTaskSectionVideo = (sectionId: string, video: File, connectionId: string, onProgress?: (loaded: number, total: number) => void) => {
         const formData = new FormData();
         formData.append('video', video, video.name);
-        return this.doFetch<TaskSection>(
-            `${this.getBaseRoute()}/task_sections/${sectionId}/video`,
-            {method: 'post', body: formData, headers: {'Connection-Id': connectionId}},
-        );
+        const url = `${this.getBaseRoute()}/task_sections/${sectionId}/video`;
+        const {headers, credentials} = this.getOptions({method: 'post', body: formData, headers: {'Connection-Id': connectionId}});
+        const invalid = (cause?: unknown) => new ClientError(this.getUrl(), {message: 'Received invalid response from the server.', url}, cause);
+
+        return new Promise<TaskSection>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', url);
+            xhr.withCredentials = credentials === 'include';
+            Object.entries(headers as Record<string, string>).forEach(([name, value]) => xhr.setRequestHeader(name, value));
+            if (onProgress) {
+                xhr.upload.onprogress = (e) => onProgress(e.loaded, e.total);
+            }
+            xhr.onerror = () => reject(invalid());
+            xhr.onload = () => {
+                let data;
+                try {
+                    data = JSON.parse(xhr.responseText);
+                } catch (err) {
+                    reject(invalid(err));
+                    return;
+                }
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    resolve(data);
+                    return;
+                }
+                reject(new ClientError(this.getUrl(), {
+                    message: data.message || '',
+                    server_error_id: data.id,
+                    status_code: data.status_code,
+                    detailed_error: data.detailed_error,
+                    url,
+                }));
+            };
+            xhr.send(formData);
+        });
     };
 
     getTaskSectionVideos = (sectionId: string) => {

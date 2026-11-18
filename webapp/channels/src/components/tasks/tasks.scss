@@ -988,6 +988,31 @@
     }
 
     // The panel sits beside the player when the stage has room and wraps under it otherwise.
+    &__progress {
+        width: 100%;
+        height: 4px;
+        border: none;
+        border-radius: 2px;
+        accent-color: var(--button-bg);
+        appearance: none;
+        background: rgba(var(--center-channel-color-rgb), 0.12);
+
+        &::-webkit-progress-bar {
+            border-radius: 2px;
+            background: rgba(var(--center-channel-color-rgb), 0.12);
+        }
+
+        &::-webkit-progress-value {
+            border-radius: 2px;
+            background: var(--button-bg);
+        }
+
+        &::-moz-progress-bar {
+            border-radius: 2px;
+            background: var(--button-bg);
+        }
+    }
+
     &__split {
         display: flex;
         flex-wrap: wrap;

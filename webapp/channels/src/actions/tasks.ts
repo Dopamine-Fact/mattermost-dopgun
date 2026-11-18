@@ -82,8 +82,8 @@ export function patchTaskSection(sectionId: string, patch: TaskSectionPatch) {
     return run((connectionId) => Client4.patchTaskSection(sectionId, patch, connectionId), (data) => ({type: TaskTypes.TASK_SECTION_RECEIVED, data}));
 }
 
-export function setTaskSectionVideo(sectionId: string, video: File) {
-    return run((connectionId) => Client4.setTaskSectionVideo(sectionId, video, connectionId), (data) => ({type: TaskTypes.TASK_SECTION_RECEIVED, data}));
+export function setTaskSectionVideo(sectionId: string, video: File, onProgress?: (loaded: number, total: number) => void) {
+    return run((connectionId) => Client4.setTaskSectionVideo(sectionId, video, connectionId, onProgress), (data) => ({type: TaskTypes.TASK_SECTION_RECEIVED, data}));
 }
 
 export function deleteTaskSection(sectionId: string) {

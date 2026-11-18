@@ -30,6 +30,75 @@ describe('Client4', () => {
         });
     });
 
+    describe('setTaskSectionVideo', () => {
+        // A stand-in XMLHttpRequest: the test plays the server by firing upload.onprogress and onload itself.
+        class FakeXHR {
+            static last: FakeXHR;
+            upload: {onprogress?: (e: {loaded: number; total: number}) => void} = {};
+            headers: Record<string, string> = {};
+            method = '';
+            url = '';
+            body: unknown;
+            status = 0;
+            responseText = '';
+            withCredentials = false;
+            onload?: () => void;
+            onerror?: () => void;
+            open(method: string, url: string) {
+                this.method = method;
+                this.url = url;
+            }
+            setRequestHeader(name: string, value: string) {
+                this.headers[name] = value;
+            }
+            send(body: unknown) {
+                this.body = body;
+                FakeXHR.last = this;
+            }
+        }
+        const original = global.XMLHttpRequest;
+        beforeEach(() => {
+            global.XMLHttpRequest = FakeXHR as unknown as typeof XMLHttpRequest;
+        });
+        afterEach(() => {
+            global.XMLHttpRequest = original;
+        });
+
+        test('reports upload progress and resolves the section', async () => {
+            const client = new Client4();
+            client.setUrl('http://mattermost.example.com');
+            const onProgress = jest.fn();
+            const video = new File(['x'], 'cut.mp4', {type: 'video/mp4'});
+
+            const result = client.setTaskSectionVideo('sec1', video, 'conn1', onProgress);
+            const xhr = FakeXHR.last;
+            expect(xhr.method).toBe('POST');
+            expect(xhr.url).toBe('http://mattermost.example.com/api/v4/task_sections/sec1/video');
+            expect(xhr.headers['Connection-Id']).toBe('conn1');
+            expect((xhr.body as FormData).get('video')).toBeInstanceOf(File);
+
+            xhr.upload.onprogress!({loaded: 5, total: 10});
+            expect(onProgress).toHaveBeenCalledWith(5, 10);
+
+            xhr.status = 200;
+            xhr.responseText = JSON.stringify({id: 'sec1', video_file_id: 'file1'});
+            xhr.onload!();
+            await expect(result).resolves.toEqual({id: 'sec1', video_file_id: 'file1'});
+        });
+
+        test('rejects with the server message', async () => {
+            const client = new Client4();
+            client.setUrl('http://mattermost.example.com');
+
+            const result = client.setTaskSectionVideo('sec1', new File(['x'], 'notes.txt'), 'conn1');
+            const xhr = FakeXHR.last;
+            xhr.status = 400;
+            xhr.responseText = JSON.stringify({id: 'app.task_section.video.app_error', message: 'not a video', status_code: 400});
+            xhr.onload!();
+            await expect(result).rejects.toMatchObject({message: 'not a video', server_error_id: 'app.task_section.video.app_error', status_code: 400});
+        });
+    });
+
     describe('property field routes', () => {
         let client: Client4;
 

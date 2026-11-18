@@ -11,7 +11,7 @@ import {Client4} from 'mattermost-redux/client';
 
 import {createTask, deleteTask, setTaskSectionVideo} from 'actions/tasks';
 
-import {fireEvent, renderWithContext, screen, waitFor, within} from 'tests/react_testing_utils';
+import {act, fireEvent, renderWithContext, screen, waitFor, within} from 'tests/react_testing_utils';
 import {TestHelper} from 'utils/test_helper';
 
 import Revisions from './revisions';
@@ -164,7 +164,35 @@ describe('Revisions', () => {
         renderRevisions();
         const file = new File(['x'], 'cut2.mp4', {type: 'video/mp4'});
         fireEvent.change(screen.getByLabelText('Upload new version'), {target: {files: [file]}});
-        await waitFor(() => expect(setTaskSectionVideo).toHaveBeenCalledWith('sec1', file));
+        await waitFor(() => expect(setTaskSectionVideo).toHaveBeenCalledWith('sec1', file, expect.any(Function)));
+    });
+
+    test('a version upload shows its percent and the time left', async () => {
+        let progress: (loaded: number, total: number) => void = () => undefined;
+        let finish: (result: unknown) => void = () => undefined;
+        jest.mocked(setTaskSectionVideo).mockImplementationOnce(((_id: string, _video: File, onProgress: typeof progress) => {
+            progress = onProgress;
+            return () => new Promise((resolve) => {
+                finish = resolve;
+            });
+        }) as unknown as typeof setTaskSectionVideo);
+        const now = jest.spyOn(Date, 'now').mockReturnValue(1000);
+        renderRevisions();
+        fireEvent.change(screen.getByLabelText('Upload new version'), {target: {files: [new File(['x'], 'cut2.mp4', {type: 'video/mp4'})]}});
+
+        // Half the bytes in 10 seconds leaves 10 more.
+        now.mockReturnValue(11000);
+        act(() => progress(50, 100));
+        expect(screen.getByText('Uploading 50% · 10 seconds left')).toBeInTheDocument();
+        expect(screen.getByRole('progressbar')).toHaveAttribute('value', '50');
+
+        act(() => progress(100, 100));
+        expect(screen.getByText('Processing…')).toBeInTheDocument();
+
+        await act(async () => finish({data: {}}));
+        expect(screen.queryByRole('progressbar')).toBeNull();
+        expect(screen.getByText('Upload new version')).toBeInTheDocument();
+        now.mockRestore();
     });
 
     test('viewers get no upload control', () => {

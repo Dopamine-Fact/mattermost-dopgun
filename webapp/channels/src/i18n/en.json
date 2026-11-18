@@ -33343,13 +33343,13 @@
     "defaultMessage": "Describe the change you want in detail…",
     "description": "Placeholder of the revision description box in the create revision form."
   },
+  "tasks.revisions.processing": {
+    "defaultMessage": "Processing…",
+    "description": "Upload new version button once the whole video is sent and the server is still storing it."
+  },
   "tasks.revisions.removeImage": {
     "defaultMessage": "Remove image",
     "description": "Accessible label of the button that removes the picked reference image."
-  },
-  "tasks.revisions.replacing": {
-    "defaultMessage": "Uploading…",
-    "description": "Shown on the Upload new version button while the new video uploads."
   },
   "tasks.revisions.search": {
     "defaultMessage": "Search revisions",
@@ -33378,6 +33378,14 @@
   "tasks.revisions.subheading": {
     "defaultMessage": "All revisions made on this channel's video",
     "description": "Line under the Revisions heading saying what the list holds."
+  },
+  "tasks.revisions.uploadPercent": {
+    "defaultMessage": "Uploading {percent}%",
+    "description": "Upload new version button while a video uploads, before the time remaining can be estimated."
+  },
+  "tasks.revisions.uploadProgress": {
+    "defaultMessage": "Uploading {percent}% · {left} left",
+    "description": "Upload new version button while a video uploads; percent is how much is sent, left the estimated time remaining, e.g. '10 seconds'."
   },
   "tasks.revisions.uploadVersion": {
     "defaultMessage": "Upload new version",

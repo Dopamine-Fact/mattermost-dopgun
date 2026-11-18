@@ -31,7 +31,7 @@ describe('createRevisionChannel', () => {
 
         expect(createChannel).toHaveBeenCalledWith(expect.objectContaining({team_id: 'team1', name: 'trailer-cut', display_name: 'Trailer cut', type: 'O'}), 'me');
         expect(Client4.createTaskSection).toHaveBeenCalledWith({team_id: 'team1', name: 'Trailer cut', channel_id: 'chan1'}, 'conn1');
-        expect(Client4.setTaskSectionVideo).toHaveBeenCalledWith('sec1', video, expect.anything());
+        expect(Client4.setTaskSectionVideo).toHaveBeenCalledWith('sec1', video, expect.anything(), undefined);
         expect(result.data?.id).toBe('chan1');
     });
 
