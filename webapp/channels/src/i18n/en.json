@@ -25075,6 +25075,30 @@
     "defaultMessage": "Timezone: {timezone}",
     "description": "Help text under the daily report deadline input in Team Settings > Info; {timezone} is the team's saved timezone, e.g. Europe/Istanbul."
   },
+  "general_tab.episodeFolders": {
+    "defaultMessage": "Default episode folders",
+    "description": "Heading and label of the Team Settings text box listing the folders every new episode channel's files start with."
+  },
+  "general_tab.episodeFoldersInfo": {
+    "defaultMessage": "One folder per line, created in every new episode channel's files. Use / for subfolders, like Layout/Ref.",
+    "description": "Hint under the Default episode folders heading in Team Settings. 'Layout/Ref' is an example path: a folder Ref inside a folder Layout."
+  },
+  "general_tab.episodeFoldersInvalid": {
+    "defaultMessage": "Invalid default episode folders. Use at most 100 lines and 4000 characters, one folder path per line with valid folder names separated by /.",
+    "description": "Error under the Default episode folders box in Team Settings when the server rejects the list."
+  },
+  "general_tab.episodeTasks": {
+    "defaultMessage": "Default episode tasks",
+    "description": "Heading and label of the Team Settings text box listing the tasks every new episode channel's task list starts with."
+  },
+  "general_tab.episodeTasksInfo": {
+    "defaultMessage": "One task per line, added unassigned to every new episode channel's task list.",
+    "description": "Hint under the Default episode tasks heading in Team Settings."
+  },
+  "general_tab.episodeTasksInvalid": {
+    "defaultMessage": "Invalid default episode tasks. Use at most 100 lines and 4000 characters.",
+    "description": "Error under the Default episode tasks box in Team Settings when the server rejects the list."
+  },
   "general_tab.filesEnabled": {
     "defaultMessage": "Enable the file explorer for this team",
     "description": "Checkbox label in Team Settings that turns the file explorer on for the team."

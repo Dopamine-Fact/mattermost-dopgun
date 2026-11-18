@@ -191,6 +191,49 @@ describe('components/TeamSettings', () => {
         expect(patchTeam).toHaveBeenCalledWith(expect.objectContaining({files_enabled: true}));
     });
 
+    describe('episode templates', () => {
+        const team = TestHelper.getTeamMock({id: 'team_id', display_name: 'team_display_name', tasks_enabled: true, revisions_enabled: true, episode_folders: 'Layout', episode_tasks: ''});
+
+        test('template fields show only with tasks and revisions on', async () => {
+            const {unmount} = renderWithContext(<InfoTab {...defaultProps}/>);
+            expect(screen.queryByTestId('episodeFoldersInput')).not.toBeInTheDocument();
+            await userEvent.click(screen.getByTestId('tasksEnabledCheckbox'));
+            expect(screen.queryByTestId('episodeTasksInput')).not.toBeInTheDocument();
+            await userEvent.click(screen.getByTestId('revisionsEnabledCheckbox'));
+            expect(screen.getByTestId('episodeTasksInput')).toBeInTheDocument();
+            unmount();
+
+            renderWithContext(<InfoTab {...{...defaultProps, team}}/>);
+            expect(screen.getByTestId('episodeFoldersInput')).toHaveValue('Layout');
+            expect(screen.getByRole('heading', {name: 'Default episode folders'})).toBeInTheDocument();
+            expect(screen.getByRole('heading', {name: 'Default episode tasks'})).toBeInTheDocument();
+        });
+
+        test('editing a template marks unsaved changes and saves it in the patch', async () => {
+            const setAreThereUnsavedChanges = jest.fn();
+            renderWithContext(<InfoTab {...{...defaultProps, team, setAreThereUnsavedChanges}}/>);
+
+            await userEvent.type(screen.getByTestId('episodeTasksInput'), 'Storyboard');
+            expect(setAreThereUnsavedChanges).toHaveBeenCalledWith(true);
+            await userEvent.click(screen.getByTestId('SaveChangesPanel__save-btn'));
+
+            expect(patchTeam).toHaveBeenLastCalledWith(expect.objectContaining({episode_tasks: 'Storyboard'}));
+            expect(patchTeam.mock.lastCall[0]).not.toHaveProperty('episode_folders');
+        });
+
+        test('a rejected folder template shows the error under the field', async () => {
+            patchTeam.mockReturnValueOnce({error: {server_error_id: 'model.team.is_valid.episode_folders.app_error', message: 'Invalid default episode folders.'}});
+            renderWithContext(<InfoTab {...{...defaultProps, team}}/>);
+
+            await userEvent.type(screen.getByTestId('episodeFoldersInput'), '/bad:name');
+            await userEvent.click(screen.getByTestId('SaveChangesPanel__save-btn'));
+
+            const error = await screen.findByTestId('mm-modal-generic-section-item__error');
+            expect(error).toHaveTextContent('Invalid default episode folders.');
+            expect(error.closest('.episode-folders-setting-item')).not.toBeNull();
+        });
+    });
+
     test('cancel restores the canvas toggle', async () => {
         renderWithContext(<InfoTab {...defaultProps}/>);
 
