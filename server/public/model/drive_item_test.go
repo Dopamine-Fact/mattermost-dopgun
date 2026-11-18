@@ -50,3 +50,43 @@ func TestDriveItemIsValid(t *testing.T) {
 	item.ChannelId = ""
 	require.NotNil(t, item.IsValid())
 }
+
+func TestDriveItemRulesIsValid(t *testing.T) {
+	item := func(typ string, r DriveRules) *DriveItem {
+		i := &DriveItem{ChannelId: NewId(), Type: typ, Name: "a", CreatorId: NewId(), DriveRules: r}
+		if typ == DriveItemTypeFile {
+			i.FileId = NewId()
+		}
+		i.PreSave()
+		return i
+	}
+	const key = "model.drive_item.is_valid.rules.app_error"
+
+	require.Equal(t, key, item(DriveItemTypeFile, DriveRules{ReadOnly: true}).IsValid().Id)
+	require.Equal(t, key, item(DriveItemTypeFile, DriveRules{ViewDepartments: StringArray{NewId()}}).IsValid().Id)
+	require.Equal(t, key, item(DriveItemTypeFolder, DriveRules{ViewDepartments: StringArray{"x"}}).IsValid().Id)
+	require.Equal(t, key, item(DriveItemTypeFolder, DriveRules{WriteDepartments: StringArray{"x"}}).IsValid().Id)
+	require.Equal(t, key, item(DriveItemTypeFolder, DriveRules{MirrorOf: "x"}).IsValid().Id)
+	require.Nil(t, item(DriveItemTypeFolder, DriveRules{ViewDepartments: StringArray{NewId()}, WriteDepartments: StringArray{NewId()}, ReadOnly: true, MirrorOf: NewId()}).IsValid())
+	require.False(t, DriveRules{}.HasRules())
+	require.True(t, DriveRules{ReadOnly: true}.HasRules())
+}
+
+func TestEpisodeFolderRules(t *testing.T) {
+	bg := "bg"
+	r := (&EpisodeFolder{Path: "a", ViewDepartments: []string{bg}}).Rules()
+	require.Equal(t, StringArray{bg}, r.ViewDepartments)
+	require.Equal(t, StringArray{bg}, r.WriteDepartments)
+	require.False(t, r.ReadOnly)
+
+	r = (&EpisodeFolder{Path: "a", ViewDepartments: []string{bg}, ReadOnly: true}).Rules()
+	require.Equal(t, StringArray{bg}, r.ViewDepartments)
+	require.Empty(t, r.WriteDepartments)
+	require.True(t, r.ReadOnly)
+
+	require.Equal(t, DriveRules{}, (&EpisodeFolder{Path: "a"}).Rules())
+
+	r = (&EpisodeFolder{Path: "a", WriteDepartments: []string{bg}, MirrorOf: "b"}).Rules()
+	require.Equal(t, StringArray{bg}, r.WriteDepartments)
+	require.Empty(t, r.MirrorOf)
+}

@@ -21,7 +21,7 @@ func newSqlDriveItemStore(sqlStore *SqlStore) store.DriveItemStore {
 	return &SqlDriveItemStore{sqlStore}
 }
 
-var driveItemColumns = []string{"Id", "ChannelId", "ParentId", "Type", "Name", "FileId", "CreatorId", "CreateAt", "UpdateAt", "DeleteAt", "DeletedBy"}
+var driveItemColumns = []string{"Id", "ChannelId", "ParentId", "Type", "Name", "FileId", "CreatorId", "CreateAt", "UpdateAt", "DeleteAt", "DeletedBy", "ViewDepartments", "WriteDepartments", "ReadOnly", "MirrorOf"}
 
 func (s *SqlDriveItemStore) selectItems() sq.SelectBuilder {
 	return s.getQueryBuilder().Select(driveItemColumns...).From("DriveItems")
@@ -35,15 +35,31 @@ func (s *SqlDriveItemStore) list(q sq.SelectBuilder, desc string) ([]*model.Driv
 	return items, nil
 }
 
+// nonNilArray makes a nil StringArray store as '[]' rather than 'null'.
+func nonNilArray(a model.StringArray) model.StringArray {
+	if a == nil {
+		return model.StringArray{}
+	}
+	return a
+}
+
+func (s *SqlDriveItemStore) GetMirrors(channelID string, sourceIDs []string) ([]*model.DriveItem, error) {
+	if len(sourceIDs) == 0 {
+		return []*model.DriveItem{}, nil
+	}
+	return s.list(s.selectItems().Where(sq.Eq{"ChannelId": channelID, "MirrorOf": sourceIDs, "DeleteAt": 0}), "mirrors in channel_id="+channelID)
+}
+
 func (s *SqlDriveItemStore) Save(item *model.DriveItem) (*model.DriveItem, error) {
 	item.PreSave()
+	item.ViewDepartments, item.WriteDepartments = nonNilArray(item.ViewDepartments), nonNilArray(item.WriteDepartments) // stored as [], not null
 	if err := item.IsValid(); err != nil {
 		return nil, err
 	}
 	_, err := s.GetMaster().ExecBuilder(s.getQueryBuilder().
 		Insert("DriveItems").
 		Columns(driveItemColumns...).
-		Values(item.Id, item.ChannelId, item.ParentId, item.Type, item.Name, item.FileId, item.CreatorId, item.CreateAt, item.UpdateAt, item.DeleteAt, item.DeletedBy))
+		Values(item.Id, item.ChannelId, item.ParentId, item.Type, item.Name, item.FileId, item.CreatorId, item.CreateAt, item.UpdateAt, item.DeleteAt, item.DeletedBy, item.ViewDepartments, item.WriteDepartments, item.ReadOnly, item.MirrorOf))
 	if err != nil {
 		if IsUniqueConstraintError(err, []string{"idx_driveitems_live_name"}) {
 			return nil, store.NewErrConflict("DriveItem", err, "name="+item.Name)
@@ -139,6 +155,10 @@ func (s *SqlDriveItemStore) updateQuery(item *model.DriveItem) sq.UpdateBuilder 
 		Set("UpdateAt", item.UpdateAt).
 		Set("DeleteAt", item.DeleteAt).
 		Set("DeletedBy", item.DeletedBy).
+		Set("ViewDepartments", nonNilArray(item.ViewDepartments)).
+		Set("WriteDepartments", nonNilArray(item.WriteDepartments)).
+		Set("ReadOnly", item.ReadOnly).
+		Set("MirrorOf", item.MirrorOf).
 		Where(sq.Eq{"Id": item.Id})
 }
 

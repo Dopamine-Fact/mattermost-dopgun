@@ -509,3 +509,7 @@ channels/db/migrations/postgres/000256_task_conversations.down.sql
 channels/db/migrations/postgres/000256_task_conversations.up.sql
 channels/db/migrations/postgres/000257_posts_task_id_index.down.sql
 channels/db/migrations/postgres/000257_posts_task_id_index.up.sql
+channels/db/migrations/postgres/000258_drive_folder_rules.down.sql
+channels/db/migrations/postgres/000258_drive_folder_rules.up.sql
+channels/db/migrations/postgres/000259_drive_items_mirror_index.down.sql
+channels/db/migrations/postgres/000259_drive_items_mirror_index.up.sql

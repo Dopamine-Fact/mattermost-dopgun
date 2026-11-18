@@ -188,6 +188,18 @@ type EpisodeFolder struct {
 	MirrorOf         string   `json:"mirror_of,omitempty"`
 }
 
+// Rules returns the folder's drive rules. Write defaults to View when only View is restricted; MirrorOf is
+// not copied (it is a path here; the seeder fills in the source folder id).
+func (e *EpisodeFolder) Rules() DriveRules {
+	r := DriveRules{ViewDepartments: StringArray(e.ViewDepartments), WriteDepartments: StringArray(e.WriteDepartments), ReadOnly: e.ReadOnly}
+	if e.ReadOnly {
+		r.WriteDepartments = nil
+	} else if len(r.WriteDepartments) == 0 {
+		r.WriteDepartments = r.ViewDepartments
+	}
+	return r
+}
+
 // ParseEpisodeFolders reads the JSON list, or (text not starting with "[") the old one-path-per-line format.
 func ParseEpisodeFolders(text string) ([]*EpisodeFolder, error) {
 	if strings.HasPrefix(strings.TrimSpace(text), "[") {

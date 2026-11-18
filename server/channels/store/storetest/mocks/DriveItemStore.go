@@ -254,6 +254,36 @@ func (_m *DriveItemStore) GetMany(ids []string) ([]*model.DriveItem, error) {
 	return r0, r1
 }
 
+// GetMirrors provides a mock function with given fields: channelID, sourceIDs
+func (_m *DriveItemStore) GetMirrors(channelID string, sourceIDs []string) ([]*model.DriveItem, error) {
+	ret := _m.Called(channelID, sourceIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetMirrors")
+	}
+
+	var r0 []*model.DriveItem
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, []string) ([]*model.DriveItem, error)); ok {
+		return rf(channelID, sourceIDs)
+	}
+	if rf, ok := ret.Get(0).(func(string, []string) []*model.DriveItem); ok {
+		r0 = rf(channelID, sourceIDs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.DriveItem)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, []string) error); ok {
+		r1 = rf(channelID, sourceIDs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetTrash provides a mock function with given fields: channelID
 func (_m *DriveItemStore) GetTrash(channelID string) ([]*model.DriveItem, error) {
 	ret := _m.Called(channelID)

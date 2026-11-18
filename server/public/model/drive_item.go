@@ -22,6 +22,27 @@ const (
 type DriveListing struct {
 	Items []*DriveItem `json:"items"`
 	Path  []*DriveItem `json:"path"`
+
+	Access        string `json:"access"`                   // DriveAccess*: how the viewer may change this folder
+	SourceMissing bool   `json:"source_missing,omitempty"` // a mirror whose source is gone
+}
+
+const (
+	DriveAccessDefault = "" // no write rule
+	DriveAccessWrite   = "write"
+	DriveAccessRead    = "read"
+)
+
+// DriveRules are a folder's access rules from an episode template; items inside follow their folder.
+type DriveRules struct {
+	ViewDepartments  StringArray `json:"view_departments,omitempty"`
+	WriteDepartments StringArray `json:"write_departments,omitempty"`
+	ReadOnly         bool        `json:"read_only,omitempty"`
+	MirrorOf         string      `json:"mirror_of,omitempty"` // source folder id
+}
+
+func (r DriveRules) HasRules() bool {
+	return len(r.ViewDepartments) > 0 || len(r.WriteDepartments) > 0 || r.ReadOnly || r.MirrorOf != ""
 }
 
 // DriveItem is a file or folder in a channel's file drive. ParentId "" is the channel root.
@@ -37,6 +58,8 @@ type DriveItem struct {
 	UpdateAt  int64  `json:"update_at"`
 	DeleteAt  int64  `json:"delete_at"`
 	DeletedBy string `json:"deleted_by"`
+
+	DriveRules
 
 	FileInfo *FileInfo `json:"file_info,omitempty" db:"-"` // filled by the app on reads
 }
@@ -110,8 +133,24 @@ func (o *DriveItem) IsValid() *AppError {
 	default:
 		return NewAppError("DriveItem.IsValid", "model.drive_item.is_valid.type.app_error", nil, "id="+o.Id, http.StatusBadRequest)
 	}
+	if o.HasRules() && !o.rulesValid() {
+		return NewAppError("DriveItem.IsValid", "model.drive_item.is_valid.rules.app_error", nil, "id="+o.Id, http.StatusBadRequest)
+	}
 	if o.CreateAt == 0 || o.UpdateAt == 0 {
 		return NewAppError("DriveItem.IsValid", "model.drive_item.is_valid.create_at.app_error", nil, "id="+o.Id, http.StatusBadRequest)
 	}
 	return nil
+}
+
+// rulesValid: only folders carry rules, and every department and the mirror source must be a valid id.
+func (o *DriveItem) rulesValid() bool {
+	if !o.IsFolder() || (o.MirrorOf != "" && !IsValidId(o.MirrorOf)) {
+		return false
+	}
+	for _, id := range append(append([]string{}, o.ViewDepartments...), o.WriteDepartments...) {
+		if !IsValidId(id) {
+			return false
+		}
+	}
+	return true
 }

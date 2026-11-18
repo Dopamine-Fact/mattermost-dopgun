@@ -25,6 +25,8 @@ func TestDriveItemStore(t *testing.T, rctx request.CTX, ss store.Store) {
 	t.Run("GetByFileId", func(t *testing.T) { testDriveItemGetByFileId(t, ss) })
 	t.Run("Dangling", func(t *testing.T) { testDriveItemDangling(t, rctx, ss) })
 	t.Run("PermanentDeleteByChannel", func(t *testing.T) { testDriveItemPermanentDeleteByChannel(t, ss) })
+	t.Run("Rules", func(t *testing.T) { testDriveItemRules(t, ss) })
+	t.Run("GetMirrors", func(t *testing.T) { testDriveItemGetMirrors(t, ss) })
 }
 
 func saveDriveFolder(t *testing.T, ss store.Store, channelID, parentID, name string) *model.DriveItem {
@@ -260,4 +262,51 @@ func testDriveItemPermanentDeleteByChannel(t *testing.T, ss store.Store) {
 	require.NoError(t, ss.DriveItem().PermanentDelete([]string{other.Id}))
 	_, err = ss.DriveItem().Get(other.Id)
 	require.Error(t, err)
+}
+
+func testDriveItemRules(t *testing.T, ss store.Store) {
+	ch := model.NewId()
+	rules := model.DriveRules{ViewDepartments: model.StringArray{model.NewId()}, WriteDepartments: model.StringArray{model.NewId(), model.NewId()}, ReadOnly: true, MirrorOf: model.NewId()}
+	f, err := ss.DriveItem().Save(&model.DriveItem{ChannelId: ch, Type: model.DriveItemTypeFolder, Name: "r", CreatorId: model.NewId(), DriveRules: rules})
+	require.NoError(t, err)
+	got, err := ss.DriveItem().Get(f.Id)
+	require.NoError(t, err)
+	require.Equal(t, rules, got.DriveRules)
+
+	got.DriveRules = model.DriveRules{}
+	_, err = ss.DriveItem().Update(got)
+	require.NoError(t, err)
+	got, err = ss.DriveItem().Get(f.Id)
+	require.NoError(t, err)
+	require.False(t, got.HasRules())
+	require.Empty(t, got.ViewDepartments)
+
+	plain := saveDriveFolder(t, ss, ch, "", "plain")
+	got, err = ss.DriveItem().Get(plain.Id)
+	require.NoError(t, err)
+	require.False(t, got.HasRules())
+}
+
+func testDriveItemGetMirrors(t *testing.T, ss store.Store) {
+	ch1, ch2, src := model.NewId(), model.NewId(), model.NewId()
+	mirror := func(ch, name string) *model.DriveItem {
+		i, err := ss.DriveItem().Save(&model.DriveItem{ChannelId: ch, Type: model.DriveItemTypeFolder, Name: name, CreatorId: model.NewId(), DriveRules: model.DriveRules{MirrorOf: src}})
+		require.NoError(t, err)
+		return i
+	}
+	live := mirror(ch1, "live")
+	trashed := mirror(ch1, "trashed")
+	trashed.DeleteAt = model.GetMillis()
+	_, err := ss.DriveItem().Update(trashed)
+	require.NoError(t, err)
+	mirror(ch2, "other")
+
+	got, err := ss.DriveItem().GetMirrors(ch1, []string{src})
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, live.Id, got[0].Id)
+
+	got, err = ss.DriveItem().GetMirrors(ch1, nil)
+	require.NoError(t, err)
+	require.Empty(t, got)
 }

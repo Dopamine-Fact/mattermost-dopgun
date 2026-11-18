@@ -5328,6 +5328,22 @@ func (s *TimerLayerDriveItemStore) GetMany(ids []string) ([]*model.DriveItem, er
 	return result, err
 }
 
+func (s *TimerLayerDriveItemStore) GetMirrors(channelID string, sourceIDs []string) ([]*model.DriveItem, error) {
+	start := time.Now()
+
+	result, err := s.DriveItemStore.GetMirrors(channelID, sourceIDs)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.GetMirrors", success, elapsed)
+	}
+	return result, err
+}
+
 func (s *TimerLayerDriveItemStore) GetTrash(channelID string) ([]*model.DriveItem, error) {
 	start := time.Now()
 
