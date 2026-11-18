@@ -122,8 +122,9 @@ no free chat in these channels.
 - Store methods take `request.CTX`, not `context.Context`.
 - Every new en.json string carries a `description`; do not run `npm run i18n-extract` (it empties en.json on Windows);
   server strings go through `make i18n-extract`, which drops ids still in use here, so they are inserted by hand.
-- Postgres only. The task filter query must be indexed: an expression index on `Posts (ChannelId, (Props->>'task_id'))`
-  for non-deleted posts, created in the same migration.
+- Postgres only. The task queries must be indexed: an expression index on `Posts ((Props->>'task_id'), CreateAt)` for
+  non-deleted posts that name a task (every query names a task; the task detail reads across channels), built
+  concurrently in its own migration.
 - The migration is idempotent and safe on a large `Posts` table; files move by setting each `FileInfo`'s `PostId` and
   `ChannelId` to the new post.
 
