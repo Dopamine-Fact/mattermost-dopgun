@@ -3,7 +3,7 @@
 
 import React from 'react';
 
-import type {CustomRole} from '@mattermost/types/custom_roles';
+import type {Department, Rank} from '@mattermost/types/custom_roles';
 import type {UserProfile} from '@mattermost/types/users';
 
 import {Client4} from 'mattermost-redux/client';
@@ -19,135 +19,155 @@ jest.mock('client/web_websocket_client', () => ({
     removeMessageListener: jest.fn(),
 }));
 
-const role = (id: string, name: string, position: number, department = ''): CustomRole => ({
+const rank = (id: string, departmentId: string, name: string, position: number): Rank => ({
     id,
-    role_name: 'cr_' + id,
+    role_name: 'rk_' + id,
+    team_id: 'team1',
+    department_id: departmentId,
     display_name: name,
     color: '#00aa' + position + position,
     position,
-    department,
     permissions: [],
+    member_count: 0,
     create_at: 1,
     update_at: 1,
     delete_at: 0,
 });
 
-// Producer > Lead Animator > Animator; Lead Modeler ranks above Animator but in another department.
-const producer = role('p', 'Producer', 0);
-const leadAnim = role('l', 'Lead Animator', 1, 'Animation');
-const leadModel = role('m', 'Lead Modeler', 2, 'Modeling');
-const anim = role('a', 'Animator', 3, 'Animation');
-const modeler = role('o', 'Modeler', 4, 'Modeling');
+const department = (id: string, name: string, ranks: Rank[], isStudio = false): Department => ({
+    id,
+    team_id: 'team1',
+    name,
+    color: '#123456',
+    position: isStudio ? 0 : 1,
+    is_studio: isStudio,
+    create_at: 1,
+    update_at: 1,
+    delete_at: 0,
+    ranks,
+});
 
-// The session cache loads once for the whole file, so every test shares this list.
-jest.spyOn(Client4, 'getCustomRoles').mockResolvedValue([modeler, anim, producer, leadModel, leadAnim]);
+const producer = rank('p', 's', 'Producer', 0);
+const lead = rank('l', 'd1', 'Lead', 0);
+const anim = rank('a', 'd1', 'Animator', 1);
+const leadModel = rank('m', 'd2', 'Lead Modeler', 0);
+const modeler = rank('o', 'd2', 'Modeler', 1);
+const departments = [
+    department('s', 'Stüdyo geneli', [producer], true),
+    department('d1', 'Animasyon', [lead, anim]),
+    department('d2', 'Modelleme', [leadModel, modeler]),
+];
 
-const viewer = TestHelper.getUserMock({id: 'viewer', roles: 'system_user cr_l'});
+// The per-team cache loads once for the whole file, so every test shares this list.
+jest.spyOn(Client4, 'getTeamDepartments').mockResolvedValue(departments);
 
-const stateFor = (current: UserProfile, viewerPermissions: string[] = []) => ({
+const viewer = TestHelper.getUserMock({id: 'viewer', roles: 'system_user'});
+
+const stateFor = (current: UserProfile, targetRanks: string, viewerPermissions: string[] = []) => ({
     entities: {
         users: {
             currentUserId: current.id,
             profiles: {[current.id]: current},
         },
+        teams: {
+            currentTeamId: 'team1',
+            teams: {team1: TestHelper.getTeamMock({id: 'team1'})},
+            myMembers: {team1: {team_id: 'team1', user_id: current.id, roles: 'team_user rk_l'}},
+            membersInTeam: {team1: {target: {team_id: 'team1', user_id: 'target', roles: 'team_user ' + targetRanks}}},
+        },
         roles: {
             roles: {
                 system_user: {id: 'system_user', name: 'system_user', permissions: []},
-                cr_l: {id: 'cr_l', name: 'cr_l', permissions: viewerPermissions},
+                team_user: {id: 'team_user', name: 'team_user', permissions: []},
+                rk_l: {id: 'rk_l', name: 'rk_l', permissions: viewerPermissions},
             },
         },
     },
 });
 
 const chipNames = () => screen.queryAllByTestId('customRoleChip').map((c) => c.textContent);
+const target = TestHelper.getUserMock({id: 'target', roles: 'system_user'});
 
 describe('ProfilePopoverCustomRoles', () => {
-    test('shows a chip per role, in rank order, with its color', async () => {
-        const target = TestHelper.getUserMock({id: 'target', roles: 'system_user cr_a cr_p'});
-        renderWithContext(<ProfilePopoverCustomRoles user={target}/>, stateFor(viewer));
-
-        await waitFor(() => expect(chipNames()).toEqual(['Producer', 'Animator']));
-        expect(screen.getAllByTestId('customRoleChip')[1].querySelector('.custom-role-chip__dot')).toHaveStyle({backgroundColor: anim.color});
+    beforeEach(() => {
+        jest.spyOn(Client4, 'getAssignableRanks').mockResolvedValue([]);
     });
 
-    test('shows nothing for a user without roles when the viewer cannot assign', async () => {
-        const target = TestHelper.getUserMock({id: 'target', roles: 'system_user'});
-        const {container} = renderWithContext(<ProfilePopoverCustomRoles user={target}/>, stateFor(viewer));
+    test('shows a Department · Rank chip per held rank, in department order, with its color', async () => {
+        renderWithContext(<ProfilePopoverCustomRoles user={target}/>, stateFor(viewer, 'rk_o rk_l'));
 
-        await act(async () => {}); // let the cached role list resolve
+        await waitFor(() => expect(chipNames()).toEqual(['Animasyon · Lead', 'Modelleme · Modeler']));
+        expect(screen.getAllByTestId('customRoleChip')[1].querySelector('.custom-role-chip__dot')).toHaveStyle({backgroundColor: modeler.color});
+    });
+
+    test('shows nothing for a member without ranks when the viewer cannot assign', async () => {
+        const {container} = renderWithContext(<ProfilePopoverCustomRoles user={target}/>, stateFor(viewer, ''));
+
+        await act(async () => {}); // let the cached department list resolve
         expect(container).toBeEmptyDOMElement();
+        expect(Client4.getAssignableRanks).not.toHaveBeenCalled();
     });
 
-    test('"Edit roles" needs the assign roles permission', async () => {
-        const target = TestHelper.getUserMock({id: 'target', roles: 'system_user cr_a'});
-        const {unmount} = renderWithContext(<ProfilePopoverCustomRoles user={target}/>, stateFor(viewer));
-        await waitFor(() => expect(chipNames()).toEqual(['Animator']));
-        expect(screen.queryByRole('button', {name: 'Edit roles'})).not.toBeInTheDocument();
+    test('"Edit ranks" needs the permission and at least one assignable rank', async () => {
+        const {unmount} = renderWithContext(<ProfilePopoverCustomRoles user={target}/>, stateFor(viewer, 'rk_a', ['assign_custom_roles']));
+        await waitFor(() => expect(chipNames()).toEqual(['Animasyon · Animator']));
+        await waitFor(() => expect(Client4.getAssignableRanks).toHaveBeenCalledWith('team1', 'target'));
+        expect(screen.queryByRole('button', {name: 'Edit ranks'})).not.toBeInTheDocument();
         unmount();
 
-        renderWithContext(<ProfilePopoverCustomRoles user={target}/>, stateFor(viewer, ['assign_custom_roles']));
-        expect(await screen.findByRole('button', {name: 'Edit roles'})).toBeInTheDocument();
+        jest.spyOn(Client4, 'getAssignableRanks').mockResolvedValue(['a']);
+        renderWithContext(<ProfilePopoverCustomRoles user={target}/>, stateFor(viewer, 'rk_a', ['assign_custom_roles']));
+        expect(await screen.findByRole('button', {name: 'Edit ranks'})).toBeInTheDocument();
     });
 
-    test('nobody but a system admin edits their own roles', async () => {
-        renderWithContext(<ProfilePopoverCustomRoles user={viewer}/>, stateFor(viewer, ['assign_custom_roles']));
+    test('nobody but a system admin edits their own ranks', async () => {
+        jest.spyOn(Client4, 'getAssignableRanks').mockResolvedValue(['a']);
+        const me = TestHelper.getUserMock({id: 'target', roles: 'system_user'});
+        renderWithContext(<ProfilePopoverCustomRoles user={me}/>, stateFor(me, 'rk_a', ['assign_custom_roles']));
 
-        await waitFor(() => expect(chipNames()).toEqual(['Lead Animator']));
-        expect(screen.queryByRole('button', {name: 'Edit roles'})).not.toBeInTheDocument();
+        await waitFor(() => expect(chipNames()).toEqual(['Animasyon · Animator']));
+        expect(screen.queryByRole('button', {name: 'Edit ranks'})).not.toBeInTheDocument();
+        expect(Client4.getAssignableRanks).not.toHaveBeenCalled();
     });
 });
 
 describe('CustomRolesEditModal', () => {
-    const boxes = (modal: HTMLElement) => within(modal).getAllByRole('checkbox').map((b) => ({
-        name: b.closest('label')!.textContent,
-        checked: (b as HTMLInputElement).checked,
-        disabled: (b as HTMLInputElement).disabled,
+    const selects = (modal: HTMLElement) => within(modal).getAllByRole('combobox').map((s) => ({
+        name: s.getAttribute('aria-label'),
+        value: (s as HTMLSelectElement).value,
+        disabled: (s as HTMLSelectElement).disabled,
+        options: Array.from((s as HTMLSelectElement).options).map((o) => o.text + (o.disabled ? ' (locked)' : '')),
     }));
 
-    test('offers only roles the viewer outranks, keeps the others, and saves', async () => {
-        const target = TestHelper.getUserMock({id: 'target', roles: 'system_user cr_m cr_a'});
-        const saved = {...target, roles: 'system_user cr_m'};
-        const set = jest.spyOn(Client4, 'setUserCustomRoles').mockResolvedValue(saved);
+    test('one select per department; locks what the viewer may not give; saves every rank', async () => {
+        const saved = {team_id: 'team1', user_id: 'target', roles: 'team_user rk_m'};
+        const set = jest.spyOn(Client4, 'setMemberRanks').mockResolvedValue(saved as never);
         const onExited = jest.fn();
         const {store} = renderWithContext(
             <CustomRolesEditModal
                 user={target}
+                teamId='team1'
+                assignable={['a']}
                 onExited={onExited}
             />,
-            stateFor(viewer, ['assign_custom_roles']),
+            stateFor(viewer, 'rk_m rk_a', ['assign_custom_roles']),
             {useMockedStore: true},
         );
 
         const modal = await screen.findByRole('dialog');
-        await waitFor(() => expect(within(modal).getAllByRole('checkbox')).toHaveLength(2));
+        await waitFor(() => expect(within(modal).getAllByRole('combobox')).toHaveLength(3));
 
-        // Lead Animator gives Animator (same department) only; the held Lead Modeler shows but is locked.
-        expect(boxes(modal)).toEqual([
-            {name: 'Lead Modeler', checked: true, disabled: true},
-            {name: 'Animator', checked: true, disabled: false},
+        expect(selects(modal)).toEqual([
+            {name: 'Stüdyo geneli', value: '', disabled: false, options: ['—', 'Producer (locked)']},
+            {name: 'Animasyon', value: 'a', disabled: false, options: ['—', 'Lead (locked)', 'Animator']},
+            {name: 'Modelleme', value: 'm', disabled: true, options: ['—', 'Lead Modeler (locked)', 'Modeler (locked)']},
         ]);
 
-        fireEvent.click(within(modal).getByRole('checkbox', {name: 'Animator'}));
+        fireEvent.change(within(modal).getByRole('combobox', {name: 'Animasyon'}), {target: {value: ''}});
         fireEvent.click(within(modal).getByRole('button', {name: 'Save'}));
 
-        await waitFor(() => expect(set).toHaveBeenCalledWith('target', ['m']));
+        await waitFor(() => expect(set).toHaveBeenCalledWith('team1', 'target', ['m']));
         await waitFor(() => expect(onExited).toHaveBeenCalled());
         expect((store as unknown as {getActions: () => unknown[]}).getActions()).toContainEqual(expect.objectContaining({data: saved}));
-    });
-
-    test('system admins may give every role', async () => {
-        const admin = TestHelper.getUserMock({id: 'admin', roles: 'system_user system_admin'});
-        const target = TestHelper.getUserMock({id: 'target', roles: 'system_user'});
-        renderWithContext(
-            <CustomRolesEditModal
-                user={target}
-                onExited={jest.fn()}
-            />,
-            stateFor(admin),
-        );
-
-        const modal = await screen.findByRole('dialog');
-        await waitFor(() => expect(boxes(modal).map((b) => b.name)).toEqual(['Producer', 'Lead Animator', 'Lead Modeler', 'Animator', 'Modeler']));
-        expect(boxes(modal).every((b) => !b.checked && !b.disabled)).toBe(true);
     });
 });

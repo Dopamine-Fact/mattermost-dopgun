@@ -55,6 +55,24 @@ describe('TaskDetail assignee picker', () => {
 
         const picker = screen.getByRole('combobox', {name: 'Assignee'});
         await waitFor(() => expect(within(picker).getAllByRole('option').map((o) => o.textContent)).toEqual(['Unassigned', 'me', 'anim', 'old']));
-        expect(actionable).toHaveBeenCalledWith('team1');
+        expect(actionable).toHaveBeenCalledWith('team1', 'manage_tasks');
+    });
+
+    test('a revision task asks who the viewer may give revisions to', async () => {
+        const actionable = jest.spyOn(Client4, 'getActionableUserIds').mockResolvedValue(['anim']);
+        const revisions = {id: 'rev', team_id: 'team1', name: 'Rev', sort_order: 0, channel_id: 'ch1', video_file_id: '', create_at: 1, update_at: 1};
+        renderWithContext(
+            <TaskDetail
+                task={{...task, section_id: 'rev'}}
+                sections={[revisions]}
+                members={[me, anim, lead, old]}
+                displayName={(u) => u.username}
+                onClose={jest.fn()}
+                canManage={true}
+            />,
+            {entities: {users: {currentUserId: 'me', profiles: {me}}}},
+        );
+
+        await waitFor(() => expect(actionable).toHaveBeenCalledWith('team1', 'manage_revisions'));
     });
 });

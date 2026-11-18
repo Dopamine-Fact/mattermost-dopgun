@@ -51,7 +51,6 @@ import ClientSideUserIdsSetting from './client_side_userids_setting';
 import ClusterSettings, {searchableStrings as clusterSearchableStrings} from './cluster_settings';
 import CustomEnableDisableGuestAccountsMagicLinkSetting, {searchableStrings as magicLinkSearchableStrings} from './custom_enable_disable_guest_accounts_magic_link_setting';
 import CustomEnableDisableGuestAccountsSetting from './custom_enable_disable_guest_accounts_setting';
-import CustomRoles, {searchableStrings as customRolesSearchableStrings} from './custom_roles/custom_roles';
 import CustomTermsOfServiceSettings from './custom_terms_of_service_settings';
 import {searchableStrings as customTermsOfServiceSearchableStrings} from './custom_terms_of_service_settings/custom_terms_of_service_settings';
 import CustomURLSchemesSetting from './custom_url_schemes_setting';
@@ -406,16 +405,6 @@ const AdminDefinition: AdminDefinitionType = {
                 schema: {
                     id: 'SystemUsers',
                     component: SystemUsers,
-                },
-            },
-            custom_roles: {
-                url: 'user_management/custom_roles',
-                title: defineMessage({id: 'admin.sidebar.custom_roles', defaultMessage: 'Roles'}),
-                searchableStrings: customRolesSearchableStrings,
-                isHidden: it.not(it.isSystemAdmin),
-                schema: {
-                    id: 'CustomRoles',
-                    component: CustomRoles,
                 },
             },
             system_user_detail: {

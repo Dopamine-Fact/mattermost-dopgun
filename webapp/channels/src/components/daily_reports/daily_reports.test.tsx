@@ -115,6 +115,7 @@ describe('DailyReports', () => {
         expect(await screen.findByText('ayse')).toBeInTheDocument();
         await waitFor(() => expect(screen.queryByText('mehmet')).not.toBeInTheDocument());
         expect(screen.getAllByText('Missing')).toHaveLength(2); // me and ayse
+        expect(Client4.getActionableUserIds).toHaveBeenCalledWith('team1', 'manage_daily_reports');
     });
 
     test('submits on Ctrl+Enter and shows the rendered report', async () => {

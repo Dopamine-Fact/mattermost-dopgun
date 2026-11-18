@@ -1,30 +1,50 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-/** A studio-defined role. A lower position ranks higher; department '' means none. */
-export type CustomRole = {
+/** A rank inside a team department. A lower position ranks higher within its department. */
+export type Rank = {
     id: string;
 
-    /** the native role backing it, 'cr_' + id; users hold this name in their roles */
+    /** the native role backing it, 'rk_' + id; team members hold this name in their roles */
     role_name: string;
+    team_id: string;
+    department_id: string;
     display_name: string;
 
     /** '#rrggbb', lowercase */
     color: string;
     position: number;
-    department: string;
     permissions: string[];
+    member_count: number;
     create_at: number;
     update_at: number;
     delete_at: number;
 };
 
-export type CustomRolePatch = Partial<Pick<CustomRole, 'display_name' | 'color' | 'department' | 'permissions'>>;
+/** A team department with its ranks, top rank first. Stüdyo geneli (is_studio) always comes first and outranks every other. */
+export type Department = {
+    id: string;
+    team_id: string;
+    name: string;
+    color: string;
+    position: number;
+    is_studio: boolean;
+    create_at: number;
+    update_at: number;
+    delete_at: number;
+    ranks: Rank[];
+};
 
-export type CustomRoleCreate = Pick<CustomRole, 'display_name' | 'color' | 'department' | 'permissions'>;
+export type RankPatch = Partial<Pick<Rank, 'display_name' | 'color' | 'permissions'>>;
 
-/** Every permission a custom role may carry, in display order. */
-export const CUSTOM_ROLE_PERMISSIONS = ['manage_tasks', 'manage_daily_reports', 'manage_revisions', 'assign_custom_roles'] as const;
+export type RankCreate = Pick<Rank, 'display_name' | 'color' | 'permissions'>;
 
-/** Websocket event sent to everyone when a role is created, changed, reordered or deleted. */
-export const CUSTOM_ROLES_CHANGED = 'custom_roles_changed';
+export type DepartmentPatch = Partial<Pick<Department, 'name' | 'color'>>;
+
+export type DepartmentCreate = Pick<Department, 'name' | 'color'>;
+
+/** Every permission a rank may carry, in display order. */
+export const RANK_PERMISSIONS = ['manage_tasks', 'manage_daily_reports', 'manage_revisions', 'assign_custom_roles'] as const;
+
+/** Websocket event sent to a team when one of its departments or ranks, or a member's ranks, change. */
+export const DEPARTMENTS_CHANGED = 'departments_changed';

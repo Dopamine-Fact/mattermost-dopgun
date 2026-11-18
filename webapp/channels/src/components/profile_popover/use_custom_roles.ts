@@ -3,27 +3,28 @@
 
 import {useEffect, useState} from 'react';
 
-import type {CustomRole} from '@mattermost/types/custom_roles';
-import {CUSTOM_ROLES_CHANGED} from '@mattermost/types/custom_roles';
+import type {Department, Rank} from '@mattermost/types/custom_roles';
+import {DEPARTMENTS_CHANGED} from '@mattermost/types/custom_roles';
 
 import {Client4} from 'mattermost-redux/client';
 
 import WebSocketClient from 'client/web_websocket_client';
 
-// One request per session, shared by every popover; a role change anywhere drops it and refreshes the open ones.
-let cached: Promise<CustomRole[]> | undefined;
-const subscribers = new Set<() => void>();
+// One request per team per session, shared by every user; a change in a team drops its entry and refreshes the open ones.
+const cached = new Map<string, Promise<Department[]>>();
+const subscribers = new Map<string, Set<() => void>>();
 let listening = false;
 
-function load() {
-    cached ??= Client4.getCustomRoles().then(
-        (roles) => [...roles].sort((a, b) => a.position - b.position),
-        (err) => {
-            cached = undefined;
+function load(teamId: string) {
+    let entry = cached.get(teamId);
+    if (!entry) {
+        entry = Client4.getTeamDepartments(teamId).catch((err) => {
+            cached.delete(teamId);
             throw err;
-        },
-    );
-    return cached;
+        });
+        cached.set(teamId, entry);
+    }
+    return entry;
 }
 
 function listen() {
@@ -31,39 +32,43 @@ function listen() {
         return;
     }
     listening = true;
-    WebSocketClient.addMessageListener((msg: {event: string}) => {
-        if (msg.event === CUSTOM_ROLES_CHANGED) {
-            cached = undefined;
-            subscribers.forEach((refresh) => refresh());
+    WebSocketClient.addMessageListener((msg: {event: string; data?: unknown}) => {
+        if (msg.event !== DEPARTMENTS_CHANGED) {
+            return;
         }
+        const teamId = (msg.data as {team_id?: string} | undefined)?.team_id ?? '';
+        cached.delete(teamId);
+        subscribers.get(teamId)?.forEach((refresh) => refresh());
     });
 }
 
-/** Every studio role, highest rank first; empty until loaded. */
-export function useCustomRoles(): CustomRole[] {
-    const [roles, setRoles] = useState<CustomRole[]>([]);
+/** The team's departments, Stüdyo geneli first, each with its ranks top first; empty until loaded. */
+export function useTeamDepartments(teamId: string): Department[] {
+    const [departments, setDepartments] = useState<Department[]>([]);
     useEffect(() => {
+        if (!teamId) {
+            return undefined;
+        }
         let live = true;
         const refresh = () => {
-            load().then((r) => live && setRoles(r), () => {});
+            load(teamId).then((d) => live && setDepartments(d), () => {});
         };
         listen();
-        subscribers.add(refresh);
+        if (!subscribers.has(teamId)) {
+            subscribers.set(teamId, new Set());
+        }
+        subscribers.get(teamId)!.add(refresh);
         refresh();
         return () => {
             live = false;
-            subscribers.delete(refresh);
+            subscribers.get(teamId)?.delete(refresh);
         };
-    }, []);
-    return roles;
+    }, [teamId]);
+    return departments;
 }
 
-/** The roles, in rank order, that a user's space-separated role names include. */
-export const rolesOf = (roles: CustomRole[], roleNames: string) => {
+/** The ranks, in department order, that a member's space-separated team roles include. */
+export const ranksOf = (departments: Department[], roleNames: string): Array<{department: Department; rank: Rank}> => {
     const held = new Set(roleNames.split(' '));
-    return roles.filter((r) => held.has(r.role_name));
+    return departments.flatMap((department) => department.ranks.filter((rank) => held.has(rank.role_name)).map((rank) => ({department, rank})));
 };
-
-/** Mirrors the server: a outranks b when it sits higher and neither department excludes the other. */
-export const outranks = (a: CustomRole, b: CustomRole) =>
-    a.position < b.position && (!a.department || !b.department || a.department === b.department);

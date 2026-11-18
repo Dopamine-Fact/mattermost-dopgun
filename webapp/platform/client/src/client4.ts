@@ -59,7 +59,7 @@ import type {
     LdapSettings, ContentFlaggingSettings,
 } from '@mattermost/types/config';
 import type {ContentFlaggingConfig} from '@mattermost/types/content_flagging';
-import type {CustomRole, CustomRoleCreate, CustomRolePatch} from '@mattermost/types/custom_roles';
+import type {Department, DepartmentCreate, DepartmentPatch, Rank, RankCreate, RankPatch} from '@mattermost/types/custom_roles';
 import type {DailyReport} from '@mattermost/types/daily_reports';
 import type {DriveChatFileSort, DriveItem, DriveListing} from '@mattermost/types/drive';
 import type {
@@ -5236,39 +5236,63 @@ export default class Client4 {
         return this.doFetch<Blob>(`${this.getDriveRoute(channelId)}/download`, {method: 'post', body: JSON.stringify({item_ids: itemIds})});
     };
 
-    // Custom role methods
-    getCustomRolesRoute() {
-        return `${this.getBaseRoute()}/custom_roles`;
+    // Department and rank methods
+    getDepartmentsRoute(teamId: string) {
+        return `${this.getTeamRoute(teamId)}/departments`;
     }
 
-    getCustomRoles = () => {
-        return this.doFetch<CustomRole[]>(this.getCustomRolesRoute(), {method: 'get'});
+    /** the team's departments in order, Stüdyo geneli first, each with its ranks */
+    getTeamDepartments = (teamId: string) => {
+        return this.doFetch<Department[]>(this.getDepartmentsRoute(teamId), {method: 'get'});
     };
 
-    createCustomRole = (role: CustomRoleCreate) => {
-        return this.doFetch<CustomRole>(this.getCustomRolesRoute(), {method: 'post', body: JSON.stringify(role)});
+    createDepartment = (teamId: string, department: DepartmentCreate) => {
+        return this.doFetch<Department>(this.getDepartmentsRoute(teamId), {method: 'post', body: JSON.stringify(department)});
     };
 
-    patchCustomRole = (roleId: string, patch: CustomRolePatch) => {
-        return this.doFetch<CustomRole>(`${this.getCustomRolesRoute()}/${roleId}`, {method: 'PATCH', body: JSON.stringify(patch)});
+    patchDepartment = (teamId: string, departmentId: string, patch: DepartmentPatch) => {
+        return this.doFetch<Department>(`${this.getDepartmentsRoute(teamId)}/${departmentId}`, {method: 'PATCH', body: JSON.stringify(patch)});
     };
 
-    deleteCustomRole = (roleId: string) => {
-        return this.doFetch<StatusOK>(`${this.getCustomRolesRoute()}/${roleId}`, {method: 'delete'});
+    deleteDepartment = (teamId: string, departmentId: string) => {
+        return this.doFetch<StatusOK>(`${this.getDepartmentsRoute(teamId)}/${departmentId}`, {method: 'delete'});
     };
 
-    /** ids must name every role exactly once, top rank first */
-    reorderCustomRoles = (ids: string[]) => {
-        return this.doFetch<CustomRole[]>(`${this.getCustomRolesRoute()}/order`, {method: 'put', body: JSON.stringify({ids})});
+    /** ids must name every department exactly once, Stüdyo geneli first */
+    reorderDepartments = (teamId: string, ids: string[]) => {
+        return this.doFetch<Department[]>(`${this.getDepartmentsRoute(teamId)}/order`, {method: 'put', body: JSON.stringify({ids})});
     };
 
-    setUserCustomRoles = (userId: string, roleIds: string[]) => {
-        return this.doFetch<UserProfile>(`${this.getUserRoute(userId)}/custom_roles`, {method: 'put', body: JSON.stringify({role_ids: roleIds})});
+    createRank = (teamId: string, departmentId: string, rank: RankCreate) => {
+        return this.doFetch<Rank>(`${this.getDepartmentsRoute(teamId)}/${departmentId}/ranks`, {method: 'post', body: JSON.stringify(rank)});
     };
 
-    /** ids of the team members the current user may assign tasks to and review */
-    getActionableUserIds = (teamId: string) => {
-        return this.doFetch<string[]>(`${this.getTeamRoute(teamId)}/custom_roles/actionable_users`, {method: 'get'});
+    patchRank = (teamId: string, rankId: string, patch: RankPatch) => {
+        return this.doFetch<Rank>(`${this.getTeamRoute(teamId)}/ranks/${rankId}`, {method: 'PATCH', body: JSON.stringify(patch)});
+    };
+
+    deleteRank = (teamId: string, rankId: string) => {
+        return this.doFetch<StatusOK>(`${this.getTeamRoute(teamId)}/ranks/${rankId}`, {method: 'delete'});
+    };
+
+    /** ids must name every rank of the department exactly once, top rank first */
+    reorderRanks = (teamId: string, departmentId: string, ids: string[]) => {
+        return this.doFetch<Department[]>(`${this.getDepartmentsRoute(teamId)}/${departmentId}/ranks/order`, {method: 'put', body: JSON.stringify({ids})});
+    };
+
+    /** replaces the member's ranks, at most one per department */
+    setMemberRanks = (teamId: string, userId: string, rankIds: string[]) => {
+        return this.doFetch<TeamMembership>(`${this.getTeamMemberRoute(teamId, userId)}/ranks`, {method: 'put', body: JSON.stringify({rank_ids: rankIds})});
+    };
+
+    /** ids of the ranks the current user may give the member or take away */
+    getAssignableRanks = (teamId: string, userId: string) => {
+        return this.doFetch<string[]>(`${this.getTeamMemberRoute(teamId, userId)}/assignable_ranks`, {method: 'get'});
+    };
+
+    /** ids of the team members the current user may act on with permission, one of the team task permissions */
+    getActionableUserIds = (teamId: string, permission: 'manage_tasks' | 'manage_revisions' | 'manage_daily_reports') => {
+        return this.doFetch<string[]>(`${this.getTeamRoute(teamId)}/actionable_user_ids${buildQueryString({permission})}`, {method: 'get'});
     };
 
     // Task methods

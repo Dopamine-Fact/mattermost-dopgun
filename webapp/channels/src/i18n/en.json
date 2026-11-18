@@ -3975,122 +3975,6 @@
     "defaultMessage": "Content Flagging",
     "description": "Legacy name of the Data Spillage Handling admin page, kept as a searchable string so old searches for 'Content Flagging' still find the page."
   },
-  "admin.custom_roles.add": {
-    "defaultMessage": "Add role",
-    "description": "Roles page in the System Console (User Management > Roles), where admins define studio roles. Button that opens the dialog for creating a new role."
-  },
-  "admin.custom_roles.delete": {
-    "defaultMessage": "Delete {name}",
-    "description": "Roles page in the System Console (User Management > Roles), where admins define studio roles. Accessible label of the trash button on a role row; {name} is the role name."
-  },
-  "admin.custom_roles.delete_body": {
-    "defaultMessage": "{count, plural, one {# member} other {# members}} will lose this role.",
-    "description": "Roles page in the System Console (User Management > Roles), where admins define studio roles. Body of the delete confirmation dialog; {count} is how many users hold the role."
-  },
-  "admin.custom_roles.delete_confirm": {
-    "defaultMessage": "Delete",
-    "description": "Roles page in the System Console (User Management > Roles), where admins define studio roles. Confirm button of the delete role dialog."
-  },
-  "admin.custom_roles.delete_title": {
-    "defaultMessage": "Delete {name}?",
-    "description": "Roles page in the System Console (User Management > Roles), where admins define studio roles. Title of the delete role confirmation dialog; {name} is the role name."
-  },
-  "admin.custom_roles.drag": {
-    "defaultMessage": "Drag to change rank",
-    "description": "Roles page in the System Console (User Management > Roles), where admins define studio roles. Accessible label of the drag handle that moves a role up or down the hierarchy."
-  },
-  "admin.custom_roles.edit": {
-    "defaultMessage": "Edit {name}",
-    "description": "Roles page in the System Console (User Management > Roles), where admins define studio roles. Accessible label of the pencil button on a role row; {name} is the role name."
-  },
-  "admin.custom_roles.empty": {
-    "defaultMessage": "No roles yet.",
-    "description": "Roles page in the System Console (User Management > Roles), where admins define studio roles. Shown instead of the list when no roles exist."
-  },
-  "admin.custom_roles.members": {
-    "defaultMessage": "{count, plural, one {# member} other {# members}}",
-    "description": "Roles page in the System Console (User Management > Roles), where admins define studio roles. Number of users holding the role, shown on each row."
-  },
-  "admin.custom_roles.modal.add_title": {
-    "defaultMessage": "Add role",
-    "description": "Add/edit role dialog on the System Console Roles page: title when creating a role."
-  },
-  "admin.custom_roles.modal.color": {
-    "defaultMessage": "Color",
-    "description": "Add/edit role dialog on the System Console Roles page: label of the role color field (hex value and picker)."
-  },
-  "admin.custom_roles.modal.color_invalid": {
-    "defaultMessage": "Use a hex color like #1e90ff.",
-    "description": "Add/edit role dialog on the System Console Roles page: error when the color is not a 6-digit hex value."
-  },
-  "admin.custom_roles.modal.department": {
-    "defaultMessage": "Department",
-    "description": "Add/edit role dialog on the System Console Roles page: label of the optional department field; a role only outranks roles of its own department."
-  },
-  "admin.custom_roles.modal.department_placeholder": {
-    "defaultMessage": "None: ranks across every department",
-    "description": "Add/edit role dialog on the System Console Roles page: placeholder of the empty department field, explaining that a role without a department outranks across all departments."
-  },
-  "admin.custom_roles.modal.edit_title": {
-    "defaultMessage": "Edit role",
-    "description": "Add/edit role dialog on the System Console Roles page: title when editing an existing role."
-  },
-  "admin.custom_roles.modal.name": {
-    "defaultMessage": "Name",
-    "description": "Add/edit role dialog on the System Console Roles page: label of the role name field."
-  },
-  "admin.custom_roles.modal.name_required": {
-    "defaultMessage": "Enter a name.",
-    "description": "Add/edit role dialog on the System Console Roles page: error when the name is empty."
-  },
-  "admin.custom_roles.modal.permissions": {
-    "defaultMessage": "Permissions",
-    "description": "Add/edit role dialog on the System Console Roles page: heading above the permission checkboxes."
-  },
-  "admin.custom_roles.page_title": {
-    "defaultMessage": "Roles",
-    "description": "Roles page in the System Console (User Management > Roles), where admins define studio roles. Page title in the System Console header."
-  },
-  "admin.custom_roles.panel_subtitle": {
-    "defaultMessage": "Higher roles in the list outrank lower ones. A role with a department only outranks roles in the same department or without one. Drag to reorder.",
-    "description": "Roles page in the System Console (User Management > Roles), where admins define studio roles. Explanation under the panel title of how list order and departments decide who outranks whom."
-  },
-  "admin.custom_roles.panel_title": {
-    "defaultMessage": "Studio roles",
-    "description": "Roles page in the System Console (User Management > Roles), where admins define studio roles. Title of the panel holding the role list."
-  },
-  "admin.custom_roles.permission.assign_custom_roles": {
-    "defaultMessage": "Assign roles",
-    "description": "Permission checkbox in the add/edit role dialog on the System Console Roles page; lets the role holder give roles to others."
-  },
-  "admin.custom_roles.permission.assign_custom_roles.description": {
-    "defaultMessage": "Give and remove roles ranked below their own.",
-    "description": "Help text under a permission checkbox in the add/edit role dialog on the System Console Roles page."
-  },
-  "admin.custom_roles.permission.manage_daily_reports": {
-    "defaultMessage": "Manage daily reports",
-    "description": "Permission checkbox in the add/edit role dialog on the System Console Roles page; lets the role holder review daily reports."
-  },
-  "admin.custom_roles.permission.manage_daily_reports.description": {
-    "defaultMessage": "See, approve and reject the daily reports of lower-ranked members.",
-    "description": "Help text under a permission checkbox in the add/edit role dialog on the System Console Roles page."
-  },
-  "admin.custom_roles.permission.manage_revisions": {
-    "defaultMessage": "Manage revisions",
-    "description": "Permission checkbox in the add/edit role dialog on the System Console Roles page; lets the role holder manage revision tasks."
-  },
-  "admin.custom_roles.permission.manage_revisions.description": {
-    "defaultMessage": "Add, assign and delete revisions in revision channels.",
-    "description": "Help text under a permission checkbox in the add/edit role dialog on the System Console Roles page."
-  },
-  "admin.custom_roles.permission.manage_tasks": {
-    "defaultMessage": "Manage tasks",
-    "description": "Permission checkbox in the add/edit role dialog on the System Console Roles page; lets the role holder manage tasks."
-  },
-  "admin.custom_roles.permission.manage_tasks.description": {
-    "defaultMessage": "Create, assign and delete tasks and task sections.",
-    "description": "Help text under a permission checkbox in the add/edit role dialog on the System Console Roles page."
-  },
   "admin.custom_terms_of_service_feature_discovery.copy": {
     "defaultMessage": "Create your own terms of service that new users must accept before accessing your Dopaminefact instance on desktop, web, or mobile.",
     "description": "Body copy on the feature discovery (upsell) page for custom terms of service."
@@ -15374,10 +15258,6 @@
   "admin.sidebar.cors": {
     "defaultMessage": "CORS",
     "description": "Navigation item in the System Console sidebar; opens the CORS (cross-origin request) settings page; acronym, should not be translated; compact space."
-  },
-  "admin.sidebar.custom_roles": {
-    "defaultMessage": "Roles",
-    "description": "System Console sidebar link under User Management to the page where admins define studio roles."
   },
   "admin.sidebar.customization": {
     "defaultMessage": "Customization",
@@ -34560,12 +34440,12 @@
     "description": "Accessible label of the X button that closes the user profile popover."
   },
   "user_profile.custom_roles.edit": {
-    "defaultMessage": "Edit roles",
-    "description": "Profile popover (the card shown when clicking a user name or avatar), under the user name where the user's studio roles are listed as colored chips. Button that opens the dialog for giving or removing the user's roles; shown only to people allowed to assign roles."
+    "defaultMessage": "Edit ranks",
+    "description": "Button in the profile popover that opens the dialog for changing the user's ranks in the team's departments."
   },
   "user_profile.custom_roles.edit_title": {
-    "defaultMessage": "Roles of {name}",
-    "description": "Title of the dialog, opened from the profile popover, that lists the studio roles a user holds as checkboxes; {name} is the username."
+    "defaultMessage": "Ranks of {name}",
+    "description": "Title of the dialog that changes a user's team ranks, one per department; {name} is the username."
   },
   "user_profile.custom_status": {
     "defaultMessage": "Status",

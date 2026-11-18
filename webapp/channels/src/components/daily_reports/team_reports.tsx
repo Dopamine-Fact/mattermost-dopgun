@@ -65,7 +65,7 @@ const TeamReports = ({teamId, timeZone, tick, onError}: Props) => {
                 const [list, ids, canAct] = await Promise.all([
                     Client4.getDailyReports(teamId, date, date),
                     Client4.getDailyReportAssignees(teamId),
-                    Client4.getActionableUserIds(teamId).catch(() => null),
+                    Client4.getActionableUserIds(teamId, 'manage_daily_reports').catch(() => null),
                 ]);
                 if (!cancelled) {
                     setReports(list);

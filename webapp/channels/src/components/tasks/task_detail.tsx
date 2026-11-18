@@ -35,17 +35,19 @@ const TaskDetail = ({task, sections, members, displayName, onClose, canManage}: 
     const currentUserId = useSelector(getCurrentUserId);
 
     // The server only lets a role assign to members it outranks; offer just those (null: not known, offer all).
+    // Revision tasks are given by manage_revisions, the rest by manage_tasks, so the server asks for the matching one.
+    const permission = sections.find((s) => s.id === task.section_id)?.channel_id ? 'manage_revisions' : 'manage_tasks';
     const [actionable, setActionable] = useState<Set<string> | null>(null);
     useEffect(() => {
         if (!canManage) {
             return undefined;
         }
         let live = true;
-        Client4.getActionableUserIds(task.team_id).then((ids) => live && setActionable(new Set(ids)), () => {});
+        Client4.getActionableUserIds(task.team_id, permission).then((ids) => live && setActionable(new Set(ids)), () => {});
         return () => {
             live = false;
         };
-    }, [task.team_id, canManage]);
+    }, [task.team_id, canManage, permission]);
     const assignable = members.filter((u) => !actionable || actionable.has(u.id) || u.id === currentUserId || u.id === task.assignee_id);
 
     return (
