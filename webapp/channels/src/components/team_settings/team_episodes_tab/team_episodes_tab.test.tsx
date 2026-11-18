@@ -51,6 +51,20 @@ describe('components/TeamSettings/EpisodesTab', () => {
         expect(patchTeam).toHaveBeenCalledWith({id: 'team_id', tasks_enabled: false, revisions_enabled: false, canvas_enabled: true});
     });
 
+    test('the save panel shows only after the first edit', async () => {
+        const setAreThereUnsavedChanges = jest.fn();
+        const {rerender} = renderWithContext(
+            <EpisodesTab {...{...defaultProps, areThereUnsavedChanges: false, setAreThereUnsavedChanges}}/>,
+        );
+        expect(screen.queryByTestId('SaveChangesPanel__save-btn')).not.toBeInTheDocument();
+
+        await userEvent.click(screen.getByTestId('canvasEnabledCheckbox'));
+        expect(setAreThereUnsavedChanges).toHaveBeenCalledWith(true);
+        rerender(<EpisodesTab {...{...defaultProps, areThereUnsavedChanges: true, setAreThereUnsavedChanges}}/>);
+
+        expect(screen.getByTestId('SaveChangesPanel__save-btn')).toBeInTheDocument();
+    });
+
     test('saving with nothing changed sends nothing', async () => {
         renderWithContext(<EpisodesTab {...defaultProps}/>);
 

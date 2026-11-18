@@ -6,13 +6,19 @@ import type {ConnectedProps} from 'react-redux';
 import {bindActionCreators} from 'redux';
 import type {Dispatch} from 'redux';
 
-import {patchTeam} from 'mattermost-redux/actions/teams';
+import type {Team} from '@mattermost/types/teams';
 
-import type {OwnProps} from 'components/team_settings/team_info_tab';
+import {patchTeam} from 'mattermost-redux/actions/teams';
 
 import TeamEpisodesTab from './team_episodes_tab';
 
-export type {OwnProps};
+export type OwnProps = {
+    team: Team;
+    areThereUnsavedChanges: boolean;
+    showTabSwitchError: boolean;
+    setAreThereUnsavedChanges: (unsaved: boolean) => void;
+    setShowTabSwitchError: (error: boolean) => void;
+};
 
 function mapDispatchToProps(dispatch: Dispatch) {
     return {

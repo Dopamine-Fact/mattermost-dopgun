@@ -25149,27 +25149,27 @@
   },
   "general_tab.revisionsEnabled": {
     "defaultMessage": "Enable revision channels for this team",
-    "description": "Checkbox label in Team Settings > Info that turns revision channels on for the team; shown only while team tasks are enabled."
+    "description": "Checkbox label in Team Settings > Episodes that turns revision channels on for the team; shown only while team tasks are enabled."
   },
   "general_tab.revisionsInfo": {
     "defaultMessage": "When enabled, task managers can create revision channels: chat channels with a video where revisions are pinned to moments and assigned as tasks.",
-    "description": "Help text under the revision channels setting in Team Settings > Info explaining what a revision channel is."
+    "description": "Help text under the revision channels setting in Team Settings > Episodes explaining what a revision channel is."
   },
   "general_tab.revisionsTitle": {
     "defaultMessage": "Revision channels",
-    "description": "Section title in Team Settings > Info for the setting that turns revision channels on or off for the team."
+    "description": "Section title in Team Settings > Episodes for the setting that turns revision channels on or off for the team."
   },
   "general_tab.tasksEnabled": {
     "defaultMessage": "Enable tasks for this team",
-    "description": ""
+    "description": "Checkbox label in Team Settings > Episodes that turns the shared task list on for the team."
   },
   "general_tab.tasksInfo": {
     "defaultMessage": "When enabled, team members get a shared task list in the sidebar with sections, assignees and due dates.",
-    "description": ""
+    "description": "Help text under the tasks setting in Team Settings > Episodes explaining what turning tasks on gives the team."
   },
   "general_tab.tasksTitle": {
     "defaultMessage": "Tasks",
-    "description": ""
+    "description": "Section title in Team Settings > Episodes for the setting that turns the team's task list on or off."
   },
   "general_tab.teamDescription": {
     "defaultMessage": "Description",
