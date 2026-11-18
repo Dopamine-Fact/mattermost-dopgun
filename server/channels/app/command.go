@@ -690,6 +690,9 @@ func (a *App) HandleCommandResponsePost(rctx request.CTX, command *model.Command
 	post.UserId = args.UserId
 	post.Type = response.Type
 	post.SetProps(response.Props)
+	if args.TaskId != "" && post.GetProp(postTaskProp) == nil {
+		post.AddProp(postTaskProp, args.TaskId)
+	}
 
 	if response.ChannelId != "" {
 		_, err := a.GetChannelMember(rctx, response.ChannelId, args.UserId)

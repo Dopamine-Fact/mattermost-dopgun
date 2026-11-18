@@ -364,6 +364,7 @@ func (a *App) CreatePost(rctx request.CTX, post *model.Post, channel *model.Chan
 
 	// Verify the parent/child relationships are correct
 	var parentPostList *model.PostList
+	var rootPost *model.Post
 	if pchan != nil {
 		result := <-pchan
 		if result.NErr != nil {
@@ -374,13 +375,20 @@ func (a *App) CreatePost(rctx request.CTX, post *model.Post, channel *model.Chan
 			return nil, false, model.NewAppError("createPost", "api.post.create_post.channel_root_id.app_error", nil, "", http.StatusInternalServerError)
 		}
 
-		rootPost := parentPostList.Posts[post.RootId]
+		rootPost = parentPostList.Posts[post.RootId]
 		if rootPost.RootId != "" {
 			return nil, false, model.NewAppError("createPost", "api.post.create_post.root_id.app_error", nil, "", http.StatusBadRequest)
 		}
 
 		if rootPost.Type == model.PostTypeBurnOnRead {
 			return nil, false, model.NewAppError("createPost", "api.post.create_post.burn_on_read.app_error", nil, "", http.StatusBadRequest)
+		}
+	}
+
+	// System messages, server-made posts with a type, and bot, webhook and plugin posts are not held to the task rule.
+	if post.Type == "" && !a.isIntegrationPostAuthor(rctx, user, flags) {
+		if err = a.applyTaskPostRule(rctx, post, channel, rootPost); err != nil {
+			return nil, false, err
 		}
 	}
 
@@ -1012,6 +1020,11 @@ func (a *App) UpdatePost(rctx request.CTX, receivedUpdatedPost *model.Post, upda
 		newPost.IsPinned = receivedUpdatedPost.IsPinned
 		newPost.HasReactions = receivedUpdatedPost.HasReactions
 		newPost.SetProps(receivedUpdatedPost.GetProps())
+
+		// A message's task is fixed once posted: moving it to another task means deleting and re-posting.
+		if newPost.GetProp(postTaskProp) != oldPost.GetProp(postTaskProp) {
+			return nil, false, model.NewAppError("UpdatePost", "app.post.task_change.app_error", nil, "id="+oldPost.Id, http.StatusBadRequest)
+		}
 
 		// SanitizeProps above left identity props untouched for federated posts
 		// (RemoteId set), so receivedUpdatedPost.GetProps() already IS the

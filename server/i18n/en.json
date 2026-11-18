@@ -11236,6 +11236,21 @@
     "description": "API error returned when a message search query fails on the server."
   },
   {
+    "id": "app.post.task_change.app_error",
+    "translation": "A message's task can't be changed.",
+    "description": "API error when an edit tries to change or remove the task a message in a task-list channel is about."
+  },
+  {
+    "id": "app.post.task_invalid.app_error",
+    "translation": "This task is not in this channel's task list.",
+    "description": "API error when a message names a task that does not belong to the channel's task list."
+  },
+  {
+    "id": "app.post.task_required.app_error",
+    "translation": "Pick a task for this message.",
+    "description": "API error when a message in a task-list channel (an episode or revision channel) is sent without picking one of its tasks."
+  },
+  {
     "id": "app.post.update.app_error",
     "translation": "Unable to update the Post.",
     "description": "API error when saving edits to a post ('Post' = chat message) fails."

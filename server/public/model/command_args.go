@@ -13,6 +13,7 @@ type CommandArgs struct {
 	TeamId          string             `json:"team_id"`
 	RootId          string             `json:"root_id"`
 	ParentId        string             `json:"parent_id"`
+	TaskId          string             `json:"task_id"` // the task a message posted by the command is about (task-list channels)
 	TriggerId       string             `json:"trigger_id,omitempty"`
 	ConnectionId    string             `json:"connection_id,omitempty"`
 	Command         string             `json:"command"`
@@ -29,6 +30,7 @@ func (o *CommandArgs) Auditable() map[string]any {
 		"team_id":       o.TeamId,
 		"root_id":       o.RootId,
 		"parent_id":     o.ParentId,
+		"task_id":       o.TaskId,
 		"trigger_id":    o.TriggerId,
 		"connection_id": o.ConnectionId,
 		"command":       o.Command,
