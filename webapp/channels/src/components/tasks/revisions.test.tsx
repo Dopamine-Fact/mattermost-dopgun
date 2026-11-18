@@ -66,7 +66,7 @@ const defineTime = (video: HTMLVideoElement, start: number) => {
 };
 
 const onSelect = jest.fn();
-const renderRevisions = (canManage = true, extra: Task[] = []) => {
+const renderRevisions = (canManage = true, extra: Task[] = [], detail?: React.ReactNode) => {
     renderWithContext(
         <Revisions
             teamId='team1'
@@ -76,6 +76,7 @@ const renderRevisions = (canManage = true, extra: Task[] = []) => {
             selectedId=''
             onSelect={onSelect}
             canManage={canManage}
+            detail={detail}
         />,
     );
     const video = document.querySelector('video')!;
@@ -361,5 +362,16 @@ describe('Revisions', () => {
         jest.spyOn(strip, 'getBoundingClientRect').mockReturnValue({left: 0, width: 200} as DOMRect);
         fireEvent.click(strip, {clientX: 100});
         expect(time()).toBe(5);
+    });
+
+    test('a passed detail replaces the form', () => {
+        renderRevisions(true, [], <div>{'detail here'}</div>);
+        expect(document.querySelector('.TaskRevisions__panel')).toHaveTextContent('detail here');
+        expect(screen.queryByRole('textbox', {name: 'Revision description'})).toBeNull();
+    });
+
+    test('viewers with nothing selected are asked to pick a revision', () => {
+        renderRevisions(false);
+        expect(document.querySelector('.TaskRevisions__panel')).toHaveTextContent('Select a revision');
     });
 });

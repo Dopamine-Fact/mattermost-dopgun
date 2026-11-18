@@ -39,10 +39,13 @@ type Props = {
     selectedId: string;
     onSelect: (taskId: string) => void;
     canManage: boolean;
+
+    // The selected revision's detail; it takes the create form's place.
+    detail?: React.ReactNode;
 };
 
 // Revisions shows a revision channel's video versions and their revisions: tasks pinned to a time in one version.
-const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, canManage}: Props) => {
+const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, canManage, detail}: Props) => {
     const {formatMessage, formatDate} = useIntl();
     const dispatch = useDispatch();
 
@@ -496,7 +499,16 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
                     </div>
 
                     <div className='TaskRevisions__panel'>
-                        {canManage && (
+                        {detail}
+                        {!detail && !canManage && (
+                            <p className='TaskRevisions__empty'>
+                                <FormattedMessage
+                                    id='tasks.revisions.pick'
+                                    defaultMessage='Select a revision'
+                                />
+                            </p>
+                        )}
+                        {!detail && canManage && (
                             <form
                                 className='TaskRevisions__form'
                                 onSubmit={addRevision}

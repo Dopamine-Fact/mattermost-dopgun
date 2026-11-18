@@ -33335,6 +33335,10 @@
     "defaultMessage": "(optional)",
     "description": "Marks the reference image field of the create revision form as optional."
   },
+  "tasks.revisions.pick": {
+    "defaultMessage": "Select a revision",
+    "description": "Shown beside a revision channel's video to someone who cannot create revisions, until they pick one from the list."
+  },
   "tasks.revisions.placeholder": {
     "defaultMessage": "Describe the change you want in detail…",
     "description": "Placeholder of the revision description box in the create revision form."

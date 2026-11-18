@@ -226,9 +226,9 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
                         selectedId={selectedId}
                         onSelect={setSelectedId}
                         canManage={canManageRevisions}
+                        detail={detail}
                     />
                 </div>
-                {detail}
             </div>
         );
     } else if (section && tab === 'tasks') {

@@ -7839,6 +7839,7 @@
   "tasks.revisions.noRevisions": "Henüz revizyon yok. Videoyu değişmesi gereken yerde durdurun ve açıklayın.",
   "tasks.revisions.olderVersion": "Önceki bir sürümde oluşturuldu; o sürümü izlemek için açın",
   "tasks.revisions.optional": "(isteğe bağlı)",
+  "tasks.revisions.pick": "Bir revizyon seçin",
   "tasks.revisions.placeholder": "Yapılmasını istediğiniz değişikliği detaylı olarak yazın…",
   "tasks.revisions.removeImage": "Görseli kaldır",
   "tasks.revisions.replacing": "Yükleniyor…",

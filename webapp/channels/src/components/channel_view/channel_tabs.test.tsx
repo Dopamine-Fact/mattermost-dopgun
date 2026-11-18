@@ -10,7 +10,7 @@ import {Client4} from 'mattermost-redux/client';
 
 import {createTask} from 'actions/tasks';
 
-import {act, fireEvent, renderWithContext, screen, waitFor} from 'tests/react_testing_utils';
+import {act, fireEvent, renderWithContext, screen, waitFor, within} from 'tests/react_testing_utils';
 import {TestHelper} from 'utils/test_helper';
 
 import ChannelTabs from './channel_tabs';
@@ -183,6 +183,15 @@ describe('ChannelTabs', () => {
         expect(document.querySelector('video')).toHaveAttribute('src', expect.stringContaining('/task_sections/sec1/video'));
         expect(screen.getByRole('button', {name: 'Logo too small'})).toBeInTheDocument();
         expect(screen.queryByRole('button', {name: 'Storyboard'})).toBeNull();
+    });
+
+    test('a picked revision opens its detail in the Revisions panel', () => {
+        renderTabs('chan1');
+        fireEvent.click(screen.getByRole('tab', {name: 'Revisions'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Logo too small'}));
+        const panel = document.querySelector('.TaskRevisions__panel') as HTMLElement;
+        expect(within(panel).getByRole('complementary', {name: 'Task details'})).toBeInTheDocument();
+        expect(screen.queryByRole('textbox', {name: 'Revision description'})).toBeNull();
     });
 
     test('arrow keys step the video right after the Revisions tab is clicked', () => {
