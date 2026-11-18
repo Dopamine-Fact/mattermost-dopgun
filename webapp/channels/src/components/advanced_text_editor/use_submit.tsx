@@ -219,6 +219,9 @@ const useSubmit = (
                 updateAt: 0,
                 channelId,
                 rootId,
+
+                // The next message in a task-list channel is usually about the same task.
+                ...(submittingDraft.props?.task_id ? {props: {task_id: submittingDraft.props.task_id}} : {}),
             }, {instant: true});
         } catch (err: unknown) {
             if (isServerError(err)) {

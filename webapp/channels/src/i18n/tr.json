@@ -4366,6 +4366,8 @@
   "advanced_text_editor.help_link": "Yardım",
   "advanced_text_editor.help_link.aria": "İleti yazma yardımı",
   "advanced_text_editor.remote_user_hour": "{user} kullanıcısının zamanı: {time}",
+  "advanced_text_editor.task_picker.label": "Görev",
+  "advanced_text_editor.task_picker.placeholder": "Görev seçin",
   "advanced_textbox.max_length_error": "Yazı, izin verilen en fazla sınır olan {maxLength} karakterden uzun.",
   "advanced_textbox.min_length_error": "Yazı en az {minLength} karakter uzunluğunda olmalıdır.",
   "agent.buttonAriaLabel": "Aracı seçici",

@@ -135,6 +135,7 @@ export function submitCommand(channelId: string, rootId: string, draft: PostDraf
             channel_id: channelId,
             team_id: teamId,
             root_id: rootId,
+            task_id: draft.props?.task_id,
         };
 
         let {message} = draft;

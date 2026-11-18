@@ -17939,6 +17939,14 @@
     "defaultMessage": "The time for {user} is {time}",
     "description": "Notice above the message box showing the DM recipient's local time during their night hours; {user} is their name, {time} their current local time."
   },
+  "advanced_text_editor.task_picker.label": {
+    "defaultMessage": "Task",
+    "description": "Accessibility (aria) label of the task picker in the message box of a task-list (episode or revision) channel, where every message must name one of the channel's tasks."
+  },
+  "advanced_text_editor.task_picker.placeholder": {
+    "defaultMessage": "Pick a task",
+    "description": "First, unselectable entry of the task picker in the message box of a task-list channel; shown until the user picks which task the message is about."
+  },
   "advanced_textbox.max_length_error": {
     "defaultMessage": "Text exceeds the maximum character limit of {maxLength} characters.",
     "description": "Validation error under a text editor when input is too long; {maxLength} is the character limit."

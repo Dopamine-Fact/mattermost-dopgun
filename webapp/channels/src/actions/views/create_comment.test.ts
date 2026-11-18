@@ -244,6 +244,12 @@ describe('rhs view actions', () => {
             expect(lastCall(jest.mocked(executeCommand).mock.calls)[1]).toEqual(args);
         });
 
+        test('it sends the draft\'s task with the command', async () => {
+            await store.dispatch(submitCommand(channelId, rootId, makeDraft({message: '/me waves', channelId, rootId, props: {task_id: 'T'}})));
+
+            expect(lastCall(jest.mocked(executeCommand).mock.calls)[1]).toEqual({...args, task_id: 'T'});
+        });
+
         test('it does not call executeComaand when hooks fail', async () => {
             jest.mocked(HookActions.runSlashCommandWillBePostedHooks).mockImplementation(() => async () => ({error: {message: 'An error occurred'}}));
 

@@ -92,6 +92,7 @@ import useKeyHandler from './use_key_handler';
 import usePendingQuote from './use_pending_quote';
 import usePluginItems from './use_plugin_items';
 import usePriority from './use_priority';
+import useTaskPicker from './use_task_picker';
 import useRewrite from './use_rewrite';
 import useSubmit from './use_submit';
 import useTextboxFocus from './use_textbox_focus';
@@ -457,6 +458,8 @@ const AdvancedTextEditor = ({
         additionalControl: burnOnReadAdditionalControl,
         isBurnOnReadSendable: burnOnReadSendable,
     } = useBurnOnRead(draft, handleDraftChange, focusTextbox, showPreview, false);
+    // An edited message keeps its task, so editing gets no picker (no channel means no task list).
+    const {control: taskPicker, isTaskSendable} = useTaskPicker(draft, handleDraftChange, isInEditMode ? '' : channelId, rootId);
     const [handleSubmit, errorClass] = useSubmit(
         draft,
         postError,
@@ -518,7 +521,7 @@ const AdvancedTextEditor = ({
         focusTextbox();
     }, [draft, handleDraftChange, focusTextbox]);
 
-    const isDraftSendable = isValidPersistentNotifications && burnOnReadSendable;
+    const isDraftSendable = isValidPersistentNotifications && burnOnReadSendable && isTaskSendable;
 
     const handleSubmitWrapper = useCallback(() => {
         const isEmptyPost = isPostDraftEmpty(draft);
@@ -919,14 +922,17 @@ const AdvancedTextEditor = ({
                         tabIndex={-1}
                         className='AdvancedTextEditor__cell a11y__region'
                     >
-                        {!isInEditMode && (priorityLabels || burnOnReadLabels) && (
+                        {!isInEditMode && (priorityLabels || burnOnReadLabels || taskPicker) && (
                             <div className='AdvancedTextEditor__labels'>
-                                <UnifiedLabelsWrapper
-                                    priorityLabels={priorityLabels}
-                                    burnOnReadLabels={burnOnReadLabels}
-                                    onRemoveAll={handleRemoveAllLabels}
-                                    canRemove={!showPreview}
-                                />
+                                {taskPicker}
+                                {(priorityLabels || burnOnReadLabels) && (
+                                    <UnifiedLabelsWrapper
+                                        priorityLabels={priorityLabels}
+                                        burnOnReadLabels={burnOnReadLabels}
+                                        onRemoveAll={handleRemoveAllLabels}
+                                        canRemove={!showPreview}
+                                    />
+                                )}
                             </div>
                         )}
                         {wysiwygEnabled ? (

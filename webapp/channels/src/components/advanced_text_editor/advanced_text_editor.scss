@@ -204,6 +204,18 @@
         gap: 8px;
     }
 
+    &__taskPicker {
+        max-width: 240px;
+        height: 24px;
+        padding: 0 8px;
+        border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+        border-radius: 4px;
+        margin-top: 8px;
+        background: var(--center-channel-bg);
+        color: var(--center-channel-color);
+        font-size: 12px;
+    }
+
 }
 
 @media screen and (max-width: 768px) {
