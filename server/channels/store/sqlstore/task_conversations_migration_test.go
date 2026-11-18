@@ -62,6 +62,7 @@ func TestTaskConversationsMigration(t *testing.T) {
 	c2 := comment(revision.Id, "second", 3000, nil)
 	c3 := comment(ordinary.Id, "third", 4000, nil)
 	c4 := comment(boardTask.Id, "board", 5000, nil)
+	c5 := comment(revision.Id, "answered", 6000, nil)
 
 	link := "http://localhost/team/channels/ep?revision=" + revision.Id
 	post := func(message string, createAt int64) *model.Post {
@@ -72,6 +73,10 @@ func TestTaskConversationsMigration(t *testing.T) {
 	echo1 := post(":speech_balloon: Comment on [R]("+link+"):\nfirst", 1100)
 	echo2 := post(":speech_balloon: Comment on [R]("+link+"):\nsecond", 3050)
 	pasted := post("see "+link, 20000)
+	// An echo someone replied to stays, so its thread is not left without a root.
+	answered := post(":speech_balloon: Comment on [R]("+link+"):\nanswered", 6050)
+	_, err = store.Post().Save(rctx, &model.Post{ChannelId: channel.Id, UserId: userId, RootId: answered.Id, Message: "on it", CreateAt: 7000})
+	require.NoError(t, err)
 
 	before, err := store.Channel().Get(channel.Id, false)
 	require.NoError(t, err)
@@ -84,7 +89,7 @@ func TestTaskConversationsMigration(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	for _, c := range []*model.TaskComment{c1, c2, c3} {
+	for _, c := range []*model.TaskComment{c1, c2, c3, c5} {
 		sum := md5.Sum([]byte(c.Id + ":post"))
 		got, err := store.Post().GetSingle(rctx, hex.EncodeToString(sum[:])[:26], false)
 		require.NoError(t, err, c.Message)
@@ -99,7 +104,7 @@ func TestTaskConversationsMigration(t *testing.T) {
 
 	var postCount int
 	require.NoError(t, store.GetMaster().Get(&postCount, "SELECT count(*) FROM Posts WHERE ChannelId = $1 AND Props->>'task_id' IS NOT NULL", channel.Id))
-	require.Equal(t, 3, postCount)
+	require.Equal(t, 4, postCount)
 
 	movedFile, err := store.FileInfo().Get(file.Id)
 	require.NoError(t, err)
@@ -115,6 +120,7 @@ func TestTaskConversationsMigration(t *testing.T) {
 	require.NotZero(t, deleteAt(echo1.Id))
 	require.NotZero(t, deleteAt(echo2.Id))
 	require.Zero(t, deleteAt(pasted.Id))
+	require.Zero(t, deleteAt(answered.Id))
 
 	left, err := store.Task().GetCommentsForTask(boardTask.Id)
 	require.NoError(t, err)
@@ -128,10 +134,10 @@ func TestTaskConversationsMigration(t *testing.T) {
 
 	after, err := store.Channel().Get(channel.Id, false)
 	require.NoError(t, err)
-	require.Equal(t, before.TotalMsgCount+3, after.TotalMsgCount)
-	require.Equal(t, before.TotalMsgCountRoot+3, after.TotalMsgCountRoot)
+	require.Equal(t, before.TotalMsgCount+4, after.TotalMsgCount)
+	require.Equal(t, before.TotalMsgCountRoot+4, after.TotalMsgCountRoot)
 	memberAfter, err := store.Channel().GetMember(rctx, channel.Id, userId)
 	require.NoError(t, err)
-	require.Equal(t, memberBefore.MsgCount+3, memberAfter.MsgCount)
-	require.Equal(t, memberBefore.MsgCountRoot+3, memberAfter.MsgCountRoot)
+	require.Equal(t, memberBefore.MsgCount+4, memberAfter.MsgCount)
+	require.Equal(t, memberBefore.MsgCountRoot+4, memberAfter.MsgCountRoot)
 }

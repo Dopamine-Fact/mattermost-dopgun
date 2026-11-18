@@ -22,6 +22,8 @@ WHERE Id IN (
         -- No question mark here: sqlx rebinds it to a placeholder even inside a literal. A task id is 26 random
         -- characters, so "revision=<id>" is as specific as the full link.
         AND p.Message LIKE '%revision=' || t.Id || '%'
+    -- An echo someone replied to stays, so its thread keeps its root.
+    WHERE NOT EXISTS (SELECT 1 FROM Posts r WHERE r.RootId = p.Id AND r.DeleteAt = 0)
     ORDER BY tc.Id, p.CreateAt
 );
 

@@ -53,6 +53,18 @@ func TestTaskPostRule(t *testing.T) {
 	plain := th.CreateChannel(t, th.BasicTeam)
 	_, _, appErr = th.App.CreatePostAsUser(th.Context, taskPost(th, plain.Id, "", ""), "", false)
 	require.Nil(t, appErr)
+
+	// A task named outside a task-list channel is dropped, so the post never joins that task's conversation.
+	stray, _, appErr := th.App.CreatePostAsUser(th.Context, taskPost(th, plain.Id, task.Id, ""), "", false)
+	require.Nil(t, appErr)
+	require.Nil(t, stray.GetProp("task_id"))
+
+	// A typed user post such as /me is held to the rule like any other message.
+	me := taskPost(th, th.BasicChannel.Id, "", "")
+	me.Type = model.PostTypeMe
+	_, _, appErr = th.App.CreatePostAsUser(th.Context, me, "", false)
+	require.NotNil(t, appErr)
+	require.Equal(t, "app.post.task_required.app_error", appErr.Id)
 }
 
 func TestTaskPostRuleReplies(t *testing.T) {
@@ -165,6 +177,13 @@ func TestTaskPostRuleCommand(t *testing.T) {
 	saved, appErr := th.App.GetSinglePost(th.Context, post.Id, false)
 	require.Nil(t, appErr)
 	require.Equal(t, task.Id, saved.GetProp("task_id"))
+
+	// A response sent to another channel does not carry the task picked in this one.
+	plain := th.CreateChannel(t, th.BasicTeam)
+	elsewhere := &model.CommandResponse{ResponseType: model.CommandResponseTypeInChannel, Text: "over there", ChannelId: plain.Id}
+	post, appErr = th.App.HandleCommandResponsePost(th.Context, &model.Command{}, args, elsewhere, true)
+	require.Nil(t, appErr)
+	require.Nil(t, post.GetProp("task_id"))
 
 	args.TaskId = ""
 	_, appErr = th.App.HandleCommandResponsePost(th.Context, &model.Command{}, args, response, true)

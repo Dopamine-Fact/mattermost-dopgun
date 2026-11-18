@@ -385,8 +385,8 @@ func (a *App) CreatePost(rctx request.CTX, post *model.Post, channel *model.Chan
 		}
 	}
 
-	// System messages, server-made posts with a type, and bot, webhook and plugin posts are not held to the task rule.
-	if post.Type == "" && !a.isIntegrationPostAuthor(rctx, user, flags) {
+	// System messages and bot, webhook and plugin posts are not held to the task rule; typed user posts such as /me are.
+	if !post.IsSystemMessage() && !a.isIntegrationPostAuthor(rctx, user, flags) {
 		if err = a.applyTaskPostRule(rctx, post, channel, rootPost); err != nil {
 			return nil, false, err
 		}

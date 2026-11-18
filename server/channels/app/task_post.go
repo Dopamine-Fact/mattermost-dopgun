@@ -51,6 +51,8 @@ func (a *App) applyTaskPostRule(rctx request.CTX, post *model.Post, channel *mod
 
 	section := a.channelTaskSection(rctx, channel)
 	if section == nil {
+		// Outside a task-list channel a message names no task, so it never joins a task's conversation.
+		post.DelProp(postTaskProp)
 		return nil
 	}
 	taskID, _ := post.GetProp(postTaskProp).(string)
