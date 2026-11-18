@@ -60,10 +60,8 @@ type driveViewer struct {
 }
 
 func (a *App) driveViewerFor(rctx request.CTX, session model.Session, channel *model.Channel) (*driveViewer, *model.AppError) {
-	if ok, _ := a.SessionHasPermissionToChannel(rctx, session, channel.Id, model.PermissionManageChannelRoles); ok {
-		return &driveViewer{manager: true}, nil
-	}
-	v := &driveViewer{depts: map[string]bool{}}
+	ok, _ := a.SessionHasPermissionToChannel(rctx, session, channel.Id, model.PermissionManageChannelRoles)
+	v := &driveViewer{manager: ok, depts: map[string]bool{}} // a manager's departments only pick the access icon
 	member, appErr := a.GetTeamMember(rctx, channel.TeamId, session.UserId)
 	if appErr != nil {
 		if appErr.StatusCode != http.StatusNotFound {

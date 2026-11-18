@@ -4,7 +4,10 @@
 package app
 
 import (
+	"archive/zip"
+	"bytes"
 	"net/http"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -181,4 +184,163 @@ func TestDriveReadPath(t *testing.T) {
 		assert.Empty(t, path)
 		assert.False(t, mirrored)
 	})
+}
+
+func listAs(t *testing.T, th *TestHelper, u *model.User, ch *model.Channel, parentID string) (*DriveListing, *model.AppError) {
+	t.Helper()
+	return th.App.ListDriveFolder(th.Context, driveSession(u), ch, parentID)
+}
+
+func itemNames(items []*model.DriveItem) []string {
+	out := []string{}
+	for _, i := range items {
+		out = append(out, i.Name)
+	}
+	return out
+}
+
+func TestDriveListRules(t *testing.T) {
+	th := setupDrive(t)
+	f := driveRulesFixture(t, th)
+	driveAddFile(t, th, f.BGUser, f.Channel, f.Folders["BG/Layout"].Id, "plan.txt")
+	driveAddFile(t, th, f.BGUser, f.Channel, f.Folders["BG/Layout/secret"].Id, "hidden.txt")
+
+	l, appErr := listAs(t, th, f.AnimUser, f.Channel, "")
+	require.Nil(t, appErr)
+	assert.Equal(t, []string{"Anim"}, itemNames(l.Items))
+
+	l, appErr = listAs(t, th, f.AnimUser, f.Channel, f.Folders["Anim/Layout"].Id)
+	require.Nil(t, appErr)
+	assert.Equal(t, []string{"sub", "plan.txt"}, itemNames(l.Items)) // secret is hidden
+	assert.Equal(t, model.DriveAccessRead, l.Access)
+	assert.False(t, l.SourceMissing)
+
+	l, appErr = listAs(t, th, f.BGUser, f.Channel, f.Folders["BG/Layout"].Id)
+	require.Nil(t, appErr)
+	assert.Equal(t, model.DriveAccessDefault, l.Access)
+	assert.Len(t, l.Items, 3)
+
+	_, appErr = listAs(t, th, f.AnimUser, f.Channel, f.Folders["BG"].Id)
+	require.NotNil(t, appErr)
+	assert.Equal(t, http.StatusNotFound, appErr.StatusCode)
+
+	// a write rule shows as write for those it allows, read for the rest
+	item, err := th.App.Srv().Store().DriveItem().Get(f.Folders["BG/Layout/sub"].Id)
+	require.NoError(t, err)
+	item.WriteDepartments = []string{f.BG.Id}
+	_, err = th.App.Srv().Store().DriveItem().Update(item)
+	require.NoError(t, err)
+	l, appErr = listAs(t, th, f.BGUser, f.Channel, item.Id)
+	require.Nil(t, appErr)
+	assert.Equal(t, model.DriveAccessWrite, l.Access)
+	l, appErr = listAs(t, th, f.AnimUser, f.Channel, item.Id)
+	require.Nil(t, appErr)
+	assert.Equal(t, model.DriveAccessRead, l.Access)
+}
+
+func TestDriveListMirrorSourceMissing(t *testing.T) {
+	th := setupDrive(t)
+	f := driveRulesFixture(t, th)
+	driveAddFile(t, th, f.BGUser, f.Channel, f.Folders["BG/Layout"].Id, "plan.txt")
+	require.Nil(t, th.App.DeleteDriveItems(th.Context, driveSession(f.Admin), f.Channel, []string{f.Folders["BG/Layout"].Id}, false))
+
+	l, appErr := listAs(t, th, f.AnimUser, f.Channel, f.Folders["Anim/Layout"].Id)
+	require.Nil(t, appErr)
+	assert.Empty(t, l.Items)
+	assert.True(t, l.SourceMissing)
+}
+
+func TestDriveTrashRules(t *testing.T) {
+	th := setupDrive(t)
+	f := driveRulesFixture(t, th)
+	file := driveAddFile(t, th, f.BGUser, f.Channel, f.Folders["BG/Layout"].Id, "gone.txt")
+	require.Nil(t, th.App.DeleteDriveItems(th.Context, driveSession(f.BGUser), f.Channel, []string{file.Id}, false))
+
+	trash, appErr := th.App.GetDriveTrash(th.Context, driveSession(f.AnimUser), f.Channel)
+	require.Nil(t, appErr)
+	assert.Empty(t, trash)
+	trash, appErr = th.App.GetDriveTrash(th.Context, driveSession(f.BGUser), f.Channel)
+	require.Nil(t, appErr)
+	assert.Equal(t, []string{"gone.txt"}, itemNames(trash))
+	trash, appErr = th.App.GetDriveTrash(th.Context, driveSession(f.Admin), f.Channel)
+	require.Nil(t, appErr)
+	assert.Len(t, trash, 1)
+}
+
+func zipNames(t *testing.T, buf *bytes.Buffer) []string {
+	t.Helper()
+	zr, err := zip.NewReader(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
+	require.NoError(t, err)
+	out := []string{}
+	for _, zf := range zr.File {
+		out = append(out, zf.Name)
+	}
+	slices.Sort(out)
+	return out
+}
+
+func TestDriveZipRules(t *testing.T) {
+	th := setupDrive(t)
+	f := driveRulesFixture(t, th)
+	driveAddFile(t, th, f.BGUser, f.Channel, f.Folders["BG/Layout"].Id, "plan.txt")
+	driveAddFile(t, th, f.BGUser, f.Channel, f.Folders["BG/Layout/sub"].Id, "deep.txt")
+	driveAddFile(t, th, f.BGUser, f.Channel, f.Folders["BG/Layout/secret"].Id, "hidden.txt")
+	s := driveSession(f.AnimUser)
+
+	var buf bytes.Buffer
+	require.Nil(t, th.App.WriteDriveZip(th.Context, s, f.Channel, []string{f.Folders["Anim/Layout"].Id}, &buf))
+	assert.Equal(t, []string{"Layout/plan.txt", "Layout/sub/deep.txt"}, zipNames(t, &buf))
+
+	appErr := th.App.WriteDriveZip(th.Context, s, f.Channel, []string{f.Folders["BG"].Id}, &bytes.Buffer{})
+	require.NotNil(t, appErr)
+	assert.Equal(t, http.StatusNotFound, appErr.StatusCode)
+
+	buf.Reset()
+	require.Nil(t, th.App.WriteDriveZip(th.Context, driveSession(f.BGUser), f.Channel, []string{f.Folders["BG/Layout"].Id}, &buf))
+	assert.Len(t, zipNames(t, &buf), 3)
+}
+
+func TestDriveCopyOutOfMirror(t *testing.T) {
+	th := setupDrive(t)
+	f := driveRulesFixture(t, th)
+	plan := driveAddFile(t, th, f.BGUser, f.Channel, f.Folders["BG/Layout"].Id, "plan.txt")
+	driveAddFile(t, th, f.BGUser, f.Channel, f.Folders["BG/Layout/sub"].Id, "deep.txt")
+	s := driveSession(f.AnimUser)
+	animID := f.Folders["Anim"].Id
+
+	require.Nil(t, th.App.CopyDriveItems(th.Context, s, f.Channel, []string{plan.Id}, nil, f.Channel, animID))
+	l, appErr := listAs(t, th, f.AnimUser, f.Channel, animID)
+	require.Nil(t, appErr)
+	var copied *model.DriveItem
+	for _, i := range l.Items {
+		if i.Name == "plan.txt" {
+			copied = i
+		}
+	}
+	require.NotNil(t, copied)
+	assert.Equal(t, f.AnimUser.Id, copied.CreatorId)
+	assert.False(t, copied.HasRules())
+
+	appErr = th.App.CopyDriveItems(th.Context, s, f.Channel, []string{f.Folders["BG/Layout/secret"].Id}, nil, f.Channel, animID)
+	require.NotNil(t, appErr)
+	assert.Equal(t, http.StatusNotFound, appErr.StatusCode)
+
+	// copying the mirror yields its source's visible tree; copying a rule folder yields plain folders
+	for _, id := range []string{f.Folders["Anim/Layout"].Id, f.Folders["BG/Layout"].Id} {
+		src := driveSession(f.AnimUser)
+		if id == f.Folders["BG/Layout"].Id {
+			src = driveSession(f.Admin)
+		}
+		require.Nil(t, th.App.CopyDriveItems(th.Context, src, f.Channel, []string{id}, nil, f.Channel, ""))
+	}
+	all, err := th.App.Srv().Store().DriveItem().GetDescendants(f.Channel.Id, "")
+	require.NoError(t, err)
+	copies := 0
+	for _, it := range all {
+		if it.CreatorId == f.AnimUser.Id || it.CreatorId == f.Admin.Id {
+			copies++
+			assert.False(t, it.HasRules(), it.Name)
+		}
+	}
+	assert.GreaterOrEqual(t, copies, 5)
 }

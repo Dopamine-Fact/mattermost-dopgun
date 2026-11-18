@@ -99,7 +99,7 @@ func listDriveFolder(c *Context, w http.ResponseWriter, r *http.Request) {
 	if c.Err != nil {
 		return
 	}
-	listing, appErr := c.App.ListDriveFolder(c.AppContext, channel, r.URL.Query().Get("parent_id"))
+	listing, appErr := c.App.ListDriveFolder(c.AppContext, *c.AppContext.Session(), channel, r.URL.Query().Get("parent_id"))
 	if appErr != nil {
 		c.Err = appErr
 		return
@@ -272,7 +272,7 @@ func getDriveTrash(c *Context, w http.ResponseWriter, r *http.Request) {
 	if c.Err != nil {
 		return
 	}
-	items, appErr := c.App.GetDriveTrash(c.AppContext, channel)
+	items, appErr := c.App.GetDriveTrash(c.AppContext, *c.AppContext.Session(), channel)
 	if appErr != nil {
 		c.Err = appErr
 		return

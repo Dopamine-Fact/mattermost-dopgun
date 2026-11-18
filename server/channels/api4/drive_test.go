@@ -252,3 +252,26 @@ func TestDriveAPIABACDenied(t *testing.T) {
 	_, _, err = th.Client.GetDriveFolder(context.Background(), th.BasicChannel2.Id, "")
 	require.NoError(t, err)
 }
+
+func TestDriveAPIRules(t *testing.T) {
+	ctx := context.Background()
+	th := setupDriveAPI(t, Setup(t).InitBasic(t))
+	client2 := th.CreateClient()
+	th.LoginBasic2WithClient(t, client2)
+
+	folder, err := th.App.Srv().Store().DriveItem().Save(&model.DriveItem{
+		ChannelId: th.BasicChannel.Id, Type: model.DriveItemTypeFolder, Name: "Restricted", CreatorId: th.BasicUser.Id,
+		DriveRules: model.DriveRules{ViewDepartments: []string{model.NewId()}},
+	})
+	require.NoError(t, err)
+
+	_, resp, err := client2.GetDriveFolder(ctx, th.BasicChannel.Id, folder.Id)
+	require.Error(t, err)
+	CheckNotFoundStatus(t, resp)
+	listing, _, err := th.SystemAdminClient.GetDriveFolder(ctx, th.BasicChannel.Id, folder.Id)
+	require.NoError(t, err)
+	require.NotNil(t, listing)
+	root, _, err := client2.GetDriveFolder(ctx, th.BasicChannel.Id, "")
+	require.NoError(t, err)
+	require.Empty(t, root.Items)
+}

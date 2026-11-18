@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -325,19 +326,108 @@ func (a *App) embedDriveFiles(items []*model.DriveItem) ([]*model.DriveItem, *mo
 	return out, nil
 }
 
-func (a *App) ListDriveFolder(rctx request.CTX, channel *model.Channel, parentID string) (*DriveListing, *model.AppError) {
-	folderPath, appErr := a.driveFolderPath(channel, parentID)
+func (a *App) ListDriveFolder(rctx request.CTX, session model.Session, channel *model.Channel, parentID string) (*DriveListing, *model.AppError) {
+	v, appErr := a.driveViewerFor(rctx, session, channel)
 	if appErr != nil {
 		return nil, appErr
 	}
-	items, err := a.Srv().Store().DriveItem().GetChildren(channel.Id, parentID, driveListLimit)
+	folderPath, mirrored, appErr := a.driveReadPath(v, channel, parentID)
+	if appErr != nil {
+		return nil, appErr
+	}
+	listing := &DriveListing{Path: folderPath, Items: []*model.DriveItem{}}
+	if mirrored {
+		listing.Access = model.DriveAccessRead
+	} else {
+		switch _, w := driveRuleAccess(folderPath, v.depts); w { // for managers too: it picks the icon, not the permission
+		case driveWriteAllowed:
+			listing.Access = model.DriveAccessWrite
+		case driveWriteDenied:
+			listing.Access = model.DriveAccessRead
+		}
+	}
+	listID := parentID
+	if len(folderPath) > 0 {
+		last := folderPath[len(folderPath)-1]
+		listID = last.Id
+		if last.MirrorOf != "" {
+			listing.Access = model.DriveAccessRead
+			listID = last.MirrorOf
+			if _, appErr := a.driveFolderPath(channel, listID); appErr != nil {
+				if appErr.StatusCode >= http.StatusInternalServerError {
+					return nil, appErr
+				}
+				listing.SourceMissing = true // the source is gone, trashed or not in this channel
+				return listing, nil
+			}
+		}
+	}
+	items, err := a.Srv().Store().DriveItem().GetChildren(channel.Id, listID, driveListLimit)
 	if err != nil {
 		return nil, driveStoreError("ListDriveFolder", err)
 	}
-	if items, appErr = a.embedDriveFiles(items); appErr != nil {
+	items = slices.DeleteFunc(items, func(it *model.DriveItem) bool {
+		visible, _ := v.access([]*model.DriveItem{it})
+		return it.IsFolder() && !visible
+	})
+	if listing.Items, appErr = a.embedDriveFiles(items); appErr != nil {
 		return nil, appErr
 	}
-	return &DriveListing{Items: items, Path: folderPath}, nil
+	return listing, nil
+}
+
+// driveVisibleTree returns the live items below root that v may see (folders whose own view excludes v are dropped
+// with their subtrees); a mirror root yields its source's tree (empty when the source is gone).
+func (a *App) driveVisibleTree(v *driveViewer, root *model.DriveItem) ([]*model.DriveItem, *model.AppError) {
+	rootID := root.Id
+	if root.MirrorOf != "" {
+		rootID = root.MirrorOf
+		if _, appErr := a.driveFolderPath(&model.Channel{Id: root.ChannelId}, rootID); appErr != nil {
+			if appErr.StatusCode >= http.StatusInternalServerError {
+				return nil, appErr
+			}
+			return nil, nil
+		}
+	}
+	descendants, err := a.Srv().Store().DriveItem().GetDescendants(root.ChannelId, rootID)
+	if err != nil {
+		return nil, driveStoreError("driveVisibleTree", err)
+	}
+	children := map[string][]*model.DriveItem{}
+	for _, d := range descendants {
+		children[d.ParentId] = append(children[d.ParentId], d)
+	}
+	out := []*model.DriveItem{}
+	var walk func(id string)
+	walk = func(id string) {
+		for _, c := range children[id] {
+			if visible, _ := v.access([]*model.DriveItem{c}); !visible {
+				continue
+			}
+			out = append(out, c)
+			walk(c.Id)
+		}
+	}
+	walk(rootID)
+	return out, nil
+}
+
+// driveCheckReadable answers 404 unless v may read every item: its parent is reachable and, for a folder, its own
+// view admits v.
+func (a *App) driveCheckReadable(v *driveViewer, channel *model.Channel, items []*model.DriveItem) *model.AppError {
+	parents := map[string]bool{}
+	for _, it := range items {
+		if !parents[it.ParentId] {
+			if _, _, appErr := a.driveReadPath(v, channel, it.ParentId); appErr != nil {
+				return appErr
+			}
+			parents[it.ParentId] = true
+		}
+		if visible, _ := v.access([]*model.DriveItem{it}); it.IsFolder() && !visible {
+			return driveError("driveCheckReadable", "not_found", http.StatusNotFound)
+		}
+	}
+	return nil
 }
 
 func (a *App) CreateDriveFolder(rctx request.CTX, userID string, channel *model.Channel, parentID, name string) (*model.DriveItem, *model.AppError) {
@@ -549,12 +639,16 @@ func (a *App) copyDriveFile(rctx request.CTX, userID string, info *model.FileInf
 	return nil
 }
 
-func (a *App) copyDriveTree(rctx request.CTX, userID string, item *model.DriveItem, dst *model.Channel, parentID string, taken map[string]bool) *model.AppError {
+func (a *App) copyDriveTree(rctx request.CTX, userID string, v *driveViewer, item *model.DriveItem, dst *model.Channel, parentID string, taken map[string]bool) *model.AppError {
 	children := map[string][]*model.DriveItem{}
+	rootID := item.Id // children of a mirror hang below its source
+	if item.MirrorOf != "" {
+		rootID = item.MirrorOf
+	}
 	if item.IsFolder() {
-		descendants, err := a.Srv().Store().DriveItem().GetDescendants(item.ChannelId, item.Id)
-		if err != nil {
-			return driveStoreError("copyDriveTree", err)
+		descendants, appErr := a.driveVisibleTree(v, item)
+		if appErr != nil {
+			return appErr
 		}
 		for _, d := range descendants {
 			children[d.ParentId] = append(children[d.ParentId], d)
@@ -574,7 +668,11 @@ func (a *App) copyDriveTree(rctx request.CTX, userID string, item *model.DriveIt
 			return appErr
 		}
 		inner := map[string]bool{}
-		for _, c := range children[it.Id] {
+		id := it.Id
+		if it == item {
+			id = rootID
+		}
+		for _, c := range children[id] {
 			if appErr := walk(c, folder.Id, inner); appErr != nil {
 				return appErr
 			}
@@ -592,10 +690,16 @@ func (a *App) CopyDriveItems(rctx request.CTX, session model.Session, src *model
 	if _, appErr := a.driveFolderPath(dst, dstParentID); appErr != nil {
 		return appErr
 	}
+	v, appErr := a.driveViewerFor(rctx, session, src)
+	if appErr != nil {
+		return appErr
+	}
 	var items []*model.DriveItem
 	if len(ids) > 0 {
-		var appErr *model.AppError
 		if items, appErr = a.getDriveItems(src, ids, driveLive); appErr != nil {
+			return appErr
+		}
+		if appErr = a.driveCheckReadable(v, src, items); appErr != nil {
 			return appErr
 		}
 	}
@@ -628,7 +732,7 @@ func (a *App) CopyDriveItems(rctx request.CTX, session model.Session, src *model
 
 	taken := map[string]bool{}
 	for _, it := range items {
-		if appErr := a.copyDriveTree(rctx, session.UserId, it, dst, dstParentID, taken); appErr != nil {
+		if appErr := a.copyDriveTree(rctx, session.UserId, v, it, dst, dstParentID, taken); appErr != nil {
 			return appErr
 		}
 	}
@@ -728,10 +832,31 @@ func (a *App) DeleteDriveItems(rctx request.CTX, session model.Session, channel 
 	return nil
 }
 
-func (a *App) GetDriveTrash(rctx request.CTX, channel *model.Channel) ([]*model.DriveItem, *model.AppError) {
+func (a *App) GetDriveTrash(rctx request.CTX, session model.Session, channel *model.Channel) ([]*model.DriveItem, *model.AppError) {
+	v, appErr := a.driveViewerFor(rctx, session, channel)
+	if appErr != nil {
+		return nil, appErr
+	}
 	items, err := a.Srv().Store().DriveItem().GetTrash(channel.Id)
 	if err != nil {
 		return nil, driveStoreError("GetDriveTrash", err)
+	}
+	if !v.manager {
+		kept := items[:0]
+		for _, it := range items {
+			// shortcut: one query per trashed item, batch if the bin gets large
+			path, err := a.Srv().Store().DriveItem().GetAncestors(it.Id)
+			if err != nil {
+				return nil, driveStoreError("GetDriveTrash", err)
+			}
+			if it.IsFolder() {
+				path = append(path, it)
+			}
+			if visible, _ := v.access(path); visible {
+				kept = append(kept, it)
+			}
+		}
+		items = kept
 	}
 	return a.embedDriveFiles(items)
 }
@@ -818,6 +943,13 @@ func (a *App) WriteDriveZip(rctx request.CTX, session model.Session, channel *mo
 	if appErr != nil {
 		return appErr
 	}
+	v, appErr := a.driveViewerFor(rctx, session, channel)
+	if appErr != nil {
+		return appErr
+	}
+	if appErr = a.driveCheckReadable(v, channel, items); appErr != nil {
+		return appErr
+	}
 	type entry struct{ name, fileID string }
 	entries := []entry{}
 	for _, it := range items {
@@ -825,15 +957,18 @@ func (a *App) WriteDriveZip(rctx request.CTX, session model.Session, channel *mo
 			entries = append(entries, entry{it.Name, it.FileId})
 			continue
 		}
-		descendants, err := a.Srv().Store().DriveItem().GetDescendants(channel.Id, it.Id)
-		if err != nil {
-			return driveStoreError("WriteDriveZip", err)
+		descendants, appErr := a.driveVisibleTree(v, it)
+		if appErr != nil {
+			return appErr
 		}
 		byID := map[string]*model.DriveItem{}
 		for _, d := range descendants {
 			byID[d.Id] = d
 		}
 		paths := map[string]string{it.Id: it.Name}
+		if it.MirrorOf != "" {
+			paths[it.MirrorOf] = it.Name
+		}
 		var pathOf func(id string) string
 		pathOf = func(id string) string {
 			if p, ok := paths[id]; ok {

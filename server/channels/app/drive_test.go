@@ -55,7 +55,7 @@ func driveFolder(t *testing.T, th *TestHelper, user *model.User, channel *model.
 
 func driveListNames(t *testing.T, th *TestHelper, channel *model.Channel, parentID string) []string {
 	t.Helper()
-	listing, appErr := th.App.ListDriveFolder(th.Context, channel, parentID)
+	listing, appErr := th.App.ListDriveFolder(th.Context, driveSession(th.BasicUser), channel, parentID)
 	require.Nil(t, appErr)
 	names := []string{}
 	for _, i := range listing.Items {
@@ -84,7 +84,7 @@ func TestDriveCreateAndList(t *testing.T) {
 
 	require.Equal(t, []string{"Docs", "b.txt"}, driveListNames(t, th, ch, ""))
 
-	listing, appErr := th.App.ListDriveFolder(th.Context, ch, sub.Id)
+	listing, appErr := th.App.ListDriveFolder(th.Context, driveSession(th.BasicUser), ch, sub.Id)
 	require.Nil(t, appErr)
 	require.Len(t, listing.Items, 1)
 	require.NotNil(t, listing.Items[0].FileInfo)
@@ -270,7 +270,7 @@ func TestDriveCopyDuplicatesBytes(t *testing.T) {
 	require.NoError(t, th.App.Srv().Store().FileInfo().AttachToPost(th.Context, info.Id, post.Id, ch.Id, th.BasicUser.Id))
 
 	require.Nil(t, th.App.CopyDriveItems(th.Context, s, ch, nil, []string{info.Id}, dst, ""))
-	listing, appErr := th.App.ListDriveFolder(th.Context, dst, "")
+	listing, appErr := th.App.ListDriveFolder(th.Context, driveSession(th.BasicUser), dst, "")
 	require.Nil(t, appErr)
 	require.Len(t, listing.Items, 1)
 	copied := listing.Items[0].FileInfo
@@ -330,7 +330,7 @@ func TestDriveTrashRestore(t *testing.T) {
 	f := driveAddFile(t, th, th.BasicUser, ch, folder.Id, "f.txt")
 
 	require.Nil(t, th.App.DeleteDriveItems(th.Context, s, ch, []string{f.Id}, false))
-	trash, appErr := th.App.GetDriveTrash(th.Context, ch)
+	trash, appErr := th.App.GetDriveTrash(th.Context, driveSession(th.BasicUser), ch)
 	require.Nil(t, appErr)
 	require.Len(t, trash, 1)
 
@@ -342,7 +342,7 @@ func TestDriveTrashRestore(t *testing.T) {
 	// empty trash removes the bytes
 	require.Nil(t, th.App.DeleteDriveItems(th.Context, s, ch, []string{f.Id}, false))
 	require.Nil(t, th.App.EmptyDriveTrash(th.Context, s, ch))
-	trash, appErr = th.App.GetDriveTrash(th.Context, ch)
+	trash, appErr = th.App.GetDriveTrash(th.Context, driveSession(th.BasicUser), ch)
 	require.Nil(t, appErr)
 	require.Empty(t, trash)
 	infos, err := th.App.Srv().Store().FileInfo().GetByIds([]string{f.FileId}, true, false, true)
