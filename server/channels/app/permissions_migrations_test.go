@@ -575,3 +575,35 @@ func TestSplitManageTeamTasksPermissionMigration(t *testing.T) {
 	assert.ElementsMatch(t, append([]string{model.PermissionManageSystem.Id, model.PermissionAssignCustomRoles.Id}, split...), systemAdminRole.Permissions)
 	assert.Equal(t, []string{model.PermissionViewTeam.Id}, teamUserRole.Permissions)
 }
+
+func TestTeamAdminAssignCustomRolesMigration(t *testing.T) {
+	mainHelper.Parallel(t)
+
+	th := SetupWithStoreMock(t)
+
+	migrationMap, err := th.App.getTeamAdminAssignCustomRolesMigration()
+	require.NoError(t, err)
+
+	teamAdminRole := &model.Role{Name: model.TeamAdminRoleId, Permissions: []string{model.PermissionManageTeam.Id}}
+	systemAdminRole := &model.Role{Name: model.SystemAdminRoleId, Permissions: []string{model.PermissionManageSystem.Id, model.PermissionAssignCustomRoles.Id}}
+	channelUserRole := &model.Role{Name: model.ChannelUserRoleId, Permissions: []string{model.PermissionCreatePost.Id}}
+	roles := []*model.Role{teamAdminRole, systemAdminRole, channelUserRole}
+
+	mockStore := th.App.Srv().Store().(*mocks.Store)
+	roleStore := mocks.RoleStore{}
+	systemStore := mocks.SystemStore{}
+	mockStore.On("Role").Return(&roleStore)
+	mockStore.On("System").Return(&systemStore)
+	systemStore.On("GetByName", model.MigrationKeyTeamAdminAssignCustomRoles).
+		Return(nil, model.NewAppError("test", "missing", nil, "", 404)).Once()
+	systemStore.On("SaveOrUpdate", mock.AnythingOfType("*model.System")).Return(nil).Once()
+	roleStore.On("SavePreservingUnknownPermissions", mock.AnythingOfType("*model.Role")).
+		Return(func(role *model.Role) *model.Role { return role }, nil)
+
+	appErr := th.App.Srv().doPermissionsMigration(model.MigrationKeyTeamAdminAssignCustomRoles, migrationMap, roles)
+	require.Nil(t, appErr)
+
+	assert.ElementsMatch(t, []string{model.PermissionManageTeam.Id, model.PermissionAssignCustomRoles.Id}, teamAdminRole.Permissions)
+	assert.ElementsMatch(t, []string{model.PermissionManageSystem.Id, model.PermissionAssignCustomRoles.Id}, systemAdminRole.Permissions)
+	assert.Equal(t, []string{model.PermissionCreatePost.Id}, channelUserRole.Permissions)
+}

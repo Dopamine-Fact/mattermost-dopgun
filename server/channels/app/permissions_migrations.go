@@ -1391,6 +1391,16 @@ func (a *App) getSplitManageTeamTasksPermissionMigration() (permissionsMap, erro
 	}, nil
 }
 
+// getTeamAdminAssignCustomRolesMigration grants team admins assign_custom_roles once it became team-scoped.
+func (a *App) getTeamAdminAssignCustomRolesMigration() (permissionsMap, error) {
+	return permissionsMap{
+		permissionTransformation{
+			On:  isRole(model.TeamAdminRoleId),
+			Add: []string{model.PermissionAssignCustomRoles.Id},
+		},
+	}, nil
+}
+
 // DoPermissionsMigrations execute all the permissions migrations need by the current version.
 func (a *App) DoPermissionsMigrations() error {
 	return a.Srv().doPermissionsMigrations()
@@ -1458,6 +1468,7 @@ func (s *Server) doPermissionsMigrations() error {
 		{Key: model.MigrationKeyAddAIRecapsPermissions, Migration: a.getAddAIRecapsPermissionsMigration},
 		{Key: model.MigrationKeyAddManageTeamTasksPermission, Migration: a.getAddManageTeamTasksPermissionMigration},
 		{Key: model.MigrationKeySplitManageTeamTasksPermission, Migration: a.getSplitManageTeamTasksPermissionMigration},
+		{Key: model.MigrationKeyTeamAdminAssignCustomRoles, Migration: a.getTeamAdminAssignCustomRolesMigration},
 	}
 
 	roles, err := s.Store().Role().GetAll()

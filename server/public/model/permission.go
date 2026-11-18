@@ -556,12 +556,12 @@ func initializePermissions() {
 		"",
 		PermissionScopeTeam,
 	}
-	// PermissionAssignCustomRoles gates giving and removing custom roles (subject to the role hierarchy).
+	// PermissionAssignCustomRoles gates giving and removing a team's ranks (subject to the rank hierarchy).
 	PermissionAssignCustomRoles = &Permission{
 		"assign_custom_roles",
 		"",
 		"",
-		PermissionScopeSystem,
+		PermissionScopeTeam,
 	}
 	PermissionManageChannelRoles = &Permission{
 		"manage_channel_roles",
@@ -2541,7 +2541,6 @@ func initializePermissions() {
 	}
 
 	SystemScopedPermissionsMinusSysconsole := []*Permission{
-		PermissionAssignCustomRoles,
 		PermissionAssignSystemAdminRole,
 		PermissionManageRoles,
 		PermissionManageSystem,
@@ -2635,6 +2634,7 @@ func initializePermissions() {
 		PermissionManageTasks,
 		PermissionManageDailyReports,
 		PermissionManageRevisions,
+		PermissionAssignCustomRoles,
 		PermissionListTeamChannels,
 		PermissionJoinPublicChannels,
 		PermissionReadPublicChannel,

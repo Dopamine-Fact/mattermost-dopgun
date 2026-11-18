@@ -13,15 +13,15 @@ import (
 
 func TestCustomRoleIsValid(t *testing.T) {
 	valid := func() *CustomRole {
-		r := &CustomRole{DisplayName: "Lead Animator", Color: "#ff00aa", Department: "Animation"}
+		r := &CustomRole{TeamId: NewId(), DepartmentId: NewId(), DisplayName: "Lead", Color: "#ff00aa"}
 		r.PreSave()
 		return r
 	}
 	require.Nil(t, valid().IsValid())
-	assert.Equal(t, "cr_", CustomRoleNamePrefix)
+	assert.Equal(t, "rk_", RankRoleNamePrefix)
 
 	r := valid()
-	assert.Equal(t, CustomRoleNameFromId(r.Id), r.RoleName)
+	assert.Equal(t, RankRoleNameFromId(r.Id), r.RoleName)
 
 	r = valid()
 	r.Color = "#FFF"
@@ -38,23 +38,34 @@ func TestCustomRoleIsValid(t *testing.T) {
 	assert.NotNil(t, r.IsValid())
 
 	r = valid()
-	r.Department = strings.Repeat("d", 65)
-	assert.NotNil(t, r.IsValid())
+	r.TeamId = ""
+	assert.NotNil(t, r.IsValid(), "a rank belongs to a team")
+
+	r = valid()
+	r.DepartmentId = ""
+	assert.NotNil(t, r.IsValid(), "a rank belongs to a department")
 
 	r = valid()
 	r.Position = -1
 	assert.NotNil(t, r.IsValid())
 
 	r = valid()
-	r.RoleName = "system_admin"
+	r.RoleName = "cr_" + r.Id
 	assert.NotNil(t, r.IsValid())
 }
 
-func TestCustomRoleNames(t *testing.T) {
-	assert.Equal(t, []string{"abc", "def"}, CustomRoleIdsFromRoles("system_user cr_abc cr_def"))
-	assert.Empty(t, CustomRoleIdsFromRoles("system_user system_admin"))
-	assert.True(t, IsCustomRoleName("cr_abc"))
-	assert.False(t, IsCustomRoleName("cr_"))
-	assert.False(t, IsCustomRoleName("system_user"))
+func TestRankRoleNames(t *testing.T) {
+	assert.Equal(t, []string{"a", "c"}, RankIdsFromRoles("team_user rk_a cr_b rk_c"))
+	assert.Empty(t, RankIdsFromRoles("team_user team_admin"))
+	assert.True(t, IsRankRoleName("rk_abc"))
+	assert.False(t, IsRankRoleName("rk_"))
+	assert.False(t, IsRankRoleName("cr_abc"))
+	assert.Equal(t, "team_user team_admin", RemoveRankRoles("team_user rk_a team_admin"))
+	assert.Equal(t, "", RemoveRankRoles("rk_a rk_b"))
 	assert.ElementsMatch(t, []string{PermissionManageTasks.Id, PermissionManageDailyReports.Id, PermissionManageRevisions.Id, PermissionAssignCustomRoles.Id}, CustomRolePermissionWhitelist)
+}
+
+func TestAssignCustomRolesIsTeamScoped(t *testing.T) {
+	assert.Equal(t, PermissionScopeTeam, PermissionAssignCustomRoles.Scope)
+	assert.Contains(t, MakeDefaultRoles()[TeamAdminRoleId].Permissions, PermissionAssignCustomRoles.Id)
 }
