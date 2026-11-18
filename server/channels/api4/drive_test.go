@@ -275,3 +275,20 @@ func TestDriveAPIRules(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, root.Items)
 }
+
+func TestDriveCreateRulesAPI(t *testing.T) {
+	ctx := context.Background()
+	th := setupDriveAPI(t, Setup(t).InitBasic(t))
+	client2 := th.CreateClient()
+	th.LoginBasic2WithClient(t, client2)
+
+	locked, err := th.App.Srv().Store().DriveItem().Save(&model.DriveItem{ChannelId: th.BasicChannel.Id, Type: model.DriveItemTypeFolder, Name: "Locked", CreatorId: th.BasicUser.Id, DriveRules: model.DriveRules{ReadOnly: true}})
+	require.NoError(t, err)
+
+	_, resp, err := client2.CreateDriveFolder(ctx, th.BasicChannel.Id, locked.Id, "x")
+	require.Error(t, err)
+	CheckForbiddenStatus(t, resp)
+	_, resp, err = client2.CreateDriveFolder(ctx, th.BasicChannel.Id, model.NewId(), "x")
+	require.Error(t, err)
+	CheckBadRequestStatus(t, resp)
+}

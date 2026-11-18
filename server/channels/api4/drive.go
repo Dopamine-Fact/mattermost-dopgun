@@ -128,7 +128,7 @@ func createDriveItem(c *Context, w http.ResponseWriter, r *http.Request) {
 	model.AddEventParameterToAuditRec(auditRec, "type", body.Type)
 	model.AddEventParameterToAuditRec(auditRec, "file_id", body.FileId)
 
-	if !c.App.DriveCan(c.AppContext, *c.AppContext.Session(), channel, app.DriveCreate, nil) {
+	if !c.App.DriveCanCreateIn(c.AppContext, *c.AppContext.Session(), channel, body.ParentId) {
 		c.SetPermissionError(model.PermissionUploadFile)
 		return
 	}
@@ -137,7 +137,7 @@ func createDriveItem(c *Context, w http.ResponseWriter, r *http.Request) {
 	var appErr *model.AppError
 	switch body.Type {
 	case model.DriveItemTypeFolder:
-		item, appErr = c.App.CreateDriveFolder(c.AppContext, userID, channel, body.ParentId, body.Name)
+		item, appErr = c.App.CreateDriveFolder(c.AppContext, userID, channel, body.ParentId, body.Name, model.DriveRules{})
 	case model.DriveItemTypeFile:
 		if !model.IsValidId(body.FileId) {
 			c.SetInvalidParam("file_id")

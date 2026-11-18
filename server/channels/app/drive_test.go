@@ -48,7 +48,7 @@ func driveAddFile(t *testing.T, th *TestHelper, user *model.User, channel *model
 
 func driveFolder(t *testing.T, th *TestHelper, user *model.User, channel *model.Channel, parentID, name string) *model.DriveItem {
 	t.Helper()
-	item, appErr := th.App.CreateDriveFolder(th.Context, user.Id, channel, parentID, name)
+	item, appErr := th.App.CreateDriveFolder(th.Context, user.Id, channel, parentID, name, model.DriveRules{})
 	require.Nil(t, appErr)
 	return item
 }
@@ -92,7 +92,7 @@ func TestDriveCreateAndList(t *testing.T) {
 
 	// a folder from another channel is not a valid parent
 	other := th.CreateChannel(t, th.BasicTeam)
-	_, appErr = th.App.CreateDriveFolder(th.Context, th.BasicUser.Id, other, docs.Id, "x")
+	_, appErr = th.App.CreateDriveFolder(th.Context, th.BasicUser.Id, other, docs.Id, "x", model.DriveRules{})
 	require.NotNil(t, appErr)
 }
 
@@ -124,7 +124,7 @@ func TestDriveConcurrentSameName(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, errs[i] = th.App.CreateDriveFolder(th.Context, th.BasicUser.Id, ch, "", "Docs")
+			_, errs[i] = th.App.CreateDriveFolder(th.Context, th.BasicUser.Id, ch, "", "Docs", model.DriveRules{})
 		}()
 	}
 	wg.Wait()

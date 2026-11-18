@@ -111,25 +111,85 @@ func (a *App) DriveCan(rctx request.CTX, session model.Session, channel *model.C
 	if item == nil {
 		return false
 	}
-	if ok, _ := a.SessionHasPermissionToChannel(rctx, session, channel.Id, model.PermissionManageChannelRoles); ok {
+	v, appErr := a.driveViewerFor(rctx, session, channel)
+	if appErr != nil {
+		rctx.Logger().Warn("Failed to judge drive viewer", mlog.Err(appErr))
+		return false
+	}
+	return a.driveCanModify(rctx, session, channel, v, item)
+}
+
+// DriveCanCreateIn reports whether the session may add items to folderID ("" = root): DriveCreate, and for
+// non-managers the folder is visible and its write is not denied (mirrors are always denied). An invalid folder
+// passes so the caller reports it.
+func (a *App) DriveCanCreateIn(rctx request.CTX, session model.Session, channel *model.Channel, folderID string) bool {
+	if !a.DriveCan(rctx, session, channel, DriveCreate, nil) {
+		return false
+	}
+	if folderID == "" {
+		return true
+	}
+	folderPath, appErr := a.driveFolderPath(channel, folderID)
+	if appErr != nil {
+		return appErr.StatusCode == http.StatusBadRequest
+	}
+	v, appErr := a.driveViewerFor(rctx, session, channel)
+	if appErr != nil {
+		rctx.Logger().Warn("Failed to judge drive viewer", mlog.Err(appErr))
+		return false
+	}
+	visible, write := v.access(folderPath)
+	return visible && write != driveWriteDenied
+}
+
+// driveCanModify is DriveModify's rule part (the channel checks are DriveCan's), for loops that build v once.
+// Non-managers: never an item whose subtree holds a rule; the parent path must be visible (a broken ancestor chain
+// is not); then the write rule decides, and without one the item and everything below must be the caller's own.
+func (a *App) driveCanModify(rctx request.CTX, session model.Session, channel *model.Channel, v *driveViewer, item *model.DriveItem) bool {
+	if v.manager {
+		return true
+	}
+	if item.HasRules() {
+		return false
+	}
+	var descendants []*model.DriveItem
+	if item.IsFolder() {
+		var err error
+		if descendants, err = a.Srv().Store().DriveItem().GetDescendants(channel.Id, item.Id); err != nil {
+			rctx.Logger().Warn("Failed to read drive folder contents", mlog.String("item_id", item.Id), mlog.Err(err))
+			return false
+		}
+		if slices.ContainsFunc(descendants, func(d *model.DriveItem) bool { return d.HasRules() }) {
+			return false
+		}
+	}
+	parentPath := []*model.DriveItem{}
+	if item.ParentId != "" {
+		parent, err := a.Srv().Store().DriveItem().Get(item.ParentId)
+		if err != nil {
+			return false // gone: only managers act on it
+		}
+		anc, err := a.Srv().Store().DriveItem().GetAncestors(parent.Id)
+		if err != nil {
+			rctx.Logger().Warn("Failed to read drive folder path", mlog.String("item_id", item.Id), mlog.Err(err))
+			return false
+		}
+		if parent.ParentId != "" && (len(anc) == 0 || anc[0].ParentId != "") {
+			return false // a permanently deleted ancestor took its rules with it
+		}
+		parentPath = append(anc, parent)
+	}
+	visible, write := v.access(parentPath)
+	switch {
+	case !visible || write == driveWriteDenied:
+		return false
+	case write == driveWriteAllowed:
 		return true
 	}
 	if item.CreatorId != session.UserId {
 		return false
 	}
-	if item.IsFolder() {
-		descendants, err := a.Srv().Store().DriveItem().GetDescendants(channel.Id, item.Id)
-		if err != nil {
-			rctx.Logger().Warn("Failed to read drive folder contents", mlog.String("item_id", item.Id), mlog.Err(err))
-			return false
-		}
-		for _, d := range descendants {
-			if d.CreatorId != session.UserId {
-				return false
-			}
-		}
-	}
-	return true
+	return !slices.ContainsFunc(descendants, func(d *model.DriveItem) bool { return d.CreatorId != session.UserId })
 }
 
 // driveFolderPath validates parentID as a live folder of channel and returns root→parent.
@@ -290,6 +350,16 @@ func (a *App) publishDriveChanged(channelID string, parentIDs ...string) {
 			ids = append(ids, id)
 		}
 	}
+	if mirrors, err := a.Srv().Store().DriveItem().GetMirrors(channelID, ids); err != nil {
+		a.Log().Warn("Failed to find drive mirrors for a change event", mlog.String("channel_id", channelID), mlog.Err(err))
+	} else {
+		for _, m := range mirrors {
+			if !seen[m.Id] {
+				seen[m.Id] = true
+				ids = append(ids, m.Id)
+			}
+		}
+	}
 	data, _ := json.Marshal(ids)
 	message := model.NewWebSocketEvent(model.WebsocketEventDriveChanged, "", channelID, "", nil, "")
 	message.Add("parent_ids", string(data))
@@ -430,14 +500,14 @@ func (a *App) driveCheckReadable(v *driveViewer, channel *model.Channel, items [
 	return nil
 }
 
-func (a *App) CreateDriveFolder(rctx request.CTX, userID string, channel *model.Channel, parentID, name string) (*model.DriveItem, *model.AppError) {
+func (a *App) CreateDriveFolder(rctx request.CTX, userID string, channel *model.Channel, parentID, name string, rules model.DriveRules) (*model.DriveItem, *model.AppError) {
 	if !model.IsValidDriveItemName(name) {
 		return nil, driveError("CreateDriveFolder", "invalid_name", http.StatusBadRequest)
 	}
 	if _, appErr := a.driveFolderPath(channel, parentID); appErr != nil {
 		return nil, appErr
 	}
-	item, appErr := a.saveDriveItem(&model.DriveItem{ChannelId: channel.Id, ParentId: parentID, Type: model.DriveItemTypeFolder, Name: name, CreatorId: userID}, nil)
+	item, appErr := a.saveDriveItem(&model.DriveItem{ChannelId: channel.Id, ParentId: parentID, Type: model.DriveItemTypeFolder, Name: name, CreatorId: userID, DriveRules: rules}, nil)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -501,13 +571,20 @@ func (a *App) MoveDriveItems(rctx request.CTX, session model.Session, src *model
 	if appErr != nil {
 		return appErr
 	}
+	if !a.DriveCan(rctx, session, src, DriveCreate, nil) { // the channel checks; the rules are judged per item below
+		return driveError("MoveDriveItems", "forbidden", http.StatusForbidden)
+	}
+	v, appErr := a.driveViewerFor(rctx, session, src)
+	if appErr != nil {
+		return appErr
+	}
 	for _, it := range items {
-		if !a.DriveCan(rctx, session, src, DriveModify, it) {
+		if !a.driveCanModify(rctx, session, src, v, it) {
 			return driveError("MoveDriveItems", "forbidden", http.StatusForbidden)
 		}
 	}
 	cross := dst.Id != src.Id
-	if cross && !a.DriveCan(rctx, session, dst, DriveCreate, nil) {
+	if !a.DriveCanCreateIn(rctx, session, dst, dstParentID) {
 		return driveError("MoveDriveItems", "forbidden", http.StatusForbidden)
 	}
 	dstPath, appErr := a.driveFolderPath(dst, dstParentID)
@@ -564,6 +641,11 @@ func (a *App) MoveDriveItems(rctx request.CTX, session model.Session, src *model
 	if len(order) == 0 {
 		return nil
 	}
+	if dst.TeamId != src.TeamId { // rules name the departments of one team
+		for _, it := range order {
+			it.DriveRules = model.DriveRules{}
+		}
+	}
 	if err := a.Srv().Store().DriveItem().UpdateMany(order); err != nil {
 		return driveStoreError("MoveDriveItems", err)
 	}
@@ -578,6 +660,11 @@ func (a *App) MoveDriveItems(rctx request.CTX, session model.Session, src *model
 		}
 		if appErr := a.syncDriveFileName(rctx, it); appErr != nil {
 			return appErr
+		}
+	}
+	for _, it := range items {
+		if it.IsFolder() {
+			oldParents = append(oldParents, it.Id) // names the mirrors of a moved folder
 		}
 	}
 	a.publishDriveChanged(src.Id, oldParents...)
@@ -684,7 +771,7 @@ func (a *App) copyDriveTree(rctx request.CTX, userID string, v *driveViewer, ite
 
 // CopyDriveItems copies drive items and chat attachments of src into dst; every copy owns its bytes.
 func (a *App) CopyDriveItems(rctx request.CTX, session model.Session, src *model.Channel, ids, chatFileIDs []string, dst *model.Channel, dstParentID string) *model.AppError {
-	if !a.DriveCan(rctx, session, src, DriveRead, nil) || !a.DriveCan(rctx, session, dst, DriveCreate, nil) {
+	if !a.DriveCan(rctx, session, src, DriveRead, nil) || !a.DriveCanCreateIn(rctx, session, dst, dstParentID) {
 		return driveError("CopyDriveItems", "forbidden", http.StatusForbidden)
 	}
 	if _, appErr := a.driveFolderPath(dst, dstParentID); appErr != nil {
@@ -808,12 +895,22 @@ func (a *App) DeleteDriveItems(rctx request.CTX, session model.Session, channel 
 	if appErr != nil {
 		return appErr
 	}
+	if !a.DriveCan(rctx, session, channel, DriveCreate, nil) {
+		return driveError("DeleteDriveItems", "forbidden", http.StatusForbidden)
+	}
+	v, appErr := a.driveViewerFor(rctx, session, channel)
+	if appErr != nil {
+		return appErr
+	}
 	parents := []string{}
 	for _, it := range items {
-		if !a.DriveCan(rctx, session, channel, DriveModify, it) {
+		if !a.driveCanModify(rctx, session, channel, v, it) {
 			return driveError("DeleteDriveItems", "forbidden", http.StatusForbidden)
 		}
 		parents = append(parents, it.ParentId)
+		if it.IsFolder() {
+			parents = append(parents, it.Id) // names the mirrors of the folder
+		}
 	}
 	if permanent {
 		if appErr := a.permanentDeleteDriveItems(rctx, items); appErr != nil {
@@ -870,18 +967,29 @@ func (a *App) RestoreDriveItems(rctx request.CTX, session model.Session, channel
 	if appErr != nil {
 		return appErr
 	}
+	if !a.DriveCan(rctx, session, channel, DriveCreate, nil) {
+		return driveError("RestoreDriveItems", "forbidden", http.StatusForbidden)
+	}
+	v, appErr := a.driveViewerFor(rctx, session, channel)
+	if appErr != nil {
+		return appErr
+	}
 	taken := map[string]map[string]bool{}
 	parents := []string{}
 	for _, it := range items {
-		if !a.DriveCan(rctx, session, channel, DriveModify, it) {
-			return driveError("RestoreDriveItems", "forbidden", http.StatusForbidden)
-		}
 		parentID := it.ParentId
 		if _, appErr := a.driveFolderPath(channel, parentID); appErr != nil {
 			if appErr.StatusCode >= http.StatusInternalServerError {
 				return appErr
 			}
 			parentID = ""
+		}
+		orig := it.ParentId
+		it.ParentId = parentID // judged where it returns to
+		ok := a.driveCanModify(rctx, session, channel, v, it)
+		it.ParentId = orig
+		if !ok {
+			return driveError("RestoreDriveItems", "forbidden", http.StatusForbidden)
 		}
 		if taken[parentID] == nil {
 			taken[parentID] = map[string]bool{}
@@ -892,6 +1000,9 @@ func (a *App) RestoreDriveItems(rctx request.CTX, session model.Session, channel
 		}
 		it.ParentId, it.Name, it.DeleteAt, it.DeletedBy = parentID, name, 0, ""
 		parents = append(parents, parentID)
+		if it.IsFolder() {
+			parents = append(parents, it.Id) // names the mirrors of the folder
+		}
 	}
 	if err := a.Srv().Store().DriveItem().UpdateMany(items); err != nil {
 		return driveStoreError("RestoreDriveItems", err)
@@ -911,9 +1022,16 @@ func (a *App) EmptyDriveTrash(rctx request.CTX, session model.Session, channel *
 	if err != nil {
 		return driveStoreError("EmptyDriveTrash", err)
 	}
+	if !a.DriveCan(rctx, session, channel, DriveCreate, nil) {
+		return nil
+	}
+	v, appErr := a.driveViewerFor(rctx, session, channel)
+	if appErr != nil {
+		return appErr
+	}
 	mine := []*model.DriveItem{}
 	for _, it := range trash {
-		if a.DriveCan(rctx, session, channel, DriveModify, it) {
+		if a.driveCanModify(rctx, session, channel, v, it) {
 			mine = append(mine, it)
 		}
 	}
