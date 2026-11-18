@@ -4,6 +4,8 @@
 package model
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -220,7 +222,11 @@ func TestTeamEpisodeTemplatesIsValid(t *testing.T) {
 		return Team{Id: NewId(), CreateAt: GetMillis(), UpdateAt: GetMillis(), Email: "a@b.com", DisplayName: "T", Name: "zzzzz", Type: TeamOpen, InviteId: NewId()}
 	}
 	lines := func(n int) string {
-		return strings.TrimSuffix(strings.Repeat("x\n", n), "\n")
+		var names []string
+		for i := range n {
+			names = append(names, fmt.Sprintf("x%d", i)) // folder paths must be unique
+		}
+		return strings.Join(names, "\n")
 	}
 
 	for _, folders := range []string{"Animasyon/Layout\nSes", lines(100), ""} {
@@ -250,4 +256,63 @@ func TestTeamEpisodeTemplatesIsValid(t *testing.T) {
 		require.NotNil(t, appErr)
 		require.Equal(t, "model.team.is_valid.episode_tasks.app_error", appErr.Id)
 	}
+}
+
+func js(folders []*EpisodeFolder) string {
+	b, _ := json.Marshal(folders)
+	return string(b)
+}
+
+func make101Folders() []*EpisodeFolder {
+	var folders []*EpisodeFolder
+	for i := range 101 {
+		folders = append(folders, &EpisodeFolder{Path: fmt.Sprintf("F%d", i)})
+	}
+	return folders
+}
+
+func TestParseEpisodeFolders(t *testing.T) {
+	bg := NewId()
+	got, err := ParseEpisodeFolders(" Layout \n\nLayout/Ref\r\n")
+	require.NoError(t, err)
+	require.Equal(t, []*EpisodeFolder{{Path: "Layout"}, {Path: "Layout/Ref"}}, got)
+
+	got, err = ParseEpisodeFolders(`[{"path":"BG/Layout","view_departments":["` + bg + `"]},{"path":"Anim/Layout","mirror_of":"BG/Layout"}]`)
+	require.NoError(t, err)
+	require.Equal(t, "BG/Layout", got[1].MirrorOf)
+
+	got, err = ParseEpisodeFolders("")
+	require.NoError(t, err)
+	require.Empty(t, got)
+
+	_, err = ParseEpisodeFolders("[{")
+	require.Error(t, err)
+}
+
+func TestIsValidEpisodeFolders(t *testing.T) {
+	bg, anim := NewId(), NewId()
+	for name, tc := range map[string]struct {
+		folders []*EpisodeFolder
+		ok      bool
+	}{
+		"rule-less":             {[]*EpisodeFolder{{Path: "A"}, {Path: "A/B"}}, true},
+		"write within view":     {[]*EpisodeFolder{{Path: "A", ViewDepartments: []string{bg, anim}, WriteDepartments: []string{bg}}}, true},
+		"write outside view":    {[]*EpisodeFolder{{Path: "A", ViewDepartments: []string{bg}, WriteDepartments: []string{anim}}}, false},
+		"write with everyone":   {[]*EpisodeFolder{{Path: "A", WriteDepartments: []string{anim}}}, true},
+		"bad department id":     {[]*EpisodeFolder{{Path: "A", ViewDepartments: []string{"x"}}}, false},
+		"bad segment":           {[]*EpisodeFolder{{Path: "A/../B"}}, false},
+		"duplicate path":        {[]*EpisodeFolder{{Path: "A"}, {Path: "a"}}, false},
+		"mirror ok":             {[]*EpisodeFolder{{Path: "BG/L"}, {Path: "AN/L", MirrorOf: "BG/L"}}, true},
+		"mirror of itself":      {[]*EpisodeFolder{{Path: "A", MirrorOf: "A"}}, false},
+		"mirror of unknown":     {[]*EpisodeFolder{{Path: "A", MirrorOf: "B"}}, false},
+		"mirror of mirror":      {[]*EpisodeFolder{{Path: "S"}, {Path: "M1", MirrorOf: "S"}, {Path: "M2", MirrorOf: "M1"}}, false},
+		"mirror of ancestor":    {[]*EpisodeFolder{{Path: "A"}, {Path: "A/M", MirrorOf: "A"}}, false},
+		"mirror of descendant":  {[]*EpisodeFolder{{Path: "A/S"}, {Path: "A", MirrorOf: "A/S"}}, false},
+		"mirror with writers":   {[]*EpisodeFolder{{Path: "S"}, {Path: "M", MirrorOf: "S", WriteDepartments: []string{bg}}}, false},
+		"mirror with subfolder": {[]*EpisodeFolder{{Path: "S"}, {Path: "M", MirrorOf: "S"}, {Path: "M/X"}}, false},
+	} {
+		t.Run(name, func(t *testing.T) { require.Equal(t, tc.ok, isValidEpisodeFolders(js(tc.folders))) })
+	}
+	require.True(t, isValidEpisodeFolders("Layout\nLayout/Ref"))
+	require.False(t, isValidEpisodeFolders(js(make101Folders())))
 }

@@ -19758,8 +19758,8 @@
   },
   {
     "id": "model.team.is_valid.episode_folders.app_error",
-    "translation": "Invalid default episode folders. Use at most 100 lines and 4000 characters, one folder path per line with valid folder names separated by /.",
-    "description": "API error when a team's default episode folder list is too long or has a line whose folder names are empty or contain characters not allowed in file names."
+    "translation": "Invalid default episode folders. Use at most 100 folders with valid folder names separated by /, and departments, mirrors and write access that match the rules.",
+    "description": "API error when a team's default episode folder list is too long, has a folder whose names are empty or contain characters not allowed in file names, or breaks the department, write-access or mirror rules."
   },
   {
     "id": "model.team.is_valid.episode_tasks.app_error",
