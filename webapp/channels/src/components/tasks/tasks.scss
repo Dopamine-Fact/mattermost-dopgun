@@ -770,7 +770,7 @@
     }
 
     &__side {
-        flex: 0 0 400px;
+        flex: 0 0 420px;
 
         @media (max-width: 900px) {
             flex-basis: auto;
@@ -957,7 +957,7 @@
 
     // The pill reads the card's TaskStatus--<status> colour.
     &__pill {
-        flex: 0 0 auto;
+        align-self: flex-start;
         padding: 2px 8px;
         border: 1px solid color-mix(in srgb, var(--task-status-color) 50%, transparent);
         border-radius: var(--radius-pill, 999px);
@@ -987,9 +987,11 @@
         gap: 12px;
     }
 
+    // The panel sits beside the player when the stage has room and wraps under it otherwise.
     &__split {
         display: flex;
-        flex-direction: column;
+        flex-wrap: wrap;
+        align-items: flex-start;
         gap: 16px;
     }
 
@@ -999,6 +1001,21 @@
         min-width: 0;
         flex-direction: column;
         gap: 12px;
+    }
+
+    &__player {
+        flex: 1 1 480px;
+    }
+
+    &__panel {
+        flex: 1 1 320px;
+
+        // The detail is a sidebar elsewhere; here it fills the panel.
+        .TaskDetail {
+            width: auto;
+            padding: 0;
+            border-left: none;
+        }
     }
 
     &__moment {
@@ -1034,8 +1051,9 @@
     }
 
     &__frame {
+        min-width: 0;
+        height: 48px;
         flex: 1;
-        aspect-ratio: 16 / 9;
 
         img {
             display: block;

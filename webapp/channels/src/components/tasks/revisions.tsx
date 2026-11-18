@@ -4,13 +4,16 @@
 import classNames from 'classnames';
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {defineMessage, FormattedMessage, useIntl} from 'react-intl';
-import {useDispatch} from 'react-redux';
+import {useDispatch, useSelector} from 'react-redux';
 
 import {CloseIcon, DotsVerticalIcon, ImageOutlineIcon, MagnifyIcon, PlayIcon, PlusIcon, SendIcon, UploadOutlineIcon} from '@mattermost/compass-icons/components';
+import type {Post} from '@mattermost/types/posts';
 import type {Task, TaskSection, TaskSectionVideo, TaskStatus} from '@mattermost/types/tasks';
 import type {UserProfile} from '@mattermost/types/users';
 
+import {createPost} from 'mattermost-redux/actions/posts';
 import {Client4} from 'mattermost-redux/client';
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
 import {createTask, deleteTask, setTaskSectionVideo} from 'actions/tasks';
 
@@ -48,6 +51,7 @@ type Props = {
 const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, canManage, detail}: Props) => {
     const {formatMessage, formatDate} = useIntl();
     const dispatch = useDispatch();
+    const currentUserId = useSelector(getCurrentUserId);
 
     // Every upload is kept; a new one (section.video_file_id changes) reloads the list. Only this viewer's own
     // upload switches them to it, so someone else's upload never moves the cut they are pinning revisions on.
@@ -186,10 +190,18 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
         const videoTime = pinned ?? Math.round((video.current?.currentTime ?? 0) * 1000);
         const result = await dispatch(createTask({team_id: teamId, title: title.trim(), section_id: section.id, video_time: videoTime, video_file_id: selected}));
         if (result.data) {
-            // The image goes up before the revision opens, so its comments load with it.
+            // The image is the revision's first message in the channel, posted before it opens so its conversation loads with it.
             if (image) {
                 try {
-                    await Client4.createTaskComment(result.data.id, '', [image]);
+                    const form = new FormData();
+                    form.append('channel_id', section.channel_id);
+                    form.append('files', image, image.name);
+                    const upload = await Client4.uploadFile(form);
+                    const post = {channel_id: section.channel_id, user_id: currentUserId, message: '', props: {task_id: result.data.id}} as unknown as Post;
+                    const posted = await dispatch(createPost(post, upload.file_infos)) as {error?: unknown};
+                    if (posted?.error) {
+                        throw posted.error;
+                    }
                 } catch {
                     setImageError(formatMessage({id: 'tasks.revisions.imageFailed', defaultMessage: 'The revision was created but the image could not be attached'}));
                 }
@@ -324,8 +336,8 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
                                 </span>
                             </div>
                             <span className='TaskRevisions__date'>{formatDate(revision.create_at, {dateStyle: 'medium', timeStyle: 'short'})}</span>
+                            <span className='TaskRevisions__pill'><FormattedMessage {...revisionStatusMessages[revision.status]}/></span>
                         </div>
-                        <span className='TaskRevisions__pill'><FormattedMessage {...revisionStatusMessages[revision.status]}/></span>
                         {canManage && (
                             <Menu.Container
                                 menuButton={{

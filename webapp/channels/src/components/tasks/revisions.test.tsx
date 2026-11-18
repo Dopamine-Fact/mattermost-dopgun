@@ -3,8 +3,10 @@
 
 import React from 'react';
 
+import type {FileInfo} from '@mattermost/types/files';
 import type {Task, TaskSection, TaskSectionVideo} from '@mattermost/types/tasks';
 
+import {createPost} from 'mattermost-redux/actions/posts';
 import {Client4} from 'mattermost-redux/client';
 
 import {createTask, deleteTask, setTaskSectionVideo} from 'actions/tasks';
@@ -20,6 +22,10 @@ jest.mock('actions/tasks', () => ({
     createTask: jest.fn(() => () => Promise.resolve({data: {id: 'new'}})),
     deleteTask: jest.fn(() => () => Promise.resolve({data: true})),
     setTaskSectionVideo: jest.fn(() => () => Promise.resolve({data: {}})),
+}));
+jest.mock('mattermost-redux/actions/posts', () => ({
+    ...jest.requireActual('mattermost-redux/actions/posts'),
+    createPost: jest.fn(() => () => Promise.resolve({data: {}})),
 }));
 jest.mock('./use_frame_thumbnails', () => ({
     useFrameThumbnails: () => ({1200: 'data:image/jpeg;base64,early'}),
@@ -303,8 +309,10 @@ describe('Revisions', () => {
         await waitFor(() => expect(createTask).toHaveBeenCalledWith(expect.objectContaining({video_time: 2000})));
     });
 
-    test('a reference image is sent as the first comment of the new revision', async () => {
-        const comment = jest.spyOn(Client4, 'createTaskComment').mockResolvedValue({} as never);
+    // A revision channel's task talks in the channel, so the image is the revision's first message there.
+    test('a reference image is posted to the channel as the first message of the new revision', async () => {
+        const info = {id: 'info1'} as FileInfo;
+        const upload = jest.spyOn(Client4, 'uploadFile').mockResolvedValue({file_infos: [info], client_ids: []});
         renderRevisions();
         const file = new File(['x'], 'ref.png', {type: 'image/png'});
         fireEvent.change(screen.getByLabelText('Reference image'), {target: {files: [file]}});
@@ -313,12 +321,16 @@ describe('Revisions', () => {
         fireEvent.click(screen.getByRole('button', {name: 'Create revision'}));
 
         await waitFor(() => expect(onSelect).toHaveBeenCalledWith('new'));
-        expect(comment).toHaveBeenCalledWith('new', '', [file]);
-        expect(comment.mock.invocationCallOrder[0]).toBeLessThan(onSelect.mock.invocationCallOrder[0]);
+        const form = upload.mock.calls[0][0] as FormData;
+        expect(form.get('channel_id')).toBe('chan1');
+        expect((form.get('files') as File).name).toBe('ref.png');
+        expect(createPost).toHaveBeenCalledWith(expect.objectContaining({channel_id: 'chan1', message: '', props: {task_id: 'new'}}), [info]);
+        expect((createPost as jest.Mock).mock.invocationCallOrder[0]).toBeLessThan(onSelect.mock.invocationCallOrder[0]);
     });
 
     test('an image that fails to attach keeps the revision and says so', async () => {
-        jest.spyOn(Client4, 'createTaskComment').mockRejectedValue(new Error('too big'));
+        jest.spyOn(Client4, 'uploadFile').mockResolvedValue({file_infos: [{id: 'info1'} as FileInfo], client_ids: []});
+        (createPost as jest.Mock).mockImplementationOnce(() => () => Promise.resolve({error: {message: 'nope'}}));
         renderRevisions();
         fireEvent.change(screen.getByLabelText('Reference image'), {target: {files: [new File(['x'], 'ref.png', {type: 'image/png'})]}});
         fireEvent.change(screen.getByRole('textbox', {name: 'Revision description'}), {target: {value: 'Logo'}});
@@ -329,7 +341,7 @@ describe('Revisions', () => {
     });
 
     test('a non-image or a file over 10 MB is refused', async () => {
-        const comment = jest.spyOn(Client4, 'createTaskComment').mockResolvedValue({} as never);
+        const upload = jest.spyOn(Client4, 'uploadFile');
         renderRevisions();
         fireEvent.change(screen.getByLabelText('Reference image'), {target: {files: [new File(['x'], 'notes.txt', {type: 'text/plain'})]}});
         expect(screen.getByRole('alert')).toHaveTextContent('PNG, JPG or WEBP up to 10 MB');
@@ -342,7 +354,8 @@ describe('Revisions', () => {
         fireEvent.change(screen.getByRole('textbox', {name: 'Revision description'}), {target: {value: 'Logo'}});
         fireEvent.click(screen.getByRole('button', {name: 'Create revision'}));
         await waitFor(() => expect(onSelect).toHaveBeenCalledWith('new'));
-        expect(comment).not.toHaveBeenCalled();
+        expect(upload).not.toHaveBeenCalled();
+        expect(createPost).not.toHaveBeenCalled();
     });
 
     test('Cancel clears the form', () => {
