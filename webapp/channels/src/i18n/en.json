@@ -33259,9 +33259,33 @@
     "defaultMessage": "Add revision",
     "description": "Button in the Revisions view that adds a revision task at the video's current time."
   },
+  "tasks.revisions.allStatuses": {
+    "defaultMessage": "All statuses",
+    "description": "Option of the revision status filter that shows every status."
+  },
+  "tasks.revisions.delete": {
+    "defaultMessage": "Delete",
+    "description": "Menu item on a revision card that deletes the revision."
+  },
   "tasks.revisions.frameHint": {
     "defaultMessage": "Use ← and → to step one frame.",
     "description": "Hint under the video in the Revisions view: the left and right arrow keys move the video back or forward by one frame."
+  },
+  "tasks.revisions.heading": {
+    "defaultMessage": "Revisions",
+    "description": "Heading of the revision list on a revision channel's Revisions tab."
+  },
+  "tasks.revisions.more": {
+    "defaultMessage": "More actions",
+    "description": "Label of the ⋮ button on a revision card that opens its menu."
+  },
+  "tasks.revisions.new": {
+    "defaultMessage": "New revision",
+    "description": "Button at the top of the revision list that clears the selection and shows the form for a new revision."
+  },
+  "tasks.revisions.noMatch": {
+    "defaultMessage": "No revisions match",
+    "description": "Shown in the revision list when search or the status filter hides every revision."
   },
   "tasks.revisions.noRevisions": {
     "defaultMessage": "No revisions yet. Pause the video where something needs to change and describe it.",
@@ -33279,9 +33303,33 @@
     "defaultMessage": "Uploading…",
     "description": "Shown on the Upload new version button while the new video uploads."
   },
+  "tasks.revisions.search": {
+    "defaultMessage": "Search revisions",
+    "description": "Placeholder and label of the box that filters the revision list by title."
+  },
   "tasks.revisions.seek": {
     "defaultMessage": "Go to {time}",
     "description": "Accessible label of the time stamp button of a revision; time is the position in the video, like 1:23.50."
+  },
+  "tasks.revisions.status.done": {
+    "defaultMessage": "Done",
+    "description": "Status pill of a finished revision."
+  },
+  "tasks.revisions.status.inProgress": {
+    "defaultMessage": "In review",
+    "description": "Status pill of a revision being worked on or reviewed."
+  },
+  "tasks.revisions.status.todo": {
+    "defaultMessage": "Revision requested",
+    "description": "Status pill of a revision nobody has started yet."
+  },
+  "tasks.revisions.statusFilter": {
+    "defaultMessage": "Status",
+    "description": "Label of the picker that filters the revision list by status."
+  },
+  "tasks.revisions.subheading": {
+    "defaultMessage": "All revisions made on this channel's video",
+    "description": "Line under the Revisions heading saying what the list holds."
   },
   "tasks.revisions.title": {
     "defaultMessage": "Revision",

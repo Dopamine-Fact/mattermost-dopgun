@@ -745,14 +745,233 @@
     }
 }
 
-// Revisions: a revision channel's video with its revisions below
+// Revisions: the revision list on the left; the video with the create form or a revision's detail on the right
 
 .TaskRevisions {
     display: flex;
-    max-width: 960px;
-    flex-direction: column;
-    padding: 16px 24px;
-    gap: 10px;
+    min-height: 100%;
+    align-items: flex-start;
+    padding: 16px;
+    gap: 16px;
+
+    @media (max-width: 900px) {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    &__side,
+    &__stage {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        border: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+        border-radius: 8px;
+        background: var(--center-channel-bg);
+    }
+
+    &__side {
+        flex: 0 0 400px;
+
+        @media (max-width: 900px) {
+            flex-basis: auto;
+        }
+    }
+
+    &__stage {
+        flex: 1;
+        padding: 16px;
+        gap: 12px;
+    }
+
+    &__head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding: 16px;
+        border-bottom: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+        gap: 12px;
+
+        h2 {
+            margin: 0 0 4px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        p {
+            margin: 0;
+            color: rgba(var(--center-channel-color-rgb), 0.64);
+            font-size: 12px;
+        }
+
+        .btn {
+            display: inline-flex;
+            flex: 0 0 auto;
+            align-items: center;
+            gap: 4px;
+        }
+    }
+
+    &__filters {
+        display: flex;
+        padding: 12px 16px 4px;
+        gap: 8px;
+
+        select {
+            width: auto;
+            flex: 0 0 140px;
+        }
+    }
+
+    &__search {
+        position: relative;
+        display: flex;
+        flex: 1;
+        align-items: center;
+        margin: 0;
+
+        svg {
+            position: absolute;
+            left: 10px;
+            color: rgba(var(--center-channel-color-rgb), 0.56);
+            fill: currentColor;
+            pointer-events: none;
+        }
+
+        input {
+            padding-left: 32px;
+        }
+    }
+
+    &__list {
+        display: flex;
+        flex-direction: column;
+        padding: 8px 16px 16px;
+        margin: 0;
+        gap: 8px;
+        list-style: none;
+    }
+
+    &__card {
+        display: flex;
+        align-items: center;
+        padding: 8px;
+        border: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+        border-radius: 6px;
+        gap: 12px;
+
+        &:hover {
+            background: rgba(var(--center-channel-color-rgb), 0.04);
+        }
+
+        &--selected {
+            border-color: var(--button-bg);
+            background: rgba(var(--button-bg-rgb), 0.08);
+            box-shadow: 0 0 0 1px var(--button-bg);
+        }
+    }
+
+    // The frame is the point of a revision, so it leads the card.
+    &__still {
+        position: relative;
+        overflow: hidden;
+        width: 96px;
+        flex: 0 0 auto;
+        padding: 0;
+        border: none;
+        border-radius: 4px;
+        aspect-ratio: 16 / 9;
+        background: #000;
+
+        img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        &:hover img {
+            opacity: 0.85;
+        }
+    }
+
+    &__time {
+        position: absolute;
+        bottom: 4px;
+        left: 4px;
+        display: inline-flex;
+        align-items: center;
+        padding: 1px 4px;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.72);
+        color: #fff;
+        font-family: monospace;
+        font-size: 11px;
+        gap: 2px;
+
+        svg {
+            fill: currentColor;
+        }
+    }
+
+    &__body {
+        display: flex;
+        min-width: 0;
+        flex: 1;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    &__line {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 8px;
+    }
+
+    &__name {
+        overflow: hidden;
+        padding: 0;
+        border: none;
+        background: none;
+        color: inherit;
+        font-weight: 600;
+        text-align: left;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &__version {
+        flex: 0 0 auto;
+        padding: 0 6px;
+        border-radius: 4px;
+        background: rgba(var(--center-channel-color-rgb), 0.08);
+        color: rgba(var(--center-channel-color-rgb), 0.72);
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    &__date {
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+        font-size: 12px;
+    }
+
+    // The pill reads the card's TaskStatus--<status> colour.
+    &__pill {
+        flex: 0 0 auto;
+        padding: 2px 8px;
+        border: 1px solid color-mix(in srgb, var(--task-status-color) 50%, transparent);
+        border-radius: var(--radius-pill, 999px);
+        background: color-mix(in srgb, var(--task-status-color) 16%, transparent);
+        color: var(--center-channel-color);
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    &__empty {
+        padding: 16px 0;
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+    }
 
     &__video {
         width: 100%;
@@ -777,18 +996,6 @@
         font-size: 12px;
     }
 
-    // An open revision carried over from an earlier video version.
-    &__version {
-        align-self: flex-start;
-        padding: 0 6px;
-        border-radius: 4px;
-        margin: 0 10px;
-        background: rgba(var(--center-channel-color-rgb), 0.08);
-        color: rgba(var(--center-channel-color-rgb), 0.72);
-        font-size: 11px;
-        font-weight: 600;
-    }
-
     &__replace {
         margin: 0;
         cursor: pointer;
@@ -802,85 +1009,6 @@
     &__add {
         display: flex;
         gap: 8px;
-    }
-
-    &__list {
-        display: grid;
-        padding: 0;
-        margin: 4px 0 0;
-        gap: 12px;
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-        list-style: none;
-    }
-
-    &__card {
-        display: flex;
-        overflow: hidden;
-        flex-direction: column;
-        border: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
-        border-radius: 8px;
-        background: var(--center-channel-bg);
-
-        &--selected {
-            border-color: var(--button-bg);
-            box-shadow: 0 0 0 1px var(--button-bg);
-        }
-    }
-
-    // The frame is the point of a revision, so it leads the card.
-    &__still {
-        position: relative;
-        width: 100%;
-        padding: 0;
-        border: none;
-        aspect-ratio: 16 / 9;
-        background: #000;
-
-        img {
-            display: block;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-
-        &:hover img {
-            opacity: 0.85;
-        }
-    }
-
-    &__time {
-        position: absolute;
-        bottom: 6px;
-        left: 6px;
-        padding: 2px 6px;
-        border-radius: 4px;
-        background: rgba(0, 0, 0, 0.72);
-        color: #fff;
-        font-family: monospace;
-        font-size: 12px;
-    }
-
-    &__name {
-        padding: 8px 10px 4px;
-        border: none;
-        background: none;
-        color: inherit;
-        font-weight: 600;
-        text-align: left;
-    }
-
-    &__meta {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 4px 10px 10px;
-        gap: 8px;
-    }
-
-    &__empty {
-        padding: 16px 0;
-        color: rgba(var(--center-channel-color-rgb), 0.64);
-        grid-column: 1 / -1;
     }
 }
 

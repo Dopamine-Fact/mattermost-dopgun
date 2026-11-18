@@ -7,7 +7,7 @@ import type {Task, TaskSection, TaskSectionVideo} from '@mattermost/types/tasks'
 
 import {Client4} from 'mattermost-redux/client';
 
-import {createTask, setTaskSectionVideo} from 'actions/tasks';
+import {createTask, deleteTask, setTaskSectionVideo} from 'actions/tasks';
 
 import {fireEvent, renderWithContext, screen, waitFor, within} from 'tests/react_testing_utils';
 import {TestHelper} from 'utils/test_helper';
@@ -18,6 +18,7 @@ import {formatVideoTime} from './task_utils';
 jest.mock('actions/tasks', () => ({
     ...jest.requireActual('actions/tasks'),
     createTask: jest.fn(() => () => Promise.resolve({data: {id: 'new'}})),
+    deleteTask: jest.fn(() => () => Promise.resolve({data: true})),
     setTaskSectionVideo: jest.fn(() => () => Promise.resolve({data: {}})),
 }));
 jest.mock('./use_frame_thumbnails', () => ({
@@ -234,5 +235,47 @@ describe('Revisions', () => {
         renderRevisions();
         fireEvent.change(screen.getByLabelText('Upload new version'), {target: {files: [new File(['x'], 'cut3.mp4', {type: 'video/mp4'})]}});
         await waitFor(() => expect(document.querySelector('video')).toHaveAttribute('src', expect.stringContaining('file_id=file2')));
+    });
+
+    test('searching keeps only revisions whose title matches', () => {
+        renderRevisions();
+        fireEvent.change(screen.getByRole('searchbox', {name: 'Search revisions'}), {target: {value: 'LATE'}});
+        expect(screen.getAllByRole('button', {name: /^Revision /}).map((b) => b.textContent)).toEqual(['Revision late']);
+    });
+
+    test('the status filter keeps one status', () => {
+        renderRevisions(true, [task('fixed', 'sec1', 300, 'file1', 'done')]);
+        fireEvent.change(screen.getByRole('combobox', {name: 'Status'}), {target: {value: 'done'}});
+        expect(screen.getAllByRole('button', {name: /^Revision /}).map((b) => b.textContent)).toEqual(['Revision fixed']);
+        expect(screen.getByRole('listitem')).toHaveTextContent('Done');
+    });
+
+    test('no match says so', () => {
+        renderRevisions();
+        fireEvent.change(screen.getByRole('searchbox', {name: 'Search revisions'}), {target: {value: 'zzz'}});
+        expect(screen.getByText('No revisions match')).toBeInTheDocument();
+        expect(screen.queryByText(/No revisions yet/)).toBeNull();
+    });
+
+    test('a card shows its version, date and status pill', async () => {
+        renderRevisions();
+        const card = screen.getByRole('button', {name: 'Revision early'}).closest('li')!;
+        expect(card).toHaveTextContent('Revision requested');
+        expect(card).toHaveClass('TaskStatus--todo');
+        await waitFor(() => expect(card).toHaveTextContent('v2'));
+        expect(within(card).getByText(/1970/)).toBeInTheDocument();
+    });
+
+    test('managers can delete from the card menu; others get no menu', async () => {
+        renderRevisions();
+        const card = screen.getByRole('button', {name: 'Revision early'}).closest('li')!;
+        fireEvent.click(within(card).getByRole('button', {name: 'More actions'}));
+        fireEvent.click(await screen.findByRole('menuitem', {name: 'Delete'}));
+        await waitFor(() => expect(deleteTask).toHaveBeenCalledWith('early'));
+    });
+
+    test('viewers get no card menu', () => {
+        renderRevisions(false);
+        expect(screen.queryByRole('button', {name: 'More actions'})).toBeNull();
     });
 });

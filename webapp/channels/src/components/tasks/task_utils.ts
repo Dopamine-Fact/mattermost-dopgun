@@ -33,6 +33,13 @@ export const statusMessages = defineMessages({
     done: {id: 'tasks.status.done', defaultMessage: 'Done'},
 });
 
+// A revision's status reads as a review step.
+export const revisionStatusMessages = defineMessages({
+    todo: {id: 'tasks.revisions.status.todo', defaultMessage: 'Revision requested'},
+    in_progress: {id: 'tasks.revisions.status.inProgress', defaultMessage: 'In review'},
+    done: {id: 'tasks.revisions.status.done', defaultMessage: 'Done'},
+});
+
 export function groupByStatus(tasks: Task[]): Record<TaskStatus, Task[]> {
     const groups: Record<TaskStatus, Task[]> = {todo: [], in_progress: [], done: []};
     for (const task of tasks) {

@@ -6,15 +6,17 @@ import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch} from 'react-redux';
 
-import type {Task, TaskSection, TaskSectionVideo} from '@mattermost/types/tasks';
+import {DotsVerticalIcon, MagnifyIcon, PlayIcon, PlusIcon} from '@mattermost/compass-icons/components';
+import type {Task, TaskSection, TaskSectionVideo, TaskStatus} from '@mattermost/types/tasks';
 import type {UserProfile} from '@mattermost/types/users';
 
 import {Client4} from 'mattermost-redux/client';
 
-import {createTask, setTaskSectionVideo} from 'actions/tasks';
+import {createTask, deleteTask, setTaskSectionVideo} from 'actions/tasks';
 
-import {AssigneeLabel, StatusSelect} from './task_bits';
-import {formatVideoTime} from './task_utils';
+import * as Menu from 'components/menu';
+
+import {revisionStatusMessages, STATUSES, formatVideoTime} from './task_utils';
 import {useFrameThumbnails} from './use_frame_thumbnails';
 
 // shortcut: browsers do not expose a video's frame rate, so arrow keys step 1/30 s; read it from the file if other rates matter.
@@ -56,6 +58,11 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
     const revisions = useMemo(() => tasks.
         filter((t) => t.section_id === section.id && t.video_file_id && (t.video_file_id === selected || (selected === latest && t.status !== 'done'))).
         sort((a, b) => a.video_time - b.video_time), [tasks, section.id, selected, latest]);
+
+    // Search and the status filter only narrow what the list shows.
+    const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState<TaskStatus | ''>('');
+    const shown = revisions.filter((r) => r.title.toLowerCase().includes(search.trim().toLowerCase()) && (!statusFilter || r.status === statusFilter));
 
     const videoUrl = Client4.getTaskSectionVideoUrl(section.id, selected);
     const [replacing, setReplacing] = useState(false);
@@ -138,98 +145,75 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
         }
     };
 
-    return (
-        <div className='TaskRevisions'>
-            <video
-                key={videoUrl}
-                ref={video}
-                className='TaskRevisions__video'
-                src={videoUrl}
-                controls={true}
-                preload='metadata'
-                onLoadedMetadata={onLoadedMetadata}
-            />
-            <div className='TaskRevisions__hint'>
+    const list = (
+        <aside className='TaskRevisions__side'>
+            <header className='TaskRevisions__head'>
+                <div>
+                    <h2>
+                        <FormattedMessage
+                            id='tasks.revisions.heading'
+                            defaultMessage='Revisions'
+                        />
+                    </h2>
+                    <p>
+                        <FormattedMessage
+                            id='tasks.revisions.subheading'
+                            defaultMessage="All revisions made on this channel's video"
+                        />
+                    </p>
+                </div>
+                {canManage && (
+                    <button
+                        className='btn btn-primary btn-sm'
+                        onClick={() => onSelect('')}
+                    >
+                        <PlusIcon size={16}/>
+                        <FormattedMessage
+                            id='tasks.revisions.new'
+                            defaultMessage='New revision'
+                        />
+                    </button>
+                )}
+            </header>
+            <div className='TaskRevisions__filters'>
+                <label className='TaskRevisions__search'>
+                    <MagnifyIcon size={16}/>
+                    <input
+                        type='search'
+                        className='form-control'
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder={formatMessage({id: 'tasks.revisions.search', defaultMessage: 'Search revisions'})}
+                        aria-label={formatMessage({id: 'tasks.revisions.search', defaultMessage: 'Search revisions'})}
+                    />
+                </label>
                 <select
-                    className='form-control TaskRevisions__versions'
-                    value={selected}
-                    onChange={(e) => setSelected(e.target.value)}
-                    aria-label={formatMessage({id: 'tasks.revisions.version', defaultMessage: 'Version'})}
+                    className='form-control'
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as TaskStatus | '')}
+                    aria-label={formatMessage({id: 'tasks.revisions.statusFilter', defaultMessage: 'Status'})}
                 >
-                    {versions.map((v) => (
+                    <option value=''>
+                        <FormattedMessage
+                            id='tasks.revisions.allStatuses'
+                            defaultMessage='All statuses'
+                        />
+                    </option>
+                    {STATUSES.map((status) => (
                         <option
-                            key={v.file_id}
-                            value={v.file_id}
+                            key={status}
+                            value={status}
                         >
-                            <FormattedMessage
-                                id='tasks.revisions.versionOption'
-                                defaultMessage='v{version} · {date} · {uploader}'
-                                values={{version: v.version, date: formatDate(v.create_at, {dateStyle: 'medium'}), uploader: usersById[v.creator_id]?.username ?? ''}}
-                            />
+                            {formatMessage(revisionStatusMessages[status])}
                         </option>
                     ))}
                 </select>
-                <FormattedMessage
-                    id='tasks.revisions.frameHint'
-                    defaultMessage='Use ← and → to step one frame.'
-                />
-                {canManage && (
-                    <label className={classNames('btn btn-tertiary btn-xs TaskRevisions__replace', {disabled: replacing})}>
-                        {replacing ? (
-                            <FormattedMessage
-                                id='tasks.revisions.replacing'
-                                defaultMessage='Uploading…'
-                            />
-                        ) : (
-                            <FormattedMessage
-                                id='tasks.revisions.uploadVersion'
-                                defaultMessage='Upload new version'
-                            />
-                        )}
-                        <input
-                            type='file'
-                            hidden={true}
-                            disabled={replacing}
-                            accept='video/mp4,video/webm,video/ogg,video/quicktime,.m4v'
-                            aria-label={formatMessage({id: 'tasks.revisions.uploadVersion', defaultMessage: 'Upload new version'})}
-                            onChange={replaceVideo}
-                        />
-                    </label>
-                )}
             </div>
-            {replaceError && <div className='TaskRevisions__error error-text'>{replaceError}</div>}
-
-            {canManage && (
-                <form
-                    className='TaskRevisions__add'
-                    onSubmit={addRevision}
-                >
-                    <input
-                        className='form-control'
-                        value={title}
-                        maxLength={512}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder={formatMessage({id: 'tasks.revisions.placeholder', defaultMessage: 'Describe the revision at the current moment'})}
-                        aria-label={formatMessage({id: 'tasks.revisions.title', defaultMessage: 'Revision'})}
-                    />
-                    <button
-                        type='submit'
-                        className='btn btn-primary btn-sm'
-                        disabled={!title.trim()}
-                    >
-                        <FormattedMessage
-                            id='tasks.revisions.add'
-                            defaultMessage='Add revision'
-                        />
-                    </button>
-                </form>
-            )}
-
             <ul className='TaskRevisions__list'>
-                {revisions.map((revision) => (
+                {shown.map((revision) => (
                     <li
                         key={revision.id}
-                        className={classNames('TaskRevisions__card', {'TaskRevisions__card--selected': revision.id === selectedId})}
+                        className={classNames('TaskRevisions__card', `TaskStatus--${revision.status}`, {'TaskRevisions__card--selected': revision.id === selectedId})}
                     >
                         <button
                             className='TaskRevisions__still'
@@ -242,41 +226,174 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
                                     alt=''
                                 />
                             )}
-                            <span className='TaskRevisions__time'>{formatVideoTime(revision.video_time)}</span>
-                        </button>
-                        <button
-                            className='TaskRevisions__name'
-                            onClick={() => open(revision)}
-                        >
-                            {revision.title}
-                        </button>
-                        {revision.video_file_id !== selected && (
-                            <span
-                                className='TaskRevisions__version'
-                                title={formatMessage({id: 'tasks.revisions.olderVersion', defaultMessage: 'Made on an earlier version; open it to watch that version'})}
-                            >
-                                <FormattedMessage
-                                    id='tasks.revisions.versionBadge'
-                                    defaultMessage='v{version}'
-                                    values={{version: versionOf[revision.video_file_id] ?? '?'}}
-                                />
+                            <span className='TaskRevisions__time'>
+                                <PlayIcon size={12}/>
+                                {formatVideoTime(revision.video_time)}
                             </span>
-                        )}
-                        <div className='TaskRevisions__meta'>
-                            <AssigneeLabel user={usersById[revision.assignee_id]}/>
-                            <StatusSelect task={revision}/>
+                        </button>
+                        <div className='TaskRevisions__body'>
+                            <div className='TaskRevisions__line'>
+                                <button
+                                    className='TaskRevisions__name'
+                                    onClick={() => open(revision)}
+                                >
+                                    {revision.title}
+                                </button>
+                                <span
+                                    className='TaskRevisions__version'
+                                    title={revision.video_file_id === selected ? undefined : formatMessage({id: 'tasks.revisions.olderVersion', defaultMessage: 'Made on an earlier version; open it to watch that version'})}
+                                >
+                                    <FormattedMessage
+                                        id='tasks.revisions.versionBadge'
+                                        defaultMessage='v{version}'
+                                        values={{version: versionOf[revision.video_file_id] ?? '?'}}
+                                    />
+                                </span>
+                            </div>
+                            <span className='TaskRevisions__date'>{formatDate(revision.create_at, {dateStyle: 'medium', timeStyle: 'short'})}</span>
                         </div>
+                        <span className='TaskRevisions__pill'><FormattedMessage {...revisionStatusMessages[revision.status]}/></span>
+                        {canManage && (
+                            <Menu.Container
+                                menuButton={{
+                                    id: `revisionMenuButton-${revision.id}`,
+                                    class: 'btn btn-icon btn-xs',
+                                    'aria-label': formatMessage({id: 'tasks.revisions.more', defaultMessage: 'More actions'}),
+                                    children: <DotsVerticalIcon size={16}/>,
+                                }}
+                                menu={{
+                                    id: `revisionMenu-${revision.id}`,
+                                    'aria-label': formatMessage({id: 'tasks.revisions.more', defaultMessage: 'More actions'}),
+                                }}
+                            >
+                                <Menu.Item
+                                    id={`revisionDelete-${revision.id}`}
+                                    isDestructive={true}
+                                    onClick={() => {
+                                        dispatch(deleteTask(revision.id));
+                                        if (revision.id === selectedId) {
+                                            onSelect('');
+                                        }
+                                    }}
+                                    labels={
+                                        <FormattedMessage
+                                            id='tasks.revisions.delete'
+                                            defaultMessage='Delete'
+                                        />
+                                    }
+                                />
+                            </Menu.Container>
+                        )}
                     </li>
                 ))}
-                {revisions.length === 0 && (
+                {shown.length === 0 && (
                     <li className='TaskRevisions__empty'>
-                        <FormattedMessage
-                            id='tasks.revisions.noRevisions'
-                            defaultMessage='No revisions yet. Pause the video where something needs to change and describe it.'
-                        />
+                        {revisions.length ? (
+                            <FormattedMessage
+                                id='tasks.revisions.noMatch'
+                                defaultMessage='No revisions match'
+                            />
+                        ) : (
+                            <FormattedMessage
+                                id='tasks.revisions.noRevisions'
+                                defaultMessage='No revisions yet. Pause the video where something needs to change and describe it.'
+                            />
+                        )}
                     </li>
                 )}
             </ul>
+        </aside>
+    );
+
+    return (
+        <div className='TaskRevisions'>
+            {list}
+            <section className='TaskRevisions__stage'>
+                <video
+                    key={videoUrl}
+                    ref={video}
+                    className='TaskRevisions__video'
+                    src={videoUrl}
+                    controls={true}
+                    preload='metadata'
+                    onLoadedMetadata={onLoadedMetadata}
+                />
+                <div className='TaskRevisions__hint'>
+                    <select
+                        className='form-control TaskRevisions__versions'
+                        value={selected}
+                        onChange={(e) => setSelected(e.target.value)}
+                        aria-label={formatMessage({id: 'tasks.revisions.version', defaultMessage: 'Version'})}
+                    >
+                        {versions.map((v) => (
+                            <option
+                                key={v.file_id}
+                                value={v.file_id}
+                            >
+                                <FormattedMessage
+                                    id='tasks.revisions.versionOption'
+                                    defaultMessage='v{version} · {date} · {uploader}'
+                                    values={{version: v.version, date: formatDate(v.create_at, {dateStyle: 'medium'}), uploader: usersById[v.creator_id]?.username ?? ''}}
+                                />
+                            </option>
+                        ))}
+                    </select>
+                    <FormattedMessage
+                        id='tasks.revisions.frameHint'
+                        defaultMessage='Use ← and → to step one frame.'
+                    />
+                    {canManage && (
+                        <label className={classNames('btn btn-tertiary btn-xs TaskRevisions__replace', {disabled: replacing})}>
+                            {replacing ? (
+                                <FormattedMessage
+                                    id='tasks.revisions.replacing'
+                                    defaultMessage='Uploading…'
+                                />
+                            ) : (
+                                <FormattedMessage
+                                    id='tasks.revisions.uploadVersion'
+                                    defaultMessage='Upload new version'
+                                />
+                            )}
+                            <input
+                                type='file'
+                                hidden={true}
+                                disabled={replacing}
+                                accept='video/mp4,video/webm,video/ogg,video/quicktime,.m4v'
+                                aria-label={formatMessage({id: 'tasks.revisions.uploadVersion', defaultMessage: 'Upload new version'})}
+                                onChange={replaceVideo}
+                            />
+                        </label>
+                    )}
+                </div>
+                {replaceError && <div className='TaskRevisions__error error-text'>{replaceError}</div>}
+
+                {canManage && (
+                    <form
+                        className='TaskRevisions__add'
+                        onSubmit={addRevision}
+                    >
+                        <input
+                            className='form-control'
+                            value={title}
+                            maxLength={512}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder={formatMessage({id: 'tasks.revisions.placeholder', defaultMessage: 'Describe the revision at the current moment'})}
+                            aria-label={formatMessage({id: 'tasks.revisions.title', defaultMessage: 'Revision'})}
+                        />
+                        <button
+                            type='submit'
+                            className='btn btn-primary btn-sm'
+                            disabled={!title.trim()}
+                        >
+                            <FormattedMessage
+                                id='tasks.revisions.add'
+                                defaultMessage='Add revision'
+                            />
+                        </button>
+                    </form>
+                )}
+            </section>
         </div>
     );
 };
