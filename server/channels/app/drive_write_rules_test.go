@@ -188,3 +188,113 @@ func TestDriveChangedNamesMirrors(t *testing.T) {
 		t.Fatal("no drive_changed event")
 	}
 }
+
+func TestDriveChangedRootIsOnlyRoot(t *testing.T) {
+	th := setupDrive(t)
+	w := driveWriteFixture(t, th)
+	messages, closeWS := connectFakeWebSocket(t, th, th.BasicUser.Id, "", []model.WebsocketEventType{model.WebsocketEventDriveChanged})
+	defer closeWS()
+
+	driveAddFile(t, th, th.BasicUser, w.Channel, "", "rootfile.txt")
+	select {
+	case msg := <-messages:
+		assert.Equal(t, `[""]`, msg.GetData()["parent_ids"]) // no mirror lookup for the root, no hidden folder ids
+	case <-time.After(10 * time.Second):
+		t.Fatal("no drive_changed event")
+	}
+}
+
+// ownTrashed adds a file of user in folderID and trashes it as the admin, so the creator is the user, not a manager.
+func ownTrashed(t *testing.T, th *TestHelper, w *driveWriteWorld, user *model.User, folderID, name string) *model.DriveItem {
+	t.Helper()
+	file := driveAddFile(t, th, user, w.Channel, folderID, name)
+	require.Nil(t, th.App.DeleteDriveItems(th.Context, driveSession(w.Admin), w.Channel, []string{file.Id}, false))
+	return file
+}
+
+func TestDriveWriteRuleBranches(t *testing.T) {
+	th := setupDrive(t)
+	w := driveWriteFixture(t, th)
+	ch := w.Channel
+	layoutID := w.Folders["BG/Layout"].Id
+	s2, s3 := driveSession(w.AnimUser), driveSession(w.BGMember)
+	admin := driveSession(w.Admin)
+	forbidden := func(t *testing.T, appErr *model.AppError) {
+		t.Helper()
+		require.NotNil(t, appErr)
+		assert.Equal(t, http.StatusForbidden, appErr.StatusCode)
+	}
+	get := func(id string) *model.DriveItem {
+		t.Helper()
+		item, err := th.App.Srv().Store().DriveItem().Get(id)
+		require.NoError(t, err)
+		return item
+	}
+	openID := w.Folders["Open"].Id
+
+	t.Run("a rule folder inside a write-allowed folder", func(t *testing.T) {
+		ruled, appErr := th.App.CreateDriveFolder(th.Context, w.BGMember.Id, ch, layoutID, "Ruled", model.DriveRules{ReadOnly: true})
+		require.Nil(t, appErr)
+		assert.False(t, th.App.DriveCan(th.Context, s3, ch, DriveModify, ruled))
+		forbidden(t, th.App.MoveDriveItems(th.Context, s3, ch, []string{ruled.Id}, ch, openID))
+		forbidden(t, th.App.DeleteDriveItems(th.Context, s3, ch, []string{ruled.Id}, false))
+		assert.True(t, th.App.DriveCan(th.Context, admin, ch, DriveModify, ruled))
+	})
+
+	t.Run("a plain folder holding a rule folder", func(t *testing.T) {
+		holder := driveFolder(t, th, w.BGMember, ch, layoutID, "Holder")
+		_, appErr := th.App.CreateDriveFolder(th.Context, w.BGMember.Id, ch, holder.Id, "Inner", model.DriveRules{ReadOnly: true})
+		require.Nil(t, appErr)
+		assert.False(t, th.App.DriveCan(th.Context, s3, ch, DriveModify, holder))
+		forbidden(t, th.App.MoveDriveItems(th.Context, s3, ch, []string{holder.Id}, ch, openID))
+		forbidden(t, th.App.DeleteDriveItems(th.Context, s3, ch, []string{holder.Id}, false))
+		assert.True(t, th.App.DriveCan(th.Context, admin, ch, DriveModify, holder))
+	})
+
+	t.Run("write denied on an own item", func(t *testing.T) {
+		file := driveAddFile(t, th, w.AnimUser, ch, w.Folders["Anim/Ref"].Id, "mine.txt")
+		forbidden(t, th.App.DeleteDriveItems(th.Context, s2, ch, []string{file.Id}, false))
+	})
+
+	t.Run("hidden folder: the creator cannot restore or empty", func(t *testing.T) {
+		secret := w.Folders["BG/Layout/secret"].Id
+		file := ownTrashed(t, th, w, w.AnimUser, secret, "inside.txt")
+		kept := ownTrashed(t, th, w, w.AnimUser, secret, "kept.txt")
+		require.Nil(t, th.App.EmptyDriveTrash(th.Context, s2, ch))
+		trash, err := th.App.Srv().Store().DriveItem().GetTrash(ch.Id)
+		require.NoError(t, err)
+		assert.Contains(t, itemNames(trash), kept.Name)
+
+		// the hidden folder goes to the bin: restoring would land the file at the root
+		require.Nil(t, th.App.DeleteDriveItems(th.Context, admin, ch, []string{secret}, false))
+		forbidden(t, th.App.RestoreDriveItems(th.Context, s2, ch, []string{file.Id}))
+		require.Nil(t, th.App.RestoreDriveItems(th.Context, admin, ch, []string{file.Id}))
+		assert.Equal(t, "", get(file.Id).ParentId)
+		require.Nil(t, th.App.RestoreDriveItems(th.Context, admin, ch, []string{secret}))
+	})
+
+	t.Run("hidden folder without a write rule", func(t *testing.T) {
+		hid, err := th.App.Srv().Store().DriveItem().Save(&model.DriveItem{ChannelId: ch.Id, Type: model.DriveItemTypeFolder, Name: "Hid", CreatorId: th.BasicUser.Id, DriveRules: model.DriveRules{ViewDepartments: []string{w.Anim.Id}}})
+		require.NoError(t, err)
+		live := driveAddFile(t, th, w.BGMember, ch, hid.Id, "live.txt")
+		forbidden(t, th.App.DeleteDriveItems(th.Context, s3, ch, []string{live.Id}, false))
+		file := ownTrashed(t, th, w, w.BGMember, hid.Id, "gone.txt")
+		forbidden(t, th.App.RestoreDriveItems(th.Context, s3, ch, []string{file.Id}))
+		require.Nil(t, th.App.EmptyDriveTrash(th.Context, s3, ch))
+		_, err = th.App.Srv().Store().DriveItem().Get(file.Id)
+		require.NoError(t, err)
+	})
+
+	t.Run("broken ancestor chain", func(t *testing.T) {
+		sub := driveFolder(t, th, w.BGMember, ch, layoutID, "Chain")
+		file := ownTrashed(t, th, w, w.AnimUser, sub.Id, "orphan.txt")
+		require.Nil(t, th.App.DeleteDriveItems(th.Context, admin, ch, []string{sub.Id}, false))
+		require.Nil(t, th.App.DeleteDriveItems(th.Context, admin, ch, []string{layoutID}, true)) // takes Layout, leaves the trashed Chain
+
+		forbidden(t, th.App.RestoreDriveItems(th.Context, s2, ch, []string{file.Id}))
+		require.Nil(t, th.App.EmptyDriveTrash(th.Context, s2, ch))
+		_, err := th.App.Srv().Store().DriveItem().Get(file.Id)
+		require.NoError(t, err)
+		require.Nil(t, th.App.RestoreDriveItems(th.Context, admin, ch, []string{file.Id}))
+	})
+}

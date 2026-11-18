@@ -131,6 +131,9 @@ func (a *App) DriveCanCreateIn(rctx request.CTX, session model.Session, channel 
 	}
 	folderPath, appErr := a.driveFolderPath(channel, folderID)
 	if appErr != nil {
+		if appErr.StatusCode != http.StatusBadRequest {
+			rctx.Logger().Warn("Failed to read drive folder path", mlog.String("folder_id", folderID), mlog.Err(appErr))
+		}
 		return appErr.StatusCode == http.StatusBadRequest
 	}
 	v, appErr := a.driveViewerFor(rctx, session, channel)
@@ -146,6 +149,11 @@ func (a *App) DriveCanCreateIn(rctx request.CTX, session model.Session, channel 
 // Non-managers: never an item whose subtree holds a rule; the parent path must be visible (a broken ancestor chain
 // is not); then the write rule decides, and without one the item and everything below must be the caller's own.
 func (a *App) driveCanModify(rctx request.CTX, session model.Session, channel *model.Channel, v *driveViewer, item *model.DriveItem) bool {
+	return a.driveCanModifyIn(rctx, session, channel, v, item, item.ParentId)
+}
+
+// driveCanModifyIn judges item as if it sat in parentID (Restore judges the folder it left and the one it returns to).
+func (a *App) driveCanModifyIn(rctx request.CTX, session model.Session, channel *model.Channel, v *driveViewer, item *model.DriveItem, parentID string) bool {
 	if v.manager {
 		return true
 	}
@@ -164,9 +172,12 @@ func (a *App) driveCanModify(rctx request.CTX, session model.Session, channel *m
 		}
 	}
 	parentPath := []*model.DriveItem{}
-	if item.ParentId != "" {
-		parent, err := a.Srv().Store().DriveItem().Get(item.ParentId)
+	if parentID != "" {
+		parent, err := a.Srv().Store().DriveItem().Get(parentID)
 		if err != nil {
+			if nf := new(store.ErrNotFound); !errors.As(err, &nf) {
+				rctx.Logger().Warn("Failed to read drive folder", mlog.String("item_id", item.Id), mlog.Err(err))
+			}
 			return false // gone: only managers act on it
 		}
 		anc, err := a.Srv().Store().DriveItem().GetAncestors(parent.Id)
@@ -350,7 +361,7 @@ func (a *App) publishDriveChanged(channelID string, parentIDs ...string) {
 			ids = append(ids, id)
 		}
 	}
-	if mirrors, err := a.Srv().Store().DriveItem().GetMirrors(channelID, ids); err != nil {
+	if mirrors, err := a.Srv().Store().DriveItem().GetMirrors(channelID, slices.DeleteFunc(slices.Clone(ids), func(id string) bool { return id == "" })); err != nil { // the root has no mirrors
 		a.Log().Warn("Failed to find drive mirrors for a change event", mlog.String("channel_id", channelID), mlog.Err(err))
 	} else {
 		for _, m := range mirrors {
@@ -984,11 +995,8 @@ func (a *App) RestoreDriveItems(rctx request.CTX, session model.Session, channel
 			}
 			parentID = ""
 		}
-		orig := it.ParentId
-		it.ParentId = parentID // judged where it returns to
-		ok := a.driveCanModify(rctx, session, channel, v, it)
-		it.ParentId = orig
-		if !ok {
+		// judged where it was (a gone parent or broken chain hides it, as in the bin) and where it returns to
+		if !a.driveCanModify(rctx, session, channel, v, it) || !a.driveCanModifyIn(rctx, session, channel, v, it, parentID) {
 			return driveError("RestoreDriveItems", "forbidden", http.StatusForbidden)
 		}
 		if taken[parentID] == nil {

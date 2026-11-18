@@ -47,7 +47,7 @@ func (s *SqlDriveItemStore) GetMirrors(channelID string, sourceIDs []string) ([]
 	if len(sourceIDs) == 0 {
 		return []*model.DriveItem{}, nil
 	}
-	return s.list(s.selectItems().Where(sq.Eq{"ChannelId": channelID, "MirrorOf": sourceIDs, "DeleteAt": 0}), "mirrors in channel_id="+channelID)
+	return s.list(s.selectItems().Where(sq.Eq{"ChannelId": channelID, "MirrorOf": sourceIDs, "DeleteAt": 0}).Where(sq.NotEq{"MirrorOf": ""}), "mirrors in channel_id="+channelID)
 }
 
 func (s *SqlDriveItemStore) Save(item *model.DriveItem) (*model.DriveItem, error) {
