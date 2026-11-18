@@ -456,6 +456,15 @@ const (
 	AuditEventSetTaskSectionVideo = "setTaskSectionVideo" // upload the video of a revision channel
 )
 
+// Custom roles
+const (
+	AuditEventCreateCustomRole   = "createCustomRole"   // create a studio role
+	AuditEventPatchCustomRole    = "patchCustomRole"    // update a studio role's name, color, department or permissions
+	AuditEventDeleteCustomRole   = "deleteCustomRole"   // delete a studio role and strip it from every user
+	AuditEventReorderCustomRoles = "reorderCustomRoles" // change the studio role hierarchy
+	AuditEventSetUserCustomRoles = "setUserCustomRoles" // replace the studio roles a user holds
+)
+
 // Schemes
 const (
 	AuditEventCreateScheme = "createScheme" // create permission scheme with role definitions
