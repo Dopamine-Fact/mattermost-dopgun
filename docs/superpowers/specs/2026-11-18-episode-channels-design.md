@@ -29,7 +29,7 @@ Versions: a `TaskSectionVideos` table with one row per upload, and the revision'
 ## Design — server
 
 ### Video versions (all revision channels)
-- Migration `000253_task_video_versions` (postgres up/down + `migrations.list`):
+- Migration `000255_task_video_versions` (postgres up/down + `migrations.list`; 000253/000254 are custom roles and departments):
   - `CREATE TABLE TaskSectionVideos (Id varchar(26) PK, SectionId varchar(26) NOT NULL, FileId varchar(26) NOT NULL, Version int NOT NULL, CreatorId varchar(26) NOT NULL, CreateAt bigint NOT NULL)`, unique `(SectionId, Version)`.
   - `ALTER TABLE Tasks ADD COLUMN VideoFileId varchar(26) NOT NULL DEFAULT ''`.
   - Backfill: each section with `VideoFileId <> ''` gets a version-1 row (CreatorId = FileInfo creator, CreateAt = FileInfo CreateAt). A task in such a section gets `Tasks.VideoFileId = section.VideoFileId` only if a `custom_revision` post with `Props->>'task_id' = Tasks.Id` exists in the section's channel. *(My call: today any task can be moved into a revision section from the task detail, so "every task there is a revision" is false; the revision card post is the reliable mark. A revision whose card was deleted becomes an ordinary task — acceptable.)* Note that revisions written before a video replacement lost their video already; they land on v1 like the rest.
@@ -43,6 +43,13 @@ Versions: a `TaskSectionVideos` table with one row per upload, and the revision'
 - `Task.VideoFileId` (`video_file_id`): a task is a **revision** iff it is non-empty. Set on create only (not in `TaskPatch`). On create, if set, the task's section must be a linked section with that file among its versions, else 400 `app.task.invalid_video.app_error`. A patch that changes a revision's section (to another section or to "no section") is rejected with the same error; the webapp disables the section dropdown in `TaskDetail` for revisions.
 - `taskRevisionChannel` returns nil when `task.VideoFileId == ""`, so ordinary tasks in an episode section post nothing to chat and their DM links go to the tasks page as today. Revision posts and links are unchanged.
 
+### Permissions follow the task (user's pick)
+- Today `api4/task.go` picks the permission from the task's section (`sectionPermission`: a linked section needs `manage_revisions`). That would let only revision managers add or delete an episode's ordinary tasks.
+- New rule: a task's own `VideoFileId` decides. Revision (`VideoFileId != ""`) → `manage_revisions`; any other task, also one in a linked section → `manage_tasks`. `requireTaskPermission` takes the task instead of a section id; it covers create (from the request body), assignee change, delete, and deleting someone else's comment. The rank hierarchy check (`requireCanAssign`) is unchanged and gets the permission picked here.
+- Section endpoints (create/patch/delete a linked section, upload a video version) keep `sectionPermission` → `manage_revisions`.
+- Webapp: `TaskDetail` picks `task.video_file_id ? 'manage_revisions' : 'manage_tasks'` instead of looking at the section. The Revisions tab keeps `manage_revisions`; the Tasks tab's "Add task" and edit controls use `manage_tasks`.
+- Consequence of the backfill: a task in a revision section without a revision card becomes ordinary and from then on needs `manage_tasks`.
+
 ### Templates
 - `Team.EpisodeFolders` (`episode_folders`) and `Team.EpisodeTasks` (`episode_tasks`): newline-separated text, wired like `FilesEnabled` (model, patch, `Auditable`, `team_store` columns). `IsValid`: each ≤ 4000 runes; folders max 100 lines, tasks max 100 lines.
 - Folder lines are paths with `/` (e.g. `Animasyon/Layout`); each segment must pass the DriveItem name rule. Validated in `Team.IsValid` so a bad template is rejected when saved, not when an episode is created.
@@ -52,7 +59,7 @@ Versions: a `TaskSectionVideos` table with one row per upload, and the revision'
 ## Design — webapp
 
 ### Creating an episode
-- Add Channels menu entry **"Create episode channel"**, shown when the team has tasks, revisions, canvas and files all enabled and the user has `manage_team_tasks` (same rule as "Create revision channel"). *(My call: requiring all four keeps every episode complete; a team that turns one off still sees the other tabs.)*
+- Add Channels menu entry **"Create episode channel"**, shown when the team has tasks, revisions, canvas and files all enabled and the user has both `manage_revisions` (channel, section, video) and `manage_tasks` (the seeded tasks). `manage_team_tasks` no longer exists; it was split into `manage_tasks`, `manage_daily_reports` and `manage_revisions`. *(My call: requiring all four keeps every episode complete; a team that turns one off still sees the other tabs.)*
 - Modal: name + video file (same as the revision channel modal).
 - Action `createEpisodeChannel(teamId, name, video)`:
   1. create channel → create linked section → upload video (v1) → `createCanvas(channelId)`. Any failure here: delete section, delete (archive) channel, show the error — as `createRevisionChannel` does.
@@ -79,6 +86,7 @@ Versions: a `TaskSectionVideos` table with one row per upload, and the revision'
 - Model: template validation (lengths, line counts, bad folder names); task revision validation.
 - Store: version numbering, backfill migration on a fixture with an existing revision section.
 - App: new upload keeps old file and bumps version; delete section removes all version files; ordinary task in a linked section posts nothing; revision create with a foreign file id → 400.
+- API: in a linked section, a `manage_tasks`-only user can create/assign/delete an ordinary task but gets 403 on a revision; a `manage_revisions`-only user the reverse.
 - Webapp: `createEpisodeChannel` call order and rollback; ChannelTabs tab sets; Revisions version picker and older-version badge; Tasks tab filters.
 - One Playwright spec: create an episode with templates, see folders in the explorer and tasks on the board, upload v2, old revision shows with badge.
 
