@@ -90,6 +90,7 @@ const renderTabs = (channelId: string, {canvasEnabled = true, revisionsEnabled =
             },
             channels: {
                 channels: {[channelId]: TestHelper.getChannelMock({id: channelId, name: 'trailer', team_id: 'team1', delete_at: deleteAt})},
+                channelsInTeam: {team1: new Set([channelId])},
                 myMembers: {[channelId]: TestHelper.getChannelMembershipMock({channel_id: channelId, user_id: 'me', roles: ''})},
             },
             roles: {roles: {team_user: TestHelper.getRoleMock({name: 'team_user', permissions})}},
@@ -276,6 +277,21 @@ describe('ChannelTabs', () => {
         fireEvent.click(screen.getByRole('tab', {name: 'Files'}));
         expect(await screen.findByText('files trailer []')).toBeInTheDocument();
         expect((global as unknown as {historyMock: {push: jest.Mock}}).historyMock.push).toHaveBeenCalledWith('/team-one/channels/trailer?folder=');
+    });
+
+    test('an archived episode channel has no Files tab, since the explorer does not list it', () => {
+        renderTabs('chan1', {filesEnabled: true, deleteAt: 5});
+        expect(tabNames()).toEqual(['Messages', 'Revisions', 'Tasks']);
+    });
+
+    test('leaving the Files tab drops ?folder= from the address', async () => {
+        const push = (global as unknown as {historyMock: {push: jest.Mock}}).historyMock.push;
+        renderTabs('chan1', {filesEnabled: true, url: '/team-one/channels/trailer?folder=f1'});
+        await screen.findByText('files trailer [f1]');
+        push.mockClear();
+        fireEvent.click(screen.getByRole('tab', {name: 'Messages'}));
+        expect(screen.getByText('chat')).toBeInTheDocument();
+        expect(push).toHaveBeenCalledWith('/team-one/channels/trailer');
     });
 
     test('?folder= falls back to Messages when files are off', () => {

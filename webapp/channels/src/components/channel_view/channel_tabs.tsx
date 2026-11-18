@@ -22,6 +22,7 @@ import {displayUsername} from 'mattermost-redux/utils/user_utils';
 
 import {fetchTeamTasks} from 'actions/tasks';
 
+import {useExplorerChannels} from 'components/file_explorer/use_explorer_data';
 import List from 'components/tasks/list';
 import Revisions from 'components/tasks/revisions';
 import TaskDetail from 'components/tasks/task_detail';
@@ -62,7 +63,10 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
     const teamId = team?.id ?? '';
     const revisionsEnabled = Boolean(team?.tasks_enabled && team?.revisions_enabled);
     const canvasEnabled = Boolean(team?.canvas_enabled);
-    const filesEnabled = Boolean(team?.files_enabled);
+
+    // Only a channel the explorer lists (a member's open or private, unarchived channel); for any other it would show the team's channels.
+    const explorerChannels = useExplorerChannels();
+    const filesEnabled = Boolean(team?.files_enabled) && explorerChannels.some((c) => c.id === channelId);
 
     const getTasks = useMemo(() => makeGetTasksForTeam(), []);
     const getSections = useMemo(() => makeGetTaskSectionsForTeam(), []);
@@ -178,6 +182,8 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
         // The folder lives in the address so browser Back steps out of a folder instead of out of the tab.
         if (id === 'files' && !linkedFolder) {
             history.push(folderUrl(channelName));
+        } else if (id !== 'files' && linkedFolder) {
+            history.push(location.pathname);
         }
     };
     const tabButton = (id: Tab, label: React.ReactNode) => (
