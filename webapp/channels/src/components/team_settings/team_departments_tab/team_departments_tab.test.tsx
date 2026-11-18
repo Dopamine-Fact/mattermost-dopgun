@@ -114,7 +114,12 @@ describe('TeamDepartmentsTab', () => {
         const createDepartment = jest.spyOn(Client4, 'createDepartment').mockResolvedValue(department('d3', 'New department 2', []));
 
         // its own team: the department cache is per team and module-wide, so team1 already holds the shorter list
-        renderWithContext(<TeamDepartmentsTab {...props} team={TestHelper.getTeamMock({id: 'team2'})}/>);
+        renderWithContext(
+            <TeamDepartmentsTab
+                {...props}
+                team={TestHelper.getTeamMock({id: 'team2'})}
+            />,
+        );
 
         fireEvent.click(await screen.findByRole('button', {name: 'Add rank to New department'}));
         fireEvent.click(screen.getByRole('button', {name: 'Department'}));
@@ -135,5 +140,16 @@ describe('TeamDepartmentsTab', () => {
         fireEvent.click(within(dialog).getByRole('button', {name: 'Delete'}));
 
         await waitFor(() => expect(remove).toHaveBeenCalledWith('team1', 'd1'));
+    });
+
+    test('the delete dialog says how many members lose a rank', async () => {
+        renderTab();
+
+        fireEvent.click(await screen.findByRole('button', {name: 'Delete Animasyon'}));
+        expect(within(await screen.findByRole('dialog')).getByText(/3 members lose their rank/)).toBeInTheDocument(); // Lead 1 + Mid 2
+        fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: 'Cancel'}));
+
+        fireEvent.click(screen.getByRole('button', {name: 'Delete Mid'}));
+        await waitFor(() => expect(within(screen.getByRole('dialog')).getByText(/2 members lose it/)).toBeInTheDocument());
     });
 });

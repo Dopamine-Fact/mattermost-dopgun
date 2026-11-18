@@ -5241,7 +5241,7 @@ export default class Client4 {
         return `${this.getTeamRoute(teamId)}/departments`;
     }
 
-    /** the team's departments in order, Stüdyo geneli first, each with its ranks */
+    /** the team's departments in order, StÃ¼dyo geneli first, each with its ranks */
     getTeamDepartments = (teamId: string) => {
         return this.doFetch<Department[]>(this.getDepartmentsRoute(teamId), {method: 'get'});
     };
@@ -5258,7 +5258,7 @@ export default class Client4 {
         return this.doFetch<StatusOK>(`${this.getDepartmentsRoute(teamId)}/${departmentId}`, {method: 'delete'});
     };
 
-    /** ids must name every department exactly once, Stüdyo geneli first */
+    /** ids must name every department exactly once, StÃ¼dyo geneli first */
     reorderDepartments = (teamId: string, ids: string[]) => {
         return this.doFetch<Department[]>(`${this.getDepartmentsRoute(teamId)}/order`, {method: 'put', body: JSON.stringify({ids})});
     };

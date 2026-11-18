@@ -36,7 +36,8 @@ const TaskDetail = ({task, sections, members, displayName, onClose, canManage}: 
 
     // The server only lets a role assign to members it outranks; offer just those (null: not known, offer all).
     // Revision tasks are given by manage_revisions, the rest by manage_tasks, so the server asks for the matching one.
-    const permission = sections.find((s) => s.id === task.section_id)?.channel_id ? 'manage_revisions' : 'manage_tasks';
+    const section = sections.find((s) => s.id === task.section_id);
+    const permission = section?.channel_id || section?.video_file_id ? 'manage_revisions' : 'manage_tasks';
     const [actionable, setActionable] = useState<Set<string> | null>(null);
     useEffect(() => {
         if (!canManage) {

@@ -302,10 +302,11 @@ func (a *App) GetSchemeRolesForTeam(teamID string) (string, string, string, *mod
 // This is the public API used by REST endpoints and plugins.
 // It enforces strict validation requiring either SchemeUser or SchemeGuest to be true.
 //
-// Ranks (rk_*) the member holds are kept when newRoles names none, so callers that only know scheme roles cannot drop
-// them; SetMemberRanks manages them. A guest holds no ranks.
+// Ranks (rk_*) change only through SetMemberRanks: any named in newRoles are dropped and the member's current ranks
+// kept, so this path can neither drop nor grant one. A guest holds no ranks.
 func (a *App) UpdateTeamMemberRoles(rctx request.CTX, teamID string, userID string, newRoles string) (*model.TeamMember, *model.AppError) {
-	if len(model.RankIdsFromRoles(newRoles)) == 0 && !slices.Contains(strings.Fields(newRoles), model.TeamGuestRoleId) {
+	newRoles = model.RemoveRankRoles(newRoles)
+	if !slices.Contains(strings.Fields(newRoles), model.TeamGuestRoleId) {
 		if member, err := a.Srv().Store().Team().GetMember(rctx, teamID, userID); err == nil {
 			for _, id := range model.RankIdsFromRoles(member.ExplicitRoles) {
 				newRoles += " " + model.RankRoleNameFromId(id)

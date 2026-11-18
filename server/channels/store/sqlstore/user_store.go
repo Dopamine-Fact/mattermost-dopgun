@@ -2312,10 +2312,12 @@ func (us SqlUserStore) DemoteUserToGuest(rctx request.CTX, userID string) (_ *mo
 		return nil, errors.Wrapf(err, "failed to update ChannelMembers with userId=%s", userID)
 	}
 
+	// A guest holds no ranks; the pattern is bound so its "?" is not read as a placeholder.
 	query = us.getQueryBuilder().Update("TeamMembers").
 		Set("SchemeUser", false).
 		Set("SchemeAdmin", false).
 		Set("SchemeGuest", true).
+		Set("Roles", sq.Expr(`btrim(regexp_replace(regexp_replace(Roles, ?, ' ', 'g'), '\s+', ' ', 'g'))`, `(^|\s)rk_[a-z0-9]+(?=\s|$)`)).
 		Where(sq.Eq{"UserId": userID})
 
 	queryString, args, err = query.ToSql()

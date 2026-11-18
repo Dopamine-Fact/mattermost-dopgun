@@ -90,7 +90,7 @@ type Props = {
 
     /** the department's drag handle; Stüdyo geneli has none */
     dragHandleProps?: DraggableProvidedDragHandleProps | null;
-    onDelete: (target: {kind: 'department' | 'rank'; id: string; name: string}) => void;
+    onDelete: (target: {kind: 'department' | 'rank'; id: string; name: string; members: number}) => void;
 };
 
 const DepartmentCard = ({teamId, department, dragHandleProps, onDelete}: Props) => {
@@ -121,6 +121,9 @@ const DepartmentCard = ({teamId, department, dragHandleProps, onDelete}: Props) 
             return rest;
         });
     };
+
+    // a member holds at most one rank per department, so the counts add up to distinct members
+    const departmentMembers = department.ranks.reduce((n, r) => n + r.member_count, 0);
 
     const patchDepartment = (patch: {name?: string; color?: string}) => run(() => Client4.patchDepartment(teamId, department.id, patch));
     const patchRank = (rank: Rank, patch: {display_name?: string; color?: string}) => run(() => Client4.patchRank(teamId, rank.id, patch));
@@ -170,7 +173,7 @@ const DepartmentCard = ({teamId, department, dragHandleProps, onDelete}: Props) 
                         type='button'
                         className='btn btn-icon btn-sm'
                         aria-label={formatMessage(msg.deleteDepartment, {name: department.name})}
-                        onClick={() => onDelete({kind: 'department', id: department.id, name: department.name})}
+                        onClick={() => onDelete({kind: 'department', id: department.id, name: department.name, members: departmentMembers})}
                     >
                         <TrashCanOutlineIcon size={16}/>
                     </button>
@@ -241,7 +244,7 @@ const DepartmentCard = ({teamId, department, dragHandleProps, onDelete}: Props) 
                                                 type='button'
                                                 className='btn btn-icon btn-sm'
                                                 aria-label={formatMessage(msg.deleteRank, {name: rank.display_name})}
-                                                onClick={() => onDelete({kind: 'rank', id: rank.id, name: rank.display_name})}
+                                                onClick={() => onDelete({kind: 'rank', id: rank.id, name: rank.display_name, members: rank.member_count})}
                                             >
                                                 <TrashCanOutlineIcon size={16}/>
                                             </button>

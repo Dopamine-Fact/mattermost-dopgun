@@ -23,7 +23,7 @@ type Props = {
     team: Team;
 };
 
-type DeleteTarget = {kind: 'department' | 'rank'; id: string; name: string};
+type DeleteTarget = {kind: 'department' | 'rank'; id: string; name: string; members: number};
 
 const move = <T, >(list: T[], from: number, to: number) => {
     const next = [...list];
@@ -156,7 +156,10 @@ const TeamDepartmentsTab = ({team}: Props) => {
                     handleCancel={() => setDeleting(null)}
                     onExited={() => setDeleting(null)}
                 >
-                    <FormattedMessage {...(deleting.kind === 'department' ? msg.deleteDepartmentBody : msg.deleteRankBody)}/>
+                    <FormattedMessage
+                        {...(deleting.kind === 'department' ? msg.deleteDepartmentBody : msg.deleteRankBody)}
+                        values={{count: deleting.members}}
+                    />
                 </GenericModal>
             )}
         </div>
@@ -169,8 +172,8 @@ const msg = defineMessages({
     newDepartment: {id: 'team_settings.departments.new_department', defaultMessage: 'New department'},
     deleteTitle: {id: 'team_settings.departments.delete_title', defaultMessage: 'Delete {name}?'},
     deleteConfirm: {id: 'team_settings.departments.delete_confirm', defaultMessage: 'Delete'},
-    deleteDepartmentBody: {id: 'team_settings.departments.delete_department_body', defaultMessage: 'Its ranks are deleted too, and their members lose them.'},
-    deleteRankBody: {id: 'team_settings.departments.delete_rank_body', defaultMessage: 'Members holding this rank lose it.'},
+    deleteDepartmentBody: {id: 'team_settings.departments.delete_department_body', defaultMessage: 'Its ranks are deleted too. {count, plural, =0 {No one holds them.} one {# member loses their rank.} other {# members lose their rank.}}'},
+    deleteRankBody: {id: 'team_settings.departments.delete_rank_body', defaultMessage: '{count, plural, =0 {No one holds this rank.} one {# member loses it.} other {# members lose it.}}'},
 });
 
 export default TeamDepartmentsTab;

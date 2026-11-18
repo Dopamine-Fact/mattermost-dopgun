@@ -75,4 +75,22 @@ describe('TaskDetail assignee picker', () => {
 
         await waitFor(() => expect(actionable).toHaveBeenCalledWith('team1', 'manage_revisions'));
     });
+
+    test('a task in a video revision section asks for revisions too', async () => {
+        const actionable = jest.spyOn(Client4, 'getActionableUserIds').mockResolvedValue(['anim']);
+        const video = {id: 'vid', team_id: 'team1', name: 'Shot', sort_order: 0, channel_id: '', video_file_id: 'file1', create_at: 1, update_at: 1};
+        renderWithContext(
+            <TaskDetail
+                task={{...task, section_id: 'vid'}}
+                sections={[video]}
+                members={[me, anim, lead, old]}
+                displayName={(u) => u.username}
+                onClose={jest.fn()}
+                canManage={true}
+            />,
+            {entities: {users: {currentUserId: 'me', profiles: {me}}}},
+        );
+
+        await waitFor(() => expect(actionable).toHaveBeenCalledWith('team1', 'manage_revisions'));
+    });
 });

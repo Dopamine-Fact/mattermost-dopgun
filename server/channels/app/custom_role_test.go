@@ -302,6 +302,27 @@ func TestUpdateTeamMemberRolesKeepsRanks(t *testing.T) {
 	require.Nil(t, appErr)
 	assert.True(t, member.SchemeAdmin)
 	assert.Equal(t, mid.RoleName, member.ExplicitRoles)
+
+	// A rank named in newRoles is ignored: ranks change only through SetMemberRanks.
+	other := th.CreateTeam(t)
+	foreign := newRank(t, th, other.Id, newDepartment(t, th, other.Id, "Modelleme").Id, "Lead", model.PermissionManageTasks.Id)
+	member, appErr = th.App.UpdateTeamMemberRoles(th.Context, th.BasicTeam.Id, user.Id, model.TeamUserRoleId+" "+foreign.RoleName)
+	require.Nil(t, appErr)
+	assert.Equal(t, mid.RoleName, member.ExplicitRoles)
+}
+
+func TestDemoteUserToGuestStripsRanks(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	lead := newRank(t, th, th.BasicTeam.Id, newDepartment(t, th, th.BasicTeam.Id, "Animasyon").Id, "Lead", model.PermissionManageTasks.Id)
+	user := rankedUser(t, th, th.BasicTeam, lead)
+
+	require.Nil(t, th.App.DemoteUserToGuest(th.Context, user))
+
+	member, appErr := th.App.GetTeamMember(th.Context, th.BasicTeam.Id, user.Id)
+	require.Nil(t, appErr)
+	assert.True(t, member.SchemeGuest)
+	assert.NotContains(t, member.ExplicitRoles, model.RankRoleNamePrefix)
 }
 
 func TestLeaveTeamStripsRanks(t *testing.T) {

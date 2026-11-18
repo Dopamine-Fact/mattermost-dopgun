@@ -33364,16 +33364,16 @@
     "description": "Accessible label of the trash button on a department card in the Team Settings › Departments tab; {name} is the department name."
   },
   "team_settings.departments.delete_department_body": {
-    "defaultMessage": "Its ranks are deleted too, and their members lose them.",
-    "description": "Body of the dialog confirming a department deletion in the Team Settings › Departments tab."
+    "defaultMessage": "Its ranks are deleted too. {count, plural, =0 {No one holds them.} one {# member loses their rank.} other {# members lose their rank.}}",
+    "description": "Body of the dialog confirming a department deletion in the Team Settings › Departments tab; {count} is how many members hold one of its ranks and lose it."
   },
   "team_settings.departments.delete_rank": {
     "defaultMessage": "Delete {name}",
     "description": "Accessible label of the trash button on a rank row in the Team Settings › Departments tab; {name} is the rank name."
   },
   "team_settings.departments.delete_rank_body": {
-    "defaultMessage": "Members holding this rank lose it.",
-    "description": "Body of the dialog confirming a rank deletion in the Team Settings › Departments tab."
+    "defaultMessage": "{count, plural, =0 {No one holds this rank.} one {# member loses it.} other {# members lose it.}}",
+    "description": "Body of the dialog confirming a rank deletion in the Team Settings › Departments tab; {count} is how many members hold the rank and lose it."
   },
   "team_settings.departments.delete_title": {
     "defaultMessage": "Delete {name}?",
