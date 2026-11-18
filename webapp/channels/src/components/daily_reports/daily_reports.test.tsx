@@ -94,6 +94,17 @@ describe('DailyReports', () => {
         localStorage.clear();
         mockReports([]);
         jest.spyOn(Client4, 'getDailyReportAssignees').mockResolvedValue([]);
+        jest.spyOn(Client4, 'getActionableUserIds').mockResolvedValue(['me', 'u2', 'u3', 'u4', 'u5']);
+    });
+
+    test('the roster lists only members the viewer outranks', async () => {
+        jest.spyOn(Client4, 'getActionableUserIds').mockResolvedValue(['me', 'u2']);
+        renderPage(true);
+
+        await openTeamTab();
+        expect(await screen.findByText('ayse')).toBeInTheDocument();
+        await waitFor(() => expect(screen.queryByText('mehmet')).not.toBeInTheDocument());
+        expect(screen.getAllByText('Missing')).toHaveLength(2); // me and ayse
     });
 
     test('submits on Ctrl+Enter and shows the rendered report', async () => {

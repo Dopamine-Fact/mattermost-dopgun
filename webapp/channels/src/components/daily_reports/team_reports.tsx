@@ -42,6 +42,7 @@ const TeamReports = ({teamId, timeZone, tick, onError}: Props) => {
     const [date, setDate] = useState(() => todayIn(timeZone));
     const [reports, setReports] = useState<DailyReport[]>([]);
     const [assignees, setAssignees] = useState<string[]>([]);
+    const [actionable, setActionable] = useState<Set<string> | null>(null); // null: unknown, show everyone
     const [reload, setReload] = useState(0);
     const [rejecting, setRejecting] = useState<DailyReport>();
     const [pickingReporters, setPickingReporters] = useState(false);
@@ -55,10 +56,15 @@ const TeamReports = ({teamId, timeZone, tick, onError}: Props) => {
         let cancelled = false;
         (async () => {
             try {
-                const [list, ids] = await Promise.all([Client4.getDailyReports(teamId, date, date), Client4.getDailyReportAssignees(teamId)]);
+                const [list, ids, canAct] = await Promise.all([
+                    Client4.getDailyReports(teamId, date, date),
+                    Client4.getDailyReportAssignees(teamId),
+                    Client4.getActionableUserIds(teamId).catch(() => null),
+                ]);
                 if (!cancelled) {
                     setReports(list);
                     setAssignees(ids);
+                    setActionable(canAct && new Set(canAct));
                     onError('');
                 }
             } catch (e) {
@@ -82,10 +88,10 @@ const TeamReports = ({teamId, timeZone, tick, onError}: Props) => {
         }
     }, [dispatch, reports, profiles]);
 
-    // Active members who owe a report (assignees only, when the team picked some) plus every report author.
+    // Active members who owe a report (assignees only, when the team picked some) and whom the viewer outranks, plus every report author.
     const rows = useMemo(() => {
         const byUser = new Map(reports.map((r) => [r.user_id, r]));
-        const owes = members.filter((u) => !u.is_bot && !u.delete_at && (assignees.length === 0 || assignees.includes(u.id)));
+        const owes = members.filter((u) => !u.is_bot && !u.delete_at && (assignees.length === 0 || assignees.includes(u.id)) && (!actionable || actionable.has(u.id)));
         const users = new Map(owes.map((u) => [u.id, u]));
         byUser.forEach((_, id) => {
             if (profiles[id]) {
@@ -93,7 +99,7 @@ const TeamReports = ({teamId, timeZone, tick, onError}: Props) => {
             }
         });
         return Array.from(users.values(), (user) => ({user, report: byUser.get(user.id)}));
-    }, [members, profiles, reports, assignees]);
+    }, [members, profiles, reports, assignees, actionable]);
 
     const approve = async (report: DailyReport) => {
         try {
