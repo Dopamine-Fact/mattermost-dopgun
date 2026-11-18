@@ -171,3 +171,19 @@ func TestTaskPostRuleCommand(t *testing.T) {
 	require.NotNil(t, appErr)
 	require.Equal(t, "app.post.task_required.app_error", appErr.Id)
 }
+
+func TestCreateTaskCommentChannelLinked(t *testing.T) {
+	mainHelper.Parallel(t)
+	th, _, task, elsewhere := taskPostSetup(t)
+
+	_, appErr := th.App.CreateTaskComment(th.Context, task, th.BasicUser.Id, "on it", nil)
+	require.NotNil(t, appErr)
+	require.Equal(t, "app.task.comment.use_channel.app_error", appErr.Id)
+	require.Equal(t, 400, appErr.StatusCode)
+
+	before := len(channelPostTypes(t, th, th.BasicChannel.Id))
+	comment, appErr := th.App.CreateTaskComment(th.Context, elsewhere, th.BasicUser.Id, "board talk", nil)
+	require.Nil(t, appErr)
+	require.Equal(t, elsewhere.Id, comment.TaskId)
+	require.Len(t, channelPostTypes(t, th, th.BasicChannel.Id), before, "a channel-less task's comment posts nothing")
+}

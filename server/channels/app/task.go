@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
-	"strings"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/shared/i18n"
@@ -550,6 +549,16 @@ func (a *App) CreateTaskComment(rctx request.CTX, task *model.Task, userID, mess
 	if appErr := model.ValidateTaskCommentContent(message, len(files)); appErr != nil {
 		return nil, appErr
 	}
+	// A task in a channel's task list is discussed in that channel: its comments are the channel's messages about it.
+	if task.SectionId != "" {
+		section, err := a.Srv().Store().Task().GetSection(task.SectionId)
+		if err != nil {
+			return nil, taskStoreError("CreateTaskComment", task.SectionId, err)
+		}
+		if section.ChannelId != "" {
+			return nil, model.NewAppError("CreateTaskComment", "app.task.comment.use_channel.app_error", nil, "task_id="+task.Id, http.StatusBadRequest)
+		}
+	}
 
 	infos := make([]*model.FileInfo, 0, len(files))
 	fileIDs := model.StringArray{}
@@ -569,18 +578,48 @@ func (a *App) CreateTaskComment(rctx request.CTX, task *model.Task, userID, mess
 		return nil, taskStoreError("CreateTaskComment", task.Id, err)
 	}
 	saved.Files = infos
-
-	text := message
-	for _, info := range infos {
-		text += "\n:paperclip: " + info.Name
-	}
-	a.postRevisionActivity(rctx, task, func(link string) *model.Post {
-		return &model.Post{
-			UserId:  userID,
-			Message: i18n.T("app.task.revision_comment", map[string]any{"Title": task.Title, "Link": link, "Message": strings.TrimSpace(text)}),
-		}
-	})
 	return saved, nil
+}
+
+// GetTaskPosts returns the task's messages (root posts tagged with it), newest first, from the channels userID can read.
+func (a *App) GetTaskPosts(rctx request.CTX, task *model.Task, userID, channelID string, before int64, perPage int) (*model.PostList, *model.AppError) {
+	ids, err := a.Srv().Store().Task().GetPostIdsForTask(task.Id, channelID, before, perPage)
+	if err != nil {
+		return nil, model.NewAppError("GetTaskPosts", "app.post.get.app_error", nil, "task_id="+task.Id, http.StatusInternalServerError).Wrap(err)
+	}
+	list := model.NewPostList()
+	if len(ids) == 0 {
+		return list, nil
+	}
+	// The per-reader read path, so burn-on-read and plan-limited posts are handled as everywhere else.
+	posts, _, appErr := a.GetPostsByIdsForUser(rctx, userID, ids)
+	if appErr != nil {
+		if appErr.StatusCode == http.StatusNotFound {
+			return list, nil
+		}
+		return nil, appErr
+	}
+	byID := make(map[string]*model.Post, len(posts))
+	for _, post := range posts {
+		byID[post.Id] = post
+	}
+	readable := map[string]bool{}
+	for _, id := range ids {
+		post, ok := byID[id]
+		if !ok {
+			continue
+		}
+		canRead, seen := readable[post.ChannelId]
+		if !seen {
+			canRead, _ = a.HasPermissionToChannel(rctx, userID, post.ChannelId, model.PermissionReadChannelContent)
+			readable[post.ChannelId] = canRead
+		}
+		if canRead {
+			list.AddPost(post)
+			list.AddOrder(post.Id)
+		}
+	}
+	return a.PreparePostListForClient(rctx, list, nil), nil
 }
 
 // GetTaskCommentFile only serves files that belong to the comment, so a task comment link cannot read other uploads.

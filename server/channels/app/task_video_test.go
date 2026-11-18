@@ -157,8 +157,6 @@ func TestOrdinaryTaskInLinkedSectionPostsNothing(t *testing.T) {
 
 	task, appErr := th.App.CreateTask(th.Context, &model.Task{TeamId: section.TeamId, SectionId: section.Id, Title: "Storyboard", CreatorId: th.BasicUser.Id, AssigneeId: th.BasicUser2.Id}, "")
 	require.Nil(t, appErr)
-	_, appErr = th.App.CreateTaskComment(th.Context, task, th.BasicUser.Id, "on it", nil)
-	require.Nil(t, appErr)
 	require.Len(t, channelPostTypes(t, th, th.BasicChannel.Id), before, "ordinary tasks post nothing to the channel")
 
 	dms := systemBotDMTexts(t, th, th.BasicUser2)

@@ -337,7 +337,7 @@ func TestTasks(t *testing.T) {
 		require.Nil(t, appErr)
 		require.Contains(t, posts.Posts[posts.Order[0]].Message, "/channels/"+th.BasicChannel.Name+"?revision="+revision.Id)
 
-		// A new revision shows in the channel as a revision card, and its comments as messages from the commenter.
+		// A new revision shows in the channel as a revision card; its comments are the channel's messages, not task comments.
 		channelPosts := func() []*model.Post {
 			list, appErr := th.App.GetPosts(th.Context, th.BasicChannel.Id, 0, 100)
 			require.Nil(t, appErr)
@@ -352,12 +352,10 @@ func TestTasks(t *testing.T) {
 		require.Equal(t, revision.Id, card.GetProp("task_id"))
 		require.Equal(t, th.SystemAdminUser.Id, card.UserId)
 		require.Contains(t, card.Message, "Cut earlier")
-		_, _, err = th.Client.CreateTaskComment(ctx, revision.Id, "Make it 2 frames shorter", nil)
-		require.NoError(t, err)
-		comment := channelPosts()[0]
-		require.Equal(t, th.BasicUser.Id, comment.UserId)
-		require.Contains(t, comment.Message, "Make it 2 frames shorter")
-		require.Contains(t, comment.Message, "?revision="+revision.Id)
+		_, resp, err = th.Client.CreateTaskComment(ctx, revision.Id, "Make it 2 frames shorter", nil)
+		require.Error(t, err)
+		CheckBadRequestStatus(t, resp)
+		require.Equal(t, card.Id, channelPosts()[0].Id)
 
 		// Ordinary tasks and their comments stay out of channels.
 		before := len(channelPosts())
@@ -544,4 +542,88 @@ func TestGetTaskSectionVideoForeignFile(t *testing.T) {
 	latest, _, err := th.Client.GetTaskSectionVideo(ctx, section.Id, "")
 	require.NoError(t, err)
 	require.Equal(t, "v2", string(latest))
+}
+
+// taskPostsSetup turns tasks and revisions on, links a section to the basic channel and puts task T in it.
+func taskPostsSetup(t *testing.T, th *TestHelper) *model.Task {
+	t.Helper()
+	ctx := context.Background()
+	_, _, err := th.SystemAdminClient.PatchTeam(ctx, th.BasicTeam.Id, &model.TeamPatch{TasksEnabled: new(true), RevisionsEnabled: new(true)})
+	require.NoError(t, err)
+	section, _, err := th.SystemAdminClient.CreateTaskSection(ctx, &model.TaskSection{TeamId: th.BasicTeam.Id, Name: "Ep", ChannelId: th.BasicChannel.Id})
+	require.NoError(t, err)
+	task, _, err := th.SystemAdminClient.CreateTask(ctx, &model.Task{TeamId: th.BasicTeam.Id, SectionId: section.Id, Title: "T"})
+	require.NoError(t, err)
+	return task
+}
+
+func taskChannelPost(t *testing.T, client *model.Client4, channelID, taskID, rootID string) *model.Post {
+	t.Helper()
+	post := &model.Post{ChannelId: channelID, RootId: rootID, Message: "about T"}
+	if taskID != "" {
+		post.AddProp("task_id", taskID)
+	}
+	saved, _, err := client.CreatePost(context.Background(), post)
+	require.NoError(t, err)
+	return saved
+}
+
+func TestGetTaskPosts(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	ctx := context.Background()
+	task := taskPostsSetup(t, th)
+
+	first := taskChannelPost(t, th.Client, th.BasicChannel.Id, task.Id, "")
+	second := taskChannelPost(t, th.Client, th.BasicChannel.Id, task.Id, "")
+	taskChannelPost(t, th.Client, th.BasicChannel.Id, "", first.Id)
+
+	list, resp, err := th.Client.GetTaskPosts(ctx, task.Id, "", 0, 0)
+	require.NoError(t, err)
+	CheckOKStatus(t, resp)
+	require.Equal(t, []string{second.Id, first.Id}, list.Order)
+
+	list, _, err = th.Client.GetTaskPosts(ctx, task.Id, th.BasicChannel.Id, 0, 1)
+	require.NoError(t, err)
+	require.Equal(t, []string{second.Id}, list.Order)
+
+	list, _, err = th.Client.GetTaskPosts(ctx, task.Id, "", second.CreateAt, 0)
+	require.NoError(t, err)
+	require.Equal(t, []string{first.Id}, list.Order)
+
+	// Someone who can't read the channel gets none of its posts.
+	_, _, err = th.SystemAdminClient.UpdateChannelPrivacy(ctx, th.BasicChannel.Id, model.ChannelTypePrivate)
+	require.NoError(t, err)
+	_, err = th.SystemAdminClient.RemoveUserFromChannel(ctx, th.BasicChannel.Id, th.BasicUser2.Id)
+	require.NoError(t, err)
+	th.LoginBasic2(t)
+	list, resp, err = th.Client.GetTaskPosts(ctx, task.Id, "", 0, 0)
+	require.NoError(t, err)
+	CheckOKStatus(t, resp)
+	require.Empty(t, list.Order)
+}
+
+func TestDeleteTaskPostAsManager(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	ctx := context.Background()
+	task := taskPostsSetup(t, th)
+
+	// BasicUser2 writes; BasicUser deletes, first without and then with manage_tasks (never delete_others_posts).
+	th.LoginBasic2(t)
+	tagged := taskChannelPost(t, th.Client, th.BasicChannel.Id, task.Id, "")
+	other := taskChannelPost(t, th.Client, th.BasicChannel2.Id, "", "")
+	th.LoginBasic(t)
+
+	resp, err := th.Client.DeletePost(ctx, tagged.Id)
+	require.Error(t, err)
+	CheckForbiddenStatus(t, resp)
+
+	giveRankingRole(t, th, th.BasicUser, model.PermissionManageTasks.Id)
+	resp, err = th.Client.DeletePost(ctx, other.Id)
+	require.Error(t, err)
+	CheckForbiddenStatus(t, resp)
+	resp, err = th.Client.DeletePost(ctx, tagged.Id)
+	require.NoError(t, err)
+	CheckOKStatus(t, resp)
 }

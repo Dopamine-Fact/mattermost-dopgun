@@ -94,6 +94,27 @@ func (c *Client4) GetTaskComments(ctx context.Context, taskId string) ([]*TaskCo
 	return DecodeJSONFromResponse[[]*TaskComment](r)
 }
 
+// GetTaskPosts returns the root posts naming a task, newest first: in one channel when channelId is set, older than
+// before (ms) when it is non-zero, perPage at most (0 for the server's default).
+func (c *Client4) GetTaskPosts(ctx context.Context, taskId, channelId string, before int64, perPage int) (*PostList, *Response, error) {
+	query := url.Values{}
+	if channelId != "" {
+		query.Set("channel_id", channelId)
+	}
+	if before > 0 {
+		query.Set("before", fmt.Sprint(before))
+	}
+	if perPage > 0 {
+		query.Set("per_page", fmt.Sprint(perPage))
+	}
+	r, err := c.doAPIGetWithQuery(ctx, newClientRoute("tasks").Join(taskId, "posts"), query, "")
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return DecodeJSONFromResponse[*PostList](r)
+}
+
 // CreateTaskComment posts a comment with attachments, given as file name to contents.
 func (c *Client4) CreateTaskComment(ctx context.Context, taskId, message string, files map[string][]byte) (*TaskComment, *Response, error) {
 	body := &bytes.Buffer{}

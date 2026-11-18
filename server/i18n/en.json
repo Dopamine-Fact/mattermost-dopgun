@@ -12552,6 +12552,11 @@
     "description": "Direct message the system bot sends to a user when a task on a team task board is assigned to them. Actor is the @username who assigned it (may be empty), Title the task title and Link opens the task."
   },
   {
+    "id": "app.task.comment.use_channel.app_error",
+    "translation": "Comment on this task in its channel.",
+    "description": "API error when someone comments on a task from its detail view instead of its task-list channel; the comments of a task in a channel are that channel's messages tagged with the task."
+  },
+  {
     "id": "app.task.disabled.app_error",
     "translation": "Tasks are not enabled for this team.",
     "description": "API error when a task list endpoint is called for a team whose admin has not turned on the task list in Team Settings."
@@ -12590,11 +12595,6 @@
     "id": "app.task.revision_added",
     "translation": "New revision at {{.Time}}: [{{.Title}}]({{.Link}})",
     "description": "Fallback text of the card posted in a revision channel's chat when someone adds a revision (shown where the card cannot be drawn, e.g. notifications). Time is the m:ss.cc moment in the video, Title the revision and Link opens it on the Revisions tab."
-  },
-  {
-    "id": "app.task.revision_comment",
-    "translation": ":speech_balloon: Comment on [{{.Title}}]({{.Link}}):\n{{.Message}}",
-    "description": "Message posted in a revision channel's chat, as the commenter, when someone comments on a revision. Title is the revision, Link opens it on the Revisions tab and Message is the comment text (plus attached file names)."
   },
   {
     "id": "app.task.revisions_disabled.app_error",

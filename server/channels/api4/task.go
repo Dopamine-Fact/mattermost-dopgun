@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -32,6 +33,7 @@ func (api *API) InitTasks() {
 	api.BaseRoutes.APIRoot.Handle("/task_sections/{section_id:[A-Za-z0-9]+}/videos", api.APISessionRequired(getTaskSectionVideos)).Methods(http.MethodGet)
 
 	api.BaseRoutes.APIRoot.Handle("/tasks/{task_id:[A-Za-z0-9]+}/comments", api.APISessionRequired(getTaskComments)).Methods(http.MethodGet)
+	api.BaseRoutes.APIRoot.Handle("/tasks/{task_id:[A-Za-z0-9]+}/posts", api.APISessionRequired(getTaskPosts)).Methods(http.MethodGet)
 	api.BaseRoutes.APIRoot.Handle("/tasks/{task_id:[A-Za-z0-9]+}/comments", api.APISessionRequired(createTaskComment, handlerParamFileAPI)).Methods(http.MethodPost)
 	api.BaseRoutes.APIRoot.Handle("/task_comments/{comment_id:[A-Za-z0-9]+}", api.APISessionRequired(deleteTaskComment)).Methods(http.MethodDelete)
 	api.BaseRoutes.APIRoot.Handle("/task_comments/{comment_id:[A-Za-z0-9]+}/files/{file_id:[A-Za-z0-9]+}", api.APISessionRequiredTrustRequester(getTaskCommentFile)).Methods(http.MethodGet)
@@ -461,6 +463,58 @@ func getTaskComments(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeTaskJSON(w, http.StatusOK, comments)
+}
+
+// getTaskPosts serves the task's messages, newest first: ?channel_id= narrows them to one channel, ?before= (a
+// CreateAt) pages back, ?per_page= sizes the page (default 60, at most 200).
+func getTaskPosts(c *Context, w http.ResponseWriter, r *http.Request) {
+	task := loadTask(c, r)
+	if c.Err != nil {
+		return
+	}
+	query := r.URL.Query()
+	var before int64
+	if raw := query.Get("before"); raw != "" {
+		parsed, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || parsed < 0 {
+			c.SetInvalidURLParam("before")
+			return
+		}
+		before = parsed
+	}
+	perPage := 60
+	if raw := query.Get("per_page"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed <= 0 {
+			c.SetInvalidURLParam("per_page")
+			return
+		}
+		perPage = min(parsed, 200)
+	}
+	list, appErr := c.App.GetTaskPosts(c.AppContext, task, c.AppContext.Session().UserId, query.Get("channel_id"), before, perPage)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	writeTaskJSON(w, http.StatusOK, list)
+}
+
+// canManageTaskPost: whoever may manage a task may delete the messages about it. The post must sit in the channel
+// the task's section is linked to, so a task_id tag in some other channel grants nothing.
+func canManageTaskPost(c *Context, post *model.Post) bool {
+	taskID, _ := post.GetProp("task_id").(string)
+	if taskID == "" {
+		return false
+	}
+	task, appErr := c.App.GetTask(taskID)
+	if appErr != nil || task.SectionId == "" {
+		return false
+	}
+	section, appErr := c.App.GetTaskSection(task.SectionId)
+	if appErr != nil || section.ChannelId != post.ChannelId {
+		return false
+	}
+	return c.App.SessionHasPermissionToTeam(*c.AppContext.Session(), task.TeamId, taskPermission(task))
 }
 
 // createTaskComment takes multipart form data: a "message" field and any number of "files" parts.

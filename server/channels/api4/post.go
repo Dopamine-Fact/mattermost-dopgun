@@ -858,6 +858,7 @@ func deletePost(c *Context, w http.ResponseWriter, _ *http.Request) {
 			c.SetPermissionError(model.PermissionDeletePost)
 			return
 		}
+	case canManageTaskPost(c, post):
 	default:
 		if ok, _ := c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), post.ChannelId, model.PermissionDeleteOthersPosts); !ok {
 			c.SetPermissionError(model.PermissionDeleteOthersPosts)
