@@ -119,6 +119,23 @@ describe('components/team_settings_modal', () => {
         expect(infoButton).toBeDefined();
     });
 
+    test('shows the departments tab to members who manage the team', async () => {
+        const state = {
+            ...baseState,
+            entities: {
+                ...baseState.entities,
+                roles: {roles: {team_user: {permissions: [Permissions.INVITE_USER, Permissions.MANAGE_TEAM]}}},
+            },
+        };
+        renderWithContext(<TeamSettingsModal {...baseProps}/>, state);
+        expect(screen.getByRole('tab', {name: 'departments'})).toBeInTheDocument();
+    });
+
+    test('hides the departments tab from a plain member', async () => {
+        renderWithContext(<TeamSettingsModal {...baseProps}/>, baseState);
+        expect(screen.queryByRole('tab', {name: 'departments'})).not.toBeInTheDocument();
+    });
+
     test('should warn on first close attempt with unsaved changes and stay open', async () => {
         renderWithContext(
             <TeamSettingsModal

@@ -36,10 +36,19 @@ function listen() {
         if (msg.event !== DEPARTMENTS_CHANGED) {
             return;
         }
-        const teamId = (msg.data as {team_id?: string} | undefined)?.team_id ?? '';
-        cached.delete(teamId);
-        subscribers.get(teamId)?.forEach((refresh) => refresh());
+        refreshTeamDepartments((msg.data as {team_id?: string} | undefined)?.team_id ?? '');
     });
+}
+
+/** Drops the team's cached departments and reloads every open view of them; resolves once reloaded. */
+export function refreshTeamDepartments(teamId: string): Promise<void> {
+    cached.delete(teamId);
+    const open = subscribers.get(teamId);
+    if (!teamId || !open?.size) {
+        return Promise.resolve();
+    }
+    open.forEach((refresh) => refresh());
+    return load(teamId).then(() => undefined, () => undefined);
 }
 
 /** The team's departments, Stüdyo geneli first, each with its ranks top first; empty until loaded. */

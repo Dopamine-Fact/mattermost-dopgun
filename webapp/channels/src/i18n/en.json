@@ -25247,6 +25247,10 @@
     "defaultMessage": "Collapse Icon",
     "description": "Screen reader label for a collapse (chevron) icon, e.g. collapsing a theme section or the mobile settings header back arrow."
   },
+  "generic_icons.departments": {
+    "defaultMessage": "Departments Icon",
+    "description": "Alt text of the icon beside the Departments tab in Team Settings."
+  },
   "generic_icons.dropdown": {
     "defaultMessage": "Dropdown Icon",
     "description": "Accessibility title for the caret icon indicating a dropdown menu."
@@ -33339,6 +33343,98 @@
     "defaultMessage": "Team Members",
     "description": "Role label in the team groups modal for groups whose users have the regular member role."
   },
+  "team_settings.departments.add_department": {
+    "defaultMessage": "Department",
+    "description": "Button text in the Team Settings › Departments tab that adds a new department; shown after a plus icon."
+  },
+  "team_settings.departments.add_rank": {
+    "defaultMessage": "Rank",
+    "description": "Button text under a department card in the Team Settings › Departments tab that adds a rank; shown after a plus icon."
+  },
+  "team_settings.departments.add_rank_to": {
+    "defaultMessage": "Add rank to {name}",
+    "description": "Accessible label of the add rank button in the Team Settings › Departments tab; {name} is the department name."
+  },
+  "team_settings.departments.delete_confirm": {
+    "defaultMessage": "Delete",
+    "description": "Confirm button of the dialog that deletes a department or rank in the Team Settings › Departments tab."
+  },
+  "team_settings.departments.delete_department": {
+    "defaultMessage": "Delete {name}",
+    "description": "Accessible label of the trash button on a department card in the Team Settings › Departments tab; {name} is the department name."
+  },
+  "team_settings.departments.delete_department_body": {
+    "defaultMessage": "Its ranks are deleted too, and their members lose them.",
+    "description": "Body of the dialog confirming a department deletion in the Team Settings › Departments tab."
+  },
+  "team_settings.departments.delete_rank": {
+    "defaultMessage": "Delete {name}",
+    "description": "Accessible label of the trash button on a rank row in the Team Settings › Departments tab; {name} is the rank name."
+  },
+  "team_settings.departments.delete_rank_body": {
+    "defaultMessage": "Members holding this rank lose it.",
+    "description": "Body of the dialog confirming a rank deletion in the Team Settings › Departments tab."
+  },
+  "team_settings.departments.delete_title": {
+    "defaultMessage": "Delete {name}?",
+    "description": "Title of the confirmation dialog for deleting a department or rank in the Team Settings › Departments tab; {name} is its name."
+  },
+  "team_settings.departments.department_color": {
+    "defaultMessage": "Color of {name}",
+    "description": "Accessible label of the color picker behind a department's color dot in the Team Settings › Departments tab; {name} is the department name."
+  },
+  "team_settings.departments.department_name": {
+    "defaultMessage": "Department name",
+    "description": "Accessible label of the inline field that renames a department in the Team Settings › Departments tab."
+  },
+  "team_settings.departments.drag_department": {
+    "defaultMessage": "Drag {name} to reorder",
+    "description": "Accessible label of the drag handle that reorders departments in the Team Settings › Departments tab; {name} is the department name."
+  },
+  "team_settings.departments.drag_rank": {
+    "defaultMessage": "Drag {name} to change its rank",
+    "description": "Accessible label of the drag handle that moves a rank up or down inside its department in the Team Settings › Departments tab; {name} is the rank name."
+  },
+  "team_settings.departments.intro": {
+    "defaultMessage": "Ranks higher in a department outrank the ones below them. Stüdyo geneli ranks outrank every department. A tick saves at once.",
+    "description": "Explanation at the top of the Team Settings › Departments tab; \"Stüdyo geneli\" is the name of the studio-wide department and stays as is."
+  },
+  "team_settings.departments.members": {
+    "defaultMessage": "{count, plural, one {# member} other {# members}}",
+    "description": "Number of team members holding a rank, shown on its row in the Team Settings › Departments tab."
+  },
+  "team_settings.departments.new_department": {
+    "defaultMessage": "New department",
+    "description": "Name given to a department just created from the Team Settings › Departments tab; the admin renames it inline."
+  },
+  "team_settings.departments.new_rank": {
+    "defaultMessage": "New rank",
+    "description": "Name given to a rank just created from the Team Settings › Departments tab; the admin renames it inline."
+  },
+  "team_settings.departments.permission.assign_custom_roles": {
+    "defaultMessage": "Give ranks",
+    "description": "Column header and checkbox label in the Team Settings › Departments tab: the rank may give and take away the ranks below it."
+  },
+  "team_settings.departments.permission.manage_daily_reports": {
+    "defaultMessage": "Daily reports",
+    "description": "Column header and checkbox label in the Team Settings › Departments tab: the rank may review the daily reports of the members it outranks."
+  },
+  "team_settings.departments.permission.manage_revisions": {
+    "defaultMessage": "Revisions",
+    "description": "Column header and checkbox label in the Team Settings › Departments tab: the rank may give revision tasks to the members it outranks."
+  },
+  "team_settings.departments.permission.manage_tasks": {
+    "defaultMessage": "Tasks",
+    "description": "Column header and checkbox label in the Team Settings › Departments tab: the rank may assign and manage tasks for the members it outranks."
+  },
+  "team_settings.departments.rank_color": {
+    "defaultMessage": "Color of {name}",
+    "description": "Accessible label of the color picker behind a rank's color dot in the Team Settings › Departments tab; {name} is the rank name."
+  },
+  "team_settings.departments.rank_name": {
+    "defaultMessage": "Rank name",
+    "description": "Accessible label of the inline field that renames a rank in the Team Settings › Departments tab."
+  },
   "team_settings_modal.accessPoliciesTab": {
     "defaultMessage": "Channel Membership",
     "description": "Sidebar tab name in the team settings dialog for channel membership policies; compact space."
@@ -33346,6 +33442,10 @@
   "team_settings_modal.accessTab": {
     "defaultMessage": "Access",
     "description": "Sidebar tab name in the team settings dialog for access/invitation settings; compact space, noun."
+  },
+  "team_settings_modal.departmentsTab": {
+    "defaultMessage": "Departments",
+    "description": "Name of the Team Settings tab where team admins manage departments, ranks and rank permissions."
   },
   "team_settings_modal.infoTab": {
     "defaultMessage": "Info",

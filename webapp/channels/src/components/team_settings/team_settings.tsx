@@ -7,6 +7,7 @@ import type {Team} from '@mattermost/types/teams';
 
 import AccessPoliciesTab from './team_access_policies_tab';
 import AccessTab from './team_access_tab';
+import DepartmentsTab from './team_departments_tab';
 import InfoTab from './team_info_tab';
 import TeamMembershipTab from './team_membership_tab';
 
@@ -76,6 +77,9 @@ const TeamSettings = ({
                 setShowTabSwitchError={setShowTabSwitchError}
             />
         );
+        break;
+    case 'departments':
+        result = <DepartmentsTab team={team}/>;
         break;
     default:
         result = (

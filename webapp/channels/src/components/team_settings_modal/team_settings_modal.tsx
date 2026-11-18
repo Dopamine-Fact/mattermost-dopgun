@@ -53,6 +53,9 @@ const TeamSettingsModal = ({isOpen, onExited, focusOriginElement}: Props) => {
         haveITeamPermission(state, teamId, Permissions.MANAGE_TEAM_ACCESS_RULES),
     );
     const canManageTeamAccessRules = isSystemAdmin || hasTeamAccessRulesPermission;
+    const canManageTeam = useSelector((state: GlobalState) =>
+        haveITeamPermission(state, teamId, Permissions.MANAGE_TEAM),
+    );
 
     useEffect(() => {
         setShow(isOpen);
@@ -133,6 +136,13 @@ const TeamSettingsModal = ({isOpen, onExited, focusOriginElement}: Props) => {
             icon: 'icon icon-message-check-outline',
             iconTitle: formatMessage({id: 'generic_icons.access_rules', defaultMessage: 'Membership Policy Icon'}),
             display: abacEnabled && canManageTeamAccessRules,
+        },
+        {
+            name: 'departments',
+            uiName: formatMessage({id: 'team_settings_modal.departmentsTab', defaultMessage: 'Departments'}),
+            icon: 'icon icon-sitemap',
+            iconTitle: formatMessage({id: 'generic_icons.departments', defaultMessage: 'Departments Icon'}),
+            display: canManageTeam || isSystemAdmin,
         },
     ];
 
