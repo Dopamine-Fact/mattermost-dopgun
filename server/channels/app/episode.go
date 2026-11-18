@@ -70,6 +70,11 @@ func (a *App) seedEpisodeFolders(rctx request.CTX, userID string, team *model.Te
 				return "", false
 			}
 			id, ok := ids[key]
+			if ok && i == len(names)-1 && rules.HasRules() {
+				// Never leave a restricted folder rule-less: report it instead of reusing the existing one.
+				rctx.Logger().Error("Episode folder already exists, its rules were not applied", mlog.String("path", path))
+				return "", false
+			}
 			if !ok {
 				r := model.DriveRules{}
 				if i == len(names)-1 {

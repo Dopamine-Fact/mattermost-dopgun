@@ -140,3 +140,14 @@ func TestCreateEpisodeFailedMirrorSourceSkipsMirror(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, items, 1) // Src only
 }
+
+// A second entry for an existing path must not pass as success while its rules are dropped.
+func TestCreateEpisodeDuplicatePathWithRulesFails(t *testing.T) {
+	th := setupEpisode(t, "", "")
+	team := *th.BasicTeam
+	team.EpisodeFolders = fmt.Sprintf(`[{"path":"A"},{"path":"A","view_departments":["%s"]}]`, model.NewId())
+	ch := th.CreateChannel(t, th.BasicTeam)
+	failed := th.App.seedEpisodeFolders(th.Context, th.BasicUser.Id, &team, ch)
+	require.Equal(t, []string{"A"}, failed)
+	require.False(t, episodeChild(t, th, ch.Id, "", "A").DriveRules.HasRules())
+}
