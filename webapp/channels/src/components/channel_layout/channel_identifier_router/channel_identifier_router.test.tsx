@@ -15,8 +15,9 @@ jest.mock('components/channel_view/index', () => ({
 }));
 
 const mockReplace = jest.fn();
+const mockLocation = {search: ''};
 jest.mock('utils/browser_history', () => ({
-    getHistory: () => ({replace: mockReplace}),
+    getHistory: () => ({replace: mockReplace, location: mockLocation}),
 }));
 
 jest.useFakeTimers({legacyFakeTimers: true});
@@ -41,6 +42,7 @@ describe('components/channel_layout/ChannelIdentifierRouter', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        mockLocation.search = '';
     });
 
     test('should call onChannelByIdentifierEnter on props change', () => {
@@ -86,6 +88,22 @@ describe('components/channel_layout/ChannelIdentifierRouter', () => {
         render(<ChannelIdentifierRouter {...props}/>);
         jest.runOnlyPendingTimers();
         expect(getHistory().replace).toHaveBeenLastCalledWith('/team/channel/identifier');
+    });
+
+    test('the permalink cleanup keeps a query added since, like an open Files folder', () => {
+        const props = {
+            ...baseProps,
+            match: {
+                ...baseProps.match,
+                params: {...baseProps.match.params, postid: 'abcd'},
+                path: '/team/channel/identifier/abcd',
+                url: '/team/channel/identifier/abcd',
+            },
+        };
+        render(<ChannelIdentifierRouter {...props}/>);
+        mockLocation.search = '?folder=f1';
+        jest.runOnlyPendingTimers();
+        expect(getHistory().replace).toHaveBeenLastCalledWith('/team/channel/identifier?folder=f1');
     });
 
     test('should call browserHistory.replace on props change to permalink', () => {

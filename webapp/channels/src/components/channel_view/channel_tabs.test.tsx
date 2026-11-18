@@ -35,9 +35,20 @@ jest.mock('components/canvas/canvas_board', () => ({
     ),
 }));
 
+jest.mock('actions/file_actions', () => ({
+    ...jest.requireActual('actions/file_actions'),
+    uploadFile: jest.fn(() => () => ({abort: jest.fn()})),
+}));
+
+const mockExplorerRenders: string[] = [];
+let mockExplorerUploads: {enqueue: (files: Array<{file: File; relPath: string}>, channelId: string, folderId: string) => Promise<void>} | undefined;
 jest.mock('components/file_explorer/file_explorer', () => ({
     __esModule: true,
-    FileExplorerView: ({channelName, folderId}: {channelName: string; folderId: string}) => <div>{`files ${channelName} [${folderId}]`}</div>,
+    FileExplorerView: ({channelName, folderId, hostUploads}: {channelName: string; folderId: string; hostUploads?: typeof mockExplorerUploads}) => {
+        mockExplorerRenders.push(`${channelName} [${folderId}]`);
+        mockExplorerUploads = hostUploads;
+        return <div>{`files ${channelName} [${folderId}]`}</div>;
+    },
 }));
 
 const canvas = {id: 'cv1', channel_id: 'chan1', team_id: 'team1', creator_id: 'me', last_seq: 0, snapshot_seq: 0, create_at: 1, update_at: 1};
@@ -72,8 +83,9 @@ type Options = {
     permissions?: string[];
     deleteAt?: number;
     filesEnabled?: boolean;
+    history?: ReturnType<typeof createMemoryHistory>;
 };
-const renderTabs = (channelId: string, {canvasEnabled = true, revisionsEnabled = true, url = '/team-one/channels/trailer', permissions = ['create_post', 'manage_tasks', 'manage_revisions'], deleteAt = 0, filesEnabled = false}: Options = {}) => renderWithContext(
+const renderTabs = (channelId: string, {canvasEnabled = true, revisionsEnabled = true, url = '/team-one/channels/trailer', permissions = ['create_post', 'manage_tasks', 'manage_revisions'], deleteAt = 0, filesEnabled = false, history = createMemoryHistory({initialEntries: [url]})}: Options = {}) => renderWithContext(
     <ChannelTabs
         channelId={channelId}
         composer={<div>{'composer'}</div>}
@@ -97,7 +109,7 @@ const renderTabs = (channelId: string, {canvasEnabled = true, revisionsEnabled =
             tasks: {byId: tasks, sectionsById: {sec1: section}},
         },
     },
-    {history: createMemoryHistory({initialEntries: [url]})},
+    {history},
 );
 const tabNames = () => screen.getAllByRole('tab').map((t) => t.textContent);
 
@@ -291,7 +303,83 @@ describe('ChannelTabs', () => {
         push.mockClear();
         fireEvent.click(screen.getByRole('tab', {name: 'Messages'}));
         expect(screen.getByText('chat')).toBeInTheDocument();
-        expect(push).toHaveBeenCalledWith('/team-one/channels/trailer');
+        expect(push).toHaveBeenCalledWith('/team-one/channels/trailer', {channelTab: 'messages'});
+    });
+
+    test('leaving the Files tab for Tasks lands on Tasks once the address drops ?folder=', async () => {
+        const push = (global as unknown as {historyMock: {push: jest.Mock}}).historyMock.push;
+        const history = createMemoryHistory({initialEntries: ['/team-one/channels/trailer?folder=f1']});
+        renderTabs('chan1', {filesEnabled: true, history});
+        await screen.findByText('files trailer [f1]');
+        push.mockClear();
+
+        fireEvent.click(screen.getByRole('tab', {name: 'Tasks'}));
+        act(() => history.push(...(push.mock.lastCall as [string, unknown])));
+
+        expect(screen.getByRole('tab', {name: 'Tasks'})).toHaveAttribute('aria-selected', 'true');
+    });
+
+    test('switching channels while on Files never shows the next channel files', async () => {
+        const history = createMemoryHistory({initialEntries: ['/team-one/channels/trailer?folder=f1']});
+        const sectionTwo = {...section, id: 'sec2', channel_id: 'chan2'};
+        const tabs = (channelId: string) => (
+            <ChannelTabs
+                channelId={channelId}
+                composer={<div>{'composer'}</div>}
+            >
+                <div>{'chat'}</div>
+            </ChannelTabs>
+        );
+        const {rerender} = renderWithContext(
+            tabs('chan1'),
+            {
+                entities: {
+                    users: {currentUserId: 'me', profiles: {me: TestHelper.getUserMock({id: 'me', roles: 'system_user'})}},
+                    teams: {
+                        currentTeamId: 'team1',
+                        teams: {team1: TestHelper.getTeamMock({id: 'team1', name: 'team-one', tasks_enabled: true, revisions_enabled: true, files_enabled: true})},
+                        myMembers: {team1: TestHelper.getTeamMembershipMock({team_id: 'team1', user_id: 'me', roles: 'team_user'})},
+                    },
+                    channels: {
+                        channels: {
+                            chan1: TestHelper.getChannelMock({id: 'chan1', name: 'trailer', team_id: 'team1'}),
+                            chan2: TestHelper.getChannelMock({id: 'chan2', name: 'teaser', team_id: 'team1'}),
+                        },
+                        channelsInTeam: {team1: new Set(['chan1', 'chan2'])},
+                        myMembers: {
+                            chan1: TestHelper.getChannelMembershipMock({channel_id: 'chan1', user_id: 'me', roles: ''}),
+                            chan2: TestHelper.getChannelMembershipMock({channel_id: 'chan2', user_id: 'me', roles: ''}),
+                        },
+                    },
+                    roles: {roles: {team_user: TestHelper.getRoleMock({name: 'team_user', permissions: ['create_post']})}},
+                    tasks: {byId: tasks, sectionsById: {sec1: section, sec2: sectionTwo}},
+                },
+            },
+            {history},
+        );
+        await screen.findByText('files trailer [f1]');
+        mockExplorerRenders.length = 0;
+
+        act(() => {
+            history.push('/team-one/channels/teaser');
+            rerender(tabs('chan2'));
+        });
+
+        expect(screen.getByRole('tab', {name: 'Messages'})).toHaveAttribute('aria-selected', 'true');
+        expect(mockExplorerRenders).toEqual([]);
+    });
+
+    test('an upload keeps its progress panel after leaving the Files tab', async () => {
+        renderTabs('chan1', {filesEnabled: true, url: '/team-one/channels/trailer?folder='});
+        await screen.findByText('files trailer []');
+
+        act(() => {
+            mockExplorerUploads!.enqueue([{file: new File(['x'], 'clip.mov'), relPath: 'clip.mov'}], 'chan1', '');
+        });
+        fireEvent.click(screen.getByRole('tab', {name: 'Messages'}));
+
+        expect(screen.getByText('chat')).toBeInTheDocument();
+        expect(screen.getByRole('region', {name: 'Uploads'})).toHaveTextContent('clip.mov');
     });
 
     test('?folder= falls back to Messages when files are off', () => {

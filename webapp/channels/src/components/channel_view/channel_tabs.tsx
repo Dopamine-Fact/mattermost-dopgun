@@ -22,7 +22,9 @@ import {displayUsername} from 'mattermost-redux/utils/user_utils';
 
 import {fetchTeamTasks} from 'actions/tasks';
 
+import ExplorerUploadPanel from 'components/file_explorer/explorer_upload_panel';
 import {useExplorerChannels} from 'components/file_explorer/use_explorer_data';
+import {useExplorerUploads} from 'components/file_explorer/use_explorer_uploads';
 import List from 'components/tasks/list';
 import Revisions from 'components/tasks/revisions';
 import TaskDetail from 'components/tasks/task_detail';
@@ -67,6 +69,9 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
     // Only a channel the explorer lists (a member's open or private, unarchived channel); for any other it would show the team's channels.
     const explorerChannels = useExplorerChannels();
     const filesEnabled = Boolean(team?.files_enabled) && explorerChannels.some((c) => c.id === channelId);
+
+    // Kept here, not in the explorer, so an upload's progress and cancel stay on screen after leaving the Files tab.
+    const uploads = useExplorerUploads();
 
     const getTasks = useMemo(() => makeGetTasksForTeam(), []);
     const getSections = useMemo(() => makeGetTaskSectionsForTeam(), []);
@@ -137,16 +142,23 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
     const linkedCanvas = params.get('canvas') === '1';
     const linkedFolder = filesEnabled && params.has('folder');
     const folderId = params.get('folder') ?? '';
-    const linkedTab: Tab = (linkedRevision && 'revisions') || (linkedTask && 'tasks') || (linkedCanvas && 'canvas') || (linkedFolder && 'files') || 'messages';
+
+    // A tab switch that edits the address (entering or leaving Files) names its tab in the history state.
+    const switchedTab = (location.state as {channelTab?: Tab} | undefined)?.channelTab;
+    const linkedTab: Tab = (linkedRevision && 'revisions') || (linkedTask && 'tasks') || (linkedCanvas && 'canvas') || (linkedFolder && 'files') || switchedTab || 'messages';
     const linkedId = linkedRevision || linkedTask;
     const [tab, setTab] = useState<Tab>(linkedTab);
     const [selectedId, setSelectedId] = useState(linkedId);
 
+    // Reset during render, not in an effect, so a new channel never commits with the old channel's tab.
     // location.key: following the same link again re-opens it after the user moved away.
-    useEffect(() => {
+    const linkKey = [channelId, linkedTab, linkedId, location.key].join(' ');
+    const [shownLinkKey, setShownLinkKey] = useState(linkKey);
+    if (shownLinkKey !== linkKey) {
+        setShownLinkKey(linkKey);
         setTab(linkedTab);
         setSelectedId(linkedId);
-    }, [channelId, linkedTab, linkedId, location.key]);
+    }
     useEffect(() => setFilterTaskId(''), [channelId]);
 
     useEffect(() => {
@@ -183,7 +195,7 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
         if (id === 'files' && !linkedFolder) {
             history.push(folderUrl(channelName));
         } else if (id !== 'files' && linkedFolder) {
-            history.push(location.pathname);
+            history.push(location.pathname, {channelTab: id});
         }
     };
     const tabButton = (id: Tab, label: React.ReactNode) => (
@@ -300,6 +312,7 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
                         folderId={folderId}
                         urlFor={folderUrl}
                         embedded={true}
+                        hostUploads={uploads}
                     />
                 </Suspense>
             </div>
@@ -362,6 +375,11 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
                 )}
             </div>
             {panel}
+            <ExplorerUploadPanel
+                uploads={uploads.uploads}
+                onCancel={uploads.cancel}
+                onClose={uploads.clearFinished}
+            />
         </>
     );
 };

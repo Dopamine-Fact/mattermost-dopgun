@@ -229,6 +229,28 @@ describe('FileExplorer', () => {
             expect(push).toHaveBeenCalledWith('/team/channels/town?folder=trash');
         });
 
+        test('Alt+Up in a subfolder goes up without reaching the sidebar channel shortcut', async () => {
+            jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [], path: [folder('d1', 'Docs')]});
+            const push = (global as unknown as {historyMock: {push: jest.Mock}}).historyMock.push;
+            push.mockClear();
+            const documentKeyDown = jest.fn();
+            document.addEventListener('keydown', documentKeyDown);
+            renderEmbedded('/team/channels/town?folder=d1');
+            await screen.findByText('Docs', {selector: '[aria-current=location]'});
+
+            fireEvent.keyDown(screen.getByRole('main'), {key: 'ArrowUp', altKey: true});
+
+            document.removeEventListener('keydown', documentKeyDown);
+            expect(push).toHaveBeenCalledWith('/team/channels/town?folder=');
+            expect(documentKeyDown).not.toHaveBeenCalled();
+        });
+
+        test('embedded, the explorer is not a page content area, whose mobile padding would add a gap under the tab bar', async () => {
+            renderEmbedded();
+            await screen.findByRole('gridcell', {name: 'Docs'});
+            expect(screen.getByRole('main').closest('.FileExplorer')).not.toHaveClass('app__content');
+        });
+
         test('embedded, the sidebar keeps its current item', async () => {
             (selectLhsItem as jest.Mock).mockClear();
             renderEmbedded();

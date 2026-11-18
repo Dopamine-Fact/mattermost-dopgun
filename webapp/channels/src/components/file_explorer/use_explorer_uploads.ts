@@ -110,3 +110,5 @@ export function useExplorerUploads(onComplete?: () => void) {
 
     return {uploads, enqueue, cancel, clearFinished};
 }
+
+export type ExplorerUploads = ReturnType<typeof useExplorerUploads>;

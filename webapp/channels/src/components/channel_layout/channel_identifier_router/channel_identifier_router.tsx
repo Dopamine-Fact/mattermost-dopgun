@@ -59,7 +59,9 @@ export default class ChannelIdentifierRouter extends React.PureComponent<Props> 
         if (this.props.match.params.postid) {
             this.replaceUrlTimeout = setTimeout(() => {
                 const channelUrl = this.props.match.url.split('/').slice(0, -1).join('/');
-                getHistory().replace(channelUrl);
+
+                // Keep a query added since, like the Files tab's open folder.
+                getHistory().replace(channelUrl + getHistory().location.search);
             }, Constants.PERMALINK_FADEOUT);
         }
     };

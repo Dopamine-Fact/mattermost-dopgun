@@ -52,7 +52,7 @@ import {endDrag, handleDrag, startDrag} from './use_explorer_dnd';
 import type {DropResult, DropTarget} from './use_explorer_dnd';
 import {useExplorerSelection, useRubberBand} from './use_explorer_selection';
 import {useExplorerUploads} from './use_explorer_uploads';
-import type {UploadRequest} from './use_explorer_uploads';
+import type {ExplorerUploads, UploadRequest} from './use_explorer_uploads';
 
 import './file_explorer.scss';
 
@@ -105,9 +105,12 @@ type ViewProps = {
 
     // An embedded explorer shows one channel: no channel tree, and its address bar starts at the channel.
     embedded?: boolean;
+
+    // Uploads the host keeps and shows, so they stay visible after the explorer unmounts (a channel's tab switch).
+    hostUploads?: ExplorerUploads;
 };
 
-export const FileExplorerView = ({channelName, folderId, urlFor, embedded = false}: ViewProps) => {
+export const FileExplorerView = ({channelName, folderId, urlFor, embedded = false, hostUploads}: ViewProps) => {
     const intl = useIntl();
     const dispatch = useDispatch();
     const history = useHistory();
@@ -133,7 +136,10 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
     const inDrive = Boolean(channel) && !inChat && !inTrash;
     const chatSort = useMemo(() => ({by: CHAT_SORTS[sort.by] ?? 'create_at', desc: sort.desc}), [sort]);
     const data = useExplorerData(channel?.id, folderId, chatSort);
-    const uploads = useExplorerUploads(data.reload);
+    const ownUploads = useExplorerUploads(data.reload);
+
+    // Host uploads need no reload when done: adding a drive file sends drive_changed, which reloads the open folder.
+    const uploads = hostUploads ?? ownUploads;
 
     // Opening a folder unmounts the focused item; keep keyboard users inside the list, like Explorer.
     const mainRef = useRef<HTMLElement>(null);
@@ -444,6 +450,9 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
         const shortcut = shortcuts[key];
         if (shortcut) {
             e.preventDefault();
+
+            // Keeps document shortcuts like the sidebar's Alt+Up channel switch from firing too.
+            e.stopPropagation();
             if (shortcut[0]) {
                 shortcut[1]();
             }
@@ -646,7 +655,7 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
 
     return (
         <div
-            className='FileExplorer app__content'
+            className={classNames('FileExplorer', {app__content: !embedded})}
             onKeyDown={onKeyDown}
         >
             <ExplorerToolbar
@@ -717,11 +726,13 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
                     style={rubberBand.box}
                 />
             )}
-            <ExplorerUploadPanel
-                uploads={uploads.uploads}
-                onCancel={uploads.cancel}
-                onClose={uploads.clearFinished}
-            />
+            {!hostUploads && (
+                <ExplorerUploadPanel
+                    uploads={uploads.uploads}
+                    onCancel={uploads.cancel}
+                    onClose={uploads.clearFinished}
+                />
+            )}
             <input
                 ref={fileInput}
                 type='file'
