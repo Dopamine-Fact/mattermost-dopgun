@@ -32575,6 +32575,10 @@
     "defaultMessage": "Create new category",
     "description": "Menu item in the sidebar's + menu that opens the create sidebar category dialog."
   },
+  "sidebarLeft.browserOrCreateChannelMenu.createEpisodeChannelMenuItem.primaryLabel": {
+    "defaultMessage": "Create episode channel",
+    "description": "Item in the sidebar's browse or create channels menu that opens the dialog creating an episode channel: a revision channel with a canvas, seeded with the team's folder and task templates."
+  },
   "sidebarLeft.browserOrCreateChannelMenu.createNewChannelMenuItem.primaryLabel": {
     "defaultMessage": "Create new channel",
     "description": "Menu item in the sidebar's + menu that opens the create channel dialog."
@@ -33118,6 +33122,18 @@
   "tasks.detail.unassigned": {
     "defaultMessage": "Unassigned",
     "description": ""
+  },
+  "tasks.episodeChannelModal.failed": {
+    "defaultMessage": "The channel was created, but these could not be added:",
+    "description": "Shown in the episode channel dialog after the channel was made, above a list of template folders and tasks that failed to be created."
+  },
+  "tasks.episodeChannelModal.open": {
+    "defaultMessage": "Open channel",
+    "description": "Button in the episode channel dialog, after a partly failed setup, that closes the warning and opens the new channel."
+  },
+  "tasks.episodeChannelModal.title": {
+    "defaultMessage": "Create episode channel",
+    "description": "Title of the dialog that creates an episode channel (a channel with a video for revisions, a task list, a canvas and starter folders)."
   },
   "tasks.list.name": {
     "defaultMessage": "Task name",

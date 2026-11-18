@@ -419,6 +419,7 @@ export const ModalIdentifiers = {
     MORE_CHANNELS: 'more_channels',
     NEW_CHANNEL_MODAL: 'new_channel_modal',
     REVISION_CHANNEL_MODAL: 'revision_channel_modal',
+    EPISODE_CHANNEL_MODAL: 'episode_channel_modal',
     CUSTOM_ROLES_EDIT: 'custom_roles_edit',
     CANVAS_CHANNEL_MODAL: 'canvas_channel_modal',
     DND_CUSTOM_TIME_PICKER: 'dnd_custom_time_picker',

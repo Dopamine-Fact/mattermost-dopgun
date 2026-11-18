@@ -95,6 +95,37 @@ describe('SidebarBrowseOrAddChannelMenu', () => {
         expect(await open(state(true, []))).toBe(false);
     });
 
+    test('the episode menu item needs all four toggles and both permissions', async () => {
+        const all = {tasks_enabled: true, revisions_enabled: true, canvas_enabled: true, files_enabled: true};
+        const state = (toggles: Partial<typeof all>, permissions: string[]) => ({
+            entities: {
+                users: {currentUserId: 'me', profiles: {me: TestHelper.getUserMock({id: 'me', roles: 'system_user'})}},
+                teams: {
+                    currentTeamId: 'team_id',
+                    teams: {team_id: TestHelper.getTeamMock({id: 'team_id', ...all, ...toggles})},
+                    myMembers: {team_id: TestHelper.getTeamMembershipMock({team_id: 'team_id', user_id: 'me', roles: 'team_user'})},
+                },
+                roles: {roles: {team_user: TestHelper.getRoleMock({name: 'team_user', permissions})}},
+            },
+        });
+        const open = async (s: ReturnType<typeof state>) => {
+            const {unmount} = renderWithContext(<SidebarBrowseOrAddChannelMenu {...props}/>, s);
+            await userEvent.click(screen.getByRole('button', {name: 'Browse or create channels'}));
+            const shown = Boolean(screen.queryByRole('menuitem', {name: 'Create episode channel'}));
+            unmount();
+            return shown;
+        };
+        const both = ['manage_revisions', 'manage_tasks'];
+
+        expect(await open(state({}, both))).toBe(true);
+        for (const off of Object.keys(all)) {
+            // eslint-disable-next-line no-await-in-loop
+            expect(await open(state({[off]: false}, both))).toBe(false);
+        }
+        expect(await open(state({}, ['manage_revisions']))).toBe(false);
+        expect(await open(state({}, ['manage_tasks']))).toBe(false);
+    });
+
     test('lists a plugin item after the built-in items by default', async () => {
         const ids = await menuItemIds([{id: 'default_item', text: 'Default item'}]);
 

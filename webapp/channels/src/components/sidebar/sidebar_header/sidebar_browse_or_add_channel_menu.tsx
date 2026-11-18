@@ -14,6 +14,7 @@ import {
     AccountOutlineIcon,
     PlayBoxMultipleOutlineIcon,
     PencilOutlineIcon,
+    PlaylistCheckIcon,
 } from '@mattermost/compass-icons/components';
 import {Icon} from '@mattermost/compass-ui/components/icon';
 
@@ -26,6 +27,7 @@ import {getSidebarBrowseOrAddChannelMenuPluginComponents} from 'selectors/plugin
 
 import CanvasChannelModal from 'components/canvas/canvas_channel_modal';
 import * as Menu from 'components/menu';
+import EpisodeChannelModal from 'components/tasks/episode_channel_modal';
 import RevisionChannelModal from 'components/tasks/revision_channel_modal';
 import {OnboardingTourSteps} from 'components/tours';
 import {useShowOnboardingTutorialStep, CreateAndJoinChannelsTour, InvitePeopleTour} from 'components/tours/onboarding_tour';
@@ -65,6 +67,7 @@ export default function SidebarBrowserOrAddChannelMenu(props: Props) {
     const dispatch = useDispatch();
     const team = useSelector(getCurrentTeam);
     const canManageRevisions = useSelector((state: GlobalState) => haveICurrentTeamPermission(state, Permissions.MANAGE_REVISIONS));
+    const canManageTasks = useSelector((state: GlobalState) => haveICurrentTeamPermission(state, Permissions.MANAGE_TASKS));
 
     const canCreatePublicChannel = useSelector((state: GlobalState) => haveICurrentTeamPermission(state, Permissions.CREATE_PUBLIC_CHANNEL));
 
@@ -101,6 +104,25 @@ export default function SidebarBrowserOrAddChannelMenu(props: Props) {
                     <FormattedMessage
                         id='sidebarLeft.browserOrCreateChannelMenu.createRevisionChannelMenuItem.primaryLabel'
                         defaultMessage='Create revision channel'
+                    />
+                )}
+                aria-haspopup='true'
+            />
+        );
+    }
+
+    // An episode is a revision channel with a canvas, seeded with drive folders and tasks, so it needs every one of those on.
+    let createEpisodeChannelMenuItem: JSX.Element | null = null;
+    if (team?.tasks_enabled && team.revisions_enabled && team.canvas_enabled && team.files_enabled && canManageRevisions && canManageTasks) {
+        createEpisodeChannelMenuItem = (
+            <Menu.Item
+                id='createEpisodeChannelMenuItem'
+                onClick={() => dispatch(openModal({modalId: ModalIdentifiers.EPISODE_CHANNEL_MODAL, dialogType: EpisodeChannelModal}))}
+                leadingElement={<PlaylistCheckIcon size={18}/>}
+                labels={(
+                    <FormattedMessage
+                        id='sidebarLeft.browserOrCreateChannelMenu.createEpisodeChannelMenuItem.primaryLabel'
+                        defaultMessage='Create episode channel'
                     />
                 )}
                 aria-haspopup='true'
@@ -262,6 +284,7 @@ export default function SidebarBrowserOrAddChannelMenu(props: Props) {
         >
             {createNewChannelMenuItem}
             {createRevisionChannelMenuItem}
+            {createEpisodeChannelMenuItem}
             {createCanvasChannelMenuItem}
             {afterCreateChannelMenuItems}
             {browseChannelsMenuItem}

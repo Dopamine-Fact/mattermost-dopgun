@@ -15,6 +15,8 @@ import {generateId} from 'mattermost-redux/utils/helpers';
 
 import {getConnectionId} from 'selectors/general';
 
+import {templateLines} from 'components/tasks/task_utils';
+
 import {cleanUpUrlable} from 'utils/url';
 
 import type {ActionFuncAsync} from 'types/store';
@@ -83,8 +85,9 @@ export function deleteTaskSection(sectionId: string) {
     return run((connectionId) => Client4.deleteTaskSection(sectionId, connectionId), () => ({type: TaskTypes.TASK_SECTION_DELETED, data: {id: sectionId}}));
 }
 
-// createRevisionChannel makes a public channel whose revision list holds the video; if a step fails, the channel and list are removed again.
-export function createRevisionChannel(teamId: string, displayName: string, video: File): ActionFuncAsync<Channel> {
+// createLinkedChannel makes a public channel whose revision list holds the video, then runs extra (the episode's canvas);
+// if a step fails, the channel and list are removed again.
+function createLinkedChannel(teamId: string, displayName: string, video: File, extra?: (channel: Channel) => ActionFuncAsync<unknown>): ActionFuncAsync<{channel: Channel; sectionId: string}> {
     return async (dispatch, getState) => {
         const channel = {team_id: teamId, name: cleanUpUrlable(displayName) || generateId(), display_name: displayName, type: General.OPEN_CHANNEL} as Channel;
         const created = await dispatch(createChannel(channel, getCurrentUserId(getState())));
@@ -96,6 +99,9 @@ export function createRevisionChannel(teamId: string, displayName: string, video
         let error = section.error;
         if (section.data) {
             error = (await dispatch(setTaskSectionVideo(section.data.id, video))).error;
+            if (!error && extra) {
+                error = (await dispatch(extra(created.data))).error;
+            }
             if (error) {
                 await dispatch(deleteTaskSection(section.data.id));
             }
@@ -105,6 +111,59 @@ export function createRevisionChannel(teamId: string, displayName: string, video
             await dispatch(deleteChannel(created.data.id));
             return {error};
         }
-        return {data: created.data};
+        return {data: {channel: created.data, sectionId: section.data!.id}};
+    };
+}
+
+export function createRevisionChannel(teamId: string, displayName: string, video: File): ActionFuncAsync<Channel> {
+    return async (dispatch) => {
+        const result = await dispatch(createLinkedChannel(teamId, displayName, video));
+        return result.data ? {data: result.data.channel} : {error: result.error};
+    };
+}
+
+// createEpisodeChannel makes a revision channel that is also a canvas, then seeds the team's folder and task templates.
+// Folders and tasks that fail are returned in failed (template lines) and do not stop the rest.
+export function createEpisodeChannel(teamId: string, displayName: string, video: File): ActionFuncAsync<{channel: Channel; failed: string[]}> {
+    return async (dispatch, getState) => {
+        const team = getState().entities.teams.teams[teamId];
+        const created = await dispatch(createLinkedChannel(teamId, displayName, video, (channel) => run(() => Client4.createCanvas(teamId, channel.id))));
+        if (!created.data) {
+            return {error: created.error};
+        }
+        const {channel, sectionId} = created.data;
+        const failed: string[] = [];
+
+        // Folder ids by path; a failed folder is cached as null so its children are reported, not retried.
+        const folders = new Map<string, string | null>();
+        for (const line of templateLines(team?.episode_folders)) {
+            let parentId = '';
+            let path = '';
+            for (const name of line.split('/')) {
+                path = path ? `${path}/${name}` : name;
+                if (!folders.has(path)) {
+                    try {
+                        // eslint-disable-next-line no-await-in-loop
+                        folders.set(path, (await Client4.createDriveFolder(channel.id, parentId, name)).id);
+                    } catch {
+                        folders.set(path, null);
+                    }
+                }
+                const id = folders.get(path);
+                if (!id) {
+                    failed.push(line);
+                    break;
+                }
+                parentId = id;
+            }
+        }
+
+        for (const title of templateLines(team?.episode_tasks)) {
+            // eslint-disable-next-line no-await-in-loop
+            if ((await dispatch(createTask({team_id: teamId, title, section_id: sectionId, status: 'todo'}))).error) {
+                failed.push(title);
+            }
+        }
+        return {data: {channel, failed}};
     };
 }
