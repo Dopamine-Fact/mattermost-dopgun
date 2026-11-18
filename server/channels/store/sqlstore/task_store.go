@@ -152,6 +152,18 @@ func (s *SqlTaskStore) GetSectionsForTeam(teamId string) ([]*model.TaskSection, 
 	return sections, nil
 }
 
+// GetSectionByChannel returns the task section linked to a channel; a channel has at most one.
+func (s *SqlTaskStore) GetSectionByChannel(channelId string) (*model.TaskSection, error) {
+	var section model.TaskSection
+	err := s.GetReplica().GetBuilder(&section, s.getQueryBuilder().Select(taskSectionColumns...).From("TaskSections").Where(sq.Eq{"ChannelId": channelId}).Limit(1))
+	if err == sql.ErrNoRows {
+		return nil, store.NewErrNotFound("TaskSection", "channel_id="+channelId)
+	} else if err != nil {
+		return nil, errors.Wrapf(err, "failed to get TaskSection with channel_id=%s", channelId)
+	}
+	return &section, nil
+}
+
 func (s *SqlTaskStore) UpdateSection(section *model.TaskSection) (*model.TaskSection, error) {
 	section.PreUpdate()
 	if err := section.IsValid(); err != nil {
@@ -265,6 +277,29 @@ func (s *SqlTaskStore) GetCommentsForTask(taskId string) ([]*model.TaskComment, 
 		return nil, errors.Wrapf(err, "failed to get TaskComments for task_id=%s", taskId)
 	}
 	return comments, nil
+}
+
+// GetPostIdsForTask returns the ids of the live root posts naming a task, newest first, optionally in one channel
+// and older than before.
+func (s *SqlTaskStore) GetPostIdsForTask(taskId, channelId string, before int64, limit int) ([]string, error) {
+	query := s.getQueryBuilder().
+		Select("Id").
+		From("Posts").
+		Where(sq.Expr("Props->>'task_id' = ?", taskId)).
+		Where(sq.Eq{"DeleteAt": 0, "RootId": ""}).
+		OrderBy("CreateAt DESC").
+		Limit(uint64(limit))
+	if channelId != "" {
+		query = query.Where(sq.Eq{"ChannelId": channelId})
+	}
+	if before > 0 {
+		query = query.Where(sq.Lt{"CreateAt": before})
+	}
+	ids := []string{}
+	if err := s.GetReplica().SelectBuilder(&ids, query); err != nil {
+		return nil, errors.Wrapf(err, "failed to get post ids for task_id=%s", taskId)
+	}
+	return ids, nil
 }
 
 func (s *SqlTaskStore) DeleteComment(id string) error {

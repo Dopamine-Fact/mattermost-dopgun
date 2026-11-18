@@ -20,6 +20,59 @@ func TestTaskStore(t *testing.T, rctx request.CTX, ss store.Store) {
 	t.Run("SectionVideos", func(t *testing.T) { testTaskStoreSectionVideos(t, ss) })
 	t.Run("DeleteSectionClearsVersions", func(t *testing.T) { testTaskStoreDeleteSectionClearsVersions(t, ss) })
 	t.Run("SaveKeepsVideoFileId", func(t *testing.T) { testTaskStoreSaveKeepsVideoFileId(t, ss) })
+	t.Run("GetSectionByChannel", func(t *testing.T) { testTaskStoreGetSectionByChannel(t, ss) })
+	t.Run("GetPostIdsForTask", func(t *testing.T) { testTaskStoreGetPostIdsForTask(t, rctx, ss) })
+}
+
+func testTaskStoreGetSectionByChannel(t *testing.T, ss store.Store) {
+	channelId := model.NewId()
+	section, err := ss.Task().SaveSection(&model.TaskSection{TeamId: model.NewId(), Name: "Episode", ChannelId: channelId})
+	require.NoError(t, err)
+
+	got, err := ss.Task().GetSectionByChannel(channelId)
+	require.NoError(t, err)
+	require.Equal(t, section.Id, got.Id)
+
+	_, err = ss.Task().GetSectionByChannel(model.NewId())
+	var nfErr *store.ErrNotFound
+	require.True(t, errors.As(err, &nfErr))
+}
+
+func testTaskStoreGetPostIdsForTask(t *testing.T, rctx request.CTX, ss store.Store) {
+	taskA, taskB := model.NewId(), model.NewId()
+	// Channel C is real: a reply's thread bookkeeping reads its channel row.
+	channel, err := ss.Channel().Save(rctx, &model.Channel{TeamId: model.NewId(), Name: "c-" + model.NewId(), DisplayName: "C", Type: model.ChannelTypeOpen}, 1000)
+	require.NoError(t, err)
+	channelC, channelD := channel.Id, model.NewId()
+	userId := model.NewId()
+	save := func(channelId, taskId, rootId string, createAt, deleteAt int64) *model.Post {
+		post, err := ss.Post().Save(rctx, &model.Post{ChannelId: channelId, UserId: userId, RootId: rootId, Message: "m", CreateAt: createAt, DeleteAt: deleteAt, Props: model.StringInterface{"task_id": taskId}})
+		require.NoError(t, err)
+		return post
+	}
+	c1 := save(channelC, taskA, "", 1000, 0)
+	c2 := save(channelC, taskA, "", 2000, 0)
+	c3 := save(channelC, taskA, "", 3000, 0)
+	save(channelC, taskA, c1.Id, 3500, 0)
+	d1 := save(channelD, taskA, "", 4000, 0)
+	save(channelC, taskA, "", 5000, 6000)
+	save(channelC, taskB, "", 7000, 0)
+
+	ids, err := ss.Task().GetPostIdsForTask(taskA, "", 0, 10)
+	require.NoError(t, err)
+	require.Equal(t, []string{d1.Id, c3.Id, c2.Id, c1.Id}, ids)
+
+	ids, err = ss.Task().GetPostIdsForTask(taskA, channelC, 0, 10)
+	require.NoError(t, err)
+	require.Equal(t, []string{c3.Id, c2.Id, c1.Id}, ids)
+
+	ids, err = ss.Task().GetPostIdsForTask(taskA, "", 0, 2)
+	require.NoError(t, err)
+	require.Equal(t, []string{d1.Id, c3.Id}, ids)
+
+	ids, err = ss.Task().GetPostIdsForTask(taskA, "", c3.CreateAt, 10)
+	require.NoError(t, err)
+	require.Equal(t, []string{c2.Id, c1.Id}, ids)
 }
 
 func testTaskStoreSectionVideos(t *testing.T, ss store.Store) {

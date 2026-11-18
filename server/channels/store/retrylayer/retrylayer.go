@@ -17099,11 +17099,53 @@ func (s *RetryLayerTaskStore) GetForTeam(teamId string) ([]*model.Task, error) {
 
 }
 
+func (s *RetryLayerTaskStore) GetPostIdsForTask(taskId string, channelId string, before int64, limit int) ([]string, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.GetPostIdsForTask(taskId, channelId, before, limit)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
 func (s *RetryLayerTaskStore) GetSection(id string) (*model.TaskSection, error) {
 
 	tries := 0
 	for {
 		result, err := s.TaskStore.GetSection(id)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTaskStore) GetSectionByChannel(channelId string) (*model.TaskSection, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.GetSectionByChannel(channelId)
 		if err == nil {
 			return result, nil
 		}

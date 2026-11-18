@@ -13515,6 +13515,22 @@ func (s *TimerLayerTaskStore) GetForTeam(teamId string) ([]*model.Task, error) {
 	return result, err
 }
 
+func (s *TimerLayerTaskStore) GetPostIdsForTask(taskId string, channelId string, before int64, limit int) ([]string, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.GetPostIdsForTask(taskId, channelId, before, limit)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.GetPostIdsForTask", success, elapsed)
+	}
+	return result, err
+}
+
 func (s *TimerLayerTaskStore) GetSection(id string) (*model.TaskSection, error) {
 	start := time.Now()
 
@@ -13527,6 +13543,22 @@ func (s *TimerLayerTaskStore) GetSection(id string) (*model.TaskSection, error) 
 			success = "true"
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.GetSection", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerTaskStore) GetSectionByChannel(channelId string) (*model.TaskSection, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.GetSectionByChannel(channelId)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.GetSectionByChannel", success, elapsed)
 	}
 	return result, err
 }

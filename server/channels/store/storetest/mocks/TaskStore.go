@@ -248,6 +248,66 @@ func (_m *TaskStore) GetSectionVideos(sectionId string) ([]*model.TaskSectionVid
 	return r0, r1
 }
 
+// GetPostIdsForTask provides a mock function with given fields: taskId, channelId, before, limit
+func (_m *TaskStore) GetPostIdsForTask(taskId string, channelId string, before int64, limit int) ([]string, error) {
+	ret := _m.Called(taskId, channelId, before, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPostIdsForTask")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string, int64, int) ([]string, error)); ok {
+		return rf(taskId, channelId, before, limit)
+	}
+	if rf, ok := ret.Get(0).(func(string, string, int64, int) []string); ok {
+		r0 = rf(taskId, channelId, before, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string, int64, int) error); ok {
+		r1 = rf(taskId, channelId, before, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetSectionByChannel provides a mock function with given fields: channelId
+func (_m *TaskStore) GetSectionByChannel(channelId string) (*model.TaskSection, error) {
+	ret := _m.Called(channelId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSectionByChannel")
+	}
+
+	var r0 *model.TaskSection
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (*model.TaskSection, error)); ok {
+		return rf(channelId)
+	}
+	if rf, ok := ret.Get(0).(func(string) *model.TaskSection); ok {
+		r0 = rf(channelId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.TaskSection)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(channelId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetSectionsForTeam provides a mock function with given fields: teamId
 func (_m *TaskStore) GetSectionsForTeam(teamId string) ([]*model.TaskSection, error) {
 	ret := _m.Called(teamId)

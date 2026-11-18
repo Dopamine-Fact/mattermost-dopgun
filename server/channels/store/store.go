@@ -1224,6 +1224,7 @@ type TaskStore interface {
 	SaveSection(section *model.TaskSection) (*model.TaskSection, error)
 	GetSection(id string) (*model.TaskSection, error)
 	GetSectionsForTeam(teamId string) ([]*model.TaskSection, error)
+	GetSectionByChannel(channelId string) (*model.TaskSection, error)
 	UpdateSection(section *model.TaskSection) (*model.TaskSection, error)
 	DeleteSection(id string) error
 	SaveSectionVideo(video *model.TaskSectionVideo) (*model.TaskSectionVideo, error)
@@ -1232,6 +1233,7 @@ type TaskStore interface {
 	GetComment(id string) (*model.TaskComment, error)
 	GetCommentsForTask(taskId string) ([]*model.TaskComment, error)
 	DeleteComment(id string) error
+	GetPostIdsForTask(taskId, channelId string, before int64, limit int) ([]string, error)
 }
 
 type CanvasStore interface {
