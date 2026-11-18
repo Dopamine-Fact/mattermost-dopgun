@@ -1144,6 +1144,7 @@
     }
 
     &__drop {
+        position: relative;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -1169,10 +1170,20 @@
             fill: currentColor;
         }
 
-        // global form styles show file inputs even when [hidden]
-        input {
-            display: none;
+        &:focus-within {
+            border-color: var(--button-bg);
+            box-shadow: 0 0 0 2px rgba(var(--button-bg-rgb), 0.32);
         }
+    }
+
+    // Visually hidden but focusable, so the drop zone is reachable from the keyboard.
+    &__fileInput {
+        position: absolute;
+        overflow: hidden;
+        width: 1px;
+        height: 1px;
+        clip-path: inset(50%);
+        opacity: 0;
     }
 
     &__preview {

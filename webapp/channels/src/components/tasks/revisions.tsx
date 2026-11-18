@@ -90,6 +90,13 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
     const stripTimes = useMemo(() => (duration > 0 ? Array.from({length: STRIP_FRAMES}, (_, i) => Math.round(((i + 0.5) * duration * 1000) / STRIP_FRAMES)) : []), [duration]);
     const stills = useFrameThumbnails(videoUrl, [...revisions.filter((r) => r.video_file_id === selected).map((r) => r.video_time), ...stripTimes]);
 
+    // A moment belongs to one cut: a version switch drops it and waits for the new video's metadata.
+    useEffect(() => {
+        setPinned(null);
+        setDuration(0);
+        setNow(0);
+    }, [selected]);
+
     const [image, setImage] = useState<File>();
     const [preview, setPreview] = useState('');
     const [imageError, setImageError] = useState('');
@@ -149,6 +156,7 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
             seek(pendingSeek.current);
             pendingSeek.current = null;
         }
+        trackTime();
     };
 
     const trackTime = () => setNow(Math.round((video.current?.currentTime ?? 0) * 1000));
@@ -591,7 +599,7 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
                                         </span>
                                         <input
                                             type='file'
-                                            hidden={true}
+                                            className='TaskRevisions__fileInput'
                                             accept={IMAGE_TYPES.join(',')}
                                             aria-label={formatMessage({id: 'tasks.revisions.image', defaultMessage: 'Reference image'})}
                                             onChange={(e) => {

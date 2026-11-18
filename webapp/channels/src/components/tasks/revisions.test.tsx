@@ -329,8 +329,7 @@ describe('Revisions', () => {
     });
 
     test('an image that fails to attach keeps the revision and says so', async () => {
-        jest.spyOn(Client4, 'uploadFile').mockResolvedValue({file_infos: [{id: 'info1'} as FileInfo], client_ids: []});
-        (createPost as jest.Mock).mockImplementationOnce(() => () => Promise.resolve({error: {message: 'nope'}}));
+        jest.spyOn(Client4, 'uploadFile').mockRejectedValue(new Error('too big'));
         renderRevisions();
         fireEvent.change(screen.getByLabelText('Reference image'), {target: {files: [new File(['x'], 'ref.png', {type: 'image/png'})]}});
         fireEvent.change(screen.getByRole('textbox', {name: 'Revision description'}), {target: {value: 'Logo'}});
@@ -386,5 +385,28 @@ describe('Revisions', () => {
     test('viewers with nothing selected are asked to pick a revision', () => {
         renderRevisions(false);
         expect(document.querySelector('.TaskRevisions__panel')).toHaveTextContent('Select a revision');
+    });
+
+    test('switching versions drops the pinned moment and follows the new video', async () => {
+        const {video} = renderRevisions();
+        await waitFor(() => expect(within(screen.getByRole('combobox', {name: 'Version'})).getAllByRole('option')).toHaveLength(2));
+        video.currentTime = 3.5;
+        fireEvent.click(screen.getByRole('button', {name: 'Use current time'}));
+        expect(screen.getByText('0:03.50')).toBeInTheDocument();
+
+        fireEvent.change(screen.getByRole('combobox', {name: 'Version'}), {target: {value: 'file0'}});
+        const next = document.querySelector('video')!;
+        defineTime(next, 2);
+        fireEvent.loadedMetadata(next);
+        expect(screen.getByText('0:02.00')).toBeInTheDocument();
+
+        fireEvent.change(screen.getByRole('textbox', {name: 'Revision description'}), {target: {value: 'Logo'}});
+        fireEvent.click(screen.getByRole('button', {name: 'Create revision'}));
+        await waitFor(() => expect(createTask).toHaveBeenCalledWith(expect.objectContaining({video_time: 2000, video_file_id: 'file0'})));
+    });
+
+    test('the reference image input stays reachable from the keyboard', () => {
+        renderRevisions();
+        expect(screen.getByLabelText('Reference image')).toBeVisible();
     });
 });
