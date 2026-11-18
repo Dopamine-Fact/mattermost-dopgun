@@ -255,10 +255,11 @@ func TestActionableUserIdsPermission(t *testing.T) {
 	require.NotContains(t, ids, modeler.Id)
 	section, _, err := mertClient.CreateTaskSection(ctx, &model.TaskSection{TeamId: team.Id, Name: "rev", ChannelId: th.BasicChannel.Id})
 	require.NoError(t, err)
-	_, resp, err = mertClient.CreateTask(ctx, &model.Task{TeamId: team.Id, SectionId: section.Id, Title: "frame 12", AssigneeId: animator.Id})
+	section = uploadSectionVideo(t, mertClient, section.Id)
+	_, resp, err = mertClient.CreateTask(ctx, &model.Task{TeamId: team.Id, SectionId: section.Id, Title: "frame 12", AssigneeId: animator.Id, VideoFileId: section.VideoFileId})
 	require.NoError(t, err)
 	CheckCreatedStatus(t, resp)
-	_, resp, err = mertClient.CreateTask(ctx, &model.Task{TeamId: team.Id, SectionId: section.Id, Title: "frame 13", AssigneeId: modeler.Id})
+	_, resp, err = mertClient.CreateTask(ctx, &model.Task{TeamId: team.Id, SectionId: section.Id, Title: "frame 13", AssigneeId: modeler.Id, VideoFileId: section.VideoFileId})
 	require.Error(t, err)
 	CheckForbiddenStatus(t, resp)
 

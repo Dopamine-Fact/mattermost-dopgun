@@ -29,6 +29,7 @@ func (api *API) InitTasks() {
 	api.BaseRoutes.APIRoot.Handle("/task_sections/{section_id:[A-Za-z0-9]+}", api.APISessionRequired(deleteTaskSection)).Methods(http.MethodDelete)
 	api.BaseRoutes.APIRoot.Handle("/task_sections/{section_id:[A-Za-z0-9]+}/video", api.APISessionRequired(setTaskSectionVideo, handlerParamFileAPI)).Methods(http.MethodPost)
 	api.BaseRoutes.APIRoot.Handle("/task_sections/{section_id:[A-Za-z0-9]+}/video", api.APISessionRequiredTrustRequester(getTaskSectionVideo)).Methods(http.MethodGet)
+	api.BaseRoutes.APIRoot.Handle("/task_sections/{section_id:[A-Za-z0-9]+}/videos", api.APISessionRequired(getTaskSectionVideos)).Methods(http.MethodGet)
 
 	api.BaseRoutes.APIRoot.Handle("/tasks/{task_id:[A-Za-z0-9]+}/comments", api.APISessionRequired(getTaskComments)).Methods(http.MethodGet)
 	api.BaseRoutes.APIRoot.Handle("/tasks/{task_id:[A-Za-z0-9]+}/comments", api.APISessionRequired(createTaskComment, handlerParamFileAPI)).Methods(http.MethodPost)
@@ -57,21 +58,19 @@ func sectionPermission(section *model.TaskSection) *model.Permission {
 	return model.PermissionManageTasks
 }
 
-// requireTaskPermission: creating, assigning and deleting a task needs the permission of the section it is in, which
-// it returns.
-func requireTaskPermission(c *Context, teamID, sectionID string) *model.Permission {
-	permission := model.PermissionManageTasks
-	if sectionID != "" {
-		section, appErr := c.App.GetTaskSection(sectionID)
-		if appErr != nil && appErr.StatusCode != http.StatusNotFound {
-			c.Err = appErr
-			return permission
-		}
-		if appErr == nil {
-			permission = sectionPermission(section)
-		}
+// taskPermission: revisions (tasks pinned to a video version) need manage_revisions, every other task manage_tasks,
+// whatever section it is in.
+func taskPermission(task *model.Task) *model.Permission {
+	if task.VideoFileId != "" {
+		return model.PermissionManageRevisions
 	}
-	requireTeamPermission(c, teamID, permission)
+	return model.PermissionManageTasks
+}
+
+// requireTaskPermission: creating, assigning and deleting a task needs its permission, which it returns.
+func requireTaskPermission(c *Context, task *model.Task) *model.Permission {
+	permission := taskPermission(task)
+	requireTeamPermission(c, task.TeamId, permission)
 	return permission
 }
 
@@ -143,7 +142,8 @@ func createTask(c *Context, w http.ResponseWriter, r *http.Request) {
 		c.SetInvalidParamWithErr("task", err)
 		return
 	}
-	permission := requireTaskPermission(c, c.Params.TeamId, task.SectionId)
+	task.TeamId = c.Params.TeamId
+	permission := requireTaskPermission(c, &task)
 	if c.Err != nil {
 		return
 	}
@@ -151,7 +151,6 @@ func createTask(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	task.Id = ""
-	task.TeamId = c.Params.TeamId
 	task.CreatorId = c.AppContext.Session().UserId
 
 	auditRec := c.MakeAuditRecord(model.AuditEventCreateTask, model.AuditStatusFail)
@@ -182,11 +181,7 @@ func patchTask(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if patch.AssigneeId != nil && *patch.AssigneeId != task.AssigneeId {
-		sectionID := task.SectionId
-		if patch.SectionId != nil {
-			sectionID = *patch.SectionId
-		}
-		permission := requireTaskPermission(c, task.TeamId, sectionID)
+		permission := requireTaskPermission(c, task)
 		if c.Err != nil {
 			return
 		}
@@ -216,7 +211,7 @@ func deleteTask(c *Context, w http.ResponseWriter, r *http.Request) {
 	if c.Err != nil {
 		return
 	}
-	if requireTaskPermission(c, task.TeamId, task.SectionId); c.Err != nil {
+	if requireTaskPermission(c, task); c.Err != nil {
 		return
 	}
 
@@ -402,13 +397,28 @@ func setTaskSectionVideo(c *Context, w http.ResponseWriter, r *http.Request) {
 	writeTaskJSON(w, http.StatusOK, updated)
 }
 
-// getTaskSectionVideo streams the video with range support so the player can seek.
+// getTaskSectionVideos lists the section's video versions, oldest first, each with its file info.
+func getTaskSectionVideos(c *Context, w http.ResponseWriter, r *http.Request) {
+	section := loadTaskSection(c, r)
+	if c.Err != nil {
+		return
+	}
+	videos, appErr := c.App.GetTaskSectionVideos(c.AppContext, section)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	writeTaskJSON(w, http.StatusOK, videos)
+}
+
+// getTaskSectionVideo streams one version of the video (?file_id=, the latest without it) with range support so the
+// player can seek.
 func getTaskSectionVideo(c *Context, w http.ResponseWriter, r *http.Request) {
 	section := loadTaskSection(c, r)
 	if c.Err != nil {
 		return
 	}
-	info, appErr := c.App.GetTaskSectionVideo(c.AppContext, section, "")
+	info, appErr := c.App.GetTaskSectionVideo(c.AppContext, section, r.URL.Query().Get("file_id"))
 	if appErr != nil {
 		c.Err = appErr
 		return
@@ -527,7 +537,7 @@ func deleteTaskComment(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if comment.UserId != c.AppContext.Session().UserId {
-		if requireTaskPermission(c, task.TeamId, task.SectionId); c.Err != nil {
+		if requireTaskPermission(c, task); c.Err != nil {
 			return
 		}
 	}

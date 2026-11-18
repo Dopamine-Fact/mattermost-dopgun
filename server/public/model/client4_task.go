@@ -10,6 +10,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 )
 
 func (c *Client4) GetTeamTasks(ctx context.Context, teamId string) ([]*Task, *Response, error) {
@@ -165,8 +166,23 @@ func (c *Client4) SetTaskSectionVideo(ctx context.Context, sectionId, name strin
 	return DecodeJSONFromResponse[*TaskSection](r)
 }
 
-func (c *Client4) GetTaskSectionVideo(ctx context.Context, sectionId string) ([]byte, *Response, error) {
-	r, err := c.doAPIGet(ctx, newClientRoute("task_sections").Join(sectionId, "video"), "")
+// GetTaskSectionVideos lists every version of the section's video, oldest first.
+func (c *Client4) GetTaskSectionVideos(ctx context.Context, sectionId string) ([]*TaskSectionVideo, *Response, error) {
+	r, err := c.doAPIGet(ctx, newClientRoute("task_sections").Join(sectionId, "videos"), "")
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return DecodeJSONFromResponse[[]*TaskSectionVideo](r)
+}
+
+// GetTaskSectionVideo streams one version of the section's video; an empty fileId means the latest.
+func (c *Client4) GetTaskSectionVideo(ctx context.Context, sectionId, fileId string) ([]byte, *Response, error) {
+	query := url.Values{}
+	if fileId != "" {
+		query.Set("file_id", fileId)
+	}
+	r, err := c.doAPIGetWithQuery(ctx, newClientRoute("task_sections").Join(sectionId, "video"), query, "")
 	if err != nil {
 		return nil, BuildResponse(r), err
 	}

@@ -57,10 +57,11 @@ func TestCustomRoleEnforcement(t *testing.T) {
 
 		section, _, err := leadClient.CreateTaskSection(ctx, &model.TaskSection{TeamId: teamID, Name: "rev", ChannelId: th.BasicChannel.Id})
 		require.NoError(t, err)
-		rev, resp, err := leadClient.CreateTask(ctx, &model.Task{TeamId: teamID, SectionId: section.Id, Title: "frame 12", AssigneeId: animUser.Id})
+		section = uploadSectionVideo(t, leadClient, section.Id)
+		rev, resp, err := leadClient.CreateTask(ctx, &model.Task{TeamId: teamID, SectionId: section.Id, Title: "frame 12", AssigneeId: animUser.Id, VideoFileId: section.VideoFileId})
 		require.NoError(t, err)
 		CheckCreatedStatus(t, resp)
-		_, resp, err = leadClient.CreateTask(ctx, &model.Task{TeamId: teamID, SectionId: section.Id, Title: "frame 13", AssigneeId: progUser.Id})
+		_, resp, err = leadClient.CreateTask(ctx, &model.Task{TeamId: teamID, SectionId: section.Id, Title: "frame 13", AssigneeId: progUser.Id, VideoFileId: section.VideoFileId})
 		require.Error(t, err)
 		CheckForbiddenStatus(t, resp)
 		_, resp, err = leadClient.PatchTask(ctx, rev.Id, &model.TaskPatch{AssigneeId: &progUser.Id})

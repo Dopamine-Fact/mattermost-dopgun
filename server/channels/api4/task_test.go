@@ -239,14 +239,14 @@ func TestTasks(t *testing.T) {
 		section, _, err = th.SystemAdminClient.SetTaskSectionVideo(ctx, section.Id, "clip.webm", []byte("second"))
 		require.NoError(t, err)
 		_, err = th.App.Srv().Store().FileInfo().Get(firstVideo)
-		require.Error(t, err, "the replaced video is removed")
+		require.NoError(t, err, "earlier versions are kept")
 
-		data, resp, err := th.Client.GetTaskSectionVideo(ctx, section.Id)
+		data, resp, err := th.Client.GetTaskSectionVideo(ctx, section.Id, "")
 		require.NoError(t, err)
 		require.Equal(t, "second", string(data))
 		require.Equal(t, "video/webm", resp.Header.Get("Content-Type"))
 
-		revision, _, err := th.SystemAdminClient.CreateTask(ctx, &model.Task{TeamId: teamId, SectionId: section.Id, Title: "Logo too small", VideoTime: 83500})
+		revision, _, err := th.SystemAdminClient.CreateTask(ctx, &model.Task{TeamId: teamId, SectionId: section.Id, Title: "Logo too small", VideoTime: 83500, VideoFileId: section.VideoFileId})
 		require.NoError(t, err)
 		require.Equal(t, int64(83500), revision.VideoTime)
 		revision, _, err = th.Client.PatchTask(ctx, revision.Id, &model.TaskPatch{VideoTime: model.NewPointer(int64(90000))})
@@ -258,8 +258,10 @@ func TestTasks(t *testing.T) {
 
 		_, err = th.SystemAdminClient.DeleteTaskSection(ctx, section.Id)
 		require.NoError(t, err)
-		_, err = th.App.Srv().Store().FileInfo().Get(section.VideoFileId)
-		require.Error(t, err, "the video is removed with its section")
+		for _, fileID := range []string{firstVideo, section.VideoFileId} {
+			_, err = th.App.Srv().Store().FileInfo().Get(fileID)
+			require.Error(t, err, "every version is removed with its section")
+		}
 	})
 
 	t.Run("assigning a task messages the assignee", func(t *testing.T) {
@@ -324,7 +326,8 @@ func TestTasks(t *testing.T) {
 		CheckBadRequestStatus(t, resp)
 
 		// The assignment message of a revision opens its channel's Revisions tab.
-		revision, _, err := th.SystemAdminClient.CreateTask(ctx, &model.Task{TeamId: teamId, SectionId: linked.Id, Title: "Cut earlier", AssigneeId: th.BasicUser2.Id})
+		linked = uploadSectionVideo(t, th.SystemAdminClient, linked.Id)
+		revision, _, err := th.SystemAdminClient.CreateTask(ctx, &model.Task{TeamId: teamId, SectionId: linked.Id, Title: "Cut earlier", AssigneeId: th.BasicUser2.Id, VideoFileId: linked.VideoFileId})
 		require.NoError(t, err)
 		bot, appErr := th.App.GetSystemBot(th.Context)
 		require.Nil(t, appErr)
@@ -405,8 +408,9 @@ func TestTaskPermissionSplit(t *testing.T) {
 		section, resp, err := th.Client.CreateTaskSection(ctx, &model.TaskSection{TeamId: teamId, Name: "rev", ChannelId: th.BasicChannel.Id})
 		require.NoError(t, err)
 		CheckCreatedStatus(t, resp)
+		section = uploadSectionVideo(t, th.Client, section.Id)
 
-		revision, resp, err := th.Client.CreateTask(ctx, &model.Task{TeamId: teamId, SectionId: section.Id, Title: "fix frame 12"})
+		revision, resp, err := th.Client.CreateTask(ctx, &model.Task{TeamId: teamId, SectionId: section.Id, Title: "fix frame 12", VideoFileId: section.VideoFileId})
 		require.NoError(t, err)
 		CheckCreatedStatus(t, resp)
 		_, _, err = th.Client.PatchTask(ctx, revision.Id, &model.TaskPatch{AssigneeId: &th.BasicUser2.Id})
@@ -424,4 +428,120 @@ func TestTaskPermissionSplit(t *testing.T) {
 		_, err = th.Client.DeleteTaskSection(ctx, section.Id)
 		require.NoError(t, err)
 	})
+}
+
+// uploadSectionVideo adds a version of a linked section's video as the client and returns the section.
+func uploadSectionVideo(t *testing.T, client *model.Client4, sectionID string) *model.TaskSection {
+	t.Helper()
+	section, _, err := client.SetTaskSectionVideo(context.Background(), sectionID, "clip.mp4", []byte("video "+model.NewId()))
+	require.NoError(t, err)
+	return section
+}
+
+// videoSection turns tasks and revisions on and gives the basic channel a linked section with one video.
+func videoSection(t *testing.T, th *TestHelper) *model.TaskSection {
+	t.Helper()
+	ctx := context.Background()
+	_, _, err := th.SystemAdminClient.PatchTeam(ctx, th.BasicTeam.Id, &model.TeamPatch{TasksEnabled: new(true), RevisionsEnabled: new(true)})
+	require.NoError(t, err)
+	section, _, err := th.SystemAdminClient.CreateTaskSection(ctx, &model.TaskSection{TeamId: th.BasicTeam.Id, Name: "Episode 1", ChannelId: th.BasicChannel.Id})
+	require.NoError(t, err)
+	return uploadSectionVideo(t, th.SystemAdminClient, section.Id)
+}
+
+func TestTaskPermissionFollowsTask(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	ctx := context.Background()
+	teamID := th.BasicTeam.Id
+	section := videoSection(t, th)
+	department := newTestDepartment(t, th, teamID, "Episodes")
+	tasksClient, _ := rankedClient(t, th, th.BasicTeam, newTestRank(t, th, teamID, department.Id, "Tasks", model.PermissionManageTasks.Id))
+	revisionsClient, _ := rankedClient(t, th, th.BasicTeam, newTestRank(t, th, teamID, department.Id, "Revisions", model.PermissionManageRevisions.Id))
+
+	ordinary := &model.Task{TeamId: teamID, SectionId: section.Id, Title: "Storyboard"}
+	revision := &model.Task{TeamId: teamID, SectionId: section.Id, Title: "Cut earlier", VideoFileId: section.VideoFileId}
+	for name, tc := range map[string]struct {
+		client      *model.Client4
+		own, others *model.Task
+	}{
+		"manage_tasks":     {tasksClient, ordinary, revision},
+		"manage_revisions": {revisionsClient, revision, ordinary},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, resp, err := tc.client.CreateTask(ctx, tc.others)
+			require.Error(t, err)
+			CheckForbiddenStatus(t, resp)
+			other, _, err := th.SystemAdminClient.CreateTask(ctx, tc.others)
+			require.NoError(t, err)
+			_, resp, err = tc.client.PatchTask(ctx, other.Id, &model.TaskPatch{AssigneeId: &th.BasicUser2.Id})
+			require.Error(t, err)
+			CheckForbiddenStatus(t, resp)
+			resp, err = tc.client.DeleteTask(ctx, other.Id)
+			require.Error(t, err)
+			CheckForbiddenStatus(t, resp)
+
+			own, resp, err := tc.client.CreateTask(ctx, tc.own)
+			require.NoError(t, err)
+			CheckCreatedStatus(t, resp)
+			_, _, err = tc.client.PatchTask(ctx, own.Id, &model.TaskPatch{AssigneeId: &th.BasicUser2.Id})
+			require.NoError(t, err)
+			_, err = tc.client.DeleteTask(ctx, own.Id)
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestGetTaskSectionVideos(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	ctx := context.Background()
+	section := videoSection(t, th)
+	section = uploadSectionVideo(t, th.SystemAdminClient, section.Id)
+
+	videos, _, err := th.Client.GetTaskSectionVideos(ctx, section.Id)
+	require.NoError(t, err)
+	require.Len(t, videos, 2)
+	require.Equal(t, 1, videos[0].Version)
+	require.Equal(t, 2, videos[1].Version)
+	require.Equal(t, section.VideoFileId, videos[1].FileId)
+	require.NotNil(t, videos[0].File)
+	require.Equal(t, "clip.mp4", videos[0].File.Name)
+
+	outsider := th.CreateUser(t)
+	client := th.CreateClient()
+	_, _, err = client.Login(ctx, outsider.Email, outsider.Password)
+	require.NoError(t, err)
+	_, resp, err := client.GetTaskSectionVideos(ctx, section.Id)
+	require.Error(t, err)
+	CheckForbiddenStatus(t, resp)
+}
+
+func TestGetTaskSectionVideoForeignFile(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	ctx := context.Background()
+	section, _, err := th.SystemAdminClient.SetTaskSectionVideo(ctx, videoSection(t, th).Id, "clip.mp4", []byte("v2"))
+	require.NoError(t, err)
+	videos, _, err := th.Client.GetTaskSectionVideos(ctx, section.Id)
+	require.NoError(t, err)
+	require.Len(t, videos, 2)
+
+	other, _, err := th.SystemAdminClient.CreateTaskSection(ctx, &model.TaskSection{TeamId: th.BasicTeam.Id, Name: "Other", ChannelId: th.CreatePublicChannel(t).Id})
+	require.NoError(t, err)
+	other = uploadSectionVideo(t, th.SystemAdminClient, other.Id)
+	upload, _, err := th.Client.UploadFile(ctx, []byte("plain"), th.BasicChannel.Id, "plain.mp4")
+	require.NoError(t, err)
+
+	for _, fileID := range []string{other.VideoFileId, upload.FileInfos[0].Id} {
+		_, resp, err := th.Client.GetTaskSectionVideo(ctx, section.Id, fileID)
+		require.Error(t, err)
+		CheckNotFoundStatus(t, resp)
+	}
+	first, _, err := th.Client.GetTaskSectionVideo(ctx, section.Id, videos[0].FileId)
+	require.NoError(t, err)
+	require.Contains(t, string(first), "video ")
+	latest, _, err := th.Client.GetTaskSectionVideo(ctx, section.Id, "")
+	require.NoError(t, err)
+	require.Equal(t, "v2", string(latest))
 }
