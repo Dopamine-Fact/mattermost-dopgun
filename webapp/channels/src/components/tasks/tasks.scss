@@ -725,6 +725,26 @@
         justify-content: space-between;
         color: rgba(var(--center-channel-color-rgb), 0.64);
         font-size: 12px;
+        gap: 12px;
+    }
+
+    &__versions {
+        width: auto;
+        height: 28px;
+        padding: 2px 8px;
+        font-size: 12px;
+    }
+
+    // An open revision carried over from an earlier video version.
+    &__version {
+        align-self: flex-start;
+        padding: 0 6px;
+        border-radius: 4px;
+        margin: 0 10px;
+        background: rgba(var(--center-channel-color-rgb), 0.08);
+        color: rgba(var(--center-channel-color-rgb), 0.72);
+        font-size: 11px;
+        font-weight: 600;
     }
 
     &__replace {

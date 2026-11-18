@@ -19,6 +19,7 @@ const task = (id: string, overrides: Partial<Task> = {}): Task => ({
     status: 'todo',
     sort_order: 1,
     video_time: 0,
+    video_file_id: '',
     creator_id: 'user1',
     create_at: 1,
     update_at: 1,

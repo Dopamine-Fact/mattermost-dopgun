@@ -135,7 +135,7 @@ import type {Scheme} from '@mattermost/types/schemes';
 import type {Session} from '@mattermost/types/sessions';
 import type {CompleteOnboardingRequest} from '@mattermost/types/setup';
 import type {RemoteClusterInfo, SharedChannelRemote} from '@mattermost/types/shared_channels';
-import type {Task, TaskComment, TaskPatch, TaskSection, TaskSectionCreate, TaskSectionPatch} from '@mattermost/types/tasks';
+import type {Task, TaskComment, TaskCreate, TaskPatch, TaskSection, TaskSectionCreate, TaskSectionPatch, TaskSectionVideo} from '@mattermost/types/tasks';
 import type {
     GetTeamMembersOpts,
     MemberInviteProfile,
@@ -5300,7 +5300,7 @@ export default class Client4 {
         return this.doFetch<Task[]>(`${this.getTeamRoute(teamId)}/tasks`, {method: 'get'});
     };
 
-    createTask = (task: Pick<Task, 'team_id' | 'title'> & TaskPatch, connectionId: string) => {
+    createTask = (task: TaskCreate, connectionId: string) => {
         return this.doFetch<Task>(
             `${this.getTeamRoute(task.team_id)}/tasks`,
             {method: 'post', body: JSON.stringify(task), headers: {'Connection-Id': connectionId}},
@@ -5355,8 +5355,14 @@ export default class Client4 {
         );
     };
 
-    getTaskSectionVideoUrl = (sectionId: string) => {
-        return `${this.getBaseRoute()}/task_sections/${sectionId}/video`;
+    getTaskSectionVideos = (sectionId: string) => {
+        return this.doFetch<TaskSectionVideo[]>(`${this.getBaseRoute()}/task_sections/${sectionId}/videos`, {method: 'get'});
+    };
+
+    // getTaskSectionVideoUrl streams one version; without fileId, the latest.
+    getTaskSectionVideoUrl = (sectionId: string, fileId?: string) => {
+        const url = `${this.getBaseRoute()}/task_sections/${sectionId}/video`;
+        return fileId ? `${url}?file_id=${encodeURIComponent(fileId)}` : url;
     };
 
     getTaskComments = (taskId: string) => {

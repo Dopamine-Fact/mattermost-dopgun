@@ -6,7 +6,7 @@ import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch} from 'react-redux';
 
-import type {Task, TaskSection} from '@mattermost/types/tasks';
+import type {Task, TaskSection, TaskSectionVideo} from '@mattermost/types/tasks';
 import type {UserProfile} from '@mattermost/types/users';
 
 import {Client4} from 'mattermost-redux/client';
@@ -32,19 +32,39 @@ type Props = {
     canManage: boolean;
 };
 
-// Revisions shows a revision channel's video and its revisions: tasks pinned to a time in the video.
+// Revisions shows a revision channel's video versions and their revisions: tasks pinned to a time in one version.
 const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, canManage}: Props) => {
-    const {formatMessage} = useIntl();
+    const {formatMessage, formatDate} = useIntl();
     const dispatch = useDispatch();
-    const revisions = useMemo(() => tasks.filter((t) => t.section_id === section.id).sort((a, b) => a.video_time - b.video_time), [tasks, section.id]);
 
-    // ?v= changes with the file, so a replaced video is not served from the browser cache.
-    const videoUrl = `${Client4.getTaskSectionVideoUrl(section.id)}?v=${section.video_file_id}`;
+    // Every upload is kept; a new one (section.video_file_id changes) reloads the list and selects it.
+    const latest = section.video_file_id;
+    const [versions, setVersions] = useState<TaskSectionVideo[]>([]);
+    const [selected, setSelected] = useState(latest);
+    useEffect(() => {
+        setSelected(latest);
+        let live = true;
+        Client4.getTaskSectionVideos(section.id).then((list) => live && setVersions([...list].sort((a, b) => b.version - a.version)), () => {});
+        return () => {
+            live = false;
+        };
+    }, [section.id, latest]);
+    const versionOf = useMemo(() => Object.fromEntries(versions.map((v) => [v.file_id, v.version])), [versions]);
+
+    // A version shows its own revisions; the latest also carries older ones still open, so nothing pending is lost.
+    const revisions = useMemo(() => tasks.
+        filter((t) => t.section_id === section.id && t.video_file_id && (t.video_file_id === selected || (selected === latest && t.status !== 'done'))).
+        sort((a, b) => a.video_time - b.video_time), [tasks, section.id, selected, latest]);
+
+    const videoUrl = Client4.getTaskSectionVideoUrl(section.id, selected);
     const [replacing, setReplacing] = useState(false);
     const [replaceError, setReplaceError] = useState('');
-    const stills = useFrameThumbnails(videoUrl, revisions.map((r) => r.video_time));
+    const stills = useFrameThumbnails(videoUrl, revisions.filter((r) => r.video_file_id === selected).map((r) => r.video_time));
 
     const video = useRef<HTMLVideoElement>(null);
+
+    // Where to seek once a switched-to version has loaded.
+    const pendingSeek = useRef<number | null>(null);
     const [title, setTitle] = useState('');
 
     // Arrow keys step one frame while focus is on the revision tabs or panel (or nowhere), but never inside a text field.
@@ -71,8 +91,19 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
         }
     };
     const open = (revision: Task) => {
-        seek(revision.video_time);
+        if (revision.video_file_id === selected) {
+            seek(revision.video_time);
+        } else {
+            pendingSeek.current = revision.video_time;
+            setSelected(revision.video_file_id);
+        }
         onSelect(revision.id);
+    };
+    const onLoadedMetadata = () => {
+        if (pendingSeek.current !== null) {
+            seek(pendingSeek.current);
+            pendingSeek.current = null;
+        }
     };
 
     const addRevision = async (e: React.FormEvent) => {
@@ -81,7 +112,7 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
             return;
         }
         const videoTime = Math.round((video.current?.currentTime ?? 0) * 1000);
-        const result = await dispatch(createTask({team_id: teamId, title: title.trim(), section_id: section.id, video_time: videoTime}));
+        const result = await dispatch(createTask({team_id: teamId, title: title.trim(), section_id: section.id, video_time: videoTime, video_file_id: selected}));
         if (result.data) {
             setTitle('');
 
@@ -112,8 +143,28 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
                 src={videoUrl}
                 controls={true}
                 preload='metadata'
+                onLoadedMetadata={onLoadedMetadata}
             />
             <div className='TaskRevisions__hint'>
+                <select
+                    className='form-control TaskRevisions__versions'
+                    value={selected}
+                    onChange={(e) => setSelected(e.target.value)}
+                    aria-label={formatMessage({id: 'tasks.revisions.version', defaultMessage: 'Version'})}
+                >
+                    {versions.map((v) => (
+                        <option
+                            key={v.file_id}
+                            value={v.file_id}
+                        >
+                            <FormattedMessage
+                                id='tasks.revisions.versionOption'
+                                defaultMessage='v{version} · {date} · {uploader}'
+                                values={{version: v.version, date: formatDate(v.create_at, {dateStyle: 'medium'}), uploader: usersById[v.creator_id]?.username ?? ''}}
+                            />
+                        </option>
+                    ))}
+                </select>
                 <FormattedMessage
                     id='tasks.revisions.frameHint'
                     defaultMessage='Use ← and → to step one frame.'
@@ -127,8 +178,8 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
                             />
                         ) : (
                             <FormattedMessage
-                                id='tasks.revisions.replace'
-                                defaultMessage='Replace video'
+                                id='tasks.revisions.uploadVersion'
+                                defaultMessage='Upload new version'
                             />
                         )}
                         <input
@@ -136,7 +187,7 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
                             hidden={true}
                             disabled={replacing}
                             accept='video/mp4,video/webm,video/ogg,video/quicktime,.m4v'
-                            aria-label={formatMessage({id: 'tasks.revisions.replace', defaultMessage: 'Replace video'})}
+                            aria-label={formatMessage({id: 'tasks.revisions.uploadVersion', defaultMessage: 'Upload new version'})}
                             onChange={replaceVideo}
                         />
                     </label>
@@ -181,7 +232,7 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
                             onClick={() => open(revision)}
                             aria-label={formatMessage({id: 'tasks.revisions.seek', defaultMessage: 'Go to {time}'}, {time: formatVideoTime(revision.video_time)})}
                         >
-                            {stills[revision.video_time] && (
+                            {revision.video_file_id === selected && stills[revision.video_time] && (
                                 <img
                                     src={stills[revision.video_time]}
                                     alt=''
@@ -195,6 +246,18 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
                         >
                             {revision.title}
                         </button>
+                        {revision.video_file_id !== selected && (
+                            <span
+                                className='TaskRevisions__version'
+                                title={formatMessage({id: 'tasks.revisions.olderVersion', defaultMessage: 'Made on an earlier version; open it to watch that version'})}
+                            >
+                                <FormattedMessage
+                                    id='tasks.revisions.versionBadge'
+                                    defaultMessage='v{version}'
+                                    values={{version: versionOf[revision.video_file_id] ?? '?'}}
+                                />
+                            </span>
+                        )}
                         <div className='TaskRevisions__meta'>
                             <AssigneeLabel user={usersById[revision.assignee_id]}/>
                             <StatusSelect task={revision}/>

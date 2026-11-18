@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import type {Channel} from '@mattermost/types/channels';
-import type {Task, TaskPatch, TaskSectionCreate, TaskSectionPatch} from '@mattermost/types/tasks';
+import type {Task, TaskCreate, TaskPatch, TaskSectionCreate, TaskSectionPatch} from '@mattermost/types/tasks';
 
 import {TaskTypes} from 'mattermost-redux/action_types';
 import {createChannel, deleteChannel} from 'mattermost-redux/actions/channels';
@@ -44,7 +44,7 @@ export function fetchTeamTasks(teamId: string) {
     );
 }
 
-export function createTask(task: Pick<Task, 'team_id' | 'title'> & TaskPatch) {
+export function createTask(task: TaskCreate) {
     return run((connectionId) => Client4.createTask(task, connectionId), (data) => ({type: TaskTypes.TASK_RECEIVED, data}));
 }
 

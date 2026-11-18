@@ -23,6 +23,7 @@ const task: Task = {
     status: 'in_progress',
     sort_order: 1,
     video_time: 2330,
+    video_file_id: '',
     creator_id: 'user1',
     create_at: 1,
     update_at: 1,

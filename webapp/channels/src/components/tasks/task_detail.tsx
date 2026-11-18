@@ -35,9 +35,8 @@ const TaskDetail = ({task, sections, members, displayName, onClose, canManage}: 
     const currentUserId = useSelector(getCurrentUserId);
 
     // The server only lets a role assign to members it outranks; offer just those (null: not known, offer all).
-    // Revision tasks are given by manage_revisions, the rest by manage_tasks, so the server asks for the matching one.
-    const section = sections.find((s) => s.id === task.section_id);
-    const permission = section?.channel_id || section?.video_file_id ? 'manage_revisions' : 'manage_tasks';
+    // Revisions (tasks pinned to a video version) are given by manage_revisions, the rest by manage_tasks.
+    const permission = task.video_file_id ? 'manage_revisions' : 'manage_tasks';
     const [actionable, setActionable] = useState<Set<string> | null>(null);
     useEffect(() => {
         if (!canManage) {
@@ -149,6 +148,7 @@ const TaskDetail = ({task, sections, members, displayName, onClose, canManage}: 
                 <select
                     className='form-control'
                     value={task.section_id}
+                    disabled={Boolean(task.video_file_id)}
                     onChange={(e) => save({section_id: e.target.value})}
                 >
                     <option value=''>{formatMessage({id: 'tasks.noSection', defaultMessage: 'No section'})}</option>

@@ -50,6 +50,10 @@ export type Team = {
     daily_report_time?: string;
     daily_report_timezone?: string;
 
+    /** newline-separated drive paths and task titles seeded into each new episode channel */
+    episode_folders?: string;
+    episode_tasks?: string;
+
     /** channel file drives (the Files explorer) */
     files_enabled?: boolean;
 

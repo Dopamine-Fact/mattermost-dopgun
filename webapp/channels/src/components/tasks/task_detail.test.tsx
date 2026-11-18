@@ -3,7 +3,7 @@
 
 import React from 'react';
 
-import type {Task} from '@mattermost/types/tasks';
+import type {Task, TaskSection} from '@mattermost/types/tasks';
 
 import {Client4} from 'mattermost-redux/client';
 
@@ -29,6 +29,7 @@ const task: Task = {
     status: 'todo',
     sort_order: 1,
     video_time: 0,
+    video_file_id: '',
     creator_id: 'me',
     create_at: 1,
     update_at: 1,
@@ -58,39 +59,41 @@ describe('TaskDetail assignee picker', () => {
         expect(actionable).toHaveBeenCalledWith('team1', 'manage_tasks');
     });
 
-    test('a revision task asks who the viewer may give revisions to', async () => {
-        const actionable = jest.spyOn(Client4, 'getActionableUserIds').mockResolvedValue(['anim']);
-        const revisions = {id: 'rev', team_id: 'team1', name: 'Rev', sort_order: 0, channel_id: 'ch1', video_file_id: '', create_at: 1, update_at: 1};
-        renderWithContext(
-            <TaskDetail
-                task={{...task, section_id: 'rev'}}
-                sections={[revisions]}
-                members={[me, anim, lead, old]}
-                displayName={(u) => u.username}
-                onClose={jest.fn()}
-                canManage={true}
-            />,
-            {entities: {users: {currentUserId: 'me', profiles: {me}}}},
-        );
+    const renderDetail = (t: Task, sections: TaskSection[]) => renderWithContext(
+        <TaskDetail
+            task={t}
+            sections={sections}
+            members={[me, anim, lead, old]}
+            displayName={(u) => u.username}
+            onClose={jest.fn()}
+            canManage={true}
+        />,
+        {entities: {users: {currentUserId: 'me', profiles: {me}}}},
+    );
+    const linked: TaskSection = {id: 'rev', team_id: 'team1', name: 'Rev', sort_order: 0, channel_id: 'ch1', video_file_id: 'file1', create_at: 1, update_at: 1};
 
+    test('a revision asks who the viewer may give revisions to', async () => {
+        const actionable = jest.spyOn(Client4, 'getActionableUserIds').mockResolvedValue(['anim']);
+        renderDetail({...task, section_id: 'rev', video_file_id: 'file1'}, [linked]);
         await waitFor(() => expect(actionable).toHaveBeenCalledWith('team1', 'manage_revisions'));
     });
 
-    test('a task in a video revision section asks for revisions too', async () => {
+    test('an ordinary task in a revision section asks for manage_tasks', async () => {
         const actionable = jest.spyOn(Client4, 'getActionableUserIds').mockResolvedValue(['anim']);
-        const video = {id: 'vid', team_id: 'team1', name: 'Shot', sort_order: 0, channel_id: '', video_file_id: 'file1', create_at: 1, update_at: 1};
-        renderWithContext(
-            <TaskDetail
-                task={{...task, section_id: 'vid'}}
-                sections={[video]}
-                members={[me, anim, lead, old]}
-                displayName={(u) => u.username}
-                onClose={jest.fn()}
-                canManage={true}
-            />,
-            {entities: {users: {currentUserId: 'me', profiles: {me}}}},
-        );
+        renderDetail({...task, section_id: 'rev'}, [linked]);
+        await waitFor(() => expect(actionable).toHaveBeenCalledWith('team1', 'manage_tasks'));
+        expect(actionable).not.toHaveBeenCalledWith('team1', 'manage_revisions');
+    });
 
-        await waitFor(() => expect(actionable).toHaveBeenCalledWith('team1', 'manage_revisions'));
+    test("a revision's section cannot be changed", async () => {
+        jest.spyOn(Client4, 'getActionableUserIds').mockResolvedValue([]);
+        renderDetail({...task, section_id: 'rev', video_file_id: 'file1'}, [linked]);
+        expect(screen.getByRole('combobox', {name: 'Section'})).toBeDisabled();
+    });
+
+    test("an ordinary task's section can be changed", async () => {
+        jest.spyOn(Client4, 'getActionableUserIds').mockResolvedValue([]);
+        renderDetail({...task, section_id: 'rev'}, [linked]);
+        expect(screen.getByRole('combobox', {name: 'Section'})).toBeEnabled();
     });
 });

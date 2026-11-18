@@ -29,12 +29,18 @@ export type Task = {
 
     /** ms into the section's video; only meaningful for revisions (tasks in a section with a video) */
     video_time: number;
+
+    /** the section video version a revision is pinned to; '' for an ordinary task. Set on create only. */
+    video_file_id: string;
     creator_id: string;
     create_at: number;
     update_at: number;
 };
 
 export type TaskPatch = Partial<Pick<Task, 'section_id' | 'title' | 'description' | 'assignee_id' | 'start_at' | 'due_at' | 'status' | 'sort_order' | 'video_time'>>;
+
+// TaskCreate is what a new task is made from; video_file_id (which pins a revision to a video version) can only be set here.
+export type TaskCreate = Pick<Task, 'team_id' | 'title'> & TaskPatch & Partial<Pick<Task, 'video_file_id'>>;
 
 export type TaskSection = {
     id: string;
@@ -49,6 +55,17 @@ export type TaskSection = {
     video_file_id: string;
     create_at: number;
     update_at: number;
+};
+
+// TaskSectionVideo is one uploaded version of a revision section's video; versions are never deleted on re-upload.
+export type TaskSectionVideo = {
+    id: string;
+    section_id: string;
+    file_id: string;
+    version: number;
+    creator_id: string;
+    create_at: number;
+    file: FileInfo;
 };
 
 export type TaskSectionPatch = Partial<Pick<TaskSection, 'name' | 'sort_order'>>;

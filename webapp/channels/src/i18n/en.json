@@ -33167,17 +33167,17 @@
     "defaultMessage": "No revisions yet. Pause the video where something needs to change and describe it.",
     "description": "Shown under the video when its revision channel has no revisions yet."
   },
+  "tasks.revisions.olderVersion": {
+    "defaultMessage": "Made on an earlier version; open it to watch that version",
+    "description": "Tooltip of the version badge on a revision that was made on an earlier video version."
+  },
   "tasks.revisions.placeholder": {
     "defaultMessage": "Describe the revision at the current moment",
     "description": "Placeholder of the field where a user describes what must change at the paused moment of the video."
   },
-  "tasks.revisions.replace": {
-    "defaultMessage": "Replace video",
-    "description": "Button in a revision channel's Revisions tab that uploads a new video in place of the current one."
-  },
   "tasks.revisions.replacing": {
     "defaultMessage": "Uploading…",
-    "description": "Shown on the Replace video button while the new video uploads."
+    "description": "Shown on the Upload new version button while the new video uploads."
   },
   "tasks.revisions.seek": {
     "defaultMessage": "Go to {time}",
@@ -33186,6 +33186,22 @@
   "tasks.revisions.title": {
     "defaultMessage": "Revision",
     "description": "Accessible label of the field for a new revision's description."
+  },
+  "tasks.revisions.uploadVersion": {
+    "defaultMessage": "Upload new version",
+    "description": "Button in a revision channel's Revisions tab that uploads a new version of the video; earlier versions and their revisions are kept."
+  },
+  "tasks.revisions.version": {
+    "defaultMessage": "Version",
+    "description": "Accessible label of the picker that chooses which uploaded version of a revision channel's video to watch."
+  },
+  "tasks.revisions.versionBadge": {
+    "defaultMessage": "v{version}",
+    "description": "Small badge on a revision that was made on an earlier video version; version is that version's number."
+  },
+  "tasks.revisions.versionOption": {
+    "defaultMessage": "v{version} · {date} · {uploader}",
+    "description": "One entry of the video version picker; version is the version number, date is when it was uploaded, uploader is the username of who uploaded it."
   },
   "tasks.revisionTabs.messages": {
     "defaultMessage": "Messages",

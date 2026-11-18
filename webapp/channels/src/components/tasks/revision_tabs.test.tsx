@@ -35,6 +35,7 @@ const revision: Task = {
     status: 'todo',
     sort_order: 1,
     video_time: 1200,
+    video_file_id: 'file1',
     creator_id: 'user1',
     create_at: 1,
     update_at: 1,
@@ -59,6 +60,7 @@ const renderTabs = (channelId: string, {revisionsEnabled = true, url = '/team-on
 describe('RevisionTabs', () => {
     beforeEach(() => {
         jest.spyOn(Client4, 'getTaskComments').mockResolvedValue([]);
+        jest.spyOn(Client4, 'getTaskSectionVideos').mockResolvedValue([]);
     });
 
     test('a channel without a revision list renders as before', () => {
