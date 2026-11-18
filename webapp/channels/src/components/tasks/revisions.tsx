@@ -37,12 +37,13 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
     const {formatMessage, formatDate} = useIntl();
     const dispatch = useDispatch();
 
-    // Every upload is kept; a new one (section.video_file_id changes) reloads the list and selects it.
+    // Every upload is kept; a new one (section.video_file_id changes) reloads the list. Only this viewer's own
+    // upload switches them to it, so someone else's upload never moves the cut they are pinning revisions on.
     const latest = section.video_file_id;
     const [versions, setVersions] = useState<TaskSectionVideo[]>([]);
     const [selected, setSelected] = useState(latest);
     useEffect(() => {
-        setSelected(latest);
+        setSelected((current) => current || latest);
         let live = true;
         Client4.getTaskSectionVideos(section.id).then((list) => live && setVersions([...list].sort((a, b) => b.version - a.version)), () => {});
         return () => {
@@ -132,6 +133,9 @@ const Revisions = ({teamId, section, tasks, usersById, selectedId, onSelect, can
         const result = await dispatch(setTaskSectionVideo(section.id, file));
         setReplacing(false);
         setReplaceError(result.error?.message ?? '');
+        if (result.data?.video_file_id) {
+            setSelected(result.data.video_file_id);
+        }
     };
 
     return (

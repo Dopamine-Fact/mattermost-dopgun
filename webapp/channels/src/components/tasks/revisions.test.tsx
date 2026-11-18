@@ -210,4 +210,29 @@ describe('Revisions', () => {
 
         await waitFor(() => expect(createTask).toHaveBeenCalledWith({team_id: 'team1', title: 'Earlier cut', section_id: 'sec1', video_time: 2000, video_file_id: 'file0'}));
     });
+
+    test("someone else's upload adds the version but keeps this viewer on theirs", async () => {
+        const props = {teamId: 'team1', tasks: [], usersById: {user1: uploader}, selectedId: '', onSelect, canManage: true};
+        const {rerender} = renderWithContext(<Revisions {...{...props, section: channel}}/>);
+        const picker = screen.getByRole('combobox', {name: 'Version'});
+        await waitFor(() => expect(within(picker).getAllByRole('option')).toHaveLength(2));
+
+        jest.mocked(Client4.getTaskSectionVideos).mockResolvedValue([...versions, version(3, 'file2', new Date(2026, 10, 16).getTime())]);
+        rerender(<Revisions {...{...props, section: {...channel, video_file_id: 'file2'}}}/>);
+        await waitFor(() => expect(within(picker).getAllByRole('option')).toHaveLength(3));
+
+        expect(picker).toHaveValue('file1');
+        expect(document.querySelector('video')).toHaveAttribute('src', expect.stringContaining('file_id=file1'));
+        defineTime(document.querySelector('video')!, 2);
+        fireEvent.change(screen.getByRole('textbox', {name: 'Revision'}), {target: {value: 'Still on v2'}});
+        fireEvent.click(screen.getByRole('button', {name: 'Add revision'}));
+        await waitFor(() => expect(createTask).toHaveBeenCalledWith(expect.objectContaining({title: 'Still on v2', video_file_id: 'file1'})));
+    });
+
+    test("this viewer's own upload switches them to the new version", async () => {
+        jest.mocked(setTaskSectionVideo).mockImplementationOnce(() => (() => Promise.resolve({data: {...channel, video_file_id: 'file2'}})) as unknown as ReturnType<typeof setTaskSectionVideo>);
+        renderRevisions();
+        fireEvent.change(screen.getByLabelText('Upload new version'), {target: {files: [new File(['x'], 'cut3.mp4', {type: 'video/mp4'})]}});
+        await waitFor(() => expect(document.querySelector('video')).toHaveAttribute('src', expect.stringContaining('file_id=file2')));
+    });
 });

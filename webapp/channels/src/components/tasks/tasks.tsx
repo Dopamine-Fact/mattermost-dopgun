@@ -64,6 +64,7 @@ const Tasks = () => {
     const nameDisplay = useSelector(getTeammateNameDisplaySetting);
     const usersById = useSelector((state: GlobalState) => state.entities.users.profiles);
     const canManage = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_TASKS));
+    const canManageRevisions = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_REVISIONS));
 
     const {search} = useLocation();
     const [view, setView] = useState<ViewId>('board');
@@ -154,7 +155,7 @@ const Tasks = () => {
                     members={members}
                     displayName={displayName}
                     onClose={() => setSelectedId('')}
-                    canManage={canManage}
+                    canManage={selected.video_file_id ? canManageRevisions : canManage}
                 />
             )}
         </div>
