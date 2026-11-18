@@ -1,0 +1,20 @@
+.TaskPostLabel {
+    overflow: hidden;
+    max-width: 200px;
+    padding: 0 6px;
+    border-radius: 4px;
+    margin-left: 4px;
+    background: rgba(var(--button-bg-rgb), 0.08);
+    color: var(--button-bg);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &--deleted {
+        background: rgba(var(--center-channel-color-rgb), 0.08);
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+        font-style: italic;
+    }
+}

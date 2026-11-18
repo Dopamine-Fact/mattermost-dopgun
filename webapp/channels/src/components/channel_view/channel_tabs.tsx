@@ -94,17 +94,20 @@ const ChannelTabs = ({channelId, children}: Props) => {
     }, [canvasEnabled, channelId]);
     const isCanvas = canvasChannelId === channelId;
 
-    // ?revision=<task id> (assignment messages) opens Revisions on that revision; ?canvas=1 (after creating) opens Canvas.
+    // ?revision=<task id> (assignment messages) opens Revisions on that revision, ?task=<task id> (a message's task
+    // label) opens Tasks on that task; ?canvas=1 (after creating) opens Canvas.
     const params = new URLSearchParams(useLocation().search);
     const linkedRevision = params.get('revision') ?? '';
+    const linkedTask = params.get('task') ?? '';
     const linkedCanvas = params.get('canvas') === '1';
-    const linkedTab: Tab = (linkedRevision && 'revisions') || (linkedCanvas && 'canvas') || 'messages';
+    const linkedTab: Tab = (linkedRevision && 'revisions') || (linkedTask && 'tasks') || (linkedCanvas && 'canvas') || 'messages';
+    const linkedId = linkedRevision || linkedTask;
     const [tab, setTab] = useState<Tab>(linkedTab);
-    const [selectedId, setSelectedId] = useState(linkedRevision);
+    const [selectedId, setSelectedId] = useState(linkedId);
     useEffect(() => {
         setTab(linkedTab);
-        setSelectedId(linkedRevision);
-    }, [channelId, linkedTab, linkedRevision]);
+        setSelectedId(linkedId);
+    }, [channelId, linkedTab, linkedId]);
 
     useEffect(() => {
         if (revisionsEnabled) {

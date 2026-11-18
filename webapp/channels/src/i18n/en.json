@@ -33179,6 +33179,14 @@
     "defaultMessage": "No section",
     "description": ""
   },
+  "tasks.postLabel.deleted": {
+    "defaultMessage": "Deleted task",
+    "description": "Label on a message in a task-list channel whose task has been deleted; shown in place of the task title, not clickable."
+  },
+  "tasks.postLabel.open": {
+    "defaultMessage": "Open task",
+    "description": "Tooltip of the task label on a message in a task-list channel; clicking the label opens that task in the channel's Tasks or Revisions tab."
+  },
   "tasks.revisionChannelModal.create": {
     "defaultMessage": "Create",
     "description": "Confirm button of the Create revision channel dialog; creates the channel and uploads its video."

@@ -42,6 +42,7 @@ import PostReadReceipt from 'components/post_view/post_read_receipt';
 import PostTime from 'components/post_view/post_time';
 import ReactionList from 'components/post_view/reaction_list';
 import RedactedFilesPlaceholder from 'components/post_view/redacted_files_placeholder';
+import TaskPostLabel from 'components/tasks/task_post_label';
 import ThreadFooter from 'components/threading/channel_threads/thread_footer';
 import type {Props as TimestampProps} from 'components/timestamp/timestamp';
 import InfoSmallIcon from 'components/widgets/icons/info_small_icon';
@@ -863,6 +864,9 @@ function PostComponent(props: Props) {
                                     />
                                 )}
                                 {priority}
+                                {Boolean(post.props?.task_id) && !post.root_id && post.state !== Posts.POST_DELETED && (
+                                    <TaskPostLabel post={post}/>
+                                )}
                                 {burnOnReadBadge}
                                 {burnOnReadTimerChip}
                                 {PostUtils.hasAiGeneratedMetadata(post) &&

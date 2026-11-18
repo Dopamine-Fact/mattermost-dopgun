@@ -7805,6 +7805,8 @@
   "tag.default.bot": "BOT",
   "tag.default.guest": "KONUK",
   "tag.default.imported_inactive": "İÇE AKTARILMIŞ - ETKİN DEĞİL",
+  "tasks.postLabel.deleted": "Silinmiş görev",
+  "tasks.postLabel.open": "Görevi aç",
   "team.button.ariaLabel": "{teamName} takımı",
   "team.button.mentions.ariaLabel": "{teamName} takımı, {mentionCount} anma",
   "team.button.mentions.urgent.ariaLabel": "{teamName} takımı, {mentionCount} anma, acil bir anma içeriyor",

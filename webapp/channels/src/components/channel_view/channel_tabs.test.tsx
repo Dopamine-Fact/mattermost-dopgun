@@ -210,6 +210,12 @@ describe('ChannelTabs', () => {
         expect(screen.getByRole('tab', {name: 'Canvas'})).toHaveAttribute('aria-selected', 'true');
     });
 
+    test('?task= opens Tasks on that task', () => {
+        renderTabs('chan1', {url: '/team-one/channels/trailer?task=t2'});
+        expect(screen.getByRole('tab', {name: 'Tasks'})).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByRole('complementary', {name: 'Task details'})).toBeInTheDocument();
+    });
+
     test('a canvas channel switches between messages and the board', async () => {
         isCanvas(true);
         renderTabs('chan2');
