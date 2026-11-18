@@ -8,6 +8,7 @@ import type {Team} from '@mattermost/types/teams';
 import AccessPoliciesTab from './team_access_policies_tab';
 import AccessTab from './team_access_tab';
 import DepartmentsTab from './team_departments_tab';
+import EpisodesTab from './team_episodes_tab';
 import InfoTab from './team_info_tab';
 import TeamMembershipTab from './team_membership_tab';
 
@@ -37,6 +38,17 @@ const TeamSettings = ({
     case 'info':
         result = (
             <InfoTab
+                team={team}
+                areThereUnsavedChanges={areThereUnsavedChanges}
+                setAreThereUnsavedChanges={setAreThereUnsavedChanges}
+                showTabSwitchError={showTabSwitchError}
+                setShowTabSwitchError={setShowTabSwitchError}
+            />
+        );
+        break;
+    case 'episodes':
+        result = (
+            <EpisodesTab
                 team={team}
                 areThereUnsavedChanges={areThereUnsavedChanges}
                 setAreThereUnsavedChanges={setAreThereUnsavedChanges}

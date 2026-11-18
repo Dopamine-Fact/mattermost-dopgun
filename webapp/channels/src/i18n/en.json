@@ -25311,6 +25311,10 @@
     "defaultMessage": "Ellipsis Horizontal Icon",
     "description": "Accessibility title for the horizontal ellipsis (…) 'more options' icon."
   },
+  "generic_icons.episodes": {
+    "defaultMessage": "Episodes Icon",
+    "description": "Accessible title of the icon on the Episodes tab in Team Settings."
+  },
   "generic_icons.expand": {
     "defaultMessage": "Expand Icon",
     "description": "Screen reader label for an expand (chevron) icon, e.g. expanding a section in the custom theme chooser."
@@ -33670,6 +33674,10 @@
   "team_settings_modal.departmentsTab": {
     "defaultMessage": "Departments",
     "description": "Name of the Team Settings tab where team admins manage departments, ranks and rank permissions."
+  },
+  "team_settings_modal.episodesTab": {
+    "defaultMessage": "Episodes",
+    "description": "Label of the Team Settings tab that holds the episode channel settings: tasks, revisions, canvas and the default episode folders and tasks."
   },
   "team_settings_modal.infoTab": {
     "defaultMessage": "Info",

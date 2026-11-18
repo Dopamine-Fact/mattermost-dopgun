@@ -117,6 +117,12 @@ const TeamSettingsModal = ({isOpen, onExited, focusOriginElement}: Props) => {
             iconTitle: formatMessage({id: 'generic_icons.info', defaultMessage: 'Info Icon'}),
         },
         {
+            name: 'episodes',
+            uiName: formatMessage({id: 'team_settings_modal.episodesTab', defaultMessage: 'Episodes'}),
+            icon: 'icon icon-video-outline',
+            iconTitle: formatMessage({id: 'generic_icons.episodes', defaultMessage: 'Episodes Icon'}),
+        },
+        {
             name: 'access',
             uiName: formatMessage({id: 'team_settings_modal.accessTab', defaultMessage: 'Access'}),
             icon: 'icon icon-account-multiple-outline',

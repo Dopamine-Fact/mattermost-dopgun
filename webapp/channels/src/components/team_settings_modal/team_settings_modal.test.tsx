@@ -114,9 +114,21 @@ describe('components/team_settings_modal', () => {
             stateWithoutPermission,
         );
         const tabs = screen.getAllByRole('tab');
-        expect(tabs.length).toEqual(1);
+        expect(tabs.length).toEqual(2);
         const infoButton = screen.getByRole('tab', {name: 'info'});
         expect(infoButton).toBeDefined();
+    });
+
+    test('the Episodes tab follows Info and opens the episode settings', async () => {
+        renderWithContext(<TeamSettingsModal {...baseProps}/>, baseState);
+
+        const names = screen.getAllByRole('tab').map((tab) => tab.getAttribute('aria-label'));
+        expect(names.slice(0, 2)).toEqual(['info', 'episodes']);
+
+        await userEvent.click(screen.getByRole('tab', {name: 'episodes'}));
+
+        expect(screen.getByTestId('tasksEnabledCheckbox')).toBeInTheDocument();
+        expect(screen.queryByTestId('teamNameInput')).not.toBeInTheDocument();
     });
 
     test('shows the departments tab to members who manage the team', async () => {
