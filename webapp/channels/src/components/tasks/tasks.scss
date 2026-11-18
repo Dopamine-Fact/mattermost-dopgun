@@ -701,6 +701,38 @@
         overflow: auto;
         flex: 1;
     }
+
+    &__filter {
+        max-width: 240px;
+        height: 28px;
+        align-self: center;
+        padding: 0 8px;
+        border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+        border-radius: 4px;
+        margin-left: auto;
+        background: var(--center-channel-bg);
+        color: var(--center-channel-color);
+        font-size: 12px;
+    }
+}
+
+// One task's messages, shown on the Messages tab when the filter picks a task
+
+.TaskPostList {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 0;
+
+    &__panel {
+        overflow: auto;
+        min-height: 0;
+        flex: 1;
+    }
+
+    &__older {
+        align-self: center;
+        margin-bottom: 8px;
+    }
 }
 
 // Revisions: a revision channel's video with its revisions below

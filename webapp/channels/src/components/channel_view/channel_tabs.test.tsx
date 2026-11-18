@@ -24,6 +24,10 @@ jest.mock('mattermost-redux/actions/users', () => ({
     ...jest.requireActual('mattermost-redux/actions/users'),
     getProfilesInTeam: jest.fn(() => () => Promise.resolve({data: []})),
 }));
+jest.mock('components/tasks/task_post_list', () => ({
+    __esModule: true,
+    default: ({taskId, channelId}: {taskId: string; channelId: string}) => <div>{`task posts ${taskId} ${channelId}`}</div>,
+}));
 jest.mock('components/canvas/canvas_board', () => ({
     __esModule: true,
     default: ({channelId, readOnly}: {channelId: string; readOnly: boolean}) => (
@@ -64,7 +68,10 @@ type Options = {
     deleteAt?: number;
 };
 const renderTabs = (channelId: string, {canvasEnabled = true, revisionsEnabled = true, url = '/team-one/channels/trailer', permissions = ['create_post', 'manage_tasks', 'manage_revisions'], deleteAt = 0}: Options = {}) => renderWithContext(
-    <ChannelTabs channelId={channelId}>
+    <ChannelTabs
+        channelId={channelId}
+        composer={<div>{'composer'}</div>}
+    >
         <div>{'chat'}</div>
     </ChannelTabs>,
     {
@@ -108,6 +115,30 @@ describe('ChannelTabs', () => {
         expect(tabNames()).toEqual(['Messages', 'Revisions', 'Tasks']);
         expect(screen.getByRole('tab', {name: 'Messages'})).toHaveAttribute('aria-selected', 'true');
         expect(screen.getByText('chat')).toBeInTheDocument();
+    });
+
+    test('the Messages filter shows one task\'s messages above the composer', () => {
+        renderTabs('chan1');
+        const filter = screen.getByRole('combobox', {name: 'Filter by task'});
+        expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['All', 'Logo too small', 'Storyboard']);
+        expect(screen.getByText('chat')).toBeInTheDocument();
+        expect(screen.getByText('composer')).toBeInTheDocument();
+
+        fireEvent.change(filter, {target: {value: 't2'}});
+        expect(screen.queryByText('chat')).toBeNull();
+        expect(screen.getByText('task posts t2 chan1')).toBeInTheDocument();
+        expect(screen.getByText('composer')).toBeInTheDocument();
+
+        fireEvent.change(filter, {target: {value: ''}});
+        expect(screen.getByText('chat')).toBeInTheDocument();
+    });
+
+    test('a channel without tabs keeps its chat and composer and has no filter', async () => {
+        renderTabs('chan2');
+        await waitFor(() => expect(getCanvas).toHaveBeenCalledWith('chan2'));
+        expect(screen.getByText('chat')).toBeInTheDocument();
+        expect(screen.getByText('composer')).toBeInTheDocument();
+        expect(screen.queryByRole('combobox')).toBeNull();
     });
 
     test('a canvas channel shows Messages, Canvas', async () => {

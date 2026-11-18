@@ -21959,6 +21959,14 @@
     "defaultMessage": "{count, number} {count, plural, one {unread notification} other {unread notifications}}",
     "description": "Accessible label of the mention badge in the channel switcher; {count} is the number of unread mention notifications."
   },
+  "channel_tabs.filter.all": {
+    "defaultMessage": "All",
+    "description": "Option of the task filter on a task-list channel's Messages tab that shows every message of the channel."
+  },
+  "channel_tabs.filter.label": {
+    "defaultMessage": "Filter by task",
+    "description": "Accessible label of the dropdown on a task-list channel's Messages tab that narrows the messages to one task."
+  },
   "channel_toggle_button.private": {
     "defaultMessage": "Private",
     "description": "'Off' state label of the public/private channel toggle switch on the admin channel configuration page; very compact."
@@ -33186,6 +33194,10 @@
   "tasks.postLabel.open": {
     "defaultMessage": "Open task",
     "description": "Tooltip of the task label on a message in a task-list channel; clicking the label opens that task in the channel's Tasks or Revisions tab."
+  },
+  "tasks.posts.loadOlder": {
+    "defaultMessage": "Load older",
+    "description": "Button above one task's messages on a channel's Messages tab (task filter on) that loads the next page of earlier messages."
   },
   "tasks.revisionChannelModal.create": {
     "defaultMessage": "Create",

@@ -244,17 +244,17 @@ export default class ChannelView extends React.PureComponent<Props, State> {
             );
         }
 
+        // A plugin's channel view replaces both the posts and the post box.
+        let composer;
         if (!center) {
             const DeferredPostView = this.state.deferredPostView;
             center = (
-                <>
-                    <DeferredPostView
-                        channelId={this.props.channelId}
-                        focusedPostId={focusedPostId}
-                    />
-                    {createPost}
-                </>
+                <DeferredPostView
+                    channelId={this.props.channelId}
+                    focusedPostId={focusedPostId}
+                />
             );
+            composer = createPost;
         }
 
         return (
@@ -280,7 +280,10 @@ export default class ChannelView extends React.PureComponent<Props, State> {
                         channelId={this.props.channelId}
                     />
                 )}
-                <ChannelTabs channelId={this.props.channelId}>
+                <ChannelTabs
+                    channelId={this.props.channelId}
+                    composer={composer}
+                >
                     {center}
                 </ChannelTabs>
             </div>

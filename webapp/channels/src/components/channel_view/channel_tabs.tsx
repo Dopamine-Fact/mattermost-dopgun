@@ -3,7 +3,7 @@
 
 import classNames from 'classnames';
 import React, {Suspense, useEffect, useMemo, useState} from 'react';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {useLocation} from 'react-router-dom';
 
@@ -25,10 +25,13 @@ import {fetchTeamTasks} from 'actions/tasks';
 import List from 'components/tasks/list';
 import Revisions from 'components/tasks/revisions';
 import TaskDetail from 'components/tasks/task_detail';
+import TaskPostList from 'components/tasks/task_post_list';
 
 import {isArchivedChannel} from 'utils/channel_utils';
 
 import type {GlobalState} from 'types/store';
+
+import TaskFilterContext from './task_filter_context';
 
 import 'components/tasks/tasks.scss';
 import 'components/canvas/canvas.scss';
@@ -44,13 +47,15 @@ type Tab = 'messages' | 'revisions' | 'tasks' | 'canvas';
 type Props = {
     channelId: string;
 
-    // children is the channel's chat, shown on the Messages tab.
+    // children is the channel's chat and composer its post box, both shown on the Messages tab.
     children: React.ReactNode;
+    composer?: React.ReactNode;
 };
 
 // ChannelTabs builds one tab bar from what the channel has: Revisions and Tasks when a task section links to it,
 // Canvas when it is a canvas. A channel with neither renders its chat unchanged.
-const ChannelTabs = ({channelId, children}: Props) => {
+const ChannelTabs = ({channelId, children, composer}: Props) => {
+    const {formatMessage} = useIntl();
     const dispatch = useDispatch();
     const team = useSelector(getCurrentTeam);
     const teamId = team?.id ?? '';
@@ -68,6 +73,10 @@ const ChannelTabs = ({channelId, children}: Props) => {
     const canManageTasks = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_TASKS));
     const section = useSelector((state: GlobalState) => getTaskSectionForChannel(state, channelId));
     const sectionTasks = useMemo(() => tasks.filter((t) => section && t.section_id === section.id && !t.video_file_id), [tasks, section]);
+
+    // The Messages filter offers every task of the section, revisions included, like the post box's task picker.
+    const filterTasks = useMemo(() => tasks.filter((t) => section && t.section_id === section.id), [tasks, section]);
+    const [filterTaskId, setFilterTaskId] = useState('');
 
     // Same rule as the post textbox, plus archived channels.
     const canPost = useSelector((state: GlobalState) => {
@@ -108,6 +117,7 @@ const ChannelTabs = ({channelId, children}: Props) => {
         setTab(linkedTab);
         setSelectedId(linkedId);
     }, [channelId, linkedTab, linkedId]);
+    useEffect(() => setFilterTaskId(''), [channelId]);
 
     useEffect(() => {
         if (revisionsEnabled) {
@@ -124,7 +134,12 @@ const ChannelTabs = ({channelId, children}: Props) => {
     }, [dispatch, teamId, isLinked]);
 
     if (!section && !isCanvas) {
-        return <>{children}</>;
+        return (
+            <>
+                {children}
+                {composer}
+            </>
+        );
     }
 
     const switchTab = (id: Tab) => {
@@ -156,7 +171,24 @@ const ChannelTabs = ({channelId, children}: Props) => {
         />
     );
 
-    let panel = children;
+    const filterTask = section && filterTasks.find((t) => t.id === filterTaskId);
+    let panel = (
+        <TaskFilterContext.Provider value={filterTask ? filterTask.id : ''}>
+            {filterTask ? (
+                <div
+                    className='TaskPostList__panel'
+                    role='tabpanel'
+                >
+                    <TaskPostList
+                        key={filterTask.id}
+                        taskId={filterTask.id}
+                        channelId={channelId}
+                    />
+                </div>
+            ) : children}
+            {composer}
+        </TaskFilterContext.Provider>
+    );
     if (section && tab === 'revisions') {
         panel = (
             <div
@@ -248,6 +280,24 @@ const ChannelTabs = ({channelId, children}: Props) => {
                         defaultMessage='Canvas'
                     />
                 ))}
+                {section && tab === 'messages' && (
+                    <select
+                        className='RevisionTabs__filter'
+                        aria-label={formatMessage({id: 'channel_tabs.filter.label', defaultMessage: 'Filter by task'})}
+                        value={filterTask ? filterTask.id : ''}
+                        onChange={(e) => setFilterTaskId(e.target.value)}
+                    >
+                        <option value=''>{formatMessage({id: 'channel_tabs.filter.all', defaultMessage: 'All'})}</option>
+                        {filterTasks.map((t) => (
+                            <option
+                                key={t.id}
+                                value={t.id}
+                            >
+                                {t.title}
+                            </option>
+                        ))}
+                    </select>
+                )}
             </div>
             {panel}
         </>
