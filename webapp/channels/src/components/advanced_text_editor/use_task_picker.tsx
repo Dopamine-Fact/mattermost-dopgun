@@ -1,8 +1,9 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useContext, useEffect, useMemo} from 'react';
-import {useIntl} from 'react-intl';
+import classNames from 'classnames';
+import React, {useContext, useEffect, useMemo, useState} from 'react';
+import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 
 import {getTaskSectionForChannel, makeGetTasksForTeam} from 'mattermost-redux/selectors/entities/tasks';
@@ -30,6 +31,11 @@ export default function useTaskPicker(
     const taskId: string = draft.props?.task_id ?? '';
     const setTask = (id: string) => handleDraftChange({...draft, props: {...draft.props, task_id: id}}, {instant: true});
 
+    // Sending without a task shows why nothing happened, until a task is picked or the channel changes.
+    const [missing, setMissing] = useState(false);
+    const hasTask = tasks.some((t) => t.id === taskId);
+    useEffect(() => setMissing(false), [hasTask, channelId]);
+
     // Filtering Messages to a task also points new messages at it; only a change of filter does, so a pick made
     // afterwards stands.
     useEffect(() => {
@@ -39,34 +45,48 @@ export default function useTaskPicker(
     }, [filterTaskId, section?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (!section) {
-        return {control: null, isTaskSendable: true};
+        return {control: null, isTaskSendable: true, warnTaskMissing: () => {}};
     }
 
     const control = (
-        <select
-            className='AdvancedTextEditor__taskPicker'
-            aria-label={formatMessage({id: 'advanced_text_editor.task_picker.label', defaultMessage: 'Task'})}
-            value={taskId}
-            onChange={(e) => setTask(e.target.value)}
-        >
-            <option
-                value=''
-                disabled={true}
+        <>
+            <select
+                className={classNames('AdvancedTextEditor__taskPicker', {'AdvancedTextEditor__taskPicker--missing': missing})}
+                aria-invalid={missing}
+                aria-label={formatMessage({id: 'advanced_text_editor.task_picker.label', defaultMessage: 'Task'})}
+                value={taskId}
+                onChange={(e) => setTask(e.target.value)}
             >
-                {tasks.length ? formatMessage({id: 'advanced_text_editor.task_picker.placeholder', defaultMessage: 'Pick a task'}) : formatMessage({id: 'advanced_text_editor.task_picker.none', defaultMessage: 'No tasks yet: add one in Tasks'})}
-            </option>
-            {tasks.map((t) => (
                 <option
-                    key={t.id}
-                    value={t.id}
+                    value=''
+                    disabled={true}
                 >
-                    {t.title}
+                    {tasks.length ? formatMessage({id: 'advanced_text_editor.task_picker.placeholder', defaultMessage: 'Pick a task'}) : formatMessage({id: 'advanced_text_editor.task_picker.none', defaultMessage: 'No tasks yet: add one in Tasks'})}
                 </option>
-            ))}
-        </select>
+                {tasks.map((t) => (
+                    <option
+                        key={t.id}
+                        value={t.id}
+                    >
+                        {t.title}
+                    </option>
+                ))}
+            </select>
+            {missing && (
+                <span
+                    className='AdvancedTextEditor__taskMissing'
+                    role='alert'
+                >
+                    <FormattedMessage
+                        id='advanced_text_editor.task_picker.missing'
+                        defaultMessage='Pick a task to send your message'
+                    />
+                </span>
+            )}
+        </>
     );
 
     // A slash command may post nothing (/mute, /join); whatever it does post the server holds to the rule.
     const isCommand = draft.message.trimStart().startsWith('/');
-    return {control, isTaskSendable: isCommand || tasks.some((t) => t.id === taskId)};
+    return {control, isTaskSendable: isCommand || hasTask, warnTaskMissing: () => setMissing(true)};
 }

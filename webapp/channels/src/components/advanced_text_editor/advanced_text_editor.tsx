@@ -92,9 +92,9 @@ import useKeyHandler from './use_key_handler';
 import usePendingQuote from './use_pending_quote';
 import usePluginItems from './use_plugin_items';
 import usePriority from './use_priority';
-import useTaskPicker from './use_task_picker';
 import useRewrite from './use_rewrite';
 import useSubmit from './use_submit';
+import useTaskPicker from './use_task_picker';
 import useTextboxFocus from './use_textbox_focus';
 import useUploadFiles from './use_upload_files';
 
@@ -458,8 +458,9 @@ const AdvancedTextEditor = ({
         additionalControl: burnOnReadAdditionalControl,
         isBurnOnReadSendable: burnOnReadSendable,
     } = useBurnOnRead(draft, handleDraftChange, focusTextbox, showPreview, false);
+
     // An edited message keeps its task, so editing gets no picker (no channel means no task list).
-    const {control: taskPicker, isTaskSendable} = useTaskPicker(draft, handleDraftChange, isInEditMode ? '' : channelId, rootId);
+    const {control: taskPicker, isTaskSendable, warnTaskMissing} = useTaskPicker(draft, handleDraftChange, isInEditMode ? '' : channelId, rootId);
     const [handleSubmit, errorClass] = useSubmit(
         draft,
         postError,
@@ -523,6 +524,10 @@ const AdvancedTextEditor = ({
 
     const isDraftSendable = isValidPersistentNotifications && burnOnReadSendable && isTaskSendable;
 
+    // A missing task does not block Enter: handleSubmitWrapper says what is missing instead. The send button stays
+    // disabled, since it also schedules and skips that check.
+    const isSendAttemptable = isValidPersistentNotifications && burnOnReadSendable;
+
     const handleSubmitWrapper = useCallback(() => {
         const isEmptyPost = isPostDraftEmpty(draft);
 
@@ -545,17 +550,20 @@ const AdvancedTextEditor = ({
         // Don't gate in edit mode because that could break the ability to remove mentions
         // on an existing post with persistent notifications
         if (!isInEditMode && !isDraftSendable) {
+            if (!isTaskSendable && !isEmptyPost) {
+                warnTaskMissing();
+            }
             return;
         }
 
         handleSubmitWithErrorHandling();
-    }, [dispatch, draft, handleSubmitWithErrorHandling, isInEditMode, isRHS, isDraftSendable]);
+    }, [dispatch, draft, handleSubmitWithErrorHandling, isInEditMode, isRHS, isDraftSendable, isTaskSendable, warnTaskMissing]);
 
     const [handleKeyDown, postMsgKeyPress] = useKeyHandler(
         draft,
         channelId,
         rootId,
-        isDraftSendable,
+        isSendAttemptable,
         location,
         textboxRef,
         showFormattingBar,

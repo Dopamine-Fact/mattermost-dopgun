@@ -17943,6 +17943,10 @@
     "defaultMessage": "Task",
     "description": "Accessibility (aria) label of the task picker in the message box of a task-list (episode or revision) channel, where every message must name one of the channel's tasks."
   },
+  "advanced_text_editor.task_picker.missing": {
+    "defaultMessage": "Pick a task to send your message",
+    "description": "Warning next to the task picker in the message box of a task-list channel, shown when the user presses Enter before picking which task the message is about; the message stays in the box."
+  },
   "advanced_text_editor.task_picker.none": {
     "defaultMessage": "No tasks yet: add one in Tasks",
     "description": "Only, unselectable entry of the task picker in the message box of a task-list channel whose list has no tasks yet; a message can be sent only after a task is added on the channel's Tasks tab."

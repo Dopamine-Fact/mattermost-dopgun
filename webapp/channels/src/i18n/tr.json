@@ -4367,6 +4367,7 @@
   "advanced_text_editor.help_link.aria": "İleti yazma yardımı",
   "advanced_text_editor.remote_user_hour": "{user} kullanıcısının zamanı: {time}",
   "advanced_text_editor.task_picker.label": "Görev",
+  "advanced_text_editor.task_picker.missing": "Mesajı göndermek için bir görev seçin",
   "advanced_text_editor.task_picker.none": "Henüz görev yok: Görevler sekmesinden ekleyin",
   "advanced_text_editor.task_picker.placeholder": "Görev seçin",
   "advanced_textbox.max_length_error": "Yazı, izin verilen en fazla sınır olan {maxLength} karakterden uzun.",

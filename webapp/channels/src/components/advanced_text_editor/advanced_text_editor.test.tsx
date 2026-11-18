@@ -264,6 +264,41 @@ describe('components/avanced_text_editor/advanced_text_editor', () => {
             expect(mockedRemoveDraft).toHaveBeenCalled();
             expect(mockedUpdateDraft).not.toHaveBeenCalled();
         });
+
+        it('Enter without a task in a task-list channel keeps the message and asks for a task', async () => {
+            jest.useFakeTimers();
+            renderWithContext(
+                <AdvancedTextEditor
+                    {...baseProps}
+                />,
+                mergeObjects(initialState, {
+                    entities: {
+                        teams: {teams: {current_team_id: TestHelper.getTeamMock({id: 'current_team_id', tasks_enabled: true, revisions_enabled: true})}},
+                        tasks: {
+                            byId: {T: {id: 'T', team_id: 'current_team_id', section_id: 'sec1', title: 'Storyboard'}},
+                            sectionsById: {sec1: {id: 'sec1', team_id: 'current_team_id', channel_id: channelId, name: 'Ep 1'}},
+                        },
+                    },
+                }),
+            );
+            const textbox = screen.getByTestId('post_textbox');
+            expect(screen.queryByRole('alert')).toBeNull();
+
+            await userEvent.type(textbox, 'hello', {advanceTimers: jest.advanceTimersByTime});
+
+            // Enter right after opening a channel is ignored.
+            act(() => {
+                jest.advanceTimersByTime(5000);
+            });
+            await userEvent.type(textbox, '{enter}', {advanceTimers: jest.advanceTimersByTime});
+
+            expect(screen.getByRole('alert')).toHaveTextContent('Pick a task to send your message');
+            expect(textbox).toHaveValue('hello');
+            expect(mockedOnSubmit).not.toHaveBeenCalled();
+
+            await userEvent.selectOptions(screen.getByRole('combobox', {name: 'Task'}), 'T', {advanceTimers: jest.advanceTimersByTime});
+            expect(screen.queryByRole('alert')).toBeNull();
+        });
     });
 
     it('should set the textbox value to an existing draft on mount and when changing channels', async () => {

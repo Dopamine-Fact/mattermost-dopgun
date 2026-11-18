@@ -214,6 +214,16 @@
         background: var(--center-channel-bg);
         color: var(--center-channel-color);
         font-size: 12px;
+
+        &--missing {
+            border-color: var(--error-text);
+        }
+    }
+
+    &__taskMissing {
+        margin-top: 8px;
+        color: var(--error-text);
+        font-size: 12px;
     }
 
 }
