@@ -2219,6 +2219,34 @@
     "translation": "%s kanal amacını %s olarak güncelledi"
   },
   {
+    "id": "app.custom_role.invalid_order.app_error",
+    "translation": "Rol sırası her rolü tam olarak bir kez içermelidir."
+  },
+  {
+    "id": "app.custom_role.invalid_target.app_error",
+    "translation": "Özel roller misafirlere veya botlara verilemez."
+  },
+  {
+    "id": "app.custom_role.name_taken.app_error",
+    "translation": "Bu adda bir rol zaten var."
+  },
+  {
+    "id": "app.custom_role.not_found.app_error",
+    "translation": "Özel rol bulunamadı."
+  },
+  {
+    "id": "app.custom_role.not_outranked.app_error",
+    "translation": "Yalnızca kendi rolünüzün altındaki rolleri, altınızdaki kişilere verebilir veya kaldırabilirsiniz."
+  },
+  {
+    "id": "app.custom_role.permission_not_allowed.app_error",
+    "translation": "Özel bir rol {{.Permission}} iznini taşıyamaz."
+  },
+  {
+    "id": "app.custom_role.store.app_error",
+    "translation": "Özel roller kaydedilemedi veya yüklenemedi."
+  },
+  {
     "id": "app.daily_report.approved.app_error",
     "translation": "Bu rapor zaten onaylandı ve artık değiştirilemez."
   },

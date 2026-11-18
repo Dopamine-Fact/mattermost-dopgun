@@ -7910,6 +7910,41 @@
     "description": "Internal API error converting a generic property field into a User Attribute field; 'User Attribute' is the custom profile attributes feature name."
   },
   {
+    "id": "app.custom_role.invalid_order.app_error",
+    "translation": "The role order must list every role exactly once.",
+    "description": "API error when a system admin reorders custom roles in the System Console Roles page and the submitted order omits, repeats or adds roles."
+  },
+  {
+    "id": "app.custom_role.invalid_target.app_error",
+    "translation": "Custom roles cannot be given to guests or bots.",
+    "description": "API error when someone tries to give a custom role to a guest account or a bot."
+  },
+  {
+    "id": "app.custom_role.name_taken.app_error",
+    "translation": "A role with this name already exists.",
+    "description": "API error when a system admin creates or renames a custom role to a name another role already uses (ignoring case)."
+  },
+  {
+    "id": "app.custom_role.not_found.app_error",
+    "translation": "Custom role not found.",
+    "description": "API error when a custom role id in a request does not match any existing role."
+  },
+  {
+    "id": "app.custom_role.not_outranked.app_error",
+    "translation": "You can only give or remove roles below your own, for people below you.",
+    "description": "API error when a user with permission to assign custom roles tries to give or remove a role that does not sit below one of their own roles, or to change the roles of someone their roles do not outrank."
+  },
+  {
+    "id": "app.custom_role.permission_not_allowed.app_error",
+    "translation": "A custom role cannot carry the permission {{.Permission}}.",
+    "description": "API error when a system admin saves a custom role with a permission outside the allowed list; {{.Permission}} is the rejected permission id."
+  },
+  {
+    "id": "app.custom_role.store.app_error",
+    "translation": "Unable to save or load custom roles.",
+    "description": "Server error when the database fails while reading or writing custom roles."
+  },
+  {
     "id": "app.daily_report.approve_rejected.app_error",
     "translation": "This report was sent back. Its author must fix it before it can be approved.",
     "description": "Error returned when a reviewer tries to approve a daily report that was rejected (sent back to its author) and not yet edited."
