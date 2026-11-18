@@ -33119,6 +33119,26 @@
     "defaultMessage": "Comments",
     "description": ""
   },
+  "tasks.conversation.join": {
+    "defaultMessage": "Join the channel to comment",
+    "description": "Button in a task's detail panel, shown to someone not in the public channel the task's list is linked to; joins that channel so they can post about the task."
+  },
+  "tasks.conversation.label": {
+    "defaultMessage": "Message",
+    "description": "Accessible label of the box in a task's detail panel for posting a message about the task into its linked channel."
+  },
+  "tasks.conversation.placeholder": {
+    "defaultMessage": "Write a message about this task",
+    "description": "Placeholder of the box in a task's detail panel for posting a message about the task into its linked channel."
+  },
+  "tasks.conversation.private": {
+    "defaultMessage": "Only members of this channel can see and join its conversation.",
+    "description": "Note in a task's detail panel, in place of the message box, when the task's list is linked to a private channel the viewer is not in."
+  },
+  "tasks.conversation.send": {
+    "defaultMessage": "Send",
+    "description": "Button in a task's detail panel that posts the typed message about the task into its linked channel."
+  },
   "tasks.detail.assignee": {
     "defaultMessage": "Assignee",
     "description": ""

@@ -25,7 +25,8 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {getAllGroupsForReferenceByName} from 'mattermost-redux/selectors/entities/groups';
 import {isPostFlagged, makeGetReactionsForPost} from 'mattermost-redux/selectors/entities/posts';
 import {getTeammateNameDisplaySetting, isCollapsedThreadsEnabled} from 'mattermost-redux/selectors/entities/preferences';
-import {haveIChannelPermission} from 'mattermost-redux/selectors/entities/roles';
+import {haveIChannelPermission, haveITeamPermission} from 'mattermost-redux/selectors/entities/roles';
+import {getTask} from 'mattermost-redux/selectors/entities/tasks';
 import {getCurrentTeamId, getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {makeGetDisplayName, getCurrentUserId, getUser, getUsersByUsername} from 'mattermost-redux/selectors/entities/users';
 import type {UserMentionKey} from 'mattermost-redux/selectors/entities/users';
@@ -121,10 +122,25 @@ export function canDeletePost(state: GlobalState, post: Post, channel?: Channel)
         return false;
     }
 
+    if (canManageTaskPost(state, post)) {
+        return true;
+    }
+
     if (isPostOwner(state, post)) {
         return haveIChannelPermission(state, channel && channel.team_id, post.channel_id, Permissions.DELETE_POST);
     }
     return haveIChannelPermission(state, channel && channel.team_id, post.channel_id, Permissions.DELETE_OTHERS_POSTS);
+}
+
+// canManageTaskPost mirrors the server: whoever manages a task may delete messages about it in its list's channel.
+function canManageTaskPost(state: GlobalState, post: Post): boolean {
+    const taskId = post.props?.task_id;
+    const task = typeof taskId === 'string' && taskId ? getTask(state, taskId) : undefined;
+    const section = task && state.entities.tasks.sectionsById[task.section_id];
+    if (!task || !section || section.channel_id !== post.channel_id) {
+        return false;
+    }
+    return haveITeamPermission(state, task.team_id, task.video_file_id ? Permissions.MANAGE_REVISIONS : Permissions.MANAGE_TASKS);
 }
 
 export function canEditPost(

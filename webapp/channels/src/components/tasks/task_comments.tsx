@@ -19,15 +19,22 @@ import {imageURLForUser} from 'utils/utils';
 
 import type {GlobalState} from 'types/store';
 
+import TaskPostComposer from './task_post_composer';
+import TaskPostList from './task_post_list';
+
 type Props = {
     taskId: string;
     canManage: boolean;
+
+    // channelId is the channel the task's list is linked to; the task is then discussed there and its old comments
+    // are read-only.
+    channelId?: string;
 };
 
 const errorMessage = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 // Comments live in local state: only the open panel needs them, so they stay out of the redux store and websocket events.
-const TaskComments = ({taskId, canManage}: Props) => {
+const TaskComments = ({taskId, canManage, channelId}: Props) => {
     const {formatMessage, formatDate} = useIntl();
     const currentUserId = useSelector(getCurrentUserId);
     const dispatch = useDispatch();
@@ -100,6 +107,9 @@ const TaskComments = ({taskId, canManage}: Props) => {
                 />
             </h3>
 
+            {/* Without a channel the task's messages (from when it had one) come first, its comments after. */}
+            {!channelId && <TaskPostList taskId={taskId}/>}
+
             {comments.map((comment) => {
                 const author = usersById[comment.user_id];
                 return (
@@ -155,51 +165,64 @@ const TaskComments = ({taskId, canManage}: Props) => {
                 );
             })}
 
-            <form
-                className='TaskComments__composer'
-                onSubmit={submit}
-            >
-                <textarea
-                    className='form-control'
-                    value={message}
-                    maxLength={16000}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder={formatMessage({id: 'tasks.comments.placeholder', defaultMessage: 'Write a comment'})}
-                    aria-label={formatMessage({id: 'tasks.comments.label', defaultMessage: 'Comment'})}
-                />
-                {files.length > 0 && (
-                    <ul className='TaskComments__pending'>
-                        {files.map((file) => <li key={file.name + file.size}>{file.name}</li>)}
-                    </ul>
-                )}
-                {error && <div className='TaskComments__error'>{error}</div>}
-                <div className='TaskComments__actions'>
-                    <label
-                        className='btn btn-icon btn-sm'
-                        title={formatMessage({id: 'tasks.comments.attach', defaultMessage: 'Attach files'})}
-                    >
-                        <PaperclipIcon size={18}/>
-                        <input
-                            ref={fileInput}
-                            type='file'
-                            multiple={true}
-                            hidden={true}
-                            onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
-                            aria-label={formatMessage({id: 'tasks.comments.attach', defaultMessage: 'Attach files'})}
-                        />
-                    </label>
-                    <button
-                        type='submit'
-                        className='btn btn-primary btn-sm'
-                        disabled={sending || (!message.trim() && files.length === 0)}
-                    >
-                        <FormattedMessage
-                            id='tasks.comments.send'
-                            defaultMessage='Send'
-                        />
-                    </button>
-                </div>
-            </form>
+            {channelId && (
+                <>
+                    {error && <div className='TaskComments__error'>{error}</div>}
+                    <TaskPostList taskId={taskId}/>
+                    <TaskPostComposer
+                        taskId={taskId}
+                        channelId={channelId}
+                    />
+                </>
+            )}
+
+            {!channelId && (
+                <form
+                    className='TaskComments__composer'
+                    onSubmit={submit}
+                >
+                    <textarea
+                        className='form-control'
+                        value={message}
+                        maxLength={16000}
+                        onChange={(e) => setMessage(e.target.value)}
+                        placeholder={formatMessage({id: 'tasks.comments.placeholder', defaultMessage: 'Write a comment'})}
+                        aria-label={formatMessage({id: 'tasks.comments.label', defaultMessage: 'Comment'})}
+                    />
+                    {files.length > 0 && (
+                        <ul className='TaskComments__pending'>
+                            {files.map((file) => <li key={file.name + file.size}>{file.name}</li>)}
+                        </ul>
+                    )}
+                    {error && <div className='TaskComments__error'>{error}</div>}
+                    <div className='TaskComments__actions'>
+                        <label
+                            className='btn btn-icon btn-sm'
+                            title={formatMessage({id: 'tasks.comments.attach', defaultMessage: 'Attach files'})}
+                        >
+                            <PaperclipIcon size={18}/>
+                            <input
+                                ref={fileInput}
+                                type='file'
+                                multiple={true}
+                                hidden={true}
+                                onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+                                aria-label={formatMessage({id: 'tasks.comments.attach', defaultMessage: 'Attach files'})}
+                            />
+                        </label>
+                        <button
+                            type='submit'
+                            className='btn btn-primary btn-sm'
+                            disabled={sending || (!message.trim() && files.length === 0)}
+                        >
+                            <FormattedMessage
+                                id='tasks.comments.send'
+                                defaultMessage='Send'
+                            />
+                        </button>
+                    </div>
+                </form>
+            )}
         </section>
     );
 };

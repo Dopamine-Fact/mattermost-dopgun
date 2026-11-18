@@ -716,6 +716,16 @@
     }
 }
 
+.TaskComments__join {
+    padding: 8px 0;
+}
+
+.TaskComments__note {
+    padding: 8px 0;
+    color: rgba(var(--center-channel-color-rgb), 0.64);
+    font-size: 12px;
+}
+
 // One task's messages, shown on the Messages tab when the filter picks a task
 
 .TaskPostList {

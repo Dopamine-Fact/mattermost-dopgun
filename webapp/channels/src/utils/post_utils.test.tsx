@@ -1684,3 +1684,35 @@ describe('shouldShowActionsMenu', () => {
         expect(PostUtils.shouldShowActionsMenu(baseState, borPost)).toBe(false);
     });
 });
+
+describe('PostUtils.canDeletePost for task messages', () => {
+    const section = {id: 'sec1', team_id: 'team1', name: 'Ep 1', sort_order: 0, channel_id: 'chan1', video_file_id: '', create_at: 1, update_at: 1};
+    const task = {id: 't1', team_id: 'team1', section_id: 'sec1', title: 'Storyboard', video_file_id: ''};
+    const post = TestHelper.getPostMock({id: 'p1', user_id: 'other', channel_id: 'chan1', props: {task_id: 't1'}});
+    const channel = TestHelper.getChannelMock({id: 'chan1', team_id: 'team1'});
+    const state = (teamPermissions: string[], sectionChannel = 'chan1') => makeInitialState({
+        entities: {
+            users: {currentUserId: 'me', profiles: {me: TestHelper.getUserMock({id: 'me', roles: 'system_user'})}},
+            teams: {currentTeamId: 'team1', myMembers: {team1: TestHelper.getTeamMembershipMock({team_id: 'team1', user_id: 'me', roles: 'team_user'})}},
+            channels: {channels: {chan1: channel}, myMembers: {chan1: TestHelper.getChannelMembershipMock({channel_id: 'chan1', user_id: 'me', roles: 'channel_user'})}},
+            roles: {roles: {
+                system_user: TestHelper.getRoleMock({name: 'system_user', permissions: []}),
+                team_user: TestHelper.getRoleMock({name: 'team_user', permissions: teamPermissions}),
+                channel_user: TestHelper.getRoleMock({name: 'channel_user', permissions: ['delete_post']}),
+            }},
+            tasks: {byId: {t1: task}, sectionsById: {sec1: {...section, channel_id: sectionChannel}}},
+        },
+    } as any) as GlobalState;
+
+    test('a task manager may delete another user\'s message about the task', () => {
+        expect(PostUtils.canDeletePost(state(['manage_tasks']), post, channel)).toBe(true);
+    });
+
+    test('without manage_tasks it stays the author\'s or a moderator\'s', () => {
+        expect(PostUtils.canDeletePost(state([]), post, channel)).toBe(false);
+    });
+
+    test('only in the channel the task\'s list is linked to', () => {
+        expect(PostUtils.canDeletePost(state(['manage_tasks'], 'chan2'), post, channel)).toBe(false);
+    });
+});

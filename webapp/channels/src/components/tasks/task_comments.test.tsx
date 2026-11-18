@@ -13,6 +13,15 @@ import {TestHelper} from 'utils/test_helper';
 
 import TaskComments from './task_comments';
 
+jest.mock('components/tasks/task_post_list', () => ({
+    __esModule: true,
+    default: ({taskId, channelId}: {taskId: string; channelId?: string}) => <div>{`task posts ${taskId} ${channelId ?? 'anywhere'}`}</div>,
+}));
+jest.mock('components/tasks/task_post_composer', () => ({
+    __esModule: true,
+    default: ({taskId, channelId}: {taskId: string; channelId: string}) => <div>{`composer ${taskId} ${channelId}`}</div>,
+}));
+
 const me = TestHelper.getUserMock({id: 'me', username: 'ayse'});
 const other = TestHelper.getUserMock({id: 'other', username: 'mehmet'});
 const file = {id: 'file1', name: 'plan.png', mime_type: 'image/png'} as FileInfo;
@@ -36,10 +45,11 @@ const state = {
     },
 };
 
-const renderComments = (canManage = false) => renderWithContext(
+const renderComments = (canManage = false, channelId?: string) => renderWithContext(
     <TaskComments
         taskId='task1'
         canManage={canManage}
+        channelId={channelId}
     />,
     state,
 );
@@ -75,6 +85,24 @@ describe('TaskComments', () => {
         const author = document.querySelector('.TaskComment')!;
         expect(author.querySelector('.status')).not.toBeNull();
         expect(author.querySelector('button.status-wrapper')).not.toBeNull();
+    });
+
+    test('a task with a channel talks there: old comments stay, read-only, above its messages and the channel box', async () => {
+        jest.spyOn(Client4, 'getTaskComments').mockResolvedValue([comment('c1', 'other')]);
+        renderComments(false, 'chan1');
+
+        expect(await screen.findByText('message c1')).toBeInTheDocument();
+        expect(screen.getByText('task posts task1 anywhere')).toBeInTheDocument();
+        expect(screen.getByText('composer task1 chan1')).toBeInTheDocument();
+        expect(screen.queryByRole('textbox', {name: 'Comment'})).toBeNull();
+    });
+
+    test('a task without a channel shows its messages and keeps the comment box', async () => {
+        jest.spyOn(Client4, 'getTaskComments').mockResolvedValue([]);
+        renderComments();
+        expect(screen.getByText('task posts task1 anywhere')).toBeInTheDocument();
+        expect(screen.getByRole('textbox', {name: 'Comment'})).toBeInTheDocument();
+        expect(screen.queryByText(/^composer/)).toBeNull();
     });
 
     test('managers can delete any comment', async () => {

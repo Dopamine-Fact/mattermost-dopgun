@@ -182,6 +182,7 @@ const TaskDetail = ({task, sections, members, displayName, onClose, canManage}: 
             <TaskComments
                 taskId={task.id}
                 canManage={canManage}
+                channelId={sections.find((s) => s.id === task.section_id)?.channel_id || undefined}
             />
         </aside>
     );
