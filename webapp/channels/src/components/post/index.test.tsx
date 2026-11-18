@@ -19,6 +19,24 @@ describe('PostComponent', () => {
         Client4.setUrl('http://localhost:8065');
     });
 
+    test('a message about another task than the one before starts its own group', () => {
+        const channel1 = TestHelper.getChannelMock({id: 'channel1', team_id: 'team1'});
+        const before = TestHelper.getPostMock({id: 'before', user_id: 'u1', channel_id: channel1.id, create_at: 1000, type: '', message: 'first', props: {task_id: 'A'}});
+        const about = (task: string) => TestHelper.getPostMock({id: 'p' + task, user_id: 'u1', channel_id: channel1.id, create_at: 1001, type: '', message: 'about ' + task, props: {task_id: task}});
+        const render = (post: ReturnType<typeof about>) => renderWithContext(
+            <ConnectedPostComponent
+                location={Locations.CENTER}
+                post={post}
+                previousPostId={before.id}
+                isChannelAutotranslated={false}
+            />,
+            {entities: {channels: {channels: {channel1}}, posts: {posts: {before}}}},
+        );
+
+        expect(render(about('A')).container.querySelector('.post')).toHaveClass('same--user');
+        expect(render(about('B')).container.querySelector('.post')).not.toHaveClass('same--user');
+    });
+
     test('MM-62710 should attempt to load missing root post when CRT is disabled', async () => {
         const team1 = TestHelper.getTeamMock({id: 'team1'});
         const channel1 = TestHelper.getChannelMock({id: 'channel1', team_id: team1.id});

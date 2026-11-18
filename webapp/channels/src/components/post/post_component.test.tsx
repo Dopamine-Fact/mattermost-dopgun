@@ -750,6 +750,33 @@ describe('PostComponent', () => {
         });
     });
 
+    describe('task label', () => {
+        const taskPost = TestHelper.getPostMock({channel_id: channel.id, props: {task_id: 'T'}});
+
+        test('a message that starts a group shows its task', () => {
+            const {container} = renderWithContext(
+                <PostComponent
+                    {...baseProps}
+                    post={taskPost}
+                    compactDisplay={false}
+                />,
+            );
+            expect(container.querySelector('.TaskPostLabel')).not.toBeNull();
+        });
+
+        test('a message continuing its group leaves the task to the group header', () => {
+            const {container} = renderWithContext(
+                <PostComponent
+                    {...baseProps}
+                    post={taskPost}
+                    compactDisplay={false}
+                    isConsecutivePost={true}
+                />,
+            );
+            expect(container.querySelector('.TaskPostLabel')).toBeNull();
+        });
+    });
+
     describe('AI-generated indicator', () => {
         const aiGeneratedPost = TestHelper.getPostMock({
             channel_id: channel.id,

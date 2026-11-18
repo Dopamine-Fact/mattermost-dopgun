@@ -864,7 +864,7 @@ function PostComponent(props: Props) {
                                     />
                                 )}
                                 {priority}
-                                {Boolean(post.props?.task_id) && !post.root_id && post.state !== Posts.POST_DELETED && (
+                                {Boolean(post.props?.task_id) && !post.root_id && post.state !== Posts.POST_DELETED && (!props.isConsecutivePost || props.compactDisplay) && (
                                     <TaskPostLabel post={post}/>
                                 )}
                                 {burnOnReadBadge}

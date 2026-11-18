@@ -87,6 +87,12 @@ function isConsecutivePost(state: GlobalState, ownProps: OwnProps, locale: strin
         consecutivePost = areConsecutivePostsBySameUser(post, previousPost);
     }
 
+    // A message about another task opens its own group, so its task label has a header to sit in.
+    const taskId = post?.props?.task_id;
+    if (consecutivePost && previousPost && post && !post.root_id && taskId && taskId !== (previousPost.root_id ? undefined : previousPost.props?.task_id)) {
+        consecutivePost = false;
+    }
+
     if (previousPost && post && consecutivePost && isMyChannelAutotranslated(state, post.channel_id)) {
         const translation = getPostTranslation(post, locale);
         const previousTranslation = getPostTranslation(previousPost, locale);
