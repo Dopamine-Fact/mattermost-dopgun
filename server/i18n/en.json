@@ -12557,6 +12557,11 @@
     "description": "API validation error when a task is placed in a task list section that does not exist or belongs to another team."
   },
   {
+    "id": "app.task.invalid_video.app_error",
+    "translation": "The revision's video must be one of its section's video versions.",
+    "description": "API validation error when a revision task is created with a video that is not a version of its section's video, or when a revision is moved to another section."
+  },
+  {
     "id": "app.task.not_found.app_error",
     "translation": "The task or section was not found.",
     "description": "API error when the requested task or task list section does not exist."

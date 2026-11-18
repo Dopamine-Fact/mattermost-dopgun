@@ -408,7 +408,7 @@ func getTaskSectionVideo(c *Context, w http.ResponseWriter, r *http.Request) {
 	if c.Err != nil {
 		return
 	}
-	info, appErr := c.App.GetTaskSectionVideo(c.AppContext, section)
+	info, appErr := c.App.GetTaskSectionVideo(c.AppContext, section, "")
 	if appErr != nil {
 		c.Err = appErr
 		return

@@ -15036,5 +15036,9 @@
   {
     "id": "model.team.is_valid.episode_tasks.app_error",
     "translation": "Varsayılan bölüm görevleri geçersiz. En fazla 100 satır ve 4000 karakter kullanın."
+  },
+  {
+    "id": "app.task.invalid_video.app_error",
+    "translation": "Revizyonun videosu, bölümünün video sürümlerinden biri olmalıdır."
   }
 ]

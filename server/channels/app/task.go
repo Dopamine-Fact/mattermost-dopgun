@@ -72,6 +72,34 @@ func (a *App) validateTaskRefs(rctx request.CTX, task *model.Task) *model.AppErr
 	return nil
 }
 
+// validateTaskVideo makes a revision's video one of its own section's versions; ordinary tasks pass.
+func (a *App) validateTaskVideo(task *model.Task) *model.AppError {
+	if task.VideoFileId == "" {
+		return nil
+	}
+	if task.SectionId == "" {
+		return invalidTaskVideoError(task)
+	}
+	section, err := a.Srv().Store().Task().GetSection(task.SectionId)
+	if err != nil || !section.IsRevision() {
+		return invalidTaskVideoError(task)
+	}
+	videos, err := a.Srv().Store().Task().GetSectionVideos(section.Id)
+	if err != nil {
+		return taskStoreError("validateTaskVideo", section.Id, err)
+	}
+	for _, video := range videos {
+		if video.FileId == task.VideoFileId {
+			return nil
+		}
+	}
+	return invalidTaskVideoError(task)
+}
+
+func invalidTaskVideoError(task *model.Task) *model.AppError {
+	return model.NewAppError("validateTaskVideo", "app.task.invalid_video.app_error", nil, "video_file_id="+task.VideoFileId, http.StatusBadRequest)
+}
+
 func (a *App) GetTask(taskID string) (*model.Task, *model.AppError) {
 	task, err := a.Srv().Store().Task().Get(taskID)
 	if err != nil {
@@ -98,6 +126,9 @@ func (a *App) CreateTask(rctx request.CTX, task *model.Task, connectionID string
 	if appErr := a.validateTaskRefs(rctx, task); appErr != nil {
 		return nil, appErr
 	}
+	if appErr := a.validateTaskVideo(task); appErr != nil {
+		return nil, appErr
+	}
 	saved, err := a.Srv().Store().Task().Save(task)
 	if err != nil {
 		return nil, taskStoreError("CreateTask", task.Id, err)
@@ -121,6 +152,9 @@ func (a *App) PatchTask(rctx request.CTX, task *model.Task, patch *model.TaskPat
 	}
 	patched := *task
 	patched.Patch(patch)
+	if task.VideoFileId != "" && patched.SectionId != task.SectionId {
+		return nil, invalidTaskVideoError(task)
+	}
 	if appErr := a.validateTaskRefs(rctx, &patched); appErr != nil {
 		return nil, appErr
 	}
@@ -180,7 +214,7 @@ func formatVideoTime(ms int64) string {
 
 // taskRevisionChannel returns the channel a revision belongs to, or nil for an ordinary task.
 func (a *App) taskRevisionChannel(task *model.Task) *model.Channel {
-	if task.SectionId == "" {
+	if task.SectionId == "" || task.VideoFileId == "" {
 		return nil
 	}
 	section, err := a.Srv().Store().Task().GetSection(task.SectionId)
@@ -325,17 +359,29 @@ func (a *App) DeleteTaskSection(rctx request.CTX, section *model.TaskSection, co
 	if appErr := a.RequireTasksEnabled(section.TeamId); appErr != nil {
 		return appErr
 	}
+	// Read the versions first: the store delete removes their rows.
+	videos, err := a.Srv().Store().Task().GetSectionVideos(section.Id)
+	if err != nil {
+		return taskStoreError("DeleteTaskSection", section.Id, err)
+	}
+	fileIDs := []string{}
+	if section.VideoFileId != "" {
+		fileIDs = append(fileIDs, section.VideoFileId)
+	}
+	for _, video := range videos {
+		if video.FileId != section.VideoFileId {
+			fileIDs = append(fileIDs, video.FileId)
+		}
+	}
 	if err := a.Srv().Store().Task().DeleteSection(section.Id); err != nil {
 		return taskStoreError("DeleteTaskSection", section.Id, err)
 	}
-	if section.VideoFileId != "" {
-		a.removeTaskFiles(rctx, []string{section.VideoFileId})
-	}
+	a.removeTaskFiles(rctx, fileIDs)
 	a.publishTaskEvent(rctx, model.WebsocketTaskSectionDeleted, section.TeamId, "section_id", section.Id, connectionID)
 	return nil
 }
 
-// SetTaskSectionVideo turns the section into a revision channel, replacing any earlier video.
+// SetTaskSectionVideo adds a new version of the section's video and makes it the latest; earlier versions stay.
 func (a *App) SetTaskSectionVideo(rctx request.CTX, section *model.TaskSection, userID, name string, data []byte, connectionID string) (*model.TaskSection, *model.AppError) {
 	if appErr := a.RequireRevisionsEnabled(section.TeamId); appErr != nil {
 		return nil, appErr
@@ -348,29 +394,82 @@ func (a *App) SetTaskSectionVideo(rctx request.CTX, section *model.TaskSection, 
 		return nil, appErr
 	}
 
+	if _, err := a.Srv().Store().Task().SaveSectionVideo(&model.TaskSectionVideo{SectionId: section.Id, FileId: info.Id, CreatorId: userID}); err != nil {
+		a.removeTaskFiles(rctx, []string{info.Id})
+		return nil, taskStoreError("SetTaskSectionVideo", section.Id, err)
+	}
 	patched := *section
 	patched.VideoFileId = info.Id
 	updated, err := a.Srv().Store().Task().UpdateSection(&patched)
 	if err != nil {
+		// The version row stays and points at a removed file; GetTaskSectionVideos drops such rows.
 		a.removeTaskFiles(rctx, []string{info.Id})
 		return nil, taskStoreError("SetTaskSectionVideo", section.Id, err)
-	}
-	if section.VideoFileId != "" {
-		a.removeTaskFiles(rctx, []string{section.VideoFileId})
 	}
 	a.publishTaskEvent(rctx, model.WebsocketTaskSectionUpserted, updated.TeamId, "section", updated, connectionID)
 	return updated, nil
 }
 
-func (a *App) GetTaskSectionVideo(rctx request.CTX, section *model.TaskSection) (*model.FileInfo, *model.AppError) {
+// GetTaskSectionVideos lists the section's video versions, oldest first, each with its file; versions whose file is gone are left out.
+func (a *App) GetTaskSectionVideos(rctx request.CTX, section *model.TaskSection) ([]*model.TaskSectionVideo, *model.AppError) {
+	if appErr := a.RequireTasksEnabled(section.TeamId); appErr != nil {
+		return nil, appErr
+	}
+	videos, err := a.Srv().Store().Task().GetSectionVideos(section.Id)
+	if err != nil {
+		return nil, taskStoreError("GetTaskSectionVideos", section.Id, err)
+	}
+	if len(videos) == 0 {
+		return videos, nil
+	}
+	fileIDs := make([]string, 0, len(videos))
+	for _, video := range videos {
+		fileIDs = append(fileIDs, video.FileId)
+	}
+	infos, err := a.Srv().Store().FileInfo().GetByIds(fileIDs, false, false, true)
+	if err != nil {
+		return nil, taskStoreError("GetTaskSectionVideos", section.Id, err)
+	}
+	byID := make(map[string]*model.FileInfo, len(infos))
+	for _, info := range infos {
+		byID[info.Id] = info
+	}
+	kept := make([]*model.TaskSectionVideo, 0, len(videos))
+	for _, video := range videos {
+		if info := byID[video.FileId]; info != nil {
+			video.File = info
+			kept = append(kept, video)
+		}
+	}
+	return kept, nil
+}
+
+// GetTaskSectionVideo returns one version's file: the latest for an empty fileID, otherwise only a version of this section.
+func (a *App) GetTaskSectionVideo(rctx request.CTX, section *model.TaskSection, fileID string) (*model.FileInfo, *model.AppError) {
 	if appErr := a.RequireTasksEnabled(section.TeamId); appErr != nil {
 		return nil, appErr
 	}
 	notFound := model.NewAppError("GetTaskSectionVideo", "app.task.not_found.app_error", nil, "section_id="+section.Id, http.StatusNotFound)
-	if section.VideoFileId == "" {
+	if fileID == "" {
+		fileID = section.VideoFileId
+	}
+	if fileID == "" {
 		return nil, notFound
 	}
-	info, appErr := a.GetFileInfo(rctx, section.VideoFileId)
+	if fileID != section.VideoFileId {
+		videos, err := a.Srv().Store().Task().GetSectionVideos(section.Id)
+		if err != nil {
+			return nil, taskStoreError("GetTaskSectionVideo", section.Id, err)
+		}
+		found := false
+		for _, video := range videos {
+			found = found || video.FileId == fileID
+		}
+		if !found {
+			return nil, notFound
+		}
+	}
+	info, appErr := a.GetFileInfo(rctx, fileID)
 	if appErr != nil || info.DeleteAt != 0 {
 		return nil, notFound
 	}
