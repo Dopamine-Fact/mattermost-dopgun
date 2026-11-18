@@ -8631,6 +8631,8 @@
   "user_profile.call.ongoing": "{user} ile çağrı sürüyor",
   "user_profile.call.start": "Çağrı başlat",
   "user_profile.close": "Kullanıcı profili penceresini kapat",
+  "user_profile.custom_roles.edit": "Rolleri düzenle",
+  "user_profile.custom_roles.edit_title": "{name} kullanıcısının rolleri",
   "user_profile.custom_status": "Durum",
   "user_profile.custom_status.set_status": "Bir durum ayarlayın",
   "user_profile.roleTitle.channel_admin": "Kanal yöneticisi",

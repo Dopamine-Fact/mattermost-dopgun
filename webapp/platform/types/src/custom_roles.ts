@@ -25,3 +25,6 @@ export type CustomRoleCreate = Pick<CustomRole, 'display_name' | 'color' | 'depa
 
 /** Every permission a custom role may carry, in display order. */
 export const CUSTOM_ROLE_PERMISSIONS = ['manage_tasks', 'manage_daily_reports', 'manage_revisions', 'assign_custom_roles'] as const;
+
+/** Websocket event sent to everyone when a role is created, changed, reordered or deleted. */
+export const CUSTOM_ROLES_CHANGED = 'custom_roles_changed';

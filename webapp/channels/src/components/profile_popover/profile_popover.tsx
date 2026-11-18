@@ -28,6 +28,7 @@ import type {GlobalState} from 'types/store';
 
 import ProfilePopoverAvatar from './profile_popover_avatar';
 import ProfilePopoverCustomAttributes from './profile_popover_custom_attributes';
+import ProfilePopoverCustomRoles from './profile_popover_custom_roles';
 import ProfilePopoverCustomStatus from './profile_popover_custom_status';
 import ProfilePopoverEmail from './profile_popover_email';
 import ProfilePopoverLastActive from './profile_popover_last_active';
@@ -183,6 +184,12 @@ const ProfilePopover = ({
                     haveOverrideProp={haveOverrideProp}
                     fullname={fullname}
                 />
+                {!haveOverrideProp && (
+                    <ProfilePopoverCustomRoles
+                        user={user}
+                        hide={hide}
+                    />
+                )}
                 <hr/>
                 <ProfilePopoverEmail
                     email={Utils.getEmail(user)}

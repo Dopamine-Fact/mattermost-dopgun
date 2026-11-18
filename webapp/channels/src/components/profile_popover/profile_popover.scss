@@ -293,3 +293,43 @@ $profilePopoverBorderWidth: 1px;
         }
     }
 }
+
+.custom-role-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    margin-top: 8px;
+    gap: 4px;
+}
+
+.custom-role-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(var(--center-channel-color-rgb), 0.08);
+    font-size: 12px;
+    gap: 4px;
+}
+
+.custom-role-chip__dot {
+    width: 8px;
+    height: 8px;
+    flex: none;
+    border-radius: 50%;
+}
+
+.custom-roles-edit {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    &__role {
+        display: flex;
+        align-items: center;
+        margin: 0;
+        font-weight: normal;
+        gap: 8px;
+    }
+}

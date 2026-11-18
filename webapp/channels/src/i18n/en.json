@@ -34559,6 +34559,14 @@
     "defaultMessage": "Close user profile popover",
     "description": "Accessible label of the X button that closes the user profile popover."
   },
+  "user_profile.custom_roles.edit": {
+    "defaultMessage": "Edit roles",
+    "description": "Profile popover (the card shown when clicking a user name or avatar), under the user name where the user's studio roles are listed as colored chips. Button that opens the dialog for giving or removing the user's roles; shown only to people allowed to assign roles."
+  },
+  "user_profile.custom_roles.edit_title": {
+    "defaultMessage": "Roles of {name}",
+    "description": "Title of the dialog, opened from the profile popover, that lists the studio roles a user holds as checkboxes; {name} is the username."
+  },
   "user_profile.custom_status": {
     "defaultMessage": "Status",
     "description": "Heading in the profile popover above the user's custom status text; 'Status' is a noun."

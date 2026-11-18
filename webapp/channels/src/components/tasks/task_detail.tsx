@@ -1,13 +1,16 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
-import {useDispatch} from 'react-redux';
+import {useDispatch, useSelector} from 'react-redux';
 
 import {CloseIcon, TrashCanOutlineIcon} from '@mattermost/compass-icons/components';
 import type {Task, TaskPatch, TaskSection} from '@mattermost/types/tasks';
 import type {UserProfile} from '@mattermost/types/users';
+
+import {Client4} from 'mattermost-redux/client';
+import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
 import {deleteTask, patchTask} from 'actions/tasks';
 
@@ -29,6 +32,21 @@ const TaskDetail = ({task, sections, members, displayName, onClose, canManage}: 
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
     const save = (patch: TaskPatch) => dispatch(patchTask(task.id, patch));
+    const currentUserId = useSelector(getCurrentUserId);
+
+    // The server only lets a role assign to members it outranks; offer just those (null: not known, offer all).
+    const [actionable, setActionable] = useState<Set<string> | null>(null);
+    useEffect(() => {
+        if (!canManage) {
+            return undefined;
+        }
+        let live = true;
+        Client4.getActionableUserIds(task.team_id).then((ids) => live && setActionable(new Set(ids)), () => {});
+        return () => {
+            live = false;
+        };
+    }, [task.team_id, canManage]);
+    const assignable = members.filter((u) => !actionable || actionable.has(u.id) || u.id === currentUserId || u.id === task.assignee_id);
 
     return (
         <aside
@@ -80,7 +98,7 @@ const TaskDetail = ({task, sections, members, displayName, onClose, canManage}: 
                     onChange={(e) => save({assignee_id: e.target.value})}
                 >
                     <option value=''>{formatMessage({id: 'tasks.detail.unassigned', defaultMessage: 'Unassigned'})}</option>
-                    {members.map((user) => (
+                    {assignable.map((user) => (
                         <option
                             key={user.id}
                             value={user.id}

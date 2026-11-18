@@ -9,6 +9,7 @@ import {FormattedMessage, defineMessages, useIntl} from 'react-intl';
 import {DragVerticalIcon, PencilOutlineIcon, PlusIcon, TrashCanOutlineIcon} from '@mattermost/compass-icons/components';
 import {GenericModal} from '@mattermost/components';
 import type {CustomRole} from '@mattermost/types/custom_roles';
+import {CUSTOM_ROLES_CHANGED} from '@mattermost/types/custom_roles';
 
 import {Client4} from 'mattermost-redux/client';
 
@@ -23,8 +24,6 @@ import {AdminWrapper, DangerText} from '../system_properties/controls';
 import type {SearchableStrings} from '../types';
 
 import './custom_roles.scss';
-
-export const CUSTOM_ROLES_CHANGED = 'custom_roles_changed';
 
 const byPosition = (a: CustomRole, b: CustomRole) => a.position - b.position;
 
