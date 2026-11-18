@@ -65,8 +65,14 @@ func (a *App) driveViewerFor(rctx request.CTX, session model.Session, channel *m
 	}
 	v := &driveViewer{depts: map[string]bool{}}
 	member, appErr := a.GetTeamMember(rctx, channel.TeamId, session.UserId)
-	if appErr != nil || member.DeleteAt != 0 {
+	if appErr != nil {
+		if appErr.StatusCode != http.StatusNotFound {
+			return nil, appErr
+		}
 		return v, nil // not in the team: no departments, so every restricted folder stays hidden
+	}
+	if member.DeleteAt != 0 {
+		return v, nil
 	}
 	ranks, err := a.Srv().Store().CustomRole().GetForTeam(channel.TeamId)
 	if err != nil {
@@ -82,7 +88,12 @@ func (a *App) driveViewerFor(rctx request.CTX, session model.Session, channel *m
 }
 
 func (v *driveViewer) access(path []*model.DriveItem) (visible bool, write driveWrite) {
-	if v.manager {
+	if v.manager { // managers see everything but still cannot write into or through a mirror
+		for _, f := range path {
+			if f.MirrorOf != "" {
+				return true, driveWriteDenied
+			}
+		}
 		return true, driveWriteAllowed
 	}
 	return driveRuleAccess(path, v.depts)
@@ -121,7 +132,10 @@ func (a *App) driveReadPath(v *driveViewer, channel *model.Channel, folderID str
 	for _, m := range mirrors {
 		mirrorPath, appErr := a.driveFolderPath(channel, m.Id)
 		if appErr != nil {
-			continue // a mirror in a trashed folder is not a route
+			if appErr.StatusCode == http.StatusBadRequest {
+				continue // a mirror in a trashed folder is not a route
+			}
+			return nil, false, appErr
 		}
 		if visible, _ := v.access(mirrorPath); !visible {
 			continue

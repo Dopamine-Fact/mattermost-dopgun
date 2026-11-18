@@ -104,6 +104,19 @@ func driveRulesFixture(t *testing.T, th *TestHelper) *driveRulesWorld {
 	return f
 }
 
+func TestDriveManagerWriteThroughMirror(t *testing.T) {
+	mirror := ruleFolder(model.DriveRules{MirrorOf: model.NewId()})
+	m := &driveViewer{manager: true}
+	for _, path := range [][]*model.DriveItem{{mirror}, {mirror, ruleFolder(model.DriveRules{})}} {
+		visible, w := m.access(path)
+		assert.True(t, visible)
+		assert.Equal(t, driveWriteDenied, w)
+	}
+	visible, w := m.access([]*model.DriveItem{ruleFolder(model.DriveRules{ReadOnly: true})})
+	assert.True(t, visible)
+	assert.Equal(t, driveWriteAllowed, w)
+}
+
 func TestDriveReadPath(t *testing.T) {
 	th := setupDrive(t)
 	f := driveRulesFixture(t, th)
@@ -148,6 +161,14 @@ func TestDriveReadPath(t *testing.T) {
 		require.Nil(t, appErr)
 		assert.Equal(t, []string{"BG"}, names(path))
 		assert.False(t, mirrored)
+	})
+	t.Run("member without a rank gets 404", func(t *testing.T) {
+		plain := th.CreateUser(t)
+		th.LinkUserToTeam(t, plain, th.BasicTeam)
+		th.AddUserToChannel(t, plain, th.BasicChannel)
+		_, _, appErr := th.App.driveReadPath(viewer(plain), f.Channel, f.Folders["BG/Layout/sub"].Id)
+		require.NotNil(t, appErr)
+		assert.Equal(t, http.StatusNotFound, appErr.StatusCode)
 	})
 	t.Run("restricted source subfolder stays hidden", func(t *testing.T) {
 		_, _, appErr := th.App.driveReadPath(viewer(f.AnimUser), f.Channel, f.Folders["BG/Layout/secret"].Id)
