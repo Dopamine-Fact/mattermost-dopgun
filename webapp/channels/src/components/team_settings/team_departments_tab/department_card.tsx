@@ -16,6 +16,16 @@ import {refreshTeamDepartments} from 'components/profile_popover/use_custom_role
 
 export const NEW_COLOR = '#888888';
 
+/** `base`, or `base 2`, `base 3`… — the first one not in `taken`; names are unique case-insensitively. */
+export const freeName = (base: string, taken: string[]) => {
+    const used = new Set(taken.map((t) => t.toLowerCase()));
+    let name = base;
+    for (let n = 2; used.has(name.toLowerCase()); n++) {
+        name = `${base} ${n}`;
+    }
+    return name;
+};
+
 type ColorDotProps = {
     color: string;
     label: string;
@@ -115,7 +125,7 @@ const DepartmentCard = ({teamId, department, dragHandleProps, onDelete}: Props) 
     const patchDepartment = (patch: {name?: string; color?: string}) => run(() => Client4.patchDepartment(teamId, department.id, patch));
     const patchRank = (rank: Rank, patch: {display_name?: string; color?: string}) => run(() => Client4.patchRank(teamId, rank.id, patch));
     const addRank = () => run(() => Client4.createRank(teamId, department.id, {
-        display_name: formatMessage(msg.newRank),
+        display_name: freeName(formatMessage(msg.newRank), department.ranks.map((r) => r.display_name)),
         color: NEW_COLOR,
         permissions: [],
     }));

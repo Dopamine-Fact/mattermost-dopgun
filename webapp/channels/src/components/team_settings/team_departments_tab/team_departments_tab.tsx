@@ -15,7 +15,7 @@ import {Client4} from 'mattermost-redux/client';
 
 import {refreshTeamDepartments, useTeamDepartments} from 'components/profile_popover/use_custom_roles';
 
-import DepartmentCard, {NEW_COLOR} from './department_card';
+import DepartmentCard, {NEW_COLOR, freeName} from './department_card';
 
 import './team_departments_tab.scss';
 
@@ -72,7 +72,10 @@ const TeamDepartmentsTab = ({team}: Props) => {
         run(() => Client4.reorderRanks(team.id, departmentId, ranks.map((r) => r.id)));
     };
 
-    const addDepartment = () => run(() => Client4.createDepartment(team.id, {name: formatMessage(msg.newDepartment), color: NEW_COLOR}));
+    const addDepartment = () => run(() => Client4.createDepartment(team.id, {
+        name: freeName(formatMessage(msg.newDepartment), departments.map((d) => d.name)),
+        color: NEW_COLOR,
+    }));
 
     const confirmDelete = () => {
         if (!deleting) {

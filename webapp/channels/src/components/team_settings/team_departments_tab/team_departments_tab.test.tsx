@@ -105,6 +105,24 @@ describe('TeamDepartmentsTab', () => {
         await waitFor(() => expect(create).toHaveBeenCalledWith('team1', 'd1', {display_name: 'New rank', color: '#888888', permissions: []}));
     });
 
+    test('a second new rank or department gets a free default name', async () => {
+        jest.spyOn(Client4, 'getTeamDepartments').mockResolvedValue([
+            ...departments,
+            department('d2', 'New department', [rank('n', 'd2', 'New rank', 0)]),
+        ]);
+        const createRank = jest.spyOn(Client4, 'createRank').mockResolvedValue(rank('x', 'd2', 'New rank 2', 1));
+        const createDepartment = jest.spyOn(Client4, 'createDepartment').mockResolvedValue(department('d3', 'New department 2', []));
+
+        // its own team: the department cache is per team and module-wide, so team1 already holds the shorter list
+        renderWithContext(<TeamDepartmentsTab {...props} team={TestHelper.getTeamMock({id: 'team2'})}/>);
+
+        fireEvent.click(await screen.findByRole('button', {name: 'Add rank to New department'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Department'}));
+
+        await waitFor(() => expect(createRank).toHaveBeenCalledWith('team2', 'd2', expect.objectContaining({display_name: 'New rank 2'})));
+        await waitFor(() => expect(createDepartment).toHaveBeenCalledWith('team2', expect.objectContaining({name: 'New department 2'})));
+    });
+
     test('deleting a department asks first', async () => {
         const remove = jest.spyOn(Client4, 'deleteDepartment').mockResolvedValue({status: 'OK'});
         renderTab();
