@@ -3,7 +3,7 @@
 
 import {createMemoryHistory} from 'history';
 import React from 'react';
-import {Route} from 'react-router-dom';
+import {Route, useLocation} from 'react-router-dom';
 
 import type {DriveItem} from '@mattermost/types/drive';
 import type {FileInfo} from '@mattermost/types/files';
@@ -11,6 +11,7 @@ import type {FileInfo} from '@mattermost/types/files';
 import {Client4} from 'mattermost-redux/client';
 
 import {uploadFile} from 'actions/file_actions';
+import {selectLhsItem} from 'actions/views/lhs';
 import {openModal} from 'actions/views/modals';
 
 import WebSocketClient from 'client/web_websocket_client';
@@ -18,7 +19,7 @@ import {act, fireEvent, renderWithContext, screen, waitFor, within} from 'tests/
 import {TestHelper} from 'utils/test_helper';
 
 import {clearClipboard} from './explorer_actions';
-import FileExplorer from './file_explorer';
+import FileExplorer, {FileExplorerView} from './file_explorer';
 
 jest.mock('client/web_websocket_client', () => ({
     addMessageListener: jest.fn(),
@@ -27,6 +28,10 @@ jest.mock('client/web_websocket_client', () => ({
 jest.mock('actions/file_actions', () => ({
     ...jest.requireActual('actions/file_actions'),
     uploadFile: jest.fn(),
+}));
+jest.mock('actions/views/lhs', () => ({
+    ...jest.requireActual('actions/views/lhs'),
+    selectLhsItem: jest.fn(() => ({type: 'MOCK_SELECT_LHS_ITEM'})),
 }));
 jest.mock('actions/views/modals', () => ({
     openModal: jest.fn(() => ({type: 'MOCK_OPEN_MODAL'})),
@@ -71,26 +76,45 @@ const folder = (id: string, name: string): DriveItem => ({
     deleted_by: '',
 });
 
+const storeState = {
+    entities: {
+        general: {config: {}},
+        teams: {currentTeamId: 'team1', teams: {team1: team}},
+        users: {currentUserId: 'me', profiles: {me: TestHelper.getUserMock({id: 'me', username: 'me'})}},
+        channels: {
+            currentChannelId: 'c1',
+            channels: {c1: town, c2: secret, c3: archived, c4: dm, c5: notMine},
+            channelsInTeam: {team1: new Set(['c1', 'c2', 'c3', 'c5']), '': new Set(['c4'])},
+            myMembers: Object.fromEntries(['c1', 'c2', 'c3', 'c4'].map((id) => [id, TestHelper.getChannelMembershipMock({channel_id: id, user_id: 'me'})])),
+        },
+    },
+};
 const renderAt = (path: string) => renderWithContext(
     <Route
         path='/:team/files/:channelName?/:folderId?'
         component={FileExplorer}
     />,
-    {
-        entities: {
-            general: {config: {}},
-            teams: {currentTeamId: 'team1', teams: {team1: team}},
-            users: {currentUserId: 'me', profiles: {me: TestHelper.getUserMock({id: 'me', username: 'me'})}},
-            channels: {
-                currentChannelId: 'c1',
-                channels: {c1: town, c2: secret, c3: archived, c4: dm, c5: notMine},
-                channelsInTeam: {team1: new Set(['c1', 'c2', 'c3', 'c5']), '': new Set(['c4'])},
-                myMembers: Object.fromEntries(['c1', 'c2', 'c3', 'c4'].map((id) => [id, TestHelper.getChannelMembershipMock({channel_id: id, user_id: 'me'})])),
-            },
-        },
-    },
+    storeState,
     {history: createMemoryHistory({initialEntries: [path]})},
 );
+
+// A channel tab hosting the explorer: the folder lives in ?folder=, the way ChannelTabs keeps it.
+const EmbeddedExplorer = () => {
+    const location = useLocation();
+    return (
+        <FileExplorerView
+            channelName='town'
+            folderId={new URLSearchParams(location.search).get('folder') ?? ''}
+            urlFor={(name, folderId) => `/team/channels/${name}?folder=${folderId ?? ''}`}
+            embedded={true}
+        />
+    );
+};
+const renderEmbedded = (path = '/team/channels/town') => {
+    const history = createMemoryHistory({initialEntries: [path]});
+    renderWithContext(<EmbeddedExplorer/>, storeState, {history});
+    return history;
+};
 
 const cellNames = () => within(screen.getByRole('grid')).getAllByRole('gridcell').filter((c) => c.hasAttribute('tabindex')).map((c) => c.getAttribute('aria-label'));
 
@@ -160,6 +184,42 @@ describe('FileExplorer', () => {
 
         await waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(before));
     });
+    describe('embedded in a channel', () => {
+        beforeEach(() => {
+            jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [folder('d1', 'Docs')], path: []});
+        });
+
+        test('embedded, opening a folder goes through the host URL', async () => {
+            // useHistory is the global historyMock in tests (tests/react-router-dom_mock.ts).
+            const push = (global as unknown as {historyMock: {push: jest.Mock}}).historyMock.push;
+            push.mockClear();
+            renderEmbedded();
+            fireEvent.doubleClick(await screen.findByRole('gridcell', {name: 'Docs'}));
+            expect(push).toHaveBeenCalledWith('/team/channels/town?folder=d1');
+        });
+
+        test('embedded, the channel tree is hidden', async () => {
+            renderEmbedded();
+            await screen.findByRole('gridcell', {name: 'Docs'});
+            expect(screen.queryByRole('navigation', {name: 'Folders'})).toBeNull();
+        });
+
+        test('embedded, the address bar starts at the channel and Up stops there', async () => {
+            renderEmbedded();
+            await screen.findByRole('gridcell', {name: 'Docs'});
+            const crumbs = screen.getByRole('navigation', {name: 'Location'});
+            expect(crumbs).toHaveTextContent(/^Town$/);
+            expect(screen.getByRole('button', {name: 'Up'})).toBeDisabled();
+        });
+
+        test('embedded, the sidebar keeps its current item', async () => {
+            (selectLhsItem as jest.Mock).mockClear();
+            renderEmbedded();
+            await screen.findByRole('gridcell', {name: 'Docs'});
+            expect(selectLhsItem).not.toHaveBeenCalled();
+        });
+    });
+
     describe('file operations', () => {
         const mine = fileItem('i1', fileInfo('f1', 'a.txt', 10));
         const theirs = {...fileItem('i2', fileInfo('f2', 'b.txt', 10)), creator_id: 'u2'};

@@ -96,15 +96,24 @@ type Params = {team: string; channelName?: string; folderId?: string};
 type MenuState = {x: number; y: number; onItem: boolean; upload?: boolean};
 type DropHover = {key: string; location: string; files: boolean};
 
-const FileExplorer = () => {
+type ViewProps = {
+    channelName?: string;
+    folderId: string;
+
+    // urlFor builds the address of a channel's folder (no channel: the root); the host decides where folders live.
+    urlFor: (channelName: string, folderId?: string) => string;
+
+    // An embedded explorer shows one channel: no channel tree, and its address bar starts at the channel.
+    embedded?: boolean;
+};
+
+export const FileExplorerView = ({channelName, folderId, urlFor, embedded = false}: ViewProps) => {
     const intl = useIntl();
     const dispatch = useDispatch();
     const history = useHistory();
-    const team = useSelector(getCurrentTeam);
     const users = useSelector(getUsers);
     const nameSetting = useSelector(getTeammateNameDisplaySetting);
     const channels = useExplorerChannels();
-    const {channelName, folderId = ''} = useParams<Params>();
     const channel = channelName ? channels.find((c) => c.name === channelName) : undefined;
 
     const [view, setView] = useState<ExplorerView>(() => (readPref(VIEW_KEY, 'icons') === 'details' ? 'details' : 'icons'));
@@ -139,10 +148,6 @@ const FileExplorer = () => {
             (mainRef.current?.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]') ?? mainRef.current)?.focus();
         }
     });
-
-    useEffect(() => {
-        dispatch(selectLhsItem(LhsItemType.Page, LhsPage.Files));
-    }, [dispatch]);
 
     useEffect(() => {
         const ids = [...new Set(data.items.flatMap((e) => [entryCreator(e), e.driveItem?.deleted_by ?? '']).filter(Boolean))];
@@ -196,29 +201,22 @@ const FileExplorer = () => {
         setMenu(undefined);
     }, [channel?.id, folderId, clear]);
 
-    if (team && !team.files_enabled) {
-        return <Redirect to={`/${team.name}`}/>;
-    }
-    const baseUrl = `/${team?.name}/files`;
-    if (channelName && !channel) {
-        return <Redirect to={baseUrl}/>;
-    }
-    const channelUrl = channel ? `${baseUrl}/${channel.name}` : baseUrl;
+    const rootUrl = urlFor('');
 
     const openEntry = (entry: ExplorerEntry) => {
         switch (entry.kind) {
         case 'channel':
-            history.push(`${baseUrl}/${entry.channel!.name}`);
+            history.push(urlFor(entry.channel!.name));
             return;
         case 'chat':
-            history.push(`${channelUrl}/${CHAT_FOLDER}`);
+            history.push(urlFor(channel!.name, CHAT_FOLDER));
             return;
         case 'trash':
-            history.push(`${channelUrl}/${TRASH_FOLDER}`);
+            history.push(urlFor(channel!.name, TRASH_FOLDER));
             return;
         case 'folder':
             if (!inTrash) {
-                history.push(`${channelUrl}/${entry.driveItem!.id}`);
+                history.push(urlFor(channel!.name, entry.driveItem!.id));
             }
             return;
         }
@@ -237,17 +235,17 @@ const FileExplorer = () => {
         }));
     };
 
-    const crumbs: Crumb[] = [{label: intl.formatMessage({id: 'file_explorer.title', defaultMessage: 'Files'}), to: baseUrl}];
+    const crumbs: Crumb[] = embedded ? [] : [{label: intl.formatMessage({id: 'file_explorer.title', defaultMessage: 'Files'}), to: rootUrl}];
     let upTo: string | undefined;
     if (channel) {
-        crumbs.push({label: channel.display_name, to: channelUrl});
-        upTo = baseUrl;
+        crumbs.push({label: channel.display_name, to: urlFor(channel.name)});
+        upTo = embedded ? undefined : rootUrl;
         if (inChat) {
-            crumbs.push({label: intl.formatMessage({id: 'file_explorer.chatAttachments', defaultMessage: 'Chat attachments'}), to: `${channelUrl}/${CHAT_FOLDER}`});
+            crumbs.push({label: intl.formatMessage({id: 'file_explorer.chatAttachments', defaultMessage: 'Chat attachments'}), to: urlFor(channel.name, CHAT_FOLDER)});
         } else if (inTrash) {
-            crumbs.push({label: intl.formatMessage({id: 'file_explorer.recycleBin', defaultMessage: 'Recycle Bin'}), to: `${channelUrl}/${TRASH_FOLDER}`});
+            crumbs.push({label: intl.formatMessage({id: 'file_explorer.recycleBin', defaultMessage: 'Recycle Bin'}), to: urlFor(channel.name, TRASH_FOLDER)});
         } else {
-            data.path.forEach((p) => crumbs.push({label: p.name, to: `${channelUrl}/${p.id}`}));
+            data.path.forEach((p) => crumbs.push({label: p.name, to: urlFor(channel.name, p.id)}));
         }
         if (folderId) {
             upTo = crumbs[crumbs.length - 2].to;
@@ -666,14 +664,16 @@ const FileExplorer = () => {
                 onSearch={setSearch}
             />
             <div className='FileExplorer__body'>
-                <ExplorerTree
-                    baseUrl={baseUrl}
-                    channels={channels}
-                    channelId={channel?.id}
-                    folderId={folderId}
-                    changeCount={data.changeCount}
-                    onDrop={dropOn}
-                />
+                {!embedded && (
+                    <ExplorerTree
+                        baseUrl={rootUrl}
+                        channels={channels}
+                        channelId={channel?.id}
+                        folderId={folderId}
+                        changeCount={data.changeCount}
+                        onDrop={dropOn}
+                    />
+                )}
                 <main
                     ref={mainRef}
                     tabIndex={-1}
@@ -741,6 +741,34 @@ const FileExplorer = () => {
                 />
             )}
         </div>
+    );
+};
+
+// FileExplorer is the Files page: its URL picks the channel and folder, and it marks Files in the sidebar.
+const FileExplorer = () => {
+    const dispatch = useDispatch();
+    const team = useSelector(getCurrentTeam);
+    const channels = useExplorerChannels();
+    const {channelName, folderId = ''} = useParams<Params>();
+    const baseUrl = `/${team?.name}/files`;
+    const urlFor = useCallback((name: string, folder?: string) => [baseUrl, name, folder].filter(Boolean).join('/'), [baseUrl]);
+
+    useEffect(() => {
+        dispatch(selectLhsItem(LhsItemType.Page, LhsPage.Files));
+    }, [dispatch]);
+
+    if (team && !team.files_enabled) {
+        return <Redirect to={`/${team.name}`}/>;
+    }
+    if (channelName && !channels.some((c) => c.name === channelName)) {
+        return <Redirect to={baseUrl}/>;
+    }
+    return (
+        <FileExplorerView
+            channelName={channelName}
+            folderId={folderId}
+            urlFor={urlFor}
+        />
     );
 };
 
