@@ -219,6 +219,16 @@ describe('FileExplorer', () => {
             expect(screen.getByRole('button', {name: 'Up'})).toBeEnabled();
         });
 
+        test('embedded, the recycle bin opens from the channel root', async () => {
+            const push = (global as unknown as {historyMock: {push: jest.Mock}}).historyMock.push;
+            push.mockClear();
+            renderEmbedded();
+            await screen.findByRole('gridcell', {name: 'Docs'});
+            expect(cellNames()).toEqual(['Chat attachments', 'Docs', 'Recycle Bin']);
+            fireEvent.doubleClick(screen.getByRole('gridcell', {name: 'Recycle Bin'}));
+            expect(push).toHaveBeenCalledWith('/team/channels/town?folder=trash');
+        });
+
         test('embedded, the sidebar keeps its current item', async () => {
             (selectLhsItem as jest.Mock).mockClear();
             renderEmbedded();

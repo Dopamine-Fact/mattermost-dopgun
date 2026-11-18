@@ -88,7 +88,7 @@ function useWideEnough() {
     return wide;
 }
 
-const KIND_RANK: Record<ExplorerEntry['kind'], number> = {chat: 0, trash: 0, channel: 1, folder: 1, file: 2};
+const KIND_RANK: Record<ExplorerEntry['kind'], number> = {chat: 0, channel: 1, folder: 1, file: 2, trash: 3};
 const isDriveObject = (e: ExplorerEntry) => e.kind === 'file' || e.kind === 'folder';
 const driveIds = (entries: ExplorerEntry[]) => entries.flatMap((e) => (e.driveItem ? [e.driveItem.id] : []));
 
@@ -159,9 +159,15 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
     const getUserName = useCallback((id: string) => (users[id] ? displayUsername(users[id], nameSetting) : ''), [users, nameSetting]);
     const trashColumns = useTrashColumns(inTrash ? channel : undefined, inTrash ? data.items : NO_ENTRIES, getUserName);
 
+    // The page reaches the recycle bin from its channel tree; an embedded explorer has no tree, so its root lists it.
+    const trashName = intl.formatMessage({id: 'file_explorer.recycleBin', defaultMessage: 'Recycle Bin'});
+    const entries = useMemo(() => (
+        embedded && channel && !folderId && data.items.length ? [...data.items, {key: TRASH_FOLDER, kind: 'trash' as const, name: trashName, readOnly: true, canModify: false}] : data.items
+    ), [channel, data.items, embedded, folderId, trashName]);
+
     const visible = useMemo(() => {
         const query = search.trim().toLowerCase();
-        const filtered = query ? data.items.filter((e) => e.name.toLowerCase().includes(query)) : data.items;
+        const filtered = query ? entries.filter((e) => e.name.toLowerCase().includes(query)) : entries;
         if (inChat) {
             return filtered; // sorted by the server
         }
@@ -186,7 +192,7 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
             const cmp = typeof va === 'number' && typeof vb === 'number' ? va - vb : String(va).localeCompare(String(vb), undefined, {numeric: true});
             return (sort.desc ? -cmp : cmp) || a.name.localeCompare(b.name);
         });
-    }, [data.items, getUserName, inChat, intl, search, sort]);
+    }, [entries, getUserName, inChat, intl, search, sort]);
 
     const keys = useMemo(() => visible.map((e) => e.key), [visible]);
     const selection = useExplorerSelection(keys);
