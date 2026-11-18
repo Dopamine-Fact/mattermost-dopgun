@@ -97,8 +97,20 @@ func TestCustomRoleHierarchyEnforcement(t *testing.T) {
 		require.NoError(t, err)
 		progReport, _, err := progClient.SubmitDailyReport(ctx, teamID, "prog day")
 		require.NoError(t, err)
-		_, _, err = leadClient.SubmitDailyReport(ctx, teamID, "lead day")
+		leadReport, _, err := leadClient.SubmitDailyReport(ctx, teamID, "lead day")
 		require.NoError(t, err)
+		adminReport, _, err := adminClient.SubmitDailyReport(ctx, teamID, "admin day")
+		require.NoError(t, err)
+
+		// A lead reviews the people below them, never their own report or an admin's.
+		_, resp, err := leadClient.ApproveDailyReport(ctx, leadReport.Id, leadReport.UpdateAt)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		_, resp, err = leadClient.RejectDailyReport(ctx, adminReport.Id, "no", adminReport.UpdateAt)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		_, _, err = adminClient.ApproveDailyReport(ctx, adminReport.Id, adminReport.UpdateAt)
+		require.NoError(t, err, "team admins still review their own report")
 
 		authors := func(list []*model.DailyReport) map[string]bool {
 			m := map[string]bool{}
@@ -114,7 +126,7 @@ func TestCustomRoleHierarchyEnforcement(t *testing.T) {
 		list, _, err = leadClient.GetDailyReports(ctx, teamID, "", "", animUser.Id)
 		require.NoError(t, err)
 		require.Len(t, list, 1)
-		_, resp, err := leadClient.GetDailyReports(ctx, teamID, "", "", progUser.Id)
+		_, resp, err = leadClient.GetDailyReports(ctx, teamID, "", "", progUser.Id)
 		require.Error(t, err)
 		CheckForbiddenStatus(t, resp)
 

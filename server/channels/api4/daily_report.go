@@ -174,6 +174,12 @@ func loadReviewableReport(c *Context, r *http.Request) (*model.DailyReport, revi
 	if requireTeamPermission(c, report.TeamId, model.PermissionManageDailyReports); c.Err != nil {
 		return nil, body
 	}
+	// Reviewing your own report needs an admin; CanActOnUser lets everyone act on themself.
+	ownReport := report.UserId == c.AppContext.Session().UserId
+	if ownReport && !c.App.SessionHasPermissionToTeam(*c.AppContext.Session(), report.TeamId, model.PermissionManageTeam) {
+		c.SetPermissionError(model.PermissionManageTeam)
+		return nil, body
+	}
 	if !c.App.CanActOnUser(c.AppContext, c.AppContext.Session().UserId, report.UserId, report.TeamId) {
 		c.SetPermissionError(model.PermissionManageDailyReports)
 		return nil, body

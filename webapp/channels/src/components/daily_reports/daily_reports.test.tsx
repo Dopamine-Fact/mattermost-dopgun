@@ -97,6 +97,16 @@ describe('DailyReports', () => {
         jest.spyOn(Client4, 'getActionableUserIds').mockResolvedValue(['me', 'u2', 'u3', 'u4', 'u5']);
     });
 
+    test('a lead cannot review their own report', async () => {
+        mockReports([], [report({id: 'mine', user_id: 'me', message: 'My own day'}), report({message: 'Ayse day'})]);
+        renderPage(true);
+        (roles.haveITeamPermission as jest.Mock).mockImplementation((_state, _team, perm) => perm !== 'manage_team');
+
+        await openTeamTab();
+        expect(await screen.findByText('My own day')).toBeInTheDocument();
+        expect(screen.getAllByRole('button', {name: 'Approve'})).toHaveLength(1); // ayse's only
+    });
+
     test('the roster lists only members the viewer outranks', async () => {
         jest.spyOn(Client4, 'getActionableUserIds').mockResolvedValue(['me', 'u2']);
         renderPage(true);

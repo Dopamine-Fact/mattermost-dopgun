@@ -177,8 +177,15 @@ func (a *App) DeleteCustomRole(rctx request.CTX, id string) *model.AppError {
 	if err != nil {
 		return customRoleStoreError("DeleteCustomRole", err)
 	}
+	// The native role goes first so its permissions drop at once, even if a later step fails; a retry still finds
+	// the metadata row and finishes the job.
+	if native, appErr := a.GetRoleByName(rctx, role.RoleName); appErr == nil && native.DeleteAt == 0 {
+		if _, appErr = a.DeleteRole(native.Id); appErr != nil {
+			return appErr
+		}
+	}
 	now := model.GetMillis()
-	// Metadata goes first so the role can no longer be assigned while users are stripped.
+	// Metadata goes next so the role can no longer be assigned while users are stripped.
 	if err = a.Srv().Store().CustomRole().Delete(id, now); err != nil {
 		return customRoleStoreError("DeleteCustomRole", err)
 	}
@@ -189,12 +196,6 @@ func (a *App) DeleteCustomRole(rctx request.CTX, id string) *model.AppError {
 	}
 	for _, userID := range userIDs {
 		a.refreshUserRoles(rctx, userID)
-	}
-
-	if native, appErr := a.GetRoleByName(rctx, role.RoleName); appErr == nil {
-		if _, appErr = a.DeleteRole(native.Id); appErr != nil {
-			return appErr
-		}
 	}
 
 	remaining, err := a.Srv().Store().CustomRole().GetAll()
@@ -261,6 +262,10 @@ func (a *App) SetUserCustomRoles(rctx request.CTX, actorID, userID string, roleI
 		if want[id] != have[id] {
 			changed = append(changed, id)
 		}
+	}
+	// Nobody but a system admin changes their own roles: a lead could otherwise take a lower role's permissions.
+	if len(changed) > 0 && actorID == userID && !user.IsSystemAdmin() {
+		return nil, model.NewAppError("SetUserCustomRoles", "app.custom_role.not_outranked.app_error", nil, "self", http.StatusForbidden)
 	}
 	if len(changed) > 0 && !a.CanActOnUser(rctx, actorID, userID, "") {
 		return nil, model.NewAppError("SetUserCustomRoles", "app.custom_role.not_outranked.app_error", nil, "", http.StatusForbidden)

@@ -9,8 +9,10 @@ import type {DailyReport} from '@mattermost/types/daily_reports';
 
 import {getMissingProfilesByIds, getProfilesInTeam as fetchProfilesInTeam} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
+import {Permissions} from 'mattermost-redux/constants';
 import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
-import {getProfilesInTeam, getUsers} from 'mattermost-redux/selectors/entities/users';
+import {haveITeamPermission} from 'mattermost-redux/selectors/entities/roles';
+import {getCurrentUserId, getProfilesInTeam, getUsers} from 'mattermost-redux/selectors/entities/users';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 
 import Markdown from 'components/markdown';
@@ -38,6 +40,10 @@ const TeamReports = ({teamId, timeZone, tick, onError}: Props) => {
     const members = useSelector((state: GlobalState) => getProfilesInTeam(state, teamId));
     const profiles = useSelector(getUsers);
     const nameDisplay = useSelector(getTeammateNameDisplaySetting);
+    const currentUserId = useSelector(getCurrentUserId);
+
+    // Only admins review their own report; the server refuses it for everyone else.
+    const canReviewSelf = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_TEAM));
 
     const [date, setDate] = useState(() => todayIn(timeZone));
     const [reports, setReports] = useState<DailyReport[]>([]);
@@ -166,7 +172,7 @@ const TeamReports = ({teamId, timeZone, tick, onError}: Props) => {
                                 </button>
                             )}
                             <span className='DailyReportsPage__rowActions'>
-                                {report?.status === 'pending' && (
+                                {report?.status === 'pending' && (user.id !== currentUserId || canReviewSelf) && (
                                     <button
                                         className='btn btn-primary btn-sm'
                                         onClick={() => approve(report)}
@@ -177,7 +183,7 @@ const TeamReports = ({teamId, timeZone, tick, onError}: Props) => {
                                         />
                                     </button>
                                 )}
-                                {(report?.status === 'pending' || report?.status === 'approved') && (
+                                {(report?.status === 'pending' || report?.status === 'approved') && (user.id !== currentUserId || canReviewSelf) && (
                                     <button
                                         className='btn btn-tertiary btn-sm btn-danger'
                                         onClick={() => setRejecting(report)}

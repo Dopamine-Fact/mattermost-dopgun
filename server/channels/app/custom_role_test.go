@@ -4,6 +4,7 @@
 package app
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/v8/channels/store"
 )
 
 // newCustomRole creates a custom role with a unique display name, since the CustomRoles table outlives a single test.
@@ -276,4 +278,74 @@ func TestCanActOnUser(t *testing.T) {
 	assert.Equal(t, []string{lead.Id, animator.Id, plain.Id}, ids)
 	ids = th.App.ActionableUserIDs(th.Context, teamAdmin.Id, th.BasicTeam.Id, []string{animator.Id, programmer.Id})
 	assert.Equal(t, []string{animator.Id, programmer.Id}, ids)
+}
+
+// roleStripFailingStore makes RemoveRoleFromAll fail, so a delete stops halfway.
+type roleStripFailingStore struct{ store.Store }
+
+type roleStripFailingUserStore struct{ store.UserStore }
+
+func (s roleStripFailingStore) User() store.UserStore { return roleStripFailingUserStore{s.Store.User()} }
+
+func (roleStripFailingUserStore) RemoveRoleFromAll(string) ([]string, error) {
+	return nil, errors.New("strip failed")
+}
+
+func TestDeleteCustomRoleFailureDropsPermissions(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+
+	role := newCustomRole(t, th, "Tasker", "", model.PermissionManageTasks.Id)
+	user := th.CreateUser(t)
+	th.LinkUserToTeam(t, user, th.BasicTeam)
+	user = giveCustomRoles(t, th, user, role)
+	session := model.Session{UserId: user.Id, Roles: user.Roles}
+	require.True(t, th.App.SessionHasPermissionToTeam(session, th.BasicTeam.Id, model.PermissionManageTasks))
+
+	original := th.App.Srv().Store()
+	th.App.Srv().SetStore(roleStripFailingStore{original})
+	t.Cleanup(func() { th.App.Srv().SetStore(original) })
+	require.NotNil(t, th.App.DeleteCustomRole(th.Context, role.Id))
+	th.App.Srv().SetStore(original)
+
+	require.False(t, th.App.SessionHasPermissionToTeam(session, th.BasicTeam.Id, model.PermissionManageTasks),
+		"a delete that stops halfway must not leave the role's permissions live")
+}
+
+func TestCustomRoleHolderCannotChangeOwnRoles(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+
+	lead := newCustomRole(t, th, "Lead", "Anim", model.PermissionAssignCustomRoles.Id)
+	coordinator := newCustomRole(t, th, "Coordinator", "", model.PermissionManageDailyReports.Id)
+	user := giveCustomRoles(t, th, th.CreateUser(t), lead)
+
+	_, appErr := th.App.SetUserCustomRoles(th.Context, user.Id, user.Id, []string{lead.Id, coordinator.Id})
+	require.NotNil(t, appErr)
+	require.Equal(t, http.StatusForbidden, appErr.StatusCode)
+
+	_, appErr = th.App.SetUserCustomRoles(th.Context, th.SystemAdminUser.Id, th.SystemAdminUser.Id, []string{coordinator.Id})
+	require.Nil(t, appErr, "system admins may still set their own roles")
+}
+
+func TestAdminsRankAboveCustomRoles(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+
+	leadRole := newCustomRole(t, th, "Lead", "", model.PermissionAssignCustomRoles.Id)
+	low := newCustomRole(t, th, "Low", "")
+	lead := giveCustomRoles(t, th, th.CreateUser(t), leadRole)
+	teamAdmin := th.CreateUser(t)
+	th.LinkUserToTeam(t, teamAdmin, th.BasicTeam)
+	_, appErr := th.App.UpdateTeamMemberRoles(th.Context, th.BasicTeam.Id, teamAdmin.Id, model.TeamUserRoleId+" "+model.TeamAdminRoleId)
+	require.Nil(t, appErr)
+
+	assert.False(t, th.App.CanActOnUser(th.Context, lead.Id, th.SystemAdminUser.Id, ""))
+	assert.False(t, th.App.CanActOnUser(th.Context, lead.Id, teamAdmin.Id, th.BasicTeam.Id))
+	ids := th.App.ActionableUserIDs(th.Context, lead.Id, th.BasicTeam.Id, []string{lead.Id, th.SystemAdminUser.Id, teamAdmin.Id})
+	assert.Equal(t, []string{lead.Id}, ids)
+
+	_, appErr = th.App.SetUserCustomRoles(th.Context, lead.Id, th.SystemAdminUser.Id, []string{low.Id})
+	require.NotNil(t, appErr)
+	require.Equal(t, http.StatusForbidden, appErr.StatusCode)
 }

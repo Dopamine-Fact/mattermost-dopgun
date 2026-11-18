@@ -9,6 +9,8 @@ import type {UserProfile} from '@mattermost/types/users';
 
 import {Permissions} from 'mattermost-redux/constants';
 import {haveISystemPermission} from 'mattermost-redux/selectors/entities/roles';
+import {getCurrentUser} from 'mattermost-redux/selectors/entities/users';
+import {isSystemAdmin} from 'mattermost-redux/utils/user_utils';
 
 import {openModal} from 'actions/views/modals';
 
@@ -27,7 +29,11 @@ type Props = {
 const ProfilePopoverCustomRoles = ({user, hide}: Props) => {
     const dispatch = useDispatch();
     const roles = useCustomRoles();
-    const canAssign = useSelector((state: GlobalState) => haveISystemPermission(state, {permission: Permissions.ASSIGN_CUSTOM_ROLES}));
+    const viewer = useSelector(getCurrentUser);
+
+    // The server refuses changes to your own roles unless you are a system admin.
+    const canAssign = useSelector((state: GlobalState) => haveISystemPermission(state, {permission: Permissions.ASSIGN_CUSTOM_ROLES})) &&
+        (user.id !== viewer.id || isSystemAdmin(viewer.roles));
     const held = rolesOf(roles, user.roles);
 
     if (user.is_bot || (held.length === 0 && !canAssign)) {

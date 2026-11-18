@@ -64,6 +64,7 @@ func (a *App) bypassesHierarchy(rctx request.CTX, actor *model.User, teamID stri
 }
 
 // CanActOnUser applies the custom role hierarchy: may actorID act on targetID within teamID ("" for no team)?
+// Admins who bypass the hierarchy rank above every custom role, so only other admins act on them.
 func (a *App) CanActOnUser(rctx request.CTX, actorID, targetID, teamID string) bool {
 	if actorID == targetID {
 		return true
@@ -76,7 +77,7 @@ func (a *App) CanActOnUser(rctx request.CTX, actorID, targetID, teamID string) b
 		return true
 	}
 	target, appErr := a.GetUser(rctx, targetID)
-	if appErr != nil {
+	if appErr != nil || a.bypassesHierarchy(rctx, target, teamID) {
 		return false
 	}
 	byID, err := a.customRolesByID()
@@ -128,10 +129,22 @@ func (a *App) ActionableUserIDs(rctx request.CTX, actorID, teamID string, candid
 		rctx.Logger().Warn("Failed to load users", mlog.Err(appErr))
 		return nil
 	}
+	teamAdmins := map[string]bool{}
+	if teamID != "" {
+		members, appErr := a.GetTeamMembersByIds(teamID, slices.Clone(candidates), nil)
+		if appErr != nil {
+			rctx.Logger().Warn("Failed to load team members", mlog.Err(appErr))
+			return nil
+		}
+		for _, m := range members {
+			teamAdmins[m.UserId] = m.DeleteAt == 0 && m.SchemeAdmin
+		}
+	}
 	mine := customRolesOf(actor, byID)
 	allowed := make(map[string]bool, len(users))
 	for _, u := range users {
-		allowed[u.Id] = u.Id == actorID || canActOn(mine, customRolesOf(u, byID))
+		admin := u.IsSystemAdmin() || teamAdmins[u.Id]
+		allowed[u.Id] = u.Id == actorID || (!admin && canActOn(mine, customRolesOf(u, byID)))
 	}
 	return slices.DeleteFunc(slices.Clone(candidates), func(id string) bool { return !allowed[id] })
 }

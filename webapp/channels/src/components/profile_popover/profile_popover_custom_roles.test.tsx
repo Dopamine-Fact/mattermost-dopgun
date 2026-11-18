@@ -88,6 +88,13 @@ describe('ProfilePopoverCustomRoles', () => {
         renderWithContext(<ProfilePopoverCustomRoles user={target}/>, stateFor(viewer, ['assign_custom_roles']));
         expect(await screen.findByRole('button', {name: 'Edit roles'})).toBeInTheDocument();
     });
+
+    test('nobody but a system admin edits their own roles', async () => {
+        renderWithContext(<ProfilePopoverCustomRoles user={viewer}/>, stateFor(viewer, ['assign_custom_roles']));
+
+        await waitFor(() => expect(chipNames()).toEqual(['Lead Animator']));
+        expect(screen.queryByRole('button', {name: 'Edit roles'})).not.toBeInTheDocument();
+    });
 });
 
 describe('CustomRolesEditModal', () => {
