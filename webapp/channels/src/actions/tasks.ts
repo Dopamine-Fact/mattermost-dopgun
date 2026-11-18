@@ -8,6 +8,7 @@ import {TaskTypes} from 'mattermost-redux/action_types';
 import {createChannel, deleteChannel} from 'mattermost-redux/actions/channels';
 import {logError} from 'mattermost-redux/actions/errors';
 import {forceLogoutIfNecessary} from 'mattermost-redux/actions/helpers';
+import {receivedPosts} from 'mattermost-redux/actions/posts';
 import {Client4} from 'mattermost-redux/client';
 import {General} from 'mattermost-redux/constants';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/common';
@@ -44,6 +45,10 @@ export function fetchTeamTasks(teamId: string) {
         () => Promise.all([Client4.getTeamTasks(teamId), Client4.getTeamTaskSections(teamId)]),
         ([tasks, sections]) => ({type: TaskTypes.TEAM_TASKS_RECEIVED, data: {teamId, tasks, sections}}),
     );
+}
+
+export function fetchTaskPosts(taskId: string, options: {channelId?: string; before?: number; perPage?: number} = {}) {
+    return run(() => Client4.getTaskPosts(taskId, options), receivedPosts);
 }
 
 export function createTask(task: TaskCreate) {

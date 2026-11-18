@@ -15,7 +15,7 @@ import {Permissions} from 'mattermost-redux/constants';
 import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
 import {haveIChannelPermission, haveITeamPermission} from 'mattermost-redux/selectors/entities/roles';
-import {makeGetTaskSectionsForTeam, makeGetTasksForTeam} from 'mattermost-redux/selectors/entities/tasks';
+import {getTaskSectionForChannel, makeGetTaskSectionsForTeam, makeGetTasksForTeam} from 'mattermost-redux/selectors/entities/tasks';
 import {getCurrentTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getProfilesInTeam} from 'mattermost-redux/selectors/entities/users';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
@@ -66,7 +66,7 @@ const ChannelTabs = ({channelId, children}: Props) => {
     const usersById = useSelector((state: GlobalState) => state.entities.users.profiles);
     const canManageRevisions = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_REVISIONS));
     const canManageTasks = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_TASKS));
-    const section = revisionsEnabled ? sections.find((s) => s.channel_id === channelId) : undefined;
+    const section = useSelector((state: GlobalState) => getTaskSectionForChannel(state, channelId));
     const sectionTasks = useMemo(() => tasks.filter((t) => section && t.section_id === section.id && !t.video_file_id), [tasks, section]);
 
     // Same rule as the post textbox, plus archived channels.

@@ -6,7 +6,7 @@ import {Client4} from 'mattermost-redux/client';
 
 import mockStore from 'tests/test_store';
 
-import {createEpisodeChannel, createRevisionChannel} from './tasks';
+import {createEpisodeChannel, createRevisionChannel, fetchTaskPosts} from './tasks';
 
 jest.mock('mattermost-redux/actions/channels', () => ({
     createChannel: jest.fn((channel) => () => Promise.resolve({data: {...channel, id: 'chan1'}})),
@@ -121,5 +121,19 @@ describe('createEpisodeChannel', () => {
         expect(Client4.createDriveFolder).toHaveBeenCalledTimes(2);
         expect(Client4.createDriveFolder).toHaveBeenLastCalledWith('chan1', '', 'Audio');
         expect(Client4.createTask).toHaveBeenLastCalledWith(expect.objectContaining({title: 'Animatic'}), 'conn1');
+    });
+});
+
+describe('fetchTaskPosts', () => {
+    test('loads the task\'s messages into the posts store', async () => {
+        const list = {order: ['p1'], posts: {p1: {id: 'p1', channel_id: 'chan1', props: {task_id: 'T'}}}};
+        jest.spyOn(Client4, 'getTaskPosts').mockResolvedValue(list as any);
+        const store = mockStore({entities: {users: {currentUserId: 'me'}}, websocket: {connectionId: 'conn1'}});
+
+        const result = await store.dispatch(fetchTaskPosts('T', {channelId: 'chan1', perPage: 30}));
+
+        expect(Client4.getTaskPosts).toHaveBeenCalledWith('T', {channelId: 'chan1', perPage: 30});
+        expect(result.data).toBe(list);
+        expect(store.getActions()).toContainEqual(expect.objectContaining({type: 'RECEIVED_POSTS', data: list}));
     });
 });

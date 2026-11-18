@@ -5365,6 +5365,12 @@ export default class Client4 {
         return fileId ? `${url}?file_id=${encodeURIComponent(fileId)}` : url;
     };
 
+    // getTaskPosts pages back through a task's messages, newest first; before is a create_at.
+    getTaskPosts = (taskId: string, options: {channelId?: string; before?: number; perPage?: number} = {}) => {
+        const query = buildQueryString({channel_id: options.channelId, before: options.before, per_page: options.perPage});
+        return this.doFetch<PostList>(`${this.getBaseRoute()}/tasks/${taskId}/posts${query}`, {method: 'get'});
+    };
+
     getTaskComments = (taskId: string) => {
         return this.doFetch<TaskComment[]>(`${this.getBaseRoute()}/tasks/${taskId}/comments`, {method: 'get'});
     };

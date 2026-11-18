@@ -68,6 +68,7 @@ export type CommandArgs = {
     channel_id: string;
     team_id?: string;
     root_id?: string;
+    task_id?: string;
 };
 
 export type CommandResponse = {
