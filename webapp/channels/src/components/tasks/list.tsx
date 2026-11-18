@@ -20,7 +20,8 @@ import {AddTask, AssigneeAvatar, DoneToggle, DueDate, SectionLabel, StatusSelect
 import {dropToPatch, groupByStatus, STATUSES, statusMessages} from './task_utils';
 import type {ViewProps} from './task_utils';
 
-const List = ({teamId, tasks, sections, usersById, selectedId, onSelect, canManage}: ViewProps) => {
+// sectionId, when set, files tasks added here under that section.
+const List = ({teamId, tasks, sections, usersById, selectedId, onSelect, canManage, sectionId}: ViewProps & {sectionId?: string}) => {
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
     const nameDisplay = useSelector(getTeammateNameDisplaySetting);
@@ -139,6 +140,7 @@ const List = ({teamId, tasks, sections, usersById, selectedId, onSelect, canMana
                                             status={status}
                                             count={byStatus[status].length}
                                             className='TaskList__add'
+                                            sectionId={sectionId}
                                         />
                                     )}
                                 </>

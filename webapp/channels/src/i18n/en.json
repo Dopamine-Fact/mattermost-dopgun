@@ -19691,10 +19691,6 @@
     "defaultMessage": "Canvas",
     "description": "Tab in a canvas channel that shows the whiteboard instead of the chat."
   },
-  "canvas.tabs.messages": {
-    "defaultMessage": "Messages",
-    "description": "Tab in a canvas channel that shows the chat messages."
-  },
   "canvas.textInput": {
     "defaultMessage": "Text",
     "description": "Accessible name of the text box used to type or edit a text element on the canvas."
@@ -33205,11 +33201,15 @@
   },
   "tasks.revisionTabs.messages": {
     "defaultMessage": "Messages",
-    "description": "Tab above a revision channel that shows the channel's chat messages."
+    "description": "First tab above a channel that has more tabs (revisions, tasks or a canvas); shows the channel's chat messages."
   },
   "tasks.revisionTabs.revisions": {
     "defaultMessage": "Revisions",
     "description": "Tab above a revision channel that shows its video and the revisions (tasks pinned to moments in the video)."
+  },
+  "tasks.revisionTabs.tasks": {
+    "defaultMessage": "Tasks",
+    "description": "Tab in a channel that a task section is linked to (a revision or episode channel); shows that section's ordinary tasks, not its revisions."
   },
   "tasks.section.delete": {
     "defaultMessage": "Delete section (its tasks move to No section)",

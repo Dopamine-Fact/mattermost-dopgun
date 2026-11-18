@@ -8,20 +8,19 @@ import type {RouteComponentProps} from 'react-router-dom';
 import {Button} from '@mattermost/compass-ui/components/button';
 
 import AdvancedCreatePost from 'components/advanced_create_post';
-import CanvasTabs from 'components/canvas/canvas_tabs';
 import ChannelBanner from 'components/channel_banner/channel_banner';
 import ChannelBookmarks from 'components/channel_bookmarks';
 import ChannelHeader from 'components/channel_header';
 import deferComponentRender from 'components/deferComponentRender';
 import {DropOverlayIdCenterChannel, FileUploadOverlay} from 'components/file_upload_overlay/file_upload_overlay';
 import PostView from 'components/post_view';
-import RevisionTabs from 'components/tasks/revision_tabs';
 
 import WebSocketClient from 'client/web_websocket_client';
 import type {KindMessages} from 'utils/channel_kind';
 import {channelKindMessages} from 'utils/channel_kind_messages';
 
 import {ChannelComposerBanner} from './channel_composer_banner';
+import ChannelTabs from './channel_tabs';
 import ChannelViewPluginComponent from './channel_view_plugin_component';
 import InputLoading from './input_loading';
 
@@ -281,11 +280,9 @@ export default class ChannelView extends React.PureComponent<Props, State> {
                         channelId={this.props.channelId}
                     />
                 )}
-                <CanvasTabs channelId={this.props.channelId}>
-                    <RevisionTabs channelId={this.props.channelId}>
-                        {center}
-                    </RevisionTabs>
-                </CanvasTabs>
+                <ChannelTabs channelId={this.props.channelId}>
+                    {center}
+                </ChannelTabs>
             </div>
         );
     }

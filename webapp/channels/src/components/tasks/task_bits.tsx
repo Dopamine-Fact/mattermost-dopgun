@@ -135,9 +135,12 @@ type AddTaskProps = {
     status: TaskStatus;
     count: number;
     className: string;
+
+    // sectionId files the new task under that section (the Tasks tab of a linked channel).
+    sectionId?: string;
 };
 
-export const AddTask = ({teamId, status, count, className}: AddTaskProps) => {
+export const AddTask = ({teamId, status, count, className, sectionId}: AddTaskProps) => {
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
     return (
@@ -149,7 +152,7 @@ export const AddTask = ({teamId, status, count, className}: AddTaskProps) => {
             value=''
             maxLength={512}
             placeholder={formatMessage({id: 'tasks.addTask', defaultMessage: '+ Add task'})}
-            onSave={(title) => dispatch(createTask({team_id: teamId, title, status}))}
+            onSave={(title) => dispatch(createTask({team_id: teamId, title, status, ...(sectionId ? {section_id: sectionId} : {})}))}
             aria-label={formatMessage({id: 'tasks.addTask.label', defaultMessage: 'New task title'})}
         />
     );
