@@ -62,29 +62,29 @@ func (_m *CustomRoleStore) Get(id string) (*model.CustomRole, error) {
 	return r0, r1
 }
 
-// GetAll provides a mock function with no fields
-func (_m *CustomRoleStore) GetAll() ([]*model.CustomRole, error) {
-	ret := _m.Called()
+// GetForTeam provides a mock function with given fields: teamID
+func (_m *CustomRoleStore) GetForTeam(teamID string) ([]*model.CustomRole, error) {
+	ret := _m.Called(teamID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetAll")
+		panic("no return value specified for GetForTeam")
 	}
 
 	var r0 []*model.CustomRole
 	var r1 error
-	if rf, ok := ret.Get(0).(func() ([]*model.CustomRole, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(string) ([]*model.CustomRole, error)); ok {
+		return rf(teamID)
 	}
-	if rf, ok := ret.Get(0).(func() []*model.CustomRole); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) []*model.CustomRole); ok {
+		r0 = rf(teamID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*model.CustomRole)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(teamID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -122,17 +122,17 @@ func (_m *CustomRoleStore) Save(r *model.CustomRole) (*model.CustomRole, error) 
 	return r0, r1
 }
 
-// SetPositions provides a mock function with given fields: orderedIDs, at
-func (_m *CustomRoleStore) SetPositions(orderedIDs []string, at int64) error {
-	ret := _m.Called(orderedIDs, at)
+// SetPositions provides a mock function with given fields: departmentID, orderedIDs, at
+func (_m *CustomRoleStore) SetPositions(departmentID string, orderedIDs []string, at int64) error {
+	ret := _m.Called(departmentID, orderedIDs, at)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetPositions")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func([]string, int64) error); ok {
-		r0 = rf(orderedIDs, at)
+	if rf, ok := ret.Get(0).(func(string, []string, int64) error); ok {
+		r0 = rf(departmentID, orderedIDs, at)
 	} else {
 		r0 = ret.Error(0)
 	}

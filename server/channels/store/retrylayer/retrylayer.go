@@ -38,6 +38,7 @@ type RetryLayer struct {
 	CustomRoleStore                 store.CustomRoleStore
 	DailyReportStore                store.DailyReportStore
 	DeliveryTrackingStore           store.DeliveryTrackingStore
+	DepartmentStore                 store.DepartmentStore
 	DesktopTokensStore              store.DesktopTokensStore
 	DraftStore                      store.DraftStore
 	DriveItemStore                  store.DriveItemStore
@@ -163,6 +164,10 @@ func (s *RetryLayer) DailyReport() store.DailyReportStore {
 
 func (s *RetryLayer) DeliveryTracking() store.DeliveryTrackingStore {
 	return s.DeliveryTrackingStore
+}
+
+func (s *RetryLayer) Department() store.DepartmentStore {
+	return s.DepartmentStore
 }
 
 func (s *RetryLayer) DesktopTokens() store.DesktopTokensStore {
@@ -453,6 +458,11 @@ type RetryLayerDailyReportStore struct {
 
 type RetryLayerDeliveryTrackingStore struct {
 	store.DeliveryTrackingStore
+	Root *RetryLayer
+}
+
+type RetryLayerDepartmentStore struct {
+	store.DepartmentStore
 	Root *RetryLayer
 }
 
@@ -5464,11 +5474,11 @@ func (s *RetryLayerCustomRoleStore) Get(id string) (*model.CustomRole, error) {
 
 }
 
-func (s *RetryLayerCustomRoleStore) GetAll() ([]*model.CustomRole, error) {
+func (s *RetryLayerCustomRoleStore) GetForTeam(teamID string) ([]*model.CustomRole, error) {
 
 	tries := 0
 	for {
-		result, err := s.CustomRoleStore.GetAll()
+		result, err := s.CustomRoleStore.GetForTeam(teamID)
 		if err == nil {
 			return result, nil
 		}
@@ -5506,11 +5516,11 @@ func (s *RetryLayerCustomRoleStore) Save(r *model.CustomRole) (*model.CustomRole
 
 }
 
-func (s *RetryLayerCustomRoleStore) SetPositions(orderedIDs []string, at int64) error {
+func (s *RetryLayerCustomRoleStore) SetPositions(departmentID string, orderedIDs []string, at int64) error {
 
 	tries := 0
 	for {
-		err := s.CustomRoleStore.SetPositions(orderedIDs, at)
+		err := s.CustomRoleStore.SetPositions(departmentID, orderedIDs, at)
 		if err == nil {
 			return nil
 		}
@@ -5842,6 +5852,132 @@ func (s *RetryLayerDeliveryTrackingStore) SaveTrackedChannelIDs(rctx request.CTX
 		if tries >= 3 {
 			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
 			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDepartmentStore) Delete(id string, at int64) error {
+
+	tries := 0
+	for {
+		err := s.DepartmentStore.Delete(id, at)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDepartmentStore) Get(id string) (*model.Department, error) {
+
+	tries := 0
+	for {
+		result, err := s.DepartmentStore.Get(id)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDepartmentStore) GetForTeam(teamID string) ([]*model.Department, error) {
+
+	tries := 0
+	for {
+		result, err := s.DepartmentStore.GetForTeam(teamID)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDepartmentStore) Save(d *model.Department) (*model.Department, error) {
+
+	tries := 0
+	for {
+		result, err := s.DepartmentStore.Save(d)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDepartmentStore) SetPositions(teamID string, orderedIDs []string, at int64) error {
+
+	tries := 0
+	for {
+		err := s.DepartmentStore.SetPositions(teamID, orderedIDs, at)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDepartmentStore) Update(d *model.Department) (*model.Department, error) {
+
+	tries := 0
+	for {
+		result, err := s.DepartmentStore.Update(d)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
 		}
 		timepkg.Sleep(100 * timepkg.Millisecond)
 	}
@@ -17179,6 +17315,27 @@ func (s *RetryLayerTeamStore) ClearCaches() {
 
 }
 
+func (s *RetryLayerTeamStore) CountMembersWithRoles(teamID string, roleNames []string) (map[string]int64, error) {
+
+	tries := 0
+	for {
+		result, err := s.TeamStore.CountMembersWithRoles(teamID, roleNames)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
 func (s *RetryLayerTeamStore) Get(id string) (*model.Team, error) {
 
 	tries := 0
@@ -17872,6 +18029,27 @@ func (s *RetryLayerTeamStore) RemoveMembers(rctx request.CTX, teamID string, use
 		if tries >= 3 {
 			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
 			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTeamStore) RemoveRoleFromAllMembers(teamID string, roleName string) ([]string, error) {
+
+	tries := 0
+	for {
+		result, err := s.TeamStore.RemoveRoleFromAllMembers(teamID, roleName)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
 		}
 		timepkg.Sleep(100 * timepkg.Millisecond)
 	}
@@ -20473,27 +20651,6 @@ func (s *RetryLayerUserStore) RefreshPostStatsForUsers() error {
 
 }
 
-func (s *RetryLayerUserStore) RemoveRoleFromAll(roleName string) ([]string, error) {
-
-	tries := 0
-	for {
-		result, err := s.UserStore.RemoveRoleFromAll(roleName)
-		if err == nil {
-			return result, nil
-		}
-		if !isRepeatableError(err) {
-			return result, err
-		}
-		tries++
-		if tries >= 3 {
-			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
-			return result, err
-		}
-		timepkg.Sleep(100 * timepkg.Millisecond)
-	}
-
-}
-
 func (s *RetryLayerUserStore) ResetAuthDataToEmailForUsers(service string, userIDs []string, includeDeleted bool, dryRun bool) (int, error) {
 
 	tries := 0
@@ -22221,6 +22378,7 @@ func New(childStore store.Store) *RetryLayer {
 	newStore.CustomRoleStore = &RetryLayerCustomRoleStore{CustomRoleStore: childStore.CustomRole(), Root: &newStore}
 	newStore.DailyReportStore = &RetryLayerDailyReportStore{DailyReportStore: childStore.DailyReport(), Root: &newStore}
 	newStore.DeliveryTrackingStore = &RetryLayerDeliveryTrackingStore{DeliveryTrackingStore: childStore.DeliveryTracking(), Root: &newStore}
+	newStore.DepartmentStore = &RetryLayerDepartmentStore{DepartmentStore: childStore.Department(), Root: &newStore}
 	newStore.DesktopTokensStore = &RetryLayerDesktopTokensStore{DesktopTokensStore: childStore.DesktopTokens(), Root: &newStore}
 	newStore.DraftStore = &RetryLayerDraftStore{DraftStore: childStore.Draft(), Root: &newStore}
 	newStore.DriveItemStore = &RetryLayerDriveItemStore{DriveItemStore: childStore.DriveItem(), Root: &newStore}

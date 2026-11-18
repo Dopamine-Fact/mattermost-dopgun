@@ -37,6 +37,7 @@ type TimerLayer struct {
 	CustomRoleStore                 store.CustomRoleStore
 	DailyReportStore                store.DailyReportStore
 	DeliveryTrackingStore           store.DeliveryTrackingStore
+	DepartmentStore                 store.DepartmentStore
 	DesktopTokensStore              store.DesktopTokensStore
 	DraftStore                      store.DraftStore
 	DriveItemStore                  store.DriveItemStore
@@ -162,6 +163,10 @@ func (s *TimerLayer) DailyReport() store.DailyReportStore {
 
 func (s *TimerLayer) DeliveryTracking() store.DeliveryTrackingStore {
 	return s.DeliveryTrackingStore
+}
+
+func (s *TimerLayer) Department() store.DepartmentStore {
+	return s.DepartmentStore
 }
 
 func (s *TimerLayer) DesktopTokens() store.DesktopTokensStore {
@@ -452,6 +457,11 @@ type TimerLayerDailyReportStore struct {
 
 type TimerLayerDeliveryTrackingStore struct {
 	store.DeliveryTrackingStore
+	Root *TimerLayer
+}
+
+type TimerLayerDepartmentStore struct {
+	store.DepartmentStore
 	Root *TimerLayer
 }
 
@@ -4551,10 +4561,10 @@ func (s *TimerLayerCustomRoleStore) Get(id string) (*model.CustomRole, error) {
 	return result, err
 }
 
-func (s *TimerLayerCustomRoleStore) GetAll() ([]*model.CustomRole, error) {
+func (s *TimerLayerCustomRoleStore) GetForTeam(teamID string) ([]*model.CustomRole, error) {
 	start := time.Now()
 
-	result, err := s.CustomRoleStore.GetAll()
+	result, err := s.CustomRoleStore.GetForTeam(teamID)
 
 	elapsed := float64(time.Since(start)) / float64(time.Second)
 	if s.Root.Metrics != nil {
@@ -4562,7 +4572,7 @@ func (s *TimerLayerCustomRoleStore) GetAll() ([]*model.CustomRole, error) {
 		if err == nil {
 			success = "true"
 		}
-		s.Root.Metrics.ObserveStoreMethodDuration("CustomRoleStore.GetAll", success, elapsed)
+		s.Root.Metrics.ObserveStoreMethodDuration("CustomRoleStore.GetForTeam", success, elapsed)
 	}
 	return result, err
 }
@@ -4583,10 +4593,10 @@ func (s *TimerLayerCustomRoleStore) Save(r *model.CustomRole) (*model.CustomRole
 	return result, err
 }
 
-func (s *TimerLayerCustomRoleStore) SetPositions(orderedIDs []string, at int64) error {
+func (s *TimerLayerCustomRoleStore) SetPositions(departmentID string, orderedIDs []string, at int64) error {
 	start := time.Now()
 
-	err := s.CustomRoleStore.SetPositions(orderedIDs, at)
+	err := s.CustomRoleStore.SetPositions(departmentID, orderedIDs, at)
 
 	elapsed := float64(time.Since(start)) / float64(time.Second)
 	if s.Root.Metrics != nil {
@@ -4852,6 +4862,102 @@ func (s *TimerLayerDeliveryTrackingStore) SaveTrackedChannelIDs(rctx request.CTX
 		s.Root.Metrics.ObserveStoreMethodDuration("DeliveryTrackingStore.SaveTrackedChannelIDs", success, elapsed)
 	}
 	return err
+}
+
+func (s *TimerLayerDepartmentStore) Delete(id string, at int64) error {
+	start := time.Now()
+
+	err := s.DepartmentStore.Delete(id, at)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DepartmentStore.Delete", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerDepartmentStore) Get(id string) (*model.Department, error) {
+	start := time.Now()
+
+	result, err := s.DepartmentStore.Get(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DepartmentStore.Get", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDepartmentStore) GetForTeam(teamID string) ([]*model.Department, error) {
+	start := time.Now()
+
+	result, err := s.DepartmentStore.GetForTeam(teamID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DepartmentStore.GetForTeam", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDepartmentStore) Save(d *model.Department) (*model.Department, error) {
+	start := time.Now()
+
+	result, err := s.DepartmentStore.Save(d)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DepartmentStore.Save", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDepartmentStore) SetPositions(teamID string, orderedIDs []string, at int64) error {
+	start := time.Now()
+
+	err := s.DepartmentStore.SetPositions(teamID, orderedIDs, at)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DepartmentStore.SetPositions", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerDepartmentStore) Update(d *model.Department) (*model.Department, error) {
+	start := time.Now()
+
+	result, err := s.DepartmentStore.Update(d)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DepartmentStore.Update", success, elapsed)
+	}
+	return result, err
 }
 
 func (s *TimerLayerDesktopTokensStore) ConsumeToken(token string, minCreateAt int64) (*string, error) {
@@ -13584,6 +13690,22 @@ func (s *TimerLayerTeamStore) ClearCaches() {
 	}
 }
 
+func (s *TimerLayerTeamStore) CountMembersWithRoles(teamID string, roleNames []string) (map[string]int64, error) {
+	start := time.Now()
+
+	result, err := s.TeamStore.CountMembersWithRoles(teamID, roleNames)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TeamStore.CountMembersWithRoles", success, elapsed)
+	}
+	return result, err
+}
+
 func (s *TimerLayerTeamStore) Get(id string) (*model.Team, error) {
 	start := time.Now()
 
@@ -14125,6 +14247,22 @@ func (s *TimerLayerTeamStore) RemoveMembers(rctx request.CTX, teamID string, use
 		s.Root.Metrics.ObserveStoreMethodDuration("TeamStore.RemoveMembers", success, elapsed)
 	}
 	return err
+}
+
+func (s *TimerLayerTeamStore) RemoveRoleFromAllMembers(teamID string, roleName string) ([]string, error) {
+	start := time.Now()
+
+	result, err := s.TeamStore.RemoveRoleFromAllMembers(teamID, roleName)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TeamStore.RemoveRoleFromAllMembers", success, elapsed)
+	}
+	return result, err
 }
 
 func (s *TimerLayerTeamStore) ResetAllTeamSchemes() error {
@@ -16201,22 +16339,6 @@ func (s *TimerLayerUserStore) RefreshPostStatsForUsers() error {
 	return err
 }
 
-func (s *TimerLayerUserStore) RemoveRoleFromAll(roleName string) ([]string, error) {
-	start := time.Now()
-
-	result, err := s.UserStore.RemoveRoleFromAll(roleName)
-
-	elapsed := float64(time.Since(start)) / float64(time.Second)
-	if s.Root.Metrics != nil {
-		success := "false"
-		if err == nil {
-			success = "true"
-		}
-		s.Root.Metrics.ObserveStoreMethodDuration("UserStore.RemoveRoleFromAll", success, elapsed)
-	}
-	return result, err
-}
-
 func (s *TimerLayerUserStore) ResetAuthDataToEmailForUsers(service string, userIDs []string, includeDeleted bool, dryRun bool) (int, error) {
 	start := time.Now()
 
@@ -17568,6 +17690,7 @@ func New(childStore store.Store, metrics einterfaces.MetricsInterface) *TimerLay
 	newStore.CustomRoleStore = &TimerLayerCustomRoleStore{CustomRoleStore: childStore.CustomRole(), Root: &newStore}
 	newStore.DailyReportStore = &TimerLayerDailyReportStore{DailyReportStore: childStore.DailyReport(), Root: &newStore}
 	newStore.DeliveryTrackingStore = &TimerLayerDeliveryTrackingStore{DeliveryTrackingStore: childStore.DeliveryTracking(), Root: &newStore}
+	newStore.DepartmentStore = &TimerLayerDepartmentStore{DepartmentStore: childStore.Department(), Root: &newStore}
 	newStore.DesktopTokensStore = &TimerLayerDesktopTokensStore{DesktopTokensStore: childStore.DesktopTokens(), Root: &newStore}
 	newStore.DraftStore = &TimerLayerDraftStore{DraftStore: childStore.Draft(), Root: &newStore}
 	newStore.DriveItemStore = &TimerLayerDriveItemStore{DriveItemStore: childStore.DriveItem(), Root: &newStore}

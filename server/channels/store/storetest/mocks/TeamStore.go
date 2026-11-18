@@ -94,6 +94,36 @@ func (_m *TeamStore) ClearCaches() {
 	_m.Called()
 }
 
+// CountMembersWithRoles provides a mock function with given fields: teamID, roleNames
+func (_m *TeamStore) CountMembersWithRoles(teamID string, roleNames []string) (map[string]int64, error) {
+	ret := _m.Called(teamID, roleNames)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountMembersWithRoles")
+	}
+
+	var r0 map[string]int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, []string) (map[string]int64, error)); ok {
+		return rf(teamID, roleNames)
+	}
+	if rf, ok := ret.Get(0).(func(string, []string) map[string]int64); ok {
+		r0 = rf(teamID, roleNames)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]int64)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, []string) error); ok {
+		r1 = rf(teamID, roleNames)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Get provides a mock function with given fields: id
 func (_m *TeamStore) Get(id string) (*model.Team, error) {
 	ret := _m.Called(id)
@@ -1021,6 +1051,36 @@ func (_m *TeamStore) RemoveMembers(rctx request.CTX, teamID string, userIds []st
 	}
 
 	return r0
+}
+
+// RemoveRoleFromAllMembers provides a mock function with given fields: teamID, roleName
+func (_m *TeamStore) RemoveRoleFromAllMembers(teamID string, roleName string) ([]string, error) {
+	ret := _m.Called(teamID, roleName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RemoveRoleFromAllMembers")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string) ([]string, error)); ok {
+		return rf(teamID, roleName)
+	}
+	if rf, ok := ret.Get(0).(func(string, string) []string); ok {
+		r0 = rf(teamID, roleName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(teamID, roleName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // ResetAllTeamSchemes provides a mock function with no fields

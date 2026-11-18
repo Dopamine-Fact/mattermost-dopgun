@@ -69,6 +69,9 @@ func TestTeamStore(t *testing.T, rctx request.CTX, ss store.Store) {
 	t.Run("MigrateTeamMembers", func(t *testing.T) { testTeamStoreMigrateTeamMembers(t, rctx, ss) })
 	t.Run("ResetAllTeamSchemes", func(t *testing.T) { testResetAllTeamSchemes(t, rctx, ss) })
 	t.Run("ClearAllCustomRoleAssignments", func(t *testing.T) { testTeamStoreClearAllCustomRoleAssignments(t, rctx, ss) })
+	t.Run("RemoveRoleFromAllMembers", func(t *testing.T) { testTeamRemoveRoleFromAllMembers(t, rctx, ss) })
+	t.Run("CountMembersWithRoles", func(t *testing.T) { testTeamCountMembersWithRoles(t, rctx, ss) })
+	t.Run("TeamMemberRolesLong", func(t *testing.T) { testTeamMemberRolesLong(t, rctx, ss) })
 	t.Run("AnalyticsGetTeamCountForScheme", func(t *testing.T) { testTeamStoreAnalyticsGetTeamCountForScheme(t, rctx, ss) })
 	t.Run("GetAllForExportAfter", func(t *testing.T) { testTeamStoreGetAllForExportAfter(t, rctx, ss) })
 	t.Run("GetTeamMembersForExport", func(t *testing.T) { testTeamStoreGetTeamMembersForExport(t, rctx, ss) })
@@ -4031,4 +4034,66 @@ func testTeamStoreFilesEnabled(t *testing.T, rctx request.CTX, ss store.Store) {
 	got, err = ss.Team().Get(team.Id)
 	require.NoError(t, err)
 	require.False(t, got.FilesEnabled)
+}
+
+func saveTeamMemberWithRoles(t *testing.T, rctx request.CTX, ss store.Store, teamID, roles string) *model.TeamMember {
+	m, err := ss.Team().SaveMember(rctx, &model.TeamMember{TeamId: teamID, UserId: model.NewId(), SchemeUser: true, ExplicitRoles: roles}, -1)
+	require.NoError(t, err)
+	return m
+}
+
+func testTeamRemoveRoleFromAllMembers(t *testing.T, rctx request.CTX, ss store.Store) {
+	team, otherTeam := model.NewId(), model.NewId()
+	holder := saveTeamMemberWithRoles(t, rctx, ss, team, "rk_a rk_ab")
+	last := saveTeamMemberWithRoles(t, rctx, ss, team, "rk_ab rk_a")
+	prefixOnly := saveTeamMemberWithRoles(t, rctx, ss, team, "rk_ab")
+	elsewhere := saveTeamMemberWithRoles(t, rctx, ss, otherTeam, "rk_a")
+
+	changed, err := ss.Team().RemoveRoleFromAllMembers(team, "rk_a")
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{holder.UserId, last.UserId}, changed)
+
+	for _, m := range []*model.TeamMember{holder, last, prefixOnly} {
+		got, err := ss.Team().GetMember(rctx, team, m.UserId)
+		require.NoError(t, err)
+		assert.Equal(t, "rk_ab", got.ExplicitRoles)
+		assert.True(t, got.SchemeUser, "scheme flags untouched")
+	}
+	got, err := ss.Team().GetMember(rctx, otherTeam, elsewhere.UserId)
+	require.NoError(t, err)
+	assert.Equal(t, "rk_a", got.ExplicitRoles, "other team untouched")
+
+	var invalid *store.ErrInvalidInput
+	_, err = ss.Team().RemoveRoleFromAllMembers(team, "rk_a|.*")
+	assert.ErrorAs(t, err, &invalid)
+}
+
+func testTeamCountMembersWithRoles(t *testing.T, rctx request.CTX, ss store.Store) {
+	team := model.NewId()
+	saveTeamMemberWithRoles(t, rctx, ss, team, "rk_a rk_b")
+	saveTeamMemberWithRoles(t, rctx, ss, team, "rk_a")
+	saveTeamMemberWithRoles(t, rctx, ss, team, "rk_ab")
+	gone := saveTeamMemberWithRoles(t, rctx, ss, team, "rk_a")
+	gone.DeleteAt = model.GetMillis()
+	_, err := ss.Team().UpdateMember(rctx, gone)
+	require.NoError(t, err)
+	saveTeamMemberWithRoles(t, rctx, ss, model.NewId(), "rk_a")
+
+	counts, err := ss.Team().CountMembersWithRoles(team, []string{"rk_a", "rk_b", "rk_c"})
+	require.NoError(t, err)
+	assert.Equal(t, map[string]int64{"rk_a": 2, "rk_b": 1}, counts)
+}
+
+func testTeamMemberRolesLong(t *testing.T, rctx request.CTX, ss store.Store) {
+	var roles []string
+	for range 34 {
+		roles = append(roles, model.RankRoleNameFromId(model.NewId()))
+	}
+	long := strings.Join(roles, " ")
+	require.Greater(t, len(long), 990)
+
+	m := saveTeamMemberWithRoles(t, rctx, ss, model.NewId(), long)
+	got, err := ss.Team().GetMember(rctx, m.TeamId, m.UserId)
+	require.NoError(t, err)
+	assert.Equal(t, long, got.ExplicitRoles)
 }

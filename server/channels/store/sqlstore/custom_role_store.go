@@ -21,7 +21,9 @@ func newSqlCustomRoleStore(sqlStore *SqlStore) store.CustomRoleStore {
 	return &SqlCustomRoleStore{sqlStore}
 }
 
-var customRoleColumns = []string{"Id", "RoleName", "DisplayName", "Color", "Position", "Department", "CreateAt", "UpdateAt", "DeleteAt"}
+var customRoleColumns = []string{"Id", "RoleName", "TeamId", "DepartmentId", "DisplayName", "Color", "Position", "CreateAt", "UpdateAt", "DeleteAt"}
+
+const customRoleNameIndex = "idx_customroles_department_name"
 
 func (s *SqlCustomRoleStore) Save(r *model.CustomRole) (*model.CustomRole, error) {
 	r.PreSave()
@@ -31,8 +33,10 @@ func (s *SqlCustomRoleStore) Save(r *model.CustomRole) (*model.CustomRole, error
 	_, err := s.GetMaster().ExecBuilder(s.getQueryBuilder().
 		Insert("CustomRoles").
 		Columns(customRoleColumns...).
-		Values(r.Id, r.RoleName, r.DisplayName, r.Color, r.Position, r.Department, r.CreateAt, r.UpdateAt, r.DeleteAt))
-	if err != nil {
+		Values(r.Id, r.RoleName, r.TeamId, r.DepartmentId, r.DisplayName, r.Color, r.Position, r.CreateAt, r.UpdateAt, r.DeleteAt))
+	if err != nil && IsUniqueConstraintError(err, []string{customRoleNameIndex}) {
+		return nil, store.NewErrConflict("CustomRole", err, "display_name="+r.DisplayName)
+	} else if err != nil {
 		return nil, errors.Wrapf(err, "failed to save CustomRole with id=%s", r.Id)
 	}
 	return r, nil
@@ -47,10 +51,11 @@ func (s *SqlCustomRoleStore) Update(r *model.CustomRole) (*model.CustomRole, err
 		Update("CustomRoles").
 		Set("DisplayName", r.DisplayName).
 		Set("Color", r.Color).
-		Set("Department", r.Department).
 		Set("UpdateAt", r.UpdateAt).
 		Where(sq.Eq{"Id": r.Id, "DeleteAt": 0}))
-	if err != nil {
+	if err != nil && IsUniqueConstraintError(err, []string{customRoleNameIndex}) {
+		return nil, store.NewErrConflict("CustomRole", err, "display_name="+r.DisplayName)
+	} else if err != nil {
 		return nil, errors.Wrapf(err, "failed to update CustomRole with id=%s", r.Id)
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
@@ -73,13 +78,13 @@ func (s *SqlCustomRoleStore) Get(id string) (*model.CustomRole, error) {
 	return &r, nil
 }
 
-func (s *SqlCustomRoleStore) GetAll() ([]*model.CustomRole, error) {
+func (s *SqlCustomRoleStore) GetForTeam(teamID string) ([]*model.CustomRole, error) {
 	roles := []*model.CustomRole{}
 	err := s.GetMaster().SelectBuilder(&roles, s.getQueryBuilder().
 		Select(customRoleColumns...).
 		From("CustomRoles").
-		Where(sq.Eq{"DeleteAt": 0}).
-		OrderBy("Position", "CreateAt"))
+		Where(sq.Eq{"TeamId": teamID, "DeleteAt": 0}).
+		OrderBy("DepartmentId", "Position", "CreateAt"))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get CustomRoles")
 	}
@@ -101,7 +106,7 @@ func (s *SqlCustomRoleStore) Delete(id string, at int64) error {
 	return nil
 }
 
-func (s *SqlCustomRoleStore) SetPositions(orderedIDs []string, at int64) (err error) {
+func (s *SqlCustomRoleStore) SetPositions(departmentID string, orderedIDs []string, at int64) (err error) {
 	tx, err := s.GetMaster().Begin()
 	if err != nil {
 		return errors.Wrap(err, "begin_transaction")
@@ -110,7 +115,7 @@ func (s *SqlCustomRoleStore) SetPositions(orderedIDs []string, at int64) (err er
 
 	var live []string
 	// FOR UPDATE: a concurrent create or delete cannot slip between the check and the writes.
-	if err = tx.Select(&live, "SELECT Id FROM CustomRoles WHERE DeleteAt = 0 FOR UPDATE"); err != nil {
+	if err = tx.Select(&live, "SELECT Id FROM CustomRoles WHERE DepartmentId = ? AND DeleteAt = 0 FOR UPDATE", departmentID); err != nil {
 		return errors.Wrap(err, "failed to lock CustomRoles")
 	}
 	liveSet := make(map[string]bool, len(live))

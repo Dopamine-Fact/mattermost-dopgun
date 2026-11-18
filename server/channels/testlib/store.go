@@ -112,6 +112,7 @@ func GetMockStoreForSetupFunctions() *mocks.Store {
 	systemStore.On("GetByName", model.MigrationKeyAddAIRecapsPermissions).Return(&model.System{Name: model.MigrationKeyAddAIRecapsPermissions, Value: "true"}, nil)
 	systemStore.On("GetByName", model.MigrationKeyAddManageTeamTasksPermission).Return(&model.System{Name: model.MigrationKeyAddManageTeamTasksPermission, Value: "true"}, nil)
 	systemStore.On("GetByName", model.MigrationKeySplitManageTeamTasksPermission).Return(&model.System{Name: model.MigrationKeySplitManageTeamTasksPermission, Value: "true"}, nil)
+	systemStore.On("GetByName", model.MigrationKeyTeamAdminAssignCustomRoles).Return(&model.System{Name: model.MigrationKeyTeamAdminAssignCustomRoles, Value: "true"}, nil)
 
 	systemStore.On("InsertIfExists", mock.AnythingOfType("*model.System")).Return(&model.System{}, nil).Once()
 	systemStore.On("Save", mock.AnythingOfType("*model.System")).Return(nil)

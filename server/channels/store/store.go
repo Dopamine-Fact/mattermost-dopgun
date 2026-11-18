@@ -95,6 +95,7 @@ type Store interface {
 	Canvas() CanvasStore
 	DailyReport() DailyReportStore
 	CustomRole() CustomRoleStore
+	Department() DepartmentStore
 	DriveItem() DriveItemStore
 	View() ViewStore
 	PropertyGroup() PropertyGroupStore
@@ -189,6 +190,12 @@ type TeamStore interface {
 	MigrateTeamMembers(fromTeamID string, fromUserID string) (map[string]string, error)
 	ResetAllTeamSchemes() error
 	ClearAllCustomRoleAssignments() error
+	// RemoveRoleFromAllMembers strips roleName (whole word) from the team's members' explicit roles and returns the
+	// ids of the users changed.
+	RemoveRoleFromAllMembers(teamID, roleName string) ([]string, error)
+	// CountMembersWithRoles counts the team's live members holding each role name (whole word); names nobody holds
+	// are absent.
+	CountMembersWithRoles(teamID string, roleNames []string) (map[string]int64, error)
 	AnalyticsGetTeamCountForScheme(schemeID string) (int64, error)
 	GetAllForExportAfter(limit int, afterID string) ([]*model.TeamForExport, error)
 	GetTeamMembersForExport(userID string) ([]*model.TeamMemberForExport, error)
@@ -536,8 +543,6 @@ type UserStore interface {
 	AnalyticsGetInactiveUsersCount() (int64, error)
 	AnalyticsGetExternalUsers(hostDomain string) (bool, error)
 	AnalyticsGetSystemAdminCount() (int64, error)
-	// RemoveRoleFromAll strips roleName (whole word) from every user's Roles and returns the ids of the users changed.
-	RemoveRoleFromAll(roleName string) ([]string, error)
 	AnalyticsGetGuestCount() (int64, error)
 	AnalyticsGetSingleChannelGuestCount() (int64, error)
 	GetProfilesNotInTeam(teamID string, groupConstrained bool, offset int, limit int, viewRestrictions *model.ViewUsersRestrictions) ([]*model.User, error)
@@ -1263,13 +1268,29 @@ type CustomRoleStore interface {
 	Update(r *model.CustomRole) (*model.CustomRole, error)
 	// Get returns a live role; *store.ErrNotFound when missing or deleted.
 	Get(id string) (*model.CustomRole, error)
-	// GetAll lists live roles ordered by Position.
-	GetAll() ([]*model.CustomRole, error)
-	// Delete soft-deletes the role.
+	// GetForTeam lists the team's live ranks ordered by department, then Position.
+	GetForTeam(teamID string) ([]*model.CustomRole, error)
+	// Delete soft-deletes the rank.
 	Delete(id string, at int64) error
-	// SetPositions gives orderedIDs positions 0..n-1 in one transaction. orderedIDs must be exactly the live roles,
-	// each once, else *store.ErrInvalidInput.
-	SetPositions(orderedIDs []string, at int64) error
+	// SetPositions gives orderedIDs positions 0..n-1 in one transaction. orderedIDs must be exactly the department's
+	// live ranks, each once, else *store.ErrInvalidInput.
+	SetPositions(departmentID string, orderedIDs []string, at int64) error
+}
+
+// DepartmentStore holds a team's departments. A duplicate live name in a team, or a second studio department,
+// returns *store.ErrConflict.
+type DepartmentStore interface {
+	Save(d *model.Department) (*model.Department, error)
+	// Update writes Name, Color and UpdateAt; *store.ErrNotFound when missing or deleted.
+	Update(d *model.Department) (*model.Department, error)
+	// Get returns a live department; *store.ErrNotFound when missing or deleted.
+	Get(id string) (*model.Department, error)
+	// GetForTeam lists the team's live departments by Position, then CreateAt.
+	GetForTeam(teamID string) ([]*model.Department, error)
+	Delete(id string, at int64) error
+	// SetPositions gives orderedIDs positions 0..n-1 in one transaction. orderedIDs must be exactly the team's live
+	// departments, each once, else *store.ErrInvalidInput.
+	SetPositions(teamID string, orderedIDs []string, at int64) error
 }
 
 type DriveItemStore interface {

@@ -501,3 +501,5 @@ channels/db/migrations/postgres/000252_drive_items_unique_fileid.down.sql
 channels/db/migrations/postgres/000252_drive_items_unique_fileid.up.sql
 channels/db/migrations/postgres/000253_custom_roles.down.sql
 channels/db/migrations/postgres/000253_custom_roles.up.sql
+channels/db/migrations/postgres/000254_team_departments.down.sql
+channels/db/migrations/postgres/000254_team_departments.up.sql

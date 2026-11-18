@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/lib/pq"
 	sq "github.com/mattermost/squirrel"
 	"github.com/pkg/errors"
 
@@ -1806,4 +1807,44 @@ func (s SqlTeamStore) GroupSyncedTeamCount() (int64, error) {
 	}
 
 	return count, nil
+}
+
+func (s SqlTeamStore) RemoveRoleFromAllMembers(teamID, roleName string) ([]string, error) {
+	if !roleNameRegex.MatchString(roleName) {
+		return nil, store.NewErrInvalidInput("TeamMember", "roleName", roleName)
+	}
+	// Whole-word match, then collapse the leftover whitespace.
+	pattern := `(^|\s)` + roleName + `(?=\s|$)`
+	ids := []string{}
+	err := s.GetMaster().Select(&ids, `UPDATE TeamMembers
+		SET Roles = btrim(regexp_replace(regexp_replace(Roles, ?, ' ', 'g'), '\s+', ' ', 'g'))
+		WHERE TeamId = ? AND Roles ~ ?
+		RETURNING UserId`, pattern, teamID, pattern)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to remove role %s from TeamMembers of team_id=%s", roleName, teamID)
+	}
+	return ids, nil
+}
+
+func (s SqlTeamStore) CountMembersWithRoles(teamID string, roleNames []string) (map[string]int64, error) {
+	counts := map[string]int64{}
+	if len(roleNames) == 0 {
+		return counts, nil
+	}
+	rows := []struct {
+		Role  string
+		Count int64
+	}{}
+	err := s.GetReplica().Select(&rows, `SELECT r.Role AS Role, count(*) AS Count
+		FROM TeamMembers tm
+		CROSS JOIN LATERAL unnest(string_to_array(tm.Roles, ' ')) AS r(Role)
+		WHERE tm.TeamId = ? AND tm.DeleteAt = 0 AND r.Role = ANY(?)
+		GROUP BY r.Role`, teamID, pq.Array(roleNames))
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to count role holders in team_id=%s", teamID)
+	}
+	for _, row := range rows {
+		counts[row.Role] = row.Count
+	}
+	return counts, nil
 }

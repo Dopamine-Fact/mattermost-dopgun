@@ -1891,23 +1891,6 @@ func (us SqlUserStore) AnalyticsGetSystemAdminCount() (int64, error) {
 
 var roleNameRegex = regexp.MustCompile(`^[a-z0-9_]+$`)
 
-func (us SqlUserStore) RemoveRoleFromAll(roleName string) ([]string, error) {
-	if !roleNameRegex.MatchString(roleName) {
-		return nil, store.NewErrInvalidInput("User", "roleName", roleName)
-	}
-	// Whole-word match, then collapse the leftover whitespace.
-	pattern := `(^|\s)` + roleName + `(?=\s|$)`
-	ids := []string{}
-	err := us.GetMaster().Select(&ids, `UPDATE Users
-		SET Roles = btrim(regexp_replace(regexp_replace(Roles, ?, ' ', 'g'), '\s+', ' ', 'g')), UpdateAt = ?
-		WHERE Roles ~ ?
-		RETURNING Id`, pattern, model.GetMillis(), pattern)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to remove role %s from Users", roleName)
-	}
-	return ids, nil
-}
-
 func (us SqlUserStore) GetProfilesNotInTeam(teamId string, groupConstrained bool, offset int, limit int, viewRestrictions *model.ViewUsersRestrictions) ([]*model.User, error) {
 	users := []*model.User{}
 	query := us.usersQuery.
