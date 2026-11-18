@@ -248,7 +248,8 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
             data.path.forEach((p) => crumbs.push({label: p.name, to: urlFor(channel.name, p.id)}));
         }
         if (folderId) {
-            upTo = crumbs[crumbs.length - 2].to;
+            // Until the folder's path loads, an embedded address bar holds only the channel.
+            upTo = crumbs[crumbs.length - 2]?.to ?? urlFor(channel.name);
         }
     }
 

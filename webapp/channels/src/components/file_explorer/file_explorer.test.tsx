@@ -212,6 +212,13 @@ describe('FileExplorer', () => {
             expect(screen.getByRole('button', {name: 'Up'})).toBeDisabled();
         });
 
+        test('embedded, a folder link renders while its path loads, then Up leads to the channel root', async () => {
+            jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [], path: [folder('d1', 'Docs')]});
+            renderEmbedded('/team/channels/town?folder=d1');
+            expect(await screen.findByText('Docs', {selector: '[aria-current=location]'})).toBeInTheDocument();
+            expect(screen.getByRole('button', {name: 'Up'})).toBeEnabled();
+        });
+
         test('embedded, the sidebar keeps its current item', async () => {
             (selectLhsItem as jest.Mock).mockClear();
             renderEmbedded();
