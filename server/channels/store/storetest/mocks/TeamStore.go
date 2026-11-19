@@ -94,24 +94,24 @@ func (_m *TeamStore) ClearCaches() {
 	_m.Called()
 }
 
-// CountMembersWithRoles provides a mock function with given fields: teamID, roleNames
-func (_m *TeamStore) CountMembersWithRoles(teamID string, roleNames []string) (map[string]int64, error) {
+// MembersWithRoles provides a mock function with given fields: teamID, roleNames
+func (_m *TeamStore) MembersWithRoles(teamID string, roleNames []string) (map[string][]string, error) {
 	ret := _m.Called(teamID, roleNames)
 
 	if len(ret) == 0 {
-		panic("no return value specified for CountMembersWithRoles")
+		panic("no return value specified for MembersWithRoles")
 	}
 
-	var r0 map[string]int64
+	var r0 map[string][]string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, []string) (map[string]int64, error)); ok {
+	if rf, ok := ret.Get(0).(func(string, []string) (map[string][]string, error)); ok {
 		return rf(teamID, roleNames)
 	}
-	if rf, ok := ret.Get(0).(func(string, []string) map[string]int64); ok {
+	if rf, ok := ret.Get(0).(func(string, []string) map[string][]string); ok {
 		r0 = rf(teamID, roleNames)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[string]int64)
+			r0 = ret.Get(0).(map[string][]string)
 		}
 	}
 

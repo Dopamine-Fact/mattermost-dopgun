@@ -5,6 +5,7 @@ package storetest
 
 import (
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -71,7 +72,7 @@ func TestTeamStore(t *testing.T, rctx request.CTX, ss store.Store) {
 	t.Run("ResetAllTeamSchemes", func(t *testing.T) { testResetAllTeamSchemes(t, rctx, ss) })
 	t.Run("ClearAllCustomRoleAssignments", func(t *testing.T) { testTeamStoreClearAllCustomRoleAssignments(t, rctx, ss) })
 	t.Run("RemoveRoleFromAllMembers", func(t *testing.T) { testTeamRemoveRoleFromAllMembers(t, rctx, ss) })
-	t.Run("CountMembersWithRoles", func(t *testing.T) { testTeamCountMembersWithRoles(t, rctx, ss) })
+	t.Run("MembersWithRoles", func(t *testing.T) { testTeamMembersWithRoles(t, rctx, ss) })
 	t.Run("TeamMemberRolesLong", func(t *testing.T) { testTeamMemberRolesLong(t, rctx, ss) })
 	t.Run("AnalyticsGetTeamCountForScheme", func(t *testing.T) { testTeamStoreAnalyticsGetTeamCountForScheme(t, rctx, ss) })
 	t.Run("GetAllForExportAfter", func(t *testing.T) { testTeamStoreGetAllForExportAfter(t, rctx, ss) })
@@ -4087,10 +4088,10 @@ func testTeamRemoveRoleFromAllMembers(t *testing.T, rctx request.CTX, ss store.S
 	assert.ErrorAs(t, err, &invalid)
 }
 
-func testTeamCountMembersWithRoles(t *testing.T, rctx request.CTX, ss store.Store) {
+func testTeamMembersWithRoles(t *testing.T, rctx request.CTX, ss store.Store) {
 	team := model.NewId()
-	saveTeamMemberWithRoles(t, rctx, ss, team, "rk_a rk_b")
-	saveTeamMemberWithRoles(t, rctx, ss, team, "rk_a")
+	both := saveTeamMemberWithRoles(t, rctx, ss, team, "rk_a rk_b")
+	onlyA := saveTeamMemberWithRoles(t, rctx, ss, team, "rk_a")
 	saveTeamMemberWithRoles(t, rctx, ss, team, "rk_ab")
 	gone := saveTeamMemberWithRoles(t, rctx, ss, team, "rk_a")
 	gone.DeleteAt = model.GetMillis()
@@ -4098,9 +4099,11 @@ func testTeamCountMembersWithRoles(t *testing.T, rctx request.CTX, ss store.Stor
 	require.NoError(t, err)
 	saveTeamMemberWithRoles(t, rctx, ss, model.NewId(), "rk_a")
 
-	counts, err := ss.Team().CountMembersWithRoles(team, []string{"rk_a", "rk_b", "rk_c"})
+	members, err := ss.Team().MembersWithRoles(team, []string{"rk_a", "rk_b", "rk_c"})
 	require.NoError(t, err)
-	assert.Equal(t, map[string]int64{"rk_a": 2, "rk_b": 1}, counts)
+	holdersOfA := []string{both.UserId, onlyA.UserId}
+	slices.Sort(holdersOfA)
+	assert.Equal(t, map[string][]string{"rk_a": holdersOfA, "rk_b": {both.UserId}}, members)
 }
 
 func testTeamMemberRolesLong(t *testing.T, rctx request.CTX, ss store.Store) {

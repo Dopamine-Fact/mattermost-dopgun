@@ -17567,11 +17567,11 @@ func (s *RetryLayerTeamStore) ClearCaches() {
 
 }
 
-func (s *RetryLayerTeamStore) CountMembersWithRoles(teamID string, roleNames []string) (map[string]int64, error) {
+func (s *RetryLayerTeamStore) MembersWithRoles(teamID string, roleNames []string) (map[string][]string, error) {
 
 	tries := 0
 	for {
-		result, err := s.TeamStore.CountMembersWithRoles(teamID, roleNames)
+		result, err := s.TeamStore.MembersWithRoles(teamID, roleNames)
 		if err == nil {
 			return result, nil
 		}

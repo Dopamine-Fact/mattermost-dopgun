@@ -38,6 +38,7 @@ type CustomRole struct {
 	Position     int      `json:"position"`
 	Permissions  []string `json:"permissions" db:"-"`
 	MemberCount  int64    `json:"member_count" db:"-"`
+	MemberIds    []string `json:"member_ids" db:"-"`
 	CreateAt     int64    `json:"create_at"`
 	UpdateAt     int64    `json:"update_at"`
 	DeleteAt     int64    `json:"delete_at"`

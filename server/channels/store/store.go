@@ -193,9 +193,9 @@ type TeamStore interface {
 	// RemoveRoleFromAllMembers strips roleName (whole word) from the team's members' explicit roles and returns the
 	// ids of the users changed.
 	RemoveRoleFromAllMembers(teamID, roleName string) ([]string, error)
-	// CountMembersWithRoles counts the team's live members holding each role name (whole word); names nobody holds
-	// are absent.
-	CountMembersWithRoles(teamID string, roleNames []string) (map[string]int64, error)
+	// MembersWithRoles lists, sorted, the user ids of the team's live members holding each role name (whole word);
+	// names nobody holds are absent.
+	MembersWithRoles(teamID string, roleNames []string) (map[string][]string, error)
 	AnalyticsGetTeamCountForScheme(schemeID string) (int64, error)
 	GetAllForExportAfter(limit int, afterID string) ([]*model.TeamForExport, error)
 	GetTeamMembersForExport(userID string) ([]*model.TeamMemberForExport, error)

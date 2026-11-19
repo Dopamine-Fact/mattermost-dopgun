@@ -124,6 +124,19 @@ func TestRankGrantsOnlyInItsTeam(t *testing.T) {
 	deps, appErr := th.App.GetTeamDepartments(th.Context, team.Id)
 	require.Nil(t, appErr)
 	assert.Equal(t, int64(1), deps[1].Ranks[0].MemberCount)
+	assert.Equal(t, []string{user.Id}, deps[1].Ranks[0].MemberIds)
+}
+
+func TestGetTeamDepartmentsEmptyRankHasNoMembers(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	newRank(t, th, th.BasicTeam.Id, newDepartment(t, th, th.BasicTeam.Id, "Animasyon").Id, "Lead")
+
+	deps, appErr := th.App.GetTeamDepartments(th.Context, th.BasicTeam.Id)
+	require.Nil(t, appErr)
+	assert.NotNil(t, deps[1].Ranks[0].MemberIds, "encodes as [], not null")
+	assert.Empty(t, deps[1].Ranks[0].MemberIds)
+	assert.Zero(t, deps[1].Ranks[0].MemberCount)
 }
 
 func TestPatchRankRenamesNativeRole(t *testing.T) {

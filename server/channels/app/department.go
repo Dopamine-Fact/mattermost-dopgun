@@ -88,7 +88,7 @@ func isConflict(err error) bool {
 }
 
 // GetTeamDepartments returns the team's departments in order, each with its ranks in order, their permissions and
-// how many members hold them.
+// the members holding them.
 func (a *App) GetTeamDepartments(rctx request.CTX, teamID string) ([]*model.DepartmentWithRanks, *model.AppError) {
 	deps, appErr := a.ensureStudioDepartment(teamID)
 	if appErr != nil {
@@ -102,7 +102,7 @@ func (a *App) GetTeamDepartments(rctx request.CTX, teamID string) ([]*model.Depa
 	for i, r := range ranks {
 		names[i] = r.RoleName
 	}
-	counts, err := a.Srv().Store().Team().CountMembersWithRoles(teamID, names)
+	members, err := a.Srv().Store().Team().MembersWithRoles(teamID, names)
 	if err != nil {
 		return nil, customRoleStoreError("GetTeamDepartments", err)
 	}
@@ -114,7 +114,11 @@ func (a *App) GetTeamDepartments(rctx request.CTX, teamID string) ([]*model.Depa
 		index[d.Id] = out[i]
 	}
 	for _, r := range ranks {
-		r.MemberCount = counts[r.RoleName]
+		r.MemberIds = members[r.RoleName]
+		if r.MemberIds == nil {
+			r.MemberIds = []string{}
+		}
+		r.MemberCount = int64(len(r.MemberIds))
 		if d, ok := index[r.DepartmentId]; ok {
 			d.Ranks = append(d.Ranks, r)
 		}

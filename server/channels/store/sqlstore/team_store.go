@@ -1828,25 +1828,25 @@ func (s SqlTeamStore) RemoveRoleFromAllMembers(teamID, roleName string) ([]strin
 	return ids, nil
 }
 
-func (s SqlTeamStore) CountMembersWithRoles(teamID string, roleNames []string) (map[string]int64, error) {
-	counts := map[string]int64{}
+func (s SqlTeamStore) MembersWithRoles(teamID string, roleNames []string) (map[string][]string, error) {
+	members := map[string][]string{}
 	if len(roleNames) == 0 {
-		return counts, nil
+		return members, nil
 	}
 	rows := []struct {
-		Role  string
-		Count int64
+		Role   string
+		UserId string
 	}{}
-	err := s.GetReplica().Select(&rows, `SELECT r.Role AS Role, count(*) AS Count
+	err := s.GetReplica().Select(&rows, `SELECT r.Role AS Role, tm.UserId AS UserId
 		FROM TeamMembers tm
 		CROSS JOIN LATERAL unnest(string_to_array(tm.Roles, ' ')) AS r(Role)
 		WHERE tm.TeamId = ? AND tm.DeleteAt = 0 AND r.Role = ANY(?)
-		GROUP BY r.Role`, teamID, pq.Array(roleNames))
+		ORDER BY tm.UserId`, teamID, pq.Array(roleNames))
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to count role holders in team_id=%s", teamID)
+		return nil, errors.Wrapf(err, "failed to list role holders in team_id=%s", teamID)
 	}
 	for _, row := range rows {
-		counts[row.Role] = row.Count
+		members[row.Role] = append(members[row.Role], row.UserId)
 	}
-	return counts, nil
+	return members, nil
 }

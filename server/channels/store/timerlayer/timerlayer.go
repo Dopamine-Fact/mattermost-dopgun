@@ -13882,10 +13882,10 @@ func (s *TimerLayerTeamStore) ClearCaches() {
 	}
 }
 
-func (s *TimerLayerTeamStore) CountMembersWithRoles(teamID string, roleNames []string) (map[string]int64, error) {
+func (s *TimerLayerTeamStore) MembersWithRoles(teamID string, roleNames []string) (map[string][]string, error) {
 	start := time.Now()
 
-	result, err := s.TeamStore.CountMembersWithRoles(teamID, roleNames)
+	result, err := s.TeamStore.MembersWithRoles(teamID, roleNames)
 
 	elapsed := float64(time.Since(start)) / float64(time.Second)
 	if s.Root.Metrics != nil {
@@ -13893,7 +13893,7 @@ func (s *TimerLayerTeamStore) CountMembersWithRoles(teamID string, roleNames []s
 		if err == nil {
 			success = "true"
 		}
-		s.Root.Metrics.ObserveStoreMethodDuration("TeamStore.CountMembersWithRoles", success, elapsed)
+		s.Root.Metrics.ObserveStoreMethodDuration("TeamStore.MembersWithRoles", success, elapsed)
 	}
 	return result, err
 }
