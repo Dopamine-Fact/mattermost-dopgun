@@ -17225,6 +17225,27 @@ func (s *RetryLayerTaskStore) GetCommentsForTask(taskId string) ([]*model.TaskCo
 
 }
 
+func (s *RetryLayerTaskStore) GetFolderTaskFiles(channelId string, folderId string, limit int) ([]*model.DriveTaskFile, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.GetFolderTaskFiles(channelId, folderId, limit)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
 func (s *RetryLayerTaskStore) GetForTeam(teamId string) ([]*model.Task, error) {
 
 	tries := 0

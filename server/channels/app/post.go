@@ -477,6 +477,7 @@ func (a *App) CreatePost(rctx request.CTX, post *model.Post, channel *model.Chan
 		if a.Metrics() != nil {
 			a.Metrics().IncrementPostFileAttachment(len(post.FileIds))
 		}
+		a.publishTaskFolderChanged(post)
 	}
 
 	// We make a copy of the post for the plugin hook to avoid a race condition,
@@ -1213,6 +1214,7 @@ func (a *App) UpdatePost(rctx request.CTX, receivedUpdatedPost *model.Post, upda
 	}
 
 	a.invalidateCacheForChannelPosts(rpost.ChannelId)
+	a.publishTaskFolderChanged(rpost)
 
 	userID := rctx.Session().UserId
 	sanitizedPost, isMemberForPreviews, appErr := a.SanitizePostMetadataForUser(rctx, rpost, userID)
@@ -2378,6 +2380,7 @@ func (a *App) DeletePost(rctx request.CTX, postID, deleteByID string) (*model.Po
 	if appErr != nil {
 		return nil, appErr
 	}
+	a.publishTaskFolderChanged(post)
 
 	return post, nil
 }

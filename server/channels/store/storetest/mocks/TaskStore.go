@@ -158,6 +158,36 @@ func (_m *TaskStore) GetCommentsForTask(taskId string) ([]*model.TaskComment, er
 	return r0, r1
 }
 
+// GetFolderTaskFiles provides a mock function with given fields: channelId, folderId, limit
+func (_m *TaskStore) GetFolderTaskFiles(channelId string, folderId string, limit int) ([]*model.DriveTaskFile, error) {
+	ret := _m.Called(channelId, folderId, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetFolderTaskFiles")
+	}
+
+	var r0 []*model.DriveTaskFile
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string, int) ([]*model.DriveTaskFile, error)); ok {
+		return rf(channelId, folderId, limit)
+	}
+	if rf, ok := ret.Get(0).(func(string, string, int) []*model.DriveTaskFile); ok {
+		r0 = rf(channelId, folderId, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.DriveTaskFile)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string, int) error); ok {
+		r1 = rf(channelId, folderId, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetForTeam provides a mock function with given fields: teamId
 func (_m *TaskStore) GetForTeam(teamId string) ([]*model.Task, error) {
 	ret := _m.Called(teamId)
@@ -181,66 +211,6 @@ func (_m *TaskStore) GetForTeam(teamId string) ([]*model.Task, error) {
 
 	if rf, ok := ret.Get(1).(func(string) error); ok {
 		r1 = rf(teamId)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetSection provides a mock function with given fields: id
-func (_m *TaskStore) GetSection(id string) (*model.TaskSection, error) {
-	ret := _m.Called(id)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetSection")
-	}
-
-	var r0 *model.TaskSection
-	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (*model.TaskSection, error)); ok {
-		return rf(id)
-	}
-	if rf, ok := ret.Get(0).(func(string) *model.TaskSection); ok {
-		r0 = rf(id)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*model.TaskSection)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(id)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetSectionVideos provides a mock function with given fields: sectionId
-func (_m *TaskStore) GetSectionVideos(sectionId string) ([]*model.TaskSectionVideo, error) {
-	ret := _m.Called(sectionId)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetSectionVideos")
-	}
-
-	var r0 []*model.TaskSectionVideo
-	var r1 error
-	if rf, ok := ret.Get(0).(func(string) ([]*model.TaskSectionVideo, error)); ok {
-		return rf(sectionId)
-	}
-	if rf, ok := ret.Get(0).(func(string) []*model.TaskSectionVideo); ok {
-		r0 = rf(sectionId)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*model.TaskSectionVideo)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(sectionId)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -278,6 +248,36 @@ func (_m *TaskStore) GetPostIdsForTask(taskId string, channelId string, before i
 	return r0, r1
 }
 
+// GetSection provides a mock function with given fields: id
+func (_m *TaskStore) GetSection(id string) (*model.TaskSection, error) {
+	ret := _m.Called(id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSection")
+	}
+
+	var r0 *model.TaskSection
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (*model.TaskSection, error)); ok {
+		return rf(id)
+	}
+	if rf, ok := ret.Get(0).(func(string) *model.TaskSection); ok {
+		r0 = rf(id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.TaskSection)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetSectionByChannel provides a mock function with given fields: channelId
 func (_m *TaskStore) GetSectionByChannel(channelId string) (*model.TaskSection, error) {
 	ret := _m.Called(channelId)
@@ -301,6 +301,36 @@ func (_m *TaskStore) GetSectionByChannel(channelId string) (*model.TaskSection, 
 
 	if rf, ok := ret.Get(1).(func(string) error); ok {
 		r1 = rf(channelId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetSectionVideos provides a mock function with given fields: sectionId
+func (_m *TaskStore) GetSectionVideos(sectionId string) ([]*model.TaskSectionVideo, error) {
+	ret := _m.Called(sectionId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSectionVideos")
+	}
+
+	var r0 []*model.TaskSectionVideo
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]*model.TaskSectionVideo, error)); ok {
+		return rf(sectionId)
+	}
+	if rf, ok := ret.Get(0).(func(string) []*model.TaskSectionVideo); ok {
+		r0 = rf(sectionId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.TaskSectionVideo)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(sectionId)
 	} else {
 		r1 = ret.Error(1)
 	}

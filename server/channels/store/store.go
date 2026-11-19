@@ -1234,6 +1234,7 @@ type TaskStore interface {
 	GetCommentsForTask(taskId string) ([]*model.TaskComment, error)
 	DeleteComment(id string) error
 	GetPostIdsForTask(taskId, channelId string, before int64, limit int) ([]string, error)
+	GetFolderTaskFiles(channelId, folderId string, limit int) ([]*model.DriveTaskFile, error)
 }
 
 type CanvasStore interface {

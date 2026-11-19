@@ -13611,6 +13611,22 @@ func (s *TimerLayerTaskStore) GetCommentsForTask(taskId string) ([]*model.TaskCo
 	return result, err
 }
 
+func (s *TimerLayerTaskStore) GetFolderTaskFiles(channelId string, folderId string, limit int) ([]*model.DriveTaskFile, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.GetFolderTaskFiles(channelId, folderId, limit)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.GetFolderTaskFiles", success, elapsed)
+	}
+	return result, err
+}
+
 func (s *TimerLayerTaskStore) GetForTeam(teamId string) ([]*model.Task, error) {
 	start := time.Now()
 

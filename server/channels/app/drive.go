@@ -4,6 +4,7 @@
 package app
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"io"
@@ -440,7 +441,7 @@ func (a *App) ListDriveFolder(rctx request.CTX, session model.Session, channel *
 	if appErr != nil {
 		return nil, appErr
 	}
-	listing := &DriveListing{Path: folderPath, Items: []*model.DriveItem{}}
+	listing := &DriveListing{Path: folderPath, Items: []*model.DriveItem{}, TaskFiles: []*model.DriveTaskFile{}}
 	if mirrored {
 		listing.Access = model.DriveAccessRead
 	} else {
@@ -477,6 +478,11 @@ func (a *App) ListDriveFolder(rctx request.CTX, session model.Session, channel *
 	})
 	if listing.Items, appErr = a.embedDriveFiles(items); appErr != nil {
 		return nil, appErr
+	}
+	if listID != "" {
+		if listing.TaskFiles, appErr = a.driveTaskFiles(channel.Id, listID); appErr != nil {
+			return nil, appErr
+		}
 	}
 	return listing, nil
 }
@@ -1113,6 +1119,21 @@ func (a *App) WriteDriveZip(rctx request.CTX, session model.Session, channel *mo
 		descendants, appErr := a.driveVisibleTree(v, it)
 		if appErr != nil {
 			return appErr
+		}
+		if len(descendants) == 0 && it.MirrorOf != "" { // an empty mirror's source may be gone: no task files then
+			if _, appErr := a.driveFolderPath(channel, it.MirrorOf); appErr != nil {
+				if appErr.StatusCode >= http.StatusInternalServerError {
+					return appErr
+				}
+				continue
+			}
+		}
+		taskFiles, appErr := a.driveTaskFiles(channel.Id, cmp.Or(it.MirrorOf, it.Id))
+		if appErr != nil {
+			return appErr
+		}
+		for _, tf := range taskFiles {
+			entries = append(entries, entry{it.Name + "/" + tf.Name, tf.Id})
 		}
 		byID := map[string]*model.DriveItem{}
 		for _, d := range descendants {

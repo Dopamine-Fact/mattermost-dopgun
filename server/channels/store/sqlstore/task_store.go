@@ -304,6 +304,34 @@ func (s *SqlTaskStore) GetPostIdsForTask(taskId, channelId string, before int64,
 	return ids, nil
 }
 
+type driveTaskFileRow struct {
+	fileInfoWithChannelID
+	TaskId string
+}
+
+// GetFolderTaskFiles returns the live files of live posts in the channel that are about tasks seeded into the folder,
+// newest first.
+func (s *SqlTaskStore) GetFolderTaskFiles(channelId, folderId string, limit int) ([]*model.DriveTaskFile, error) {
+	query := s.getQueryBuilder().
+		Select(s.stores.fileInfo.(*SqlFileInfoStore).queryFields...).
+		Column("Posts.Props->>'task_id' AS TaskId").
+		From("Posts").
+		Join("FileInfo ON FileInfo.PostId = Posts.Id").
+		Where(sq.Eq{"Posts.ChannelId": channelId, "Posts.DeleteAt": 0, "FileInfo.DeleteAt": 0}).
+		Where(sq.Expr("Posts.Props->>'task_id' IN (SELECT Id FROM Tasks WHERE FolderId = ?)", folderId)).
+		OrderBy("Posts.CreateAt DESC", "FileInfo.Id DESC").
+		Limit(uint64(limit))
+	rows := []*driveTaskFileRow{}
+	if err := s.GetReplica().SelectBuilder(&rows, query); err != nil {
+		return nil, errors.Wrapf(err, "failed to get task files for folder_id=%s", folderId)
+	}
+	files := make([]*model.DriveTaskFile, 0, len(rows))
+	for _, r := range rows {
+		files = append(files, &model.DriveTaskFile{FileInfo: r.ToModel(), TaskId: r.TaskId})
+	}
+	return files, nil
+}
+
 func (s *SqlTaskStore) DeleteComment(id string) error {
 	if _, err := s.GetMaster().ExecBuilder(s.getQueryBuilder().Delete("TaskComments").Where(sq.Eq{"Id": id})); err != nil {
 		return errors.Wrapf(err, "failed to delete TaskComment with id=%s", id)

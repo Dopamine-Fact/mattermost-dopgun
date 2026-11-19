@@ -23,8 +23,17 @@ type DriveListing struct {
 	Items []*DriveItem `json:"items"`
 	Path  []*DriveItem `json:"path"`
 
+	// TaskFiles are the files of messages about tasks seeded into this folder (top of the listing, newest first).
+	TaskFiles []*DriveTaskFile `json:"task_files"`
+
 	Access        string `json:"access"`                   // DriveAccess*: how the viewer may change this folder
 	SourceMissing bool   `json:"source_missing,omitempty"` // a mirror whose source is gone
+}
+
+// DriveTaskFile is a message attachment shown in the drive folder of the task the message is about.
+type DriveTaskFile struct {
+	*FileInfo
+	TaskId string `json:"task_id"`
 }
 
 const (

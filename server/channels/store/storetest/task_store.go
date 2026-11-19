@@ -23,6 +23,7 @@ func TestTaskStore(t *testing.T, rctx request.CTX, ss store.Store) {
 	t.Run("GetSectionByChannel", func(t *testing.T) { testTaskStoreGetSectionByChannel(t, ss) })
 	t.Run("RuleFields", func(t *testing.T) { testTaskRuleFields(t, ss) })
 	t.Run("GetPostIdsForTask", func(t *testing.T) { testTaskStoreGetPostIdsForTask(t, rctx, ss) })
+	t.Run("GetFolderTaskFiles", func(t *testing.T) { testTaskStoreGetFolderTaskFiles(t, rctx, ss) })
 }
 
 func testTaskStoreGetSectionByChannel(t *testing.T, ss store.Store) {
@@ -238,4 +239,43 @@ func testTaskRuleFields(t *testing.T, ss store.Store) {
 	require.Empty(t, got.DepartmentId)
 	require.Equal(t, model.StringArray{}, got.WaitsFor)
 	require.Empty(t, got.FolderId)
+}
+
+func testTaskStoreGetFolderTaskFiles(t *testing.T, rctx request.CTX, ss store.Store) {
+	folderId := model.NewId()
+	task, err := ss.Task().Save(&model.Task{TeamId: model.NewId(), CreatorId: model.NewId(), Title: "t", FolderId: folderId})
+	require.NoError(t, err)
+	channel, err := ss.Channel().Save(rctx, &model.Channel{TeamId: model.NewId(), Name: "c-" + model.NewId(), DisplayName: "C", Type: model.ChannelTypeOpen}, 1000)
+	require.NoError(t, err)
+	userId := model.NewId()
+	withFile := func(channelId, rootId string, createAt, deleteAt int64) *model.FileInfo {
+		post, err := ss.Post().Save(rctx, &model.Post{ChannelId: channelId, UserId: userId, RootId: rootId, Message: "m", CreateAt: createAt, DeleteAt: deleteAt, Props: model.StringInterface{"task_id": task.Id}})
+		require.NoError(t, err)
+		info, err := ss.FileInfo().Save(rctx, &model.FileInfo{CreatorId: userId, PostId: post.Id, ChannelId: channelId, Path: "p/" + post.Id, Name: post.Id + ".txt"})
+		require.NoError(t, err)
+		return info
+	}
+	f1 := withFile(channel.Id, "", 1000, 0)
+	root, err := ss.Post().GetSingle(rctx, f1.PostId, false)
+	require.NoError(t, err)
+	f2 := withFile(channel.Id, "", 2000, 0)
+	f3 := withFile(channel.Id, root.Id, 3000, 0)
+	withFile(model.NewId(), "", 4000, 0)
+	withFile(channel.Id, "", 5000, 6000)
+
+	files, err := ss.Task().GetFolderTaskFiles(channel.Id, folderId, 10)
+	require.NoError(t, err)
+	require.Len(t, files, 3)
+	require.Equal(t, []string{f3.Id, f2.Id, f1.Id}, []string{files[0].Id, files[1].Id, files[2].Id})
+	for _, f := range files {
+		require.Equal(t, task.Id, f.TaskId)
+	}
+
+	files, err = ss.Task().GetFolderTaskFiles(channel.Id, folderId, 2)
+	require.NoError(t, err)
+	require.Len(t, files, 2)
+
+	files, err = ss.Task().GetFolderTaskFiles(channel.Id, model.NewId(), 10)
+	require.NoError(t, err)
+	require.Empty(t, files)
 }
