@@ -221,6 +221,7 @@ func (ps *PlatformService) SaveAndBroadcastStatus(status *model.Status) {
 	}
 
 	ps.BroadcastStatus(status)
+	ps.goUpdateStatusPeriod(status.UserId)
 }
 
 func (ps *PlatformService) GetStatusFromCache(userID string) *model.Status {
@@ -345,6 +346,7 @@ func (ps *PlatformService) SetStatusOnline(userID string, manual bool) {
 		if ps.sharedChannelService != nil {
 			ps.sharedChannelService.NotifyUserStatusChanged(status)
 		}
+		ps.goUpdateStatusPeriod(userID)
 	}
 
 	if broadcast {
@@ -460,6 +462,7 @@ func (ps *PlatformService) processStatusUpdates() {
 		// Add each status to cache.
 		for _, status := range statusBatch {
 			ps.AddStatusCache(status)
+			ps.goUpdateStatusPeriod(status.UserId)
 		}
 
 		// Process statuses in batch

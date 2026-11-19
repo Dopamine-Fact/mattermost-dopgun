@@ -61,6 +61,10 @@ type PlatformService struct {
 	statusCache   cache.Cache
 	sessionCache  cache.Cache
 
+	// statusPeriodKinds caches each user's open period kind (userID -> string) so ordinary status refreshes skip the DB.
+	statusPeriodKinds sync.Map
+	statusPeriodMut   sync.Mutex
+
 	asymmetricSigningKey atomic.Pointer[ecdsa.PrivateKey]
 	clientConfig         atomic.Value
 	clientConfigHash     atomic.Value

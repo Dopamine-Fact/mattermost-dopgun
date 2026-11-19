@@ -78,8 +78,9 @@ type webConnCheckResult struct {
 }
 
 type webConnCountMessage struct {
-	userID string
-	result chan int
+	userID      string
+	desktopOnly bool
+	result      chan int
 }
 
 var hubSemaphoreCount = runtime.NumCPU() * 4
@@ -484,6 +485,21 @@ func (h *Hub) WebConnCountForUser(userID string) int {
 	return 0
 }
 
+// DesktopConnCountForUser returns the user's active connections from the desktop app on this hub.
+func (h *Hub) DesktopConnCountForUser(userID string) int {
+	req := &webConnCountMessage{
+		userID:      userID,
+		desktopOnly: true,
+		result:      make(chan int),
+	}
+	select {
+	case h.connCount <- req:
+		return <-req.result
+	case <-h.stop:
+	}
+	return 0
+}
+
 // Broadcast broadcasts the message to all connections in the hub.
 func (h *Hub) Broadcast(message *model.WebSocketEvent) {
 	// XXX: The hub nil check is because of the way we setup our tests. We call
@@ -667,7 +683,17 @@ func (h *Hub) Start() {
 				}
 				req.result <- res
 			case req := <-h.connCount:
-				req.result <- connIndex.ForUserActiveCount(req.userID)
+				if !req.desktopOnly {
+					req.result <- connIndex.ForUserActiveCount(req.userID)
+					continue
+				}
+				cnt := 0
+				for conn := range connIndex.ForUser(req.userID) {
+					if conn.Active.Load() && conn.originClient == originClientDesktop {
+						cnt++
+					}
+				}
+				req.result <- cnt
 			case <-ticker.C:
 				connIndex.RemoveInactiveConnections()
 			case webConnReg := <-h.register:
@@ -690,6 +716,9 @@ func (h *Hub) Start() {
 					// the webconn write pump.
 					webConnReg.conn.send <- webConnReg.conn.createHelloMessage()
 				}
+				if webConnReg.conn.originClient == originClientDesktop {
+					h.platform.goUpdateStatusPeriod(webConnReg.conn.UserId)
+				}
 				webConnReg.err <- nil
 			case webConn := <-h.unregister:
 				// If already removed (via queue full), then removing again becomes a noop.
@@ -700,6 +729,9 @@ func (h *Hub) Start() {
 
 				if webConn.UserId == "" {
 					continue
+				}
+				if webConn.originClient == originClientDesktop {
+					h.platform.goUpdateStatusPeriod(webConn.UserId)
 				}
 
 				conns := connIndex.ForUser(webConn.UserId)
