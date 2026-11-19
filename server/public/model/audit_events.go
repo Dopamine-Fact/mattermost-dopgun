@@ -429,6 +429,7 @@ const (
 	AuditEventRejectDailyReport       = "rejectDailyReport"       // send a daily report back with a reason
 	AuditEventUpdateDailyReport       = "updateDailyReport"       // author edits a sent daily report
 	AuditEventSetDailyReportAssignees = "setDailyReportAssignees" // choose who must send daily reports
+	AuditEventExcuseDailyReport       = "excuseDailyReport"       // excuse someone's day so no report is expected
 )
 
 // Channel drives
