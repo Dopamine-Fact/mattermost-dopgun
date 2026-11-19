@@ -6,6 +6,7 @@ package app
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -136,7 +137,7 @@ func TestCreateEpisodeFailedMirrorSourceSkipsMirror(t *testing.T) {
 	team := *th.BasicTeam
 	team.EpisodeFolders = `[{"path":"Src/bad:name"},{"path":"M","mirror_of":"Src/bad:name"}]`
 	ch := th.CreateChannel(t, th.BasicTeam)
-	failed := th.App.seedEpisodeFolders(th.Context, th.BasicUser.Id, &team, ch)
+	failed, _ := th.App.seedEpisodeFolders(th.Context, th.BasicUser.Id, &team, ch)
 	require.Equal(t, []string{"Src/bad:name", "M"}, failed)
 	items, err := th.App.Srv().Store().DriveItem().GetChildren(ch.Id, "", 100)
 	require.NoError(t, err)
@@ -149,7 +150,96 @@ func TestCreateEpisodeDuplicatePathWithRulesFails(t *testing.T) {
 	team := *th.BasicTeam
 	team.EpisodeFolders = fmt.Sprintf(`[{"path":"A"},{"path":"A","view_departments":["%s"]}]`, model.NewId())
 	ch := th.CreateChannel(t, th.BasicTeam)
-	failed := th.App.seedEpisodeFolders(th.Context, th.BasicUser.Id, &team, ch)
+	failed, _ := th.App.seedEpisodeFolders(th.Context, th.BasicUser.Id, &team, ch)
 	require.Equal(t, []string{"A"}, failed)
 	require.False(t, episodeChild(t, th, ch.Id, "", "A").DriveRules.HasRules())
+}
+
+func episodeTasksByTitle(t *testing.T, th *TestHelper, sectionID string) map[string]*model.Task {
+	t.Helper()
+	tasks, appErr := th.App.GetTasksForTeam(th.BasicTeam.Id)
+	require.Nil(t, appErr)
+	byTitle := map[string]*model.Task{}
+	for _, task := range tasks {
+		if task.SectionId == sectionID {
+			byTitle[task.Title] = task
+		}
+	}
+	return byTitle
+}
+
+func TestCreateEpisodeTaskRules(t *testing.T) {
+	dept := model.NewId()
+	th := setupEpisode(t, `[{"path":"BG/Layout"}]`, "")
+	th.BasicTeam.EpisodeTasks = fmt.Sprintf(`[{"key":"a","title":"Storyboard","department_id":"%s","due_days":5},`+
+		`{"key":"b","title":"Layout","assignee_id":"%s","waits_for":["a"],"folder":"BG/Layout"},`+
+		`{"key":"c","title":"Mine","assignee_id":"%s"}]`, dept, th.BasicUser2.Id, th.BasicUser.Id)
+	team, err := th.App.Srv().Store().Team().Update(th.BasicTeam)
+	require.NoError(t, err)
+	th.BasicTeam = team
+
+	th.BasicUser.Timezone = model.StringMap{"useAutomaticTimezone": "false", "manualTimezone": "Europe/Istanbul", "automaticTimezone": ""}
+	_, appErr := th.App.UpdateUser(th.Context, th.BasicUser, false)
+	require.Nil(t, appErr)
+
+	got, appErr := th.App.CreateEpisode(th.Context, th.BasicUser.Id, th.BasicTeam.Id, &model.EpisodeCreate{Name: "ep-rules", DisplayName: "Rules"})
+	require.Nil(t, appErr)
+	require.Empty(t, got.Failed)
+	require.Len(t, got.TaskIds, 3)
+
+	byTitle := episodeTasksByTitle(t, th, got.Section.Id)
+	story, layout := byTitle["Storyboard"], byTitle["Layout"]
+	loc, lerr := time.LoadLocation("Europe/Istanbul")
+	require.NoError(t, lerr)
+	day := time.Now().In(loc).AddDate(0, 0, 5)
+	require.Equal(t, time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, loc).UnixMilli(), story.DueAt)
+	require.Equal(t, dept, story.DepartmentId)
+	require.Empty(t, story.AssigneeId)
+	require.Equal(t, model.StringArray{}, story.WaitsFor)
+
+	bg := episodeChild(t, th, got.Channel.Id, "", "BG")
+	require.Equal(t, th.BasicUser2.Id, layout.AssigneeId)
+	require.Equal(t, model.StringArray{story.Id}, layout.WaitsFor)
+	require.Equal(t, episodeChild(t, th, got.Channel.Id, bg.Id, "Layout").Id, layout.FolderId)
+	require.Zero(t, layout.DueAt)
+
+	bot, appErr := th.App.GetSystemBot(th.Context)
+	require.Nil(t, appErr)
+	dm, appErr := th.App.GetOrCreateDirectChannel(th.Context, th.BasicUser2.Id, bot.UserId)
+	require.Nil(t, appErr)
+	posts, appErr := th.App.GetPosts(th.Context, dm.Id, 0, 10)
+	require.Nil(t, appErr)
+	require.Len(t, posts.Posts, 1)
+	for _, p := range posts.Posts {
+		require.Contains(t, p.Message, "Layout")
+	}
+	dm, appErr = th.App.GetOrCreateDirectChannel(th.Context, th.BasicUser.Id, bot.UserId)
+	require.Nil(t, appErr)
+	posts, appErr = th.App.GetPosts(th.Context, dm.Id, 0, 10)
+	require.Nil(t, appErr)
+	require.Empty(t, posts.Posts)
+}
+
+func TestCreateEpisodeTaskRulesLegacyTemplate(t *testing.T) {
+	th := setupEpisode(t, "", "Storyboard\nAnimatic")
+	got, appErr := th.App.CreateEpisode(th.Context, th.BasicUser.Id, th.BasicTeam.Id, &model.EpisodeCreate{Name: "ep-lines", DisplayName: "Lines"})
+	require.Nil(t, appErr)
+	require.Empty(t, got.Failed)
+	byTitle := episodeTasksByTitle(t, th, got.Section.Id)
+	require.Len(t, byTitle, 2)
+	for _, task := range byTitle {
+		require.Empty(t, task.DepartmentId)
+		require.Empty(t, task.FolderId)
+		require.Equal(t, model.StringArray{}, task.WaitsFor)
+		require.Zero(t, task.DueAt)
+	}
+}
+
+// An assignee outside the team makes CreateTask fail; its successor must not keep the dead key.
+func TestCreateEpisodeFailedPredecessorIsDropped(t *testing.T) {
+	th := setupEpisode(t, "", fmt.Sprintf(`[{"key":"a","title":"Ghost","assignee_id":"%s"},{"key":"b","title":"After","waits_for":["a"]}]`, model.NewId()))
+	got, appErr := th.App.CreateEpisode(th.Context, th.BasicUser.Id, th.BasicTeam.Id, &model.EpisodeCreate{Name: "ep-fail", DisplayName: "Fail"})
+	require.Nil(t, appErr)
+	require.Equal(t, []string{"Ghost"}, got.Failed)
+	require.Equal(t, model.StringArray{}, episodeTasksByTitle(t, th, got.Section.Id)["After"].WaitsFor)
 }

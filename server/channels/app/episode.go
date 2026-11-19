@@ -6,6 +6,7 @@ package app
 import (
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
@@ -32,32 +33,87 @@ func (a *App) CreateEpisode(rctx request.CTX, userID, teamID string, in *model.E
 	}
 
 	created := &model.EpisodeCreated{Channel: channel, Section: section, Failed: []string{}, TaskIds: []string{}}
-	created.Failed = append(created.Failed, a.seedEpisodeFolders(rctx, userID, team, channel)...)
-	for _, title := range model.EpisodeTemplateLines(team.EpisodeTasks) {
-		task := &model.Task{TeamId: teamID, SectionId: section.Id, Title: title, Status: model.TaskStatusTodo, CreatorId: userID}
-		saved, appErr := a.CreateTask(rctx, task, "")
-		if appErr != nil {
-			rctx.Logger().Warn("Failed to create an episode task", mlog.String("title", title), mlog.Err(appErr))
-			created.Failed = append(created.Failed, title)
-			continue
-		}
-		created.TaskIds = append(created.TaskIds, saved.Id)
-	}
+	failedFolders, folderIDs := a.seedEpisodeFolders(rctx, userID, team, channel)
+	created.Failed = append(created.Failed, failedFolders...)
+	a.seedEpisodeTasks(rctx, userID, team, section, folderIDs, created)
 	return created, nil
 }
 
-// seedEpisodeFolders returns the template paths that could not be created.
-func (a *App) seedEpisodeFolders(rctx request.CTX, userID string, team *model.Team, channel *model.Channel) []string {
+// seedEpisodeTasks creates the template's tasks in order, then fills each task's WaitsFor from the entries that seeded.
+// It writes through CreateTask and the store, so the lock and claim rules (which guard edits) do not apply.
+func (a *App) seedEpisodeTasks(rctx request.CTX, userID string, team *model.Team, section *model.TaskSection, folderIDs map[string]string, created *model.EpisodeCreated) {
+	loc := time.UTC
+	if user, appErr := a.GetUser(rctx, userID); appErr == nil {
+		if l, err := time.LoadLocation(user.GetPreferredTimezone()); err == nil {
+			loc = l
+		}
+	}
+	now := time.Now().In(loc)
+
+	entries := model.ParseEpisodeTasks(team.EpisodeTasks)
+	saved := map[string]*model.Task{} // template key -> seeded task
+	for _, entry := range entries {
+		task := &model.Task{TeamId: team.Id, SectionId: section.Id, Title: entry.Title, Status: model.TaskStatusTodo, CreatorId: userID,
+			DepartmentId: entry.DepartmentId, AssigneeId: entry.AssigneeId, WaitsFor: model.StringArray{}}
+		if entry.Folder != "" {
+			task.FolderId = folderIDs[folderKey(entry.Folder)]
+		}
+		if entry.DueDays != nil {
+			task.DueAt = time.Date(now.Year(), now.Month(), now.Day()+*entry.DueDays, 0, 0, 0, 0, loc).UnixMilli()
+		}
+		seeded, appErr := a.CreateTask(rctx, task, "")
+		if appErr != nil {
+			rctx.Logger().Warn("Failed to create an episode task", mlog.String("title", entry.Title), mlog.Err(appErr))
+			created.Failed = append(created.Failed, entry.Title)
+			continue
+		}
+		saved[entry.Key] = seeded
+		created.TaskIds = append(created.TaskIds, seeded.Id)
+	}
+
+	for _, entry := range entries {
+		task := saved[entry.Key]
+		if task == nil || len(entry.WaitsFor) == 0 {
+			continue
+		}
+		for _, key := range entry.WaitsFor {
+			if pre := saved[key]; pre != nil {
+				task.WaitsFor = append(task.WaitsFor, pre.Id)
+			}
+		}
+		if len(task.WaitsFor) == 0 {
+			continue
+		}
+		updated, err := a.Srv().Store().Task().Update(task)
+		if err != nil {
+			rctx.Logger().Warn("Failed to set the waits-for of an episode task", mlog.String("task_id", task.Id), mlog.Err(err))
+			continue
+		}
+		a.publishTaskEvent(rctx, model.WebsocketTaskUpserted, updated.TeamId, "task", updated, "")
+	}
+}
+
+// folderKey is the key of a folder path in the ids map: "/" plus the lowercased, trimmed segments.
+func folderKey(path string) string {
+	key := ""
+	for _, name := range strings.FieldsFunc(path, func(r rune) bool { return r == '/' }) {
+		key += "/" + strings.ToLower(strings.TrimSpace(name))
+	}
+	return key
+}
+
+// seedEpisodeFolders returns the template paths that could not be created, and the created folder ids by folderKey.
+func (a *App) seedEpisodeFolders(rctx request.CTX, userID string, team *model.Team, channel *model.Channel) ([]string, map[string]string) {
 	folders, err := model.ParseEpisodeFolders(team.EpisodeFolders)
 	if err != nil || len(folders) == 0 {
-		return nil
+		return nil, nil
 	}
 	var failed []string
 	if _, appErr := a.RequireDriveChannel(rctx, channel.Id); appErr != nil {
 		for _, f := range folders {
 			failed = append(failed, f.Path)
 		}
-		return failed
+		return failed, nil
 	}
 
 	ids := map[string]string{}  // lowercased path -> folder id
@@ -111,12 +167,12 @@ func (a *App) seedEpisodeFolders(rctx request.CTX, userID string, team *model.Te
 	}
 	for _, f := range mirrors {
 		rules := f.Rules()
-		rules.MirrorOf = ids["/"+strings.ToLower(strings.TrimSpace(f.MirrorOf))]
+		rules.MirrorOf = ids[folderKey(f.MirrorOf)]
 		if rules.MirrorOf == "" {
 			failed = append(failed, f.Path)
 		} else if _, ok := ensure(f.Path, rules); !ok {
 			failed = append(failed, f.Path)
 		}
 	}
-	return failed
+	return failed, ids
 }
