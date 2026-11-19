@@ -31,9 +31,9 @@ func (api *API) InitDailyReports() {
 	api.BaseRoutes.APIRoot.Handle("/daily_reports/{report_id:[A-Za-z0-9]+}/approve", api.APISessionRequired(approveDailyReport)).Methods(http.MethodPost)
 	api.BaseRoutes.APIRoot.Handle("/daily_reports/{report_id:[A-Za-z0-9]+}/reject", api.APISessionRequired(rejectDailyReport)).Methods(http.MethodPost)
 
-	api.BaseRoutes.Team.Handle("/daily_reports/mine/files", api.APISessionRequired(addMyDailyReportFile)).Methods(http.MethodPost)
+	api.BaseRoutes.Team.Handle("/daily_reports/mine/files", api.APISessionRequired(addMyDailyReportFile, handlerParamFileAPI)).Methods(http.MethodPost)
 	api.BaseRoutes.Team.Handle("/daily_reports/excuse", api.APISessionRequired(excuseDailyReport)).Methods(http.MethodPost)
-	api.BaseRoutes.APIRoot.Handle("/daily_reports/{report_id:[A-Za-z0-9]+}/files", api.APISessionRequired(addDailyReportFile)).Methods(http.MethodPost)
+	api.BaseRoutes.APIRoot.Handle("/daily_reports/{report_id:[A-Za-z0-9]+}/files", api.APISessionRequired(addDailyReportFile, handlerParamFileAPI)).Methods(http.MethodPost)
 	file := "/daily_reports/{report_id:[A-Za-z0-9]+}/files/{file_id:[A-Za-z0-9]+}"
 	api.BaseRoutes.APIRoot.Handle(file, api.APISessionRequired(removeDailyReportFile)).Methods(http.MethodDelete)
 	api.BaseRoutes.APIRoot.Handle(file, api.APISessionRequiredTrustRequester(serveDailyReportFile(""))).Methods(http.MethodGet)

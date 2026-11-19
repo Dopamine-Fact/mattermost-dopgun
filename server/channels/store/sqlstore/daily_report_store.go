@@ -246,15 +246,15 @@ func (s *SqlDailyReportStore) Delete(id string) (err error) {
 	}
 	defer finalizeTransactionX(tx, &err)
 
-	if _, err = tx.ExecBuilder(s.getQueryBuilder().Delete("DailyReportFiles").Where(sq.Eq{"ReportId": id})); err != nil {
-		return errors.Wrapf(err, "failed to delete DailyReportFiles for report_id=%s", id)
-	}
-	res, err := tx.ExecBuilder(s.getQueryBuilder().Delete("DailyReports").Where(sq.Eq{"Id": id}))
+	res, err := tx.ExecBuilder(s.getQueryBuilder().Delete("DailyReports").Where(sq.Eq{"Id": id, "Status": model.DailyReportStatusDraft}))
 	if err != nil {
 		return errors.Wrapf(err, "failed to delete DailyReport with id=%s", id)
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
 		return store.NewErrNotFound("DailyReport", id)
+	}
+	if _, err = tx.ExecBuilder(s.getQueryBuilder().Delete("DailyReportFiles").Where(sq.Eq{"ReportId": id})); err != nil {
+		return errors.Wrapf(err, "failed to delete DailyReportFiles for report_id=%s", id)
 	}
 	return errors.Wrap(tx.Commit(), "commit_transaction")
 }

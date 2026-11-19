@@ -7975,6 +7975,11 @@
     "description": "Error returned when two submissions for the same user and day race and the second one is rejected as a duplicate."
   },
   {
+    "id": "app.daily_report.day_closed.app_error",
+    "translation": "This day is over and no report was sent for it.",
+    "description": "Error returned when someone edits or attaches files to a past day's draft or excused day; only sent reports can still change after their day."
+  },
+  {
     "id": "app.daily_report.disabled.app_error",
     "translation": "Daily reports are not enabled for this team.",
     "description": "Error returned when a daily report action is attempted on a team that has daily reports turned off or is archived."

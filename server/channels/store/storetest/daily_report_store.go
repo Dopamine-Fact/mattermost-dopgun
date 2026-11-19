@@ -287,7 +287,9 @@ func testDailyReportAssignees(t *testing.T, ss store.Store) {
 }
 
 func testDailyReportFiles(t *testing.T, ss store.Store) {
-	report, err := ss.DailyReport().Save(newDailyReport(model.NewId(), model.NewId(), "2026-11-18"))
+	draft := newDailyReport(model.NewId(), model.NewId(), "2026-11-18")
+	draft.Status = model.DailyReportStatusDraft
+	report, err := ss.DailyReport().Save(draft)
 	require.NoError(t, err)
 	other, err := ss.DailyReport().Save(newDailyReport(model.NewId(), model.NewId(), "2026-11-18"))
 	require.NoError(t, err)
@@ -306,6 +308,13 @@ func testDailyReportFiles(t *testing.T, ss store.Store) {
 	ids, err = ss.DailyReport().GetFileIds([]string{report.Id})
 	require.NoError(t, err)
 	require.Equal(t, []string{second}, ids[report.Id])
+
+	// Only a draft is deleted: a report sent meanwhile keeps its row and its files.
+	require.NoError(t, ss.DailyReport().AddFile(other.Id, first, 4))
+	require.ErrorAs(t, ss.DailyReport().Delete(other.Id), &nfErr)
+	ids, err = ss.DailyReport().GetFileIds([]string{other.Id})
+	require.NoError(t, err)
+	require.Equal(t, []string{first}, ids[other.Id])
 
 	require.NoError(t, ss.DailyReport().Delete(report.Id))
 	_, err = ss.DailyReport().Get(report.Id)

@@ -299,6 +299,20 @@ func TestDailyReportFilesAPI(t *testing.T) {
 		CheckForbiddenStatus(t, resp)
 	})
 
+	t.Run("a file over the default 300 KB request cap uploads", func(t *testing.T) {
+		img := image.NewRGBA(image.Rect(0, 0, 400, 400))
+		x := uint32(1)
+		for i := range img.Pix { // noise, so the PNG does not compress below the cap
+			x = x*1664525 + 1013904223
+			img.Pix[i] = byte(x >> 24)
+		}
+		var big bytes.Buffer
+		require.NoError(t, png.Encode(&big, img))
+		require.Greater(t, big.Len(), 300*1024)
+		_, _, err := author.AddDailyReportFile(ctx, sent.Id, "big.png", big.Bytes())
+		require.NoError(t, err)
+	})
+
 	t.Run("excuse", func(t *testing.T) {
 		today, err := app.DailyReportDate(team, time.Now())
 		require.NoError(t, err)

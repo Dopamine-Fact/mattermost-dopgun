@@ -228,6 +228,9 @@ func (a *App) UpdateDailyReport(rctx request.CTX, reportID, userID, message stri
 	if appErr = a.requireDailyReportAssignee(rctx, "UpdateDailyReport", report.TeamId, userID); appErr != nil {
 		return nil, appErr
 	}
+	if appErr = requireDailyReportOpen("UpdateDailyReport", team, report); appErr != nil {
+		return nil, appErr
+	}
 	loc, appErr := teamLocation("UpdateDailyReport", team)
 	if appErr != nil {
 		return nil, appErr
@@ -731,13 +734,32 @@ func (a *App) authorDailyReport(rctx request.CTX, where, reportID, userID string
 	if report.UserId != userID {
 		return nil, model.NewAppError(where, "app.daily_report.not_author.app_error", nil, "id="+reportID, http.StatusForbidden)
 	}
-	if _, appErr := a.RequireDailyReportsEnabled(report.TeamId); appErr != nil {
+	team, appErr := a.RequireDailyReportsEnabled(report.TeamId)
+	if appErr != nil {
 		return nil, appErr
 	}
-	if appErr := a.requireDailyReportAssignee(rctx, where, report.TeamId, userID); appErr != nil {
+	if appErr = a.requireDailyReportAssignee(rctx, where, report.TeamId, userID); appErr != nil {
+		return nil, appErr
+	}
+	if appErr = requireDailyReportOpen(where, team, report); appErr != nil {
 		return nil, appErr
 	}
 	return report, nil
+}
+
+// requireDailyReportOpen refuses a past day that was never sent: a draft or an excused day is only open on its day.
+func requireDailyReportOpen(where string, team *model.Team, report *model.DailyReport) *model.AppError {
+	if report.IsSent() {
+		return nil
+	}
+	loc, appErr := teamLocation(where, team)
+	if appErr != nil {
+		return appErr
+	}
+	if report.Date != time.Now().In(loc).Format(time.DateOnly) {
+		return model.NewAppError(where, "app.daily_report.day_closed.app_error", nil, "id="+report.Id, http.StatusConflict)
+	}
+	return nil
 }
 
 func (a *App) attachDailyReportFile(rctx request.CTX, report *model.DailyReport, userID, name string, data []byte) (*model.FileInfo, *model.AppError) {
@@ -771,6 +793,12 @@ func (a *App) attachDailyReportFile(rctx request.CTX, report *model.DailyReport,
 // dailyReportFilesChanged sends a sent report back for review, as an edit, and tells clients to refetch.
 func (a *App) dailyReportFilesChanged(rctx request.CTX, where string, report *model.DailyReport) *model.AppError {
 	if report.IsSent() {
+		// The caller's copy may predate an edit made meanwhile; resubmit what is stored.
+		fresh, err := a.Srv().Store().DailyReport().Get(report.Id)
+		if err != nil {
+			return dailyReportStoreError(where, report.Id, err)
+		}
+		report = fresh
 		resubmit(report, report.Message, report.Tasks)
 		updated, err := a.Srv().Store().DailyReport().Update(report)
 		if err != nil {
@@ -822,9 +850,7 @@ func (a *App) ExcuseDailyReport(rctx request.CTX, teamID, userID, date, reviewer
 		return nil, model.NewAppError("ExcuseDailyReport", "app.daily_report.already_sent.app_error", nil, "id="+report.Id, http.StatusConflict)
 	}
 	a.publishDailyReport(rctx, report)
-	if appErr := a.fillDailyReportFiles([]*model.DailyReport{report}); appErr != nil {
-		return nil, appErr
-	}
+	report.Files = []*model.FileInfo{} // a draft's files stay the author's: the reviewer never saw them
 	return report, nil
 }
 
@@ -857,7 +883,10 @@ func (a *App) cleanUpDailyReportFiles(rctx request.CTX, team *model.Team, now ti
 		}
 		for _, r := range reports {
 			if status == model.DailyReportStatusDraft {
-				err = ds.Delete(r.Id)
+				var nfErr *store.ErrNotFound
+				if err = ds.Delete(r.Id); errors.As(err, &nfErr) {
+					continue // sent since it was loaded: its files are the report's now
+				}
 			} else {
 				for _, fileID := range links[r.Id] {
 					if err = ds.RemoveFile(r.Id, fileID); err != nil {

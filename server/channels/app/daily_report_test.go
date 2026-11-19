@@ -532,6 +532,39 @@ func TestDailyReportFiles(t *testing.T) {
 		assert.Len(t, reports[0].Files, 2)
 	})
 
+	t.Run("a past unsent day stays closed to its author", func(t *testing.T) {
+		day, err := time.Parse(time.DateOnly, today)
+		require.NoError(t, err)
+		yesterday := day.AddDate(0, 0, -1).Format(time.DateOnly)
+		for _, status := range []string{model.DailyReportStatusDraft, model.DailyReportStatusExcused} {
+			u := newAuthor(t)
+			r, err := th.App.Srv().Store().DailyReport().Save(&model.DailyReport{TeamId: team.Id, UserId: u.Id, Date: yesterday, Status: status, Message: "late"})
+			require.NoError(t, err)
+			_, appErr := th.App.UpdateDailyReport(th.Context, r.Id, u.Id, "late")
+			require.NotNil(t, appErr, status)
+			assert.Equal(t, "app.daily_report.day_closed.app_error", appErr.Id)
+			_, appErr = th.App.AddDailyReportFile(th.Context, r.Id, u.Id, "a.png", pngData)
+			require.NotNil(t, appErr, status)
+			assert.Equal(t, "app.daily_report.day_closed.app_error", appErr.Id)
+			assert.Empty(t, linked(t, r.Id))
+		}
+	})
+
+	t.Run("a file change keeps a newer message", func(t *testing.T) {
+		u := newAuthor(t)
+		sent, appErr := th.App.SubmitDailyReport(th.Context, team.Id, u.Id, "first")
+		require.Nil(t, appErr)
+		stale, appErr := th.App.GetDailyReport(sent.Id)
+		require.Nil(t, appErr)
+		_, appErr = th.App.UpdateDailyReport(th.Context, sent.Id, u.Id, "second")
+		require.Nil(t, appErr)
+
+		require.Nil(t, th.App.dailyReportFilesChanged(th.Context, "test", stale))
+		got, appErr := th.App.GetDailyReport(sent.Id)
+		require.Nil(t, appErr)
+		assert.Equal(t, "second", got.Message)
+	})
+
 	t.Run("refused files", func(t *testing.T) {
 		u := newAuthor(t)
 		_, appErr := th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, "x.png", []byte("<html><body>hi</body></html>"))
@@ -691,7 +724,7 @@ func TestExcuseDailyReport(t *testing.T) {
 		assert.Empty(t, report.Message)
 	})
 
-	t.Run("a draft keeps its files", func(t *testing.T) {
+	t.Run("a draft keeps its files, unseen by the reviewer", func(t *testing.T) {
 		u := newAuthor(t)
 		info, appErr := th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, "a.png", dailyReportPNG(t))
 		require.Nil(t, appErr)
@@ -699,8 +732,10 @@ func TestExcuseDailyReport(t *testing.T) {
 		require.Nil(t, appErr)
 		assert.Equal(t, model.DailyReportStatusExcused, report.Status)
 		assert.Equal(t, reviewer, report.ApprovedBy)
-		require.Len(t, report.Files, 1)
-		assert.Equal(t, info.Id, report.Files[0].Id)
+		assert.Empty(t, report.Files)
+		ids, err := th.App.Srv().Store().DailyReport().GetFileIds([]string{report.Id})
+		require.NoError(t, err)
+		assert.Equal(t, []string{info.Id}, ids[report.Id])
 	})
 
 	t.Run("a sent report cannot be excused", func(t *testing.T) {
