@@ -21,6 +21,7 @@ let mockState: GlobalState;
 
 jest.mock('components/reset_status_modal', () => () => <div/>);
 jest.mock('components/sidebar', () => () => <div data-testid='sidebar'/>);
+jest.mock('components/dm_panel', () => () => <div/>);
 jest.mock('components/channel_layout/center_channel', () => () => <div/>);
 jest.mock('components/loading_screen', () => () => <div/>);
 jest.mock('components/unreads_status_handler', () => () => <div/>);

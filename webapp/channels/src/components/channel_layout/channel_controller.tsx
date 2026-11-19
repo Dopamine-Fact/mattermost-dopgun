@@ -16,6 +16,7 @@ import {getIsMobileView} from 'selectors/views/browser';
 import {makeAsyncComponent} from 'components/async_load';
 import CenterChannel from 'components/channel_layout/center_channel';
 import useGetFeatureFlagValue from 'components/common/hooks/useGetFeatureFlagValue';
+import DmPanel from 'components/dm_panel';
 import LoadingScreen from 'components/loading_screen';
 import QueryParamActionController from 'components/query_param_actions/query_param_action_controller';
 import QuoteSelectionButton from 'components/quote_selection_button/quote_selection_button';
@@ -100,6 +101,7 @@ export default function ChannelController(props: Props) {
                     <Pluggable pluggableName='Root'/>
                     <ResetStatusModal/>
                 </div>
+                {!isMobileView && <DmPanel/>}
             </div>
             {isMobileView && <MobileSidebarRight/>}
         </>

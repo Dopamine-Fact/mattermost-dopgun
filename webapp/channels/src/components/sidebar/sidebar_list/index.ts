@@ -12,9 +12,11 @@ import {readAllMessages} from 'mattermost-redux/actions/channels';
 import {savePreferences} from 'mattermost-redux/actions/preferences';
 import {markAllInTeamAsRead} from 'mattermost-redux/actions/teams';
 import {Preferences} from 'mattermost-redux/constants';
+import {CategoryTypes} from 'mattermost-redux/constants/channel_categories';
+import {createSelector} from 'mattermost-redux/selectors/create_selector';
 import {getCurrentChannelId, getUnreadChannelIds} from 'mattermost-redux/selectors/entities/channels';
 import {getFeatureFlagValue} from 'mattermost-redux/selectors/entities/general';
-import {shouldShowUnreadsCategory, isCollapsedThreadsEnabled, get as getPreference} from 'mattermost-redux/selectors/entities/preferences';
+import {shouldShowDmPanel, shouldShowUnreadsCategory, isCollapsedThreadsEnabled, get as getPreference} from 'mattermost-redux/selectors/entities/preferences';
 import {getCurrentTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getThreadCountsInCurrentTeam} from 'mattermost-redux/selectors/entities/threads';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
@@ -42,6 +44,14 @@ import type {GlobalState} from 'types/store';
 
 import SidebarList from './sidebar_list';
 
+// With the DM panel on, direct messages live in the right panel instead of the sidebar.
+export const getVisibleSidebarCategories = createSelector(
+    'getVisibleSidebarCategories',
+    getCategoriesForCurrentTeam,
+    shouldShowDmPanel,
+    (categories, showDmPanel) => (showDmPanel ? categories.filter((c) => c.type !== CategoryTypes.DIRECT_MESSAGES) : categories),
+);
+
 function mapStateToProps(state: GlobalState) {
     const currentTeam = getCurrentTeam(state);
     const collapsedThreads = isCollapsedThreadsEnabled(state);
@@ -57,7 +67,7 @@ function mapStateToProps(state: GlobalState) {
         currentTeam,
         currentUserId: getCurrentUserId(state),
         currentChannelId: getCurrentChannelId(state),
-        categories: getCategoriesForCurrentTeam(state),
+        categories: getVisibleSidebarCategories(state),
         isUnreadFilterEnabled: isUnreadFilterEnabled(state),
         unreadChannelIds: getUnreadChannelIds(state),
         displayedChannels: getDisplayedChannels(state),

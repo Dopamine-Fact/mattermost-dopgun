@@ -215,6 +215,11 @@ export function shouldShowJoinLeaveMessages(state: GlobalState) {
     return getBool(state, Preferences.CATEGORY_ADVANCED_SETTINGS, Preferences.ADVANCED_FILTER_JOIN_LEAVE, enableJoinLeaveMessage);
 }
 
+// shouldShowDmPanel returns true unless the user moved direct messages back into the left sidebar.
+export function shouldShowDmPanel(state: GlobalState, userPreferences?: PreferencesType): boolean {
+    return get(state, Preferences.CATEGORY_SIDEBAR_SETTINGS, Preferences.SHOW_DM_PANEL, 'true', userPreferences) !== 'false';
+}
+
 // shouldShowUnreadsCategory returns true if the user has unereads grouped separately with the new sidebar enabled.
 export const shouldShowUnreadsCategory: (state: GlobalState, userPreferences?: PreferencesType) => boolean = createSelector(
     'shouldShowUnreadsCategory',
