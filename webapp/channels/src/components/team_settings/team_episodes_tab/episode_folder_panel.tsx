@@ -161,7 +161,11 @@ const FolderDetail = ({folder, folders, departments, onChange}: DetailProps) => 
 
     // Writers must stay among the viewers.
     // When narrowing leaves a chosen writer list empty, fail closed: nobody may change it, rather than everyone who sees it.
+    // No viewer left means everyone sees it, so the radio says so.
     const setView = (ids: string[]) => {
+        if (!ids.length) {
+            setViewChosen(false);
+        }
         const kept = ids.length ? write.filter((id) => ids.includes(id)) : write;
         if (write.length && !kept.length) {
             setWriteMode('nobody');
@@ -219,7 +223,14 @@ const FolderDetail = ({folder, folders, departments, onChange}: DetailProps) => 
                             departments={departments}
                             ids={view.length ? view : allIds}
                             selected={write}
-                            onChange={(ids) => set({write_departments: ids})}
+                            onChange={(ids) => {
+                                if (ids.length) {
+                                    set({write_departments: ids});
+                                    return;
+                                }
+                                setWriteMode('nobody'); // fail closed: an empty writer list would mean everyone who sees it
+                                set({write_departments: [], read_only: true});
+                            }}
                         />
                     )}
                     {radio('write', writeMode === 'nobody', formatMessage(msg.nobody), () => {
@@ -437,7 +448,9 @@ const EpisodeFolderPanel = ({teamId, folders, onChange}: Props) => {
             </div>
             {current ? (
                 <FolderDetail
-                    key={current.path}
+
+                    // Remounts when deleting the source turns a mirror plain, so the radios re-read the folder.
+                    key={`${current.path}:${Boolean(current.mirror_of)}`}
                     folder={current}
                     folders={folders}
                     departments={departments}

@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {screen, within} from '@testing-library/react';
-import React from 'react';
+import React, {useState} from 'react';
 
 import {renderWithContext, userEvent} from 'tests/react_testing_utils';
 
@@ -31,6 +31,26 @@ describe('EpisodeFolderPanel', () => {
                 onChange={onChange}
             />,
         );
+        return onChange;
+    };
+
+    // Feeds every change back in, like the settings tab does.
+    const setupLive = (list: EpisodeFolder[]) => {
+        const onChange = jest.fn();
+        const Live = () => {
+            const [value, setValue] = useState(list);
+            return (
+                <EpisodeFolderPanel
+                    teamId='team_id'
+                    folders={value}
+                    onChange={(next) => {
+                        onChange(next);
+                        setValue(next);
+                    }}
+                />
+            );
+        };
+        renderWithContext(<Live/>);
         return onChange;
     };
     const select = (path: string) => userEvent.click(screen.getByRole('button', {name: path}));
@@ -100,6 +120,35 @@ describe('EpisodeFolderPanel', () => {
         await userEvent.click(group('Who sees it').getByRole('checkbox', {name: 'ANIM'}));
 
         expect(onChange).toHaveBeenLastCalledWith([{path: 'A', view_departments: [BG], read_only: true}]);
+        expect(group('Who may change it').getByRole('radio', {name: 'Nobody'})).toBeChecked();
+    });
+
+    test('unticking the last viewer chip switches Who sees it to Everyone', async () => {
+        const onChange = setupLive([{path: 'A', view_departments: [BG]}]);
+        await select('A');
+        await userEvent.click(group('Who sees it').getByRole('checkbox', {name: 'BG'}));
+
+        expect(onChange).toHaveBeenLastCalledWith([{path: 'A'}]);
+        expect(group('Who sees it').getByRole('radio', {name: 'Everyone'})).toBeChecked();
+    });
+
+    test('unticking the last writer chip makes the folder read-only', async () => {
+        const onChange = setupLive([{path: 'A', write_departments: [BG]}]);
+        await select('A');
+        await userEvent.click(group('Who may change it').getByRole('checkbox', {name: 'BG'}));
+
+        expect(onChange).toHaveBeenLastCalledWith([{path: 'A', read_only: true}]);
+        expect(group('Who may change it').getByRole('radio', {name: 'Nobody'})).toBeChecked();
+    });
+
+    test('deleting a mirror source leaves the mirror a read-only plain folder', async () => {
+        const onChange = setupLive([{path: 'S'}, {path: 'M', mirror_of: 'S'}]);
+        await select('M');
+        expect(group('Contents').getByRole('radio', {name: 'Mirror of'})).toBeChecked();
+        await userEvent.click(screen.getByRole('button', {name: 'Delete S'}));
+
+        expect(onChange).toHaveBeenLastCalledWith([{path: 'M', read_only: true}]);
+        expect(group('Contents').getByRole('radio', {name: 'Own files'})).toBeChecked();
         expect(group('Who may change it').getByRole('radio', {name: 'Nobody'})).toBeChecked();
     });
 

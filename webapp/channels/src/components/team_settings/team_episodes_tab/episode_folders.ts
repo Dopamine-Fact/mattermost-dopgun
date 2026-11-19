@@ -111,13 +111,13 @@ export function renameEpisodeFolder(folders: EpisodeFolder[], path: string, name
     });
 }
 
-/** Removes a folder with its subfolders, and clears the mirror_of of folders that mirrored any of them. */
+/** Removes a folder with its subfolders; folders that mirrored any of them become plain and read-only. */
 export function removeEpisodeFolder(folders: EpisodeFolder[], path: string): EpisodeFolder[] {
     return folders.filter((f) => !isUnder(f.path, path)).map((f) => {
         if (!f.mirror_of || !isUnder(f.mirror_of, path)) {
             return f;
         }
-        const rest = {...f};
+        const rest = {...f, read_only: true};
         delete rest.mirror_of;
         return rest;
     });
