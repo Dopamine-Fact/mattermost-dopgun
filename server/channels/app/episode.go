@@ -4,6 +4,7 @@
 package app
 
 import (
+	"net/http"
 	"slices"
 	"strings"
 	"time"
@@ -55,6 +56,12 @@ func (a *App) seedEpisodeTasks(rctx request.CTX, userID string, team *model.Team
 	for _, entry := range entries {
 		task := &model.Task{TeamId: team.Id, SectionId: section.Id, Title: entry.Title, Status: model.TaskStatusTodo, CreatorId: userID,
 			DepartmentId: entry.DepartmentId, AssigneeId: entry.AssigneeId, WaitsFor: model.StringArray{}}
+		if task.AssigneeId != "" {
+			// A template assignee who left the team seeds the task unassigned, a pool task if it has a department.
+			if member, appErr := a.GetTeamMember(rctx, team.Id, task.AssigneeId); appErr != nil || member.DeleteAt != 0 {
+				task.AssigneeId = ""
+			}
+		}
 		if entry.Folder != "" {
 			task.FolderId = folderIDs[folderKey(entry.Folder)]
 		}
@@ -77,7 +84,7 @@ func (a *App) seedEpisodeTasks(rctx request.CTX, userID string, team *model.Team
 			continue
 		}
 		for _, key := range entry.WaitsFor {
-			if pre := saved[key]; pre != nil {
+			if pre := saved[key]; pre != nil && !slices.Contains(task.WaitsFor, pre.Id) {
 				task.WaitsFor = append(task.WaitsFor, pre.Id)
 			}
 		}
@@ -175,4 +182,28 @@ func (a *App) seedEpisodeFolders(rctx request.CTX, userID string, team *model.Te
 		}
 	}
 	return failed, ids
+}
+
+// validateEpisodeTaskDepartments refuses a template that names a department of another team. The model cannot
+// check this because it does not know the team's departments.
+func (a *App) validateEpisodeTaskDepartments(teamID, tasks string) *model.AppError {
+	var wanted []string
+	for _, entry := range model.ParseEpisodeTasks(tasks) {
+		if entry != nil && entry.DepartmentId != "" {
+			wanted = append(wanted, entry.DepartmentId)
+		}
+	}
+	if len(wanted) == 0 {
+		return nil
+	}
+	deps, err := a.Srv().Store().Department().GetForTeam(teamID)
+	if err != nil {
+		return customRoleStoreError("validateEpisodeTaskDepartments", err)
+	}
+	for _, id := range wanted {
+		if !slices.ContainsFunc(deps, func(d *model.Department) bool { return d.Id == id }) {
+			return model.NewAppError("validateEpisodeTaskDepartments", "model.team.is_valid.episode_tasks.app_error", nil, "department_id="+id, http.StatusBadRequest)
+		}
+	}
+	return nil
 }

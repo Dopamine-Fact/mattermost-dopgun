@@ -45,7 +45,10 @@ func (a *App) publishTaskFolderChanged(post *model.Post) {
 		}
 		return
 	}
-	if task.FolderId != "" {
+	if task.FolderId == "" {
+		return
+	}
+	if folder, err := a.Srv().Store().DriveItem().Get(task.FolderId); err == nil && folder.ChannelId == post.ChannelId {
 		a.publishDriveChanged(post.ChannelId, task.FolderId)
 	}
 }
@@ -73,6 +76,10 @@ func (a *App) resolveDriveTaskFile(rctx request.CTX, session model.Session, chan
 	folder, appErr := a.GetDriveItem(channel, task.FolderId)
 	if appErr != nil || !folder.IsFolder() {
 		return nil, nil, "", notFound
+	}
+	ancestors, err := a.Srv().Store().DriveItem().GetAncestors(folder.Id)
+	if err != nil || slices.ContainsFunc(ancestors, func(it *model.DriveItem) bool { return it.DeleteAt > 0 }) {
+		return nil, nil, "", notFound // a trashed ancestor trashes the folder too
 	}
 	item := &model.DriveItem{ChannelId: channel.Id, ParentId: task.FolderId, Type: model.DriveItemTypeFile, CreatorId: info.CreatorId}
 	if !a.DriveCan(rctx, session, channel, DriveModify, item) {
@@ -106,14 +113,15 @@ func (a *App) RenameDriveTaskFile(rctx request.CTX, session model.Session, chann
 }
 
 // DeleteDriveTaskFile drops a message file from its post: the post is edited (the edit history keeps the old
-// version), or deleted when nothing is left of it. UpdatePost and DeletePost tell the explorers.
+// version), or deleted when nothing is left of it and no replies hang on it. UpdatePost and DeletePost tell the explorers.
 func (a *App) DeleteDriveTaskFile(rctx request.CTX, session model.Session, channel *model.Channel, fileID string) *model.AppError {
 	_, post, _, appErr := a.resolveDriveTaskFile(rctx, session, channel, fileID)
 	if appErr != nil {
 		return appErr
 	}
 	rest := slices.DeleteFunc(slices.Clone(post.FileIds), func(id string) bool { return id == fileID })
-	if len(rest) == 0 && strings.TrimSpace(post.Message) == "" {
+	// DeletePost removes the whole thread under a root, so a root that has replies is edited instead.
+	if len(rest) == 0 && strings.TrimSpace(post.Message) == "" && (post.RootId != "" || post.ReplyCount == 0) {
 		_, appErr = a.DeletePost(rctx, post.Id, session.UserId)
 		return appErr
 	}

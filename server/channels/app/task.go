@@ -174,6 +174,9 @@ func (a *App) PatchTask(rctx request.CTX, task *model.Task, patch *model.TaskPat
 		if patched.SectionId != task.SectionId || patched.WaitsFor == nil {
 			patched.WaitsFor = model.StringArray{} // links never cross sections; nil would store JSON null
 		}
+		if patched.SectionId != task.SectionId {
+			patched.FolderId = "" // the folder is the episode channel's; the task has left it
+		}
 		if patch.WaitsFor != nil {
 			if appErr := validateTaskWaitsFor(&patched, byID); appErr != nil {
 				return nil, appErr
@@ -780,4 +783,16 @@ func (a *App) removeTaskFiles(rctx request.CTX, fileIDs []string) {
 			rctx.Logger().Warn("removeTaskFiles: failed to delete file info", mlog.String("file_id", info.Id), mlog.Err(err))
 		}
 	}
+}
+
+// TaskHasLinks reports whether task waits for another task or another task waits for it.
+func (a *App) TaskHasLinks(task *model.Task) (bool, *model.AppError) {
+	if len(task.WaitsFor) > 0 {
+		return true, nil
+	}
+	tasks, appErr := a.GetTasksForTeam(task.TeamId)
+	if appErr != nil {
+		return false, appErr
+	}
+	return slices.ContainsFunc(tasks, func(t *model.Task) bool { return slices.Contains(t.WaitsFor, task.Id) }), nil
 }

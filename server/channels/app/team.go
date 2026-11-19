@@ -209,6 +209,12 @@ func (a *App) PatchTeam(teamID string, patch *model.TeamPatch) (*model.Team, *mo
 		}
 	}
 
+	if patch.EpisodeTasks != nil {
+		if appErr := a.validateEpisodeTaskDepartments(teamID, *patch.EpisodeTasks); appErr != nil {
+			return nil, appErr
+		}
+	}
+
 	team, err := a.ch.srv.teamService.PatchTeam(teamID, patch)
 	if err != nil {
 		var invErr *store.ErrInvalidInput

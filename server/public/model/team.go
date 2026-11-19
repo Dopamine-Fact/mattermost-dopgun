@@ -629,8 +629,8 @@ func isValidEpisodeTasks(text, folders string) bool {
 	}
 
 	for _, task := range tasks {
-		for _, key := range task.WaitsFor {
-			if key == task.Key || byKey[key] == nil {
+		for i, key := range task.WaitsFor {
+			if key == task.Key || byKey[key] == nil || slices.Contains(task.WaitsFor[:i], key) {
 				return false
 			}
 		}

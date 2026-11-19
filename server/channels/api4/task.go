@@ -87,7 +87,7 @@ func requireCanAssign(c *Context, teamID, assigneeID string, permission *model.P
 
 // isTaskClaim: a department member taking an unassigned task of their department for themselves.
 func isTaskClaim(c *Context, task *model.Task, assigneeID string) (bool, *model.AppError) {
-	if assigneeID != c.AppContext.Session().UserId || task.AssigneeId != "" || task.DepartmentId == "" {
+	if assigneeID != c.AppContext.Session().UserId || task.AssigneeId != "" || task.DepartmentId == "" || task.VideoFileId != "" {
 		return false, nil
 	}
 	depts, appErr := c.App.UserDepartments(c.AppContext, task.TeamId, assigneeID)
@@ -165,7 +165,12 @@ func createTask(c *Context, w http.ResponseWriter, r *http.Request) {
 	if requireCanAssign(c, c.Params.TeamId, task.AssigneeId, permission); c.Err != nil {
 		return
 	}
-	task.Id = ""
+	task.Id, task.FolderId = "", "" // the folder exists only on seeded tasks
+	task.WaitsFor = model.StringArray{} // links are set by patch, which checks them
+	if task.VideoFileId != "" && task.DepartmentId != "" {
+		c.SetInvalidParam("department_id")
+		return
+	}
 	task.CreatorId = c.AppContext.Session().UserId
 
 	auditRec := c.MakeAuditRecord(model.AuditEventCreateTask, model.AuditStatusFail)
@@ -200,6 +205,19 @@ func patchTask(c *Context, w http.ResponseWriter, r *http.Request) {
 	if changesRules {
 		if requireTaskPermission(c, task); c.Err != nil {
 			return
+		}
+	}
+	if patch.SectionId != nil && *patch.SectionId != task.SectionId {
+		// Moving a task drops its links both ways, so for a linked task it is a rules change.
+		linked, appErr := c.App.TaskHasLinks(task)
+		if appErr != nil {
+			c.Err = appErr
+			return
+		}
+		if linked {
+			if requireTaskPermission(c, task); c.Err != nil {
+				return
+			}
 		}
 	}
 	if patch.AssigneeId != nil && *patch.AssigneeId != task.AssigneeId {
