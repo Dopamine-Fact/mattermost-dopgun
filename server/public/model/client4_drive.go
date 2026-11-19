@@ -61,6 +61,26 @@ func (c *Client4) RenameDriveItem(ctx context.Context, channelID, itemID, name s
 	return DecodeJSONFromResponse[*DriveItem](r)
 }
 
+// RenameDriveTaskFile renames a message file listed in a task's drive folder.
+func (c *Client4) RenameDriveTaskFile(ctx context.Context, channelID, fileID, name string) (*FileInfo, *Response, error) {
+	r, err := c.doAPIPatchJSON(ctx, c.driveRoute(channelID).Join("task_files", fileID), map[string]string{"name": name})
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return DecodeJSONFromResponse[*FileInfo](r)
+}
+
+// DeleteDriveTaskFile removes a message file listed in a task's drive folder from its post.
+func (c *Client4) DeleteDriveTaskFile(ctx context.Context, channelID, fileID string) (*Response, error) {
+	r, err := c.doAPIDelete(ctx, c.driveRoute(channelID).Join("task_files", fileID))
+	if err != nil {
+		return BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return BuildResponse(r), nil
+}
+
 // MoveDriveItems moves items of channelID into targetParentID of targetChannelID ("" = same channel).
 func (c *Client4) MoveDriveItems(ctx context.Context, channelID string, itemIDs []string, targetChannelID, targetParentID string) (*Response, error) {
 	return c.driveDo(ctx, c.driveRoute(channelID).Join("move"), map[string]any{"item_ids": itemIDs, "target_channel_id": targetChannelID, "target_parent_id": targetParentID})

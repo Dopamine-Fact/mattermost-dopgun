@@ -292,3 +292,165 @@ func TestDriveCreateRulesAPI(t *testing.T) {
 	require.Error(t, err)
 	CheckBadRequestStatus(t, resp)
 }
+
+func TestDriveTaskFiles(t *testing.T) {
+	ctx := context.Background()
+	th := setupDriveAPI(t, Setup(t).InitBasic(t))
+	channelID, teamID := th.BasicChannel.Id, th.BasicTeam.Id
+
+	_, _, err := th.SystemAdminClient.PatchTeam(ctx, teamID, &model.TeamPatch{TasksEnabled: model.NewPointer(true), RevisionsEnabled: model.NewPointer(true)})
+	require.NoError(t, err)
+	section, _, err := th.SystemAdminClient.CreateTaskSection(ctx, &model.TaskSection{TeamId: teamID, Name: "Episode 1", ChannelId: channelID})
+	require.NoError(t, err)
+
+	dept, appErr := th.App.CreateDepartment(th.Context, teamID, "BG", "#3366ff")
+	require.Nil(t, appErr)
+	rank, appErr := th.App.CreateRank(th.Context, teamID, dept.Id, &model.CustomRole{DisplayName: "Artist", Color: "#ff00aa"})
+	require.Nil(t, appErr)
+
+	member := func(ranked bool) *model.Client4 {
+		user := th.CreateUser(t)
+		th.LinkUserToTeam(t, user, th.BasicTeam)
+		th.AddUserToChannel(t, user, th.BasicChannel)
+		if ranked {
+			_, appErr := th.App.SetMemberRanks(th.Context, th.SystemAdminUser.Id, teamID, user.Id, []string{rank.Id})
+			require.Nil(t, appErr)
+		}
+		client := th.CreateClient()
+		_, _, err := client.Login(ctx, user.Email, user.Password)
+		require.NoError(t, err)
+		return client
+	}
+	deptClient := member(true)
+	ownerClient := member(false)
+	otherClient := member(false)
+
+	// folder makes a root folder with rules and a task seeded into it.
+	folder := func(name string, rules model.DriveRules) *model.Task {
+		item, err := th.App.Srv().Store().DriveItem().Save(&model.DriveItem{ChannelId: channelID, Type: model.DriveItemTypeFolder, Name: name, CreatorId: th.BasicUser.Id, DriveRules: rules})
+		require.NoError(t, err)
+		task, err := th.App.Srv().Store().Task().Save(&model.Task{TeamId: teamID, SectionId: section.Id, CreatorId: th.BasicUser.Id, Title: name, FolderId: item.Id})
+		require.NoError(t, err)
+		return task
+	}
+	// post sends a message with one new file about the task and returns the post and the file.
+	post := func(client *model.Client4, task *model.Task, message, name string) (*model.Post, string) {
+		fileID := driveAPIUpload(t, client, channelID, name, []byte("content of "+name))
+		p, _, err := client.CreatePost(ctx, &model.Post{ChannelId: channelID, Message: message, FileIds: []string{fileID}, Props: model.StringInterface{"task_id": task.Id}})
+		require.NoError(t, err)
+		return p, fileID
+	}
+	fileName := func(fileID string) string {
+		info, _, err := th.SystemAdminClient.GetFileInfo(ctx, fileID)
+		require.NoError(t, err)
+		return info.Name
+	}
+
+	writeTask := folder("Write", model.DriveRules{WriteDepartments: []string{dept.Id}})
+	openTask := folder("Open", model.DriveRules{})
+	hiddenTask := folder("Hidden", model.DriveRules{ViewDepartments: []string{dept.Id}, WriteDepartments: []string{dept.Id}})
+
+	t.Run("RenameOwnFileWithoutWriteRule", func(t *testing.T) {
+		p, fileID := post(ownerClient, openTask, "m", "own.png")
+		info, _, err := ownerClient.RenameDriveTaskFile(ctx, channelID, fileID, "mine.png")
+		require.NoError(t, err)
+		require.Equal(t, "mine.png", info.Name)
+		require.Equal(t, "mine.png", fileName(fileID))
+		got, _, err := th.SystemAdminClient.GetPost(ctx, p.Id, "")
+		require.NoError(t, err)
+		require.Len(t, got.Metadata.Files, 1)
+		require.Equal(t, "mine.png", got.Metadata.Files[0].Name)
+
+		_, fileID = post(ownerClient, openTask, "m", "own.png")
+		_, resp, err := otherClient.RenameDriveTaskFile(ctx, channelID, fileID, "nope.png")
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+	})
+
+	t.Run("RenameByWriteDepartment", func(t *testing.T) {
+		_, fileID := post(ownerClient, writeTask, "m", "a.png")
+		_, resp, err := otherClient.RenameDriveTaskFile(ctx, channelID, fileID, "x.png")
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		_, resp, err = ownerClient.RenameDriveTaskFile(ctx, channelID, fileID, "x.png")
+		require.Error(t, err, "outside the department, even for their own file")
+		CheckForbiddenStatus(t, resp)
+
+		_, _, err = deptClient.RenameDriveTaskFile(ctx, channelID, fileID, "b.png")
+		require.NoError(t, err)
+		require.Equal(t, "b.png", fileName(fileID))
+		_, _, err = th.SystemAdminClient.RenameDriveTaskFile(ctx, channelID, fileID, "c.png")
+		require.NoError(t, err, "a channel manager")
+		require.Equal(t, "c.png", fileName(fileID))
+
+		_, resp, err = th.SystemAdminClient.RenameDriveTaskFile(ctx, channelID, fileID, "a/b.png")
+		require.Error(t, err)
+		CheckBadRequestStatus(t, resp)
+	})
+
+	t.Run("RenameOneOfTwoSameNames", func(t *testing.T) {
+		_, first := post(deptClient, writeTask, "m", "a.png")
+		_, second := post(deptClient, writeTask, "m", "a.png")
+		_, _, err := deptClient.RenameDriveTaskFile(ctx, channelID, first, "renamed.png")
+		require.NoError(t, err)
+		require.Equal(t, "renamed.png", fileName(first))
+		require.Equal(t, "a.png", fileName(second))
+	})
+
+	t.Run("ViewRestrictedFolder", func(t *testing.T) {
+		_, fileID := post(deptClient, hiddenTask, "m", "secret.png")
+		_, resp, err := otherClient.RenameDriveTaskFile(ctx, channelID, fileID, "x.png")
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		resp, err = otherClient.DeleteDriveTaskFile(ctx, channelID, fileID)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		require.Equal(t, "secret.png", fileName(fileID))
+	})
+
+	t.Run("DeleteKeepsMessageAndHistory", func(t *testing.T) {
+		fileID := driveAPIUpload(t, deptClient, channelID, "keep.png", []byte("k"))
+		other := driveAPIUpload(t, deptClient, channelID, "stay.png", []byte("s"))
+		p, _, err := deptClient.CreatePost(ctx, &model.Post{ChannelId: channelID, Message: "hello", FileIds: []string{fileID, other}, Props: model.StringInterface{"task_id": writeTask.Id}})
+		require.NoError(t, err)
+
+		_, err = deptClient.DeleteDriveTaskFile(ctx, channelID, fileID)
+		require.NoError(t, err)
+		got, _, err := th.SystemAdminClient.GetPost(ctx, p.Id, "")
+		require.NoError(t, err)
+		require.Equal(t, "hello", got.Message)
+		require.Equal(t, model.StringArray{other}, got.FileIds)
+
+		history, err := th.App.Srv().Store().Post().GetEditHistoryForPost(p.Id)
+		require.NoError(t, err)
+		require.Len(t, history, 1)
+		require.Contains(t, history[0].FileIds, fileID, "the earlier version keeps the file")
+	})
+
+	t.Run("DeleteFileOnlyPost", func(t *testing.T) {
+		p, fileID := post(deptClient, writeTask, "", "only.png")
+		_, err := deptClient.DeleteDriveTaskFile(ctx, channelID, fileID)
+		require.NoError(t, err)
+		got, _, err := th.SystemAdminClient.GetPost(ctx, p.Id, "")
+		if err == nil {
+			require.NotZero(t, got.DeleteAt)
+		}
+	})
+
+	t.Run("NotATaskFile", func(t *testing.T) {
+		loose := driveAPIUpload(t, th.SystemAdminClient, channelID, "loose.png", []byte("l"))
+		_, resp, err := th.SystemAdminClient.RenameDriveTaskFile(ctx, channelID, loose, "x.png")
+		require.Error(t, err)
+		CheckNotFoundStatus(t, resp)
+		resp, err = th.SystemAdminClient.DeleteDriveTaskFile(ctx, channelID, loose)
+		require.Error(t, err)
+		CheckNotFoundStatus(t, resp)
+
+		elsewhere := driveAPIUpload(t, th.SystemAdminClient, th.BasicChannel2.Id, "else.png", []byte("e"))
+		_, _, err = th.SystemAdminClient.CreatePost(ctx, &model.Post{ChannelId: th.BasicChannel2.Id, Message: "m", FileIds: []string{elsewhere}})
+		require.NoError(t, err)
+		_, resp, err = th.SystemAdminClient.RenameDriveTaskFile(ctx, channelID, elsewhere, "x.png")
+		require.Error(t, err)
+		CheckNotFoundStatus(t, resp)
+	})
+}

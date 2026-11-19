@@ -22,6 +22,8 @@ func (api *API) InitDrive() {
 	r.Handle("/drive/items", api.APISessionRequired(listDriveFolder)).Methods(http.MethodGet)
 	r.Handle("/drive/items", api.APISessionRequired(createDriveItem)).Methods(http.MethodPost)
 	r.Handle("/drive/items/{item_id:[A-Za-z0-9]+}", api.APISessionRequired(patchDriveItem)).Methods(http.MethodPatch)
+	r.Handle("/drive/task_files/{file_id:[A-Za-z0-9]+}", api.APISessionRequired(renameDriveTaskFile)).Methods(http.MethodPatch)
+	r.Handle("/drive/task_files/{file_id:[A-Za-z0-9]+}", api.APISessionRequired(deleteDriveTaskFile)).Methods(http.MethodDelete)
 	r.Handle("/drive/move", api.APISessionRequired(moveDriveItems)).Methods(http.MethodPost)
 	r.Handle("/drive/copy", api.APISessionRequired(copyDriveItems)).Methods(http.MethodPost)
 	r.Handle("/drive/delete", api.APISessionRequired(deleteDriveItems)).Methods(http.MethodPost)
@@ -190,6 +192,50 @@ func patchDriveItem(c *Context, w http.ResponseWriter, r *http.Request) {
 	auditRec.Success()
 	auditRec.AddEventResultState(updated)
 	writeTaskJSON(w, http.StatusOK, updated)
+}
+
+func renameDriveTaskFile(c *Context, w http.ResponseWriter, r *http.Request) {
+	channel := requireDrive(c)
+	if c.Err != nil {
+		return
+	}
+	var body struct {
+		Name *string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == nil {
+		c.SetInvalidParam("name")
+		return
+	}
+	auditRec := c.MakeAuditRecord(model.AuditEventPatchDriveTaskFile, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	model.AddEventParameterToAuditRec(auditRec, "channel_id", channel.Id)
+	model.AddEventParameterToAuditRec(auditRec, "file_id", mux.Vars(r)["file_id"])
+
+	info, appErr := c.App.RenameDriveTaskFile(c.AppContext, *c.AppContext.Session(), channel, mux.Vars(r)["file_id"], *body.Name)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	auditRec.Success()
+	writeTaskJSON(w, http.StatusOK, info)
+}
+
+func deleteDriveTaskFile(c *Context, w http.ResponseWriter, r *http.Request) {
+	channel := requireDrive(c)
+	if c.Err != nil {
+		return
+	}
+	auditRec := c.MakeAuditRecord(model.AuditEventDeleteDriveTaskFile, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	model.AddEventParameterToAuditRec(auditRec, "channel_id", channel.Id)
+	model.AddEventParameterToAuditRec(auditRec, "file_id", mux.Vars(r)["file_id"])
+
+	if appErr := c.App.DeleteDriveTaskFile(c.AppContext, *c.AppContext.Session(), channel, mux.Vars(r)["file_id"]); appErr != nil {
+		c.Err = appErr
+		return
+	}
+	auditRec.Success()
+	ReturnStatusOK(w)
 }
 
 func moveDriveItems(c *Context, w http.ResponseWriter, r *http.Request) {
