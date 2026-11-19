@@ -3,19 +3,25 @@
 
 import React, {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import {defineMessages, useIntl} from 'react-intl';
-import {useSelector, useStore} from 'react-redux';
+import {useDispatch, useSelector, useStore} from 'react-redux';
 
 import {CloseIcon} from '@mattermost/compass-icons/components';
 import {Icon} from '@mattermost/compass-ui/components/icon';
 import {IconButton} from '@mattermost/compass-ui/components/icon-button';
 import {WithTooltip} from '@mattermost/shared/components/tooltip';
+import type {UserProfile} from '@mattermost/types/users';
 
 import {Client4} from 'mattermost-redux/client';
 import {getCurrentUser, getCurrentUserId, getUsers} from 'mattermost-redux/selectors/entities/users';
+import {getFileUrl} from 'mattermost-redux/utils/file_utils';
 
+import {openModal} from 'actions/views/modals';
 import {getConnectionId} from 'selectors/general';
 
+import FilePreviewModal from 'components/file_preview_modal';
+
 import WebClient from 'client/web_websocket_client';
+import {ModalIdentifiers} from 'utils/constants';
 import {generateId} from 'utils/utils';
 
 import type {GlobalState} from 'types/store';
@@ -32,8 +38,10 @@ import {
     DEFAULT_STYLE,
     FONT_FAMILIES,
     LOCAL,
+    MAX_LABEL_LENGTH,
     MAX_TEXT_LENGTH,
     addElement,
+    copyElements,
     createCanvasDoc,
     deleteElements,
     duplicateElements,
@@ -43,12 +51,13 @@ import {
     setLocalAuthor,
     updateElements,
     updateInBatches,
+    withChildren,
     writeInBatches,
 } from './model';
 import type {CanvasElement, ElementStyle, ElementType} from './model';
 import {CanvasRenderer} from './renderer';
-import type {RemoteCursor, RemoteSelection} from './renderer';
-import {labelFor, layoutScenes, sceneAt, sceneParts, sortByName, stackInScene} from './storyboard';
+import type {DrawElement, RemoteCursor, RemoteSelection} from './renderer';
+import {SCENE_HEADER, labelFor, layoutScenes, membershipPatches, sceneAt, sceneParts, sortByName, stackInScene} from './storyboard';
 import {CanvasSync} from './sync';
 import type {SyncStatus} from './sync';
 
@@ -59,6 +68,9 @@ const MAX_PEN_POINTS = 1000;
 const FLUSH_MS = 200; // how often a pen stroke or resize in progress reaches the doc
 const HIT_PX = 6;
 const MAX_SELECTION = 50;
+const CLICK_PX = 4; // a read-only press that moves less than this (screen pixels) is a click
+const MIN_CARD = 2 * SCENE_HEADER;
+const LABEL_FONT = 20;
 const PEER_COLORS = ['#e03131', '#2f9e44', '#1971c2', '#f08c00', '#9c36b5', '#0c8599', '#e8590c', '#5c940d'];
 const HANDLES: Array<[Handle, number, number]> = [['nw', 0, 0], ['ne', 1, 0], ['sw', 0, 1], ['se', 1, 1]];
 const DRAW_TOOLS: Partial<Record<Tool, ElementType>> = {pen: 'pen', rect: 'rect', ellipse: 'ellipse', line: 'line', arrow: 'arrow', text: 'text'};
@@ -75,6 +87,7 @@ const messages = defineMessages({
     skipped: {id: 'canvas.import.skipped', defaultMessage: 'Only PNG and JPEG images can be added. Skipped: {names}'},
     uploadFailed: {id: 'canvas.import.failed', defaultMessage: 'Could not upload: {names}'},
     dismiss: {id: 'canvas.import.dismiss', defaultMessage: 'Dismiss'},
+    labelInput: {id: 'canvas.labelInput', defaultMessage: 'Card label'},
 });
 
 const MAX_NAMES = 5;
@@ -92,6 +105,18 @@ export function colorFor(userId: string) {
         h = ((h * 31) + userId.charCodeAt(i)) >>> 0;
     }
     return PEER_COLORS[h % PEER_COLORS.length];
+}
+
+/** Scene cards drawn in their owner's colour, with the owner's name when that user is loaded. */
+export function forDrawing(els: CanvasElement[], users: Record<string, UserProfile>): DrawElement[] {
+    return els.map((el) => (el.type === 'scene' && el.ownerId ? {...el, stroke: colorFor(el.ownerId), ownerName: users[el.ownerId]?.username} : el));
+}
+
+// A card never shrinks below MIN_CARD or flips: the side opposite the dragged handle stays where it was.
+function clampCard(pt: ResizePatch, handle: Handle): ResizePatch {
+    const w = Math.max(pt.w!, MIN_CARD);
+    const h = Math.max(pt.h!, MIN_CARD);
+    return {...pt, w, h, x: handle.includes('w') ? (pt.x! + pt.w!) - w : pt.x, y: handle.includes('n') ? (pt.y! + pt.h!) - h : pt.y};
 }
 
 // In memory and shared by every board on the page, so elements can be copied between canvases.
@@ -128,7 +153,8 @@ function penElement(g: PenGesture): CanvasElement {
     return {...g.el, x: minX, y: minY, w: maxX - minX, h: maxY - minY, points: g.abs.map((v, i) => v - (i % 2 ? minY : minX))};
 }
 
-type Editing = {id: string; x: number; y: number; isNew: boolean; style: ElementStyle; text: string};
+// field is set while a scene card's label is edited; otherwise it is a text element.
+type Editing = {id: string; x: number; y: number; isNew: boolean; style: ElementStyle; text: string; field?: 'label'};
 
 type Props = {
     channelId: string;
@@ -141,6 +167,7 @@ function Board({channelId, readOnly}: Props) {
     const me = useSelector(getCurrentUser);
     const users = useSelector(getUsers);
     const store = useStore<GlobalState>();
+    const dispatch = useDispatch();
 
     const [{doc, elements, undo}] = useState(createCanvasDoc);
     const [ready, setReady] = useState(false);
@@ -172,6 +199,7 @@ function Board({channelId, readOnly}: Props) {
     const gestureStackRef = useRef(0);
     const pointersRef = useRef(new Set<number>());
     const pointerRef = useRef<Point | undefined>(undefined);
+    const readDownRef = useRef<Point | undefined>(undefined);
 
     // Handlers read these rather than state, which can lag behind the doc within one event.
     const elsRef = useRef<CanvasElement[]>([]);
@@ -417,10 +445,10 @@ function Board({channelId, readOnly}: Props) {
 
     useEffect(() => {
         // A stroke being drawn or a resize in progress shows from local state; the doc only gets it every FLUSH_MS.
-        const hidden = new Set([editing?.id, ...preview.map((el) => el.id)]);
-        renderer?.draw([...els.filter((el) => !hidden.has(el.id)), ...preview], selected, marquee);
+        const hidden = new Set([editing?.field ? undefined : editing?.id, ...preview.map((el) => el.id)]);
+        renderer?.draw(forDrawing([...els.filter((el) => !hidden.has(el.id)), ...preview], users), selected, marquee);
         drawPeersRef.current();
-    }, [renderer, els, selected, marquee, editing, preview]);
+    }, [renderer, els, selected, marquee, editing, preview, users]);
 
     useEffect(() => {
         renderer?.setPanMode(pan);
@@ -456,6 +484,10 @@ function Board({channelId, readOnly}: Props) {
         }
         edit(undefined);
         const text = textRef.current?.value ?? ed.text;
+        if (ed.field) {
+            discrete(() => updateElements(doc, [ed.id], {label: text.slice(0, MAX_LABEL_LENGTH)}));
+            return;
+        }
         const zoom = renderer?.getZoom() ?? 1;
         const lines = text.split('\n');
         const w = ((textRef.current?.scrollWidth ?? 0) / zoom) || (Math.max(...lines.map((l) => l.length)) * ed.style.fontSize * 0.6);
@@ -477,6 +509,9 @@ function Board({channelId, readOnly}: Props) {
     };
 
     const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (readOnly && e.button === 0) {
+            readDownRef.current = {x: e.clientX, y: e.clientY};
+        }
         if (!renderer || e.button !== 0 || pan || editingRef.current) {
             return;
         }
@@ -503,12 +538,16 @@ function Board({channelId, readOnly}: Props) {
                 return;
             }
             const id = hitTest(all, p, tol);
-            if (id && e.shiftKey) {
+            const hit = all.find((el) => el.id === id);
+            if (hit?.type === 'scene' && contains(sceneParts(bounds(hit)).tick, p)) {
+                discrete(() => updateElements(doc, [hit.id], {done: !hit.done}));
+                select([hit.id]);
+            } else if (id && e.shiftKey) {
                 select(sel.includes(id) ? sel.filter((s) => s !== id) : [...sel, id]);
             } else if (id) {
                 const ids = sel.includes(id) ? sel : [id];
                 select(ids);
-                beginGesture({kind: 'move', pointerId, start: p, orig: pick(ids)});
+                beginGesture({kind: 'move', pointerId, start: p, orig: pick(withChildren(all, ids))});
             } else {
                 const base = e.shiftKey ? sel : [];
                 select(base);
@@ -573,7 +612,7 @@ function Board({channelId, readOnly}: Props) {
         if (g.kind === 'move') {
             moveBy(g.orig, dx, dy);
         } else if (g.kind === 'resize') {
-            g.pending = resizeAll(g.orig, g.handle, dx, dy);
+            g.pending = resizeAll(g.orig, g.handle, dx, dy).map((pt, i) => (g.orig[i].type === 'scene' ? clampCard(pt, g.handle) : pt));
             setPreview(g.orig.map((el, i) => ({...el, ...g.pending?.[i]})));
             if (Date.now() - g.flushedAt >= FLUSH_MS) {
                 flushResize(g);
@@ -592,6 +631,15 @@ function Board({channelId, readOnly}: Props) {
     // Also handles pointercancel and lostpointercapture, so a gesture whose pointerup never arrives still ends.
     const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
         pointersRef.current.delete(e.pointerId);
+        if (readOnly) {
+            const down = readDownRef.current;
+            readDownRef.current = undefined;
+            if (down && renderer && e.type === 'pointerup' && Math.hypot(e.clientX - down.x, e.clientY - down.y) <= CLICK_PX) {
+                const id = hitTest(elsRef.current, renderer.toWorld(e.clientX, e.clientY), HIT_PX / renderer.getZoom());
+                select(id ? [id] : []);
+            }
+            return;
+        }
         const g = gestureRef.current;
         if (!g || e.pointerId !== g.pointerId) {
             return;
@@ -600,6 +648,12 @@ function Board({channelId, readOnly}: Props) {
             flushPen(g);
         } else if (g.kind === 'resize') {
             flushResize(g);
+        } else if (g.kind === 'move' && renderer && e.type === 'pointerup') {
+            // Dropping an image on a card (or on the empty board) re-parents it, in the same undo step as the move.
+            const p = renderer.toWorld(e.clientX, e.clientY);
+            if (p.x !== g.start.x || p.y !== g.start.y) {
+                updateInBatches(doc, membershipPatches(elsRef.current, selRef.current, p, topZ()));
+            }
         }
         endGesture();
         if (g.kind === 'marquee') {
@@ -616,15 +670,38 @@ function Board({channelId, readOnly}: Props) {
         syncRef.current?.awareness.setLocalStateField('cursor', null);
     };
 
+    const previewFile = (fileId: string, name = '') => {
+        dispatch(openModal({
+            modalId: ModalIdentifiers.FILE_PREVIEW_MODAL,
+            dialogType: FilePreviewModal,
+            dialogProps: {
+                startIndex: 0,
+                postId: '',
+                fileInfos: [{has_preview_image: false, link: getFileUrl(fileId), extension: name.includes('.') ? name.split('.').pop()!.toLowerCase() : '', name}],
+            },
+        }));
+    };
+
     const onDoubleClick = (e: React.MouseEvent) => {
-        if (!renderer || activeTool !== 'select') {
+        if (!renderer || (activeTool !== 'select' && !readOnly)) {
             return;
         }
-        const id = hitTest(elsRef.current, renderer.toWorld(e.clientX, e.clientY), HIT_PX / renderer.getZoom());
+        const p = renderer.toWorld(e.clientX, e.clientY);
+        const id = hitTest(elsRef.current, p, HIT_PX / renderer.getZoom());
         const el = elsRef.current.find((x) => x.id === id);
-        if (el?.type === 'text') {
+        if (el?.type === 'text' && !readOnly) {
             select([]);
             edit({id: el.id, x: el.x, y: el.y, isNew: false, style: el, text: el.text ?? ''});
+        } else if (el?.type === 'image' && el.fileId) {
+            previewFile(el.fileId, el.name);
+        } else if (el?.type === 'scene') {
+            const parts = sceneParts(bounds(el));
+            if (contains(parts.final, p) && el.finalFileId) {
+                previewFile(el.finalFileId, el.finalName);
+            } else if (!readOnly && contains(parts.header, p) && !contains(parts.tick, p)) {
+                select([]);
+                edit({id: el.id, x: parts.header.x, y: parts.header.y, isNew: false, style: {...el, fontSize: LABEL_FONT, textAlign: 'left'}, text: el.label ?? '', field: 'label'});
+            }
         }
     };
 
@@ -635,7 +712,7 @@ function Board({channelId, readOnly}: Props) {
     };
 
     const copy = () => {
-        clipboard = pick(selRef.current);
+        clipboard = pick(withChildren(elsRef.current, selRef.current));
     };
 
     const paste = () => {
@@ -646,10 +723,10 @@ function Board({channelId, readOnly}: Props) {
         const at = pointerRef.current ?? {x: u.x + (u.w / 2) + 10, y: u.y + (u.h / 2) + 10};
         const dx = at.x - (u.x + (u.w / 2));
         const dy = at.y - (u.y + (u.h / 2));
-        const top = topZ();
-        const copies = clipboard.map((el, i) => ({...el, id: generateId(), seed: randomSeed(), x: el.x + dx, y: el.y + dy, z: top + 1 + i}));
+        const copies = copyElements(clipboard, dx, dy, topZ());
+        const ids = new Set(copies.map((el) => el.id));
         discrete(() => writeInBatches(doc, copies));
-        select(copies.map((el) => el.id));
+        select(copies.filter((el) => !(el.type === 'image' && el.sceneId && ids.has(el.sceneId))).map((el) => el.id));
     };
 
     // Image files become scene cards: one per image from `at`, or stacked into the card under it, or a card's final.
@@ -859,7 +936,7 @@ function Board({channelId, readOnly}: Props) {
             deleteSelection();
         } else if (arrow) {
             const step = e.shiftKey ? 10 : 1;
-            discrete(() => moveBy(pick(selRef.current), arrow[0] * step, arrow[1] * step));
+            discrete(() => moveBy(pick(withChildren(elsRef.current, selRef.current)), arrow[0] * step, arrow[1] * step));
         } else if (toolIndex >= 0 || (digit >= 1 && digit <= 9)) {
             setTool(TOOLS[toolIndex >= 0 ? toolIndex : digit - 1].tool);
         } else {
@@ -890,9 +967,9 @@ function Board({channelId, readOnly}: Props) {
             <textarea
                 ref={textRef}
                 className='CanvasBoard__text'
-                aria-label={formatMessage(messages.textInput)}
+                aria-label={formatMessage(editing.field ? messages.labelInput : messages.textInput)}
                 value={editing.text}
-                maxLength={MAX_TEXT_LENGTH}
+                maxLength={editing.field ? MAX_LABEL_LENGTH : MAX_TEXT_LENGTH}
                 wrap='off'
                 spellCheck={false}
                 style={{

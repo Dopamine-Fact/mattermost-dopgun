@@ -7,14 +7,19 @@ import type * as Y from 'yjs';
 
 import type {FileInfo} from '@mattermost/types/files';
 
+import {getFileUrl} from 'mattermost-redux/utils/file_utils';
+
+import {openModal} from 'actions/views/modals';
+
 import {renderWithContext} from 'tests/react_testing_utils';
+import {ModalIdentifiers} from 'utils/constants';
 
 import CanvasBoard, {colorFor} from './canvas_board';
 import {uploadImages} from './canvas_uploads';
 import {unionBounds} from './geometry';
-import {DEFAULT_STYLE, MAX_TEXT_LENGTH, REMOTE, readElements} from './model';
+import {DEFAULT_STYLE, MAX_LABEL_LENGTH, MAX_TEXT_LENGTH, REMOTE, addElement, readElements} from './model';
 import type {CanvasElement} from './model';
-import {sceneParts} from './storyboard';
+import {SCENE_HEADER, sceneParts} from './storyboard';
 import {CanvasSync} from './sync';
 
 const mockRenderer = {
@@ -51,6 +56,9 @@ jest.mock('./sync', () => {
 
 jest.mock('client/web_websocket_client', () => ({}));
 
+jest.mock('actions/views/modals', () => ({openModal: jest.fn((arg) => ({type: 'MOCK_OPEN_MODAL', arg}))}));
+jest.mock('components/file_preview_modal', () => () => null);
+
 jest.mock('./canvas_uploads', () => ({
     ...jest.requireActual('./canvas_uploads'),
     uploadImages: jest.fn(),
@@ -70,7 +78,10 @@ class FakePointerEvent extends MouseEvent {
 }
 window.PointerEvent ??= FakePointerEvent as unknown as typeof PointerEvent;
 
-const state = {entities: {users: {currentUserId: 'user1', profiles: {user1: {id: 'user1', username: 'alice'}}}}};
+// ownerId must look like a server id (26 lowercase alphanumerics) to survive parsing.
+const BOB = 'b'.repeat(26);
+const GHOST = 'c'.repeat(26);
+const state = {entities: {users: {currentUserId: 'user1', profiles: {user1: {id: 'user1', username: 'alice'}, [BOB]: {id: BOB, username: 'bob'}}}}};
 
 async function renderBoard(readOnly = false) {
     renderWithContext(
@@ -560,6 +571,193 @@ describe('CanvasBoard', () => {
             fireEvent.keyDown(root, {key: 'c', ctrlKey: true});
             fireEvent.paste(root, {clipboardData: {files: [], types: ['text/plain']}});
             expect(els()).toHaveLength(2);
+        });
+    });
+
+    describe('storyboard cards', () => {
+        const FILE = 'f'.repeat(26);
+        const FINAL = 'g'.repeat(26);
+        const base = {...DEFAULT_STYLE, seed: 1, w: 0, h: 0, x: 0, y: 0, z: 0};
+        const card = (id: string, x: number, z: number, extra: Partial<CanvasElement> = {}): CanvasElement => ({...base, id, type: 'scene', x, y: 0, w: 300, h: 300, z, label: id, done: false, ...extra});
+        const image = (id: string, sceneId: string, x: number, z: number): CanvasElement => ({...base, id, type: 'image', x, y: 64, w: 100, h: 100, z, fileId: FILE, name: 'a.png', aspect: 1, sceneId});
+        const seed = async (readOnly: boolean, ...list: CanvasElement[]) => {
+            const board = await renderBoard(readOnly);
+            act(() => list.forEach((el) => addElement(board.doc, el)));
+            return {...board, byId: (id: string) => board.els().find((e) => e.id === id)!};
+        };
+        const click = (surface: HTMLElement, at: [number, number]) => {
+            fireEvent.pointerDown(surface, {button: 0, clientX: at[0], clientY: at[1]});
+            fireEvent.pointerUp(surface, {clientX: at[0], clientY: at[1]});
+        };
+
+        test('dragging a card moves its images with it, as one undo step', async () => {
+            const {root, surface, byId} = await seed(false, card('A', 0, 1), image('i', 'A', 16, 2));
+            drag(surface, [100, 20], [150, 50]);
+            expect(byId('A')).toMatchObject({x: 50, y: 30});
+            expect(byId('i')).toMatchObject({x: 66, y: 94});
+
+            fireEvent.keyDown(root, {key: 'z', ctrlKey: true});
+            expect(byId('A')).toMatchObject({x: 0, y: 0});
+            expect(byId('i')).toMatchObject({x: 16, y: 64});
+        });
+
+        test('arrow keys move a card with its images', async () => {
+            const {root, surface, byId} = await seed(false, card('A', 0, 1), image('i', 'A', 16, 2));
+            click(surface, [100, 20]);
+            fireEvent.keyDown(root, {key: 'ArrowRight', shiftKey: true});
+            expect(byId('A').x).toBe(10);
+            expect(byId('i').x).toBe(26);
+        });
+
+        test('a card and its image both selected do not move the image twice', async () => {
+            const {root, surface, byId} = await seed(false, card('A', 0, 1), image('i', 'A', 16, 2));
+            click(surface, [100, 20]);
+            fireEvent.pointerDown(surface, {button: 0, clientX: 50, clientY: 100, shiftKey: true});
+            fireEvent.pointerUp(surface, {clientX: 50, clientY: 100});
+            fireEvent.keyDown(root, {key: 'ArrowRight'});
+            expect(byId('i').x).toBe(17);
+        });
+
+        test('dragging an image into another card re-parents it, to empty board frees it, one undo restores both', async () => {
+            const {root, surface, byId} = await seed(false, card('A', 0, 1), card('B', 500, 2), image('i', 'A', 16, 3));
+            drag(surface, [50, 100], [550, 100]);
+            expect(byId('i')).toMatchObject({sceneId: 'B', x: 516});
+
+            drag(surface, [550, 100], [1000, 100]);
+            expect(byId('i').sceneId).toBeUndefined();
+            expect(byId('i').x).toBe(966);
+
+            fireEvent.keyDown(root, {key: 'z', ctrlKey: true});
+            expect(byId('i')).toMatchObject({sceneId: 'B', x: 516});
+            fireEvent.keyDown(root, {key: 'z', ctrlKey: true});
+            expect(byId('i')).toMatchObject({sceneId: 'A', x: 16});
+        });
+
+        test('clicking an image does not re-parent it', async () => {
+            const {surface, byId} = await seed(false, card('A', 0, 1), card('B', 50, 5), image('i', 'A', 16, 3));
+            click(surface, [60, 100]);
+            expect(byId('i').sceneId).toBe('A');
+        });
+
+        test('resizing a card does not scale its images', async () => {
+            const {surface, byId} = await seed(false, card('A', 0, 1), image('i', 'A', 16, 2));
+            click(surface, [100, 20]);
+            drag(surface, [300, 300], [350, 340]);
+            expect(byId('A')).toMatchObject({w: 350, h: 340});
+            expect(byId('i')).toMatchObject({x: 16, w: 100, h: 100});
+        });
+
+        test('a card dragged past its opposite corner keeps its minimum size', async () => {
+            const {surface, byId} = await seed(false, card('A', 0, 1));
+            click(surface, [100, 20]);
+            drag(surface, [300, 300], [-500, -500]);
+            expect(byId('A')).toMatchObject({x: 0, y: 0, w: 2 * SCENE_HEADER, h: 2 * SCENE_HEADER});
+
+            drag(surface, [0, 0], [900, 900]); // the nw handle, past the opposite corner
+            const a = byId('A');
+            expect(a.w).toBeGreaterThanOrEqual(2 * SCENE_HEADER);
+            expect(a.h).toBeGreaterThanOrEqual(2 * SCENE_HEADER);
+        });
+
+        test('clicking the tick toggles done', async () => {
+            const {root, surface, byId} = await seed(false, card('A', 0, 1));
+            const t = sceneParts(byId('A')).tick;
+            click(surface, [t.x + 20, t.y + 20]);
+            expect(byId('A').done).toBe(true);
+            fireEvent.keyDown(root, {key: 'z', ctrlKey: true});
+            expect(byId('A').done).toBe(false);
+        });
+
+        test('double-clicking the header edits the label', async () => {
+            const {surface, byId} = await seed(false, card('A', 0, 1, {label: 'Opening'}));
+            fireEvent.doubleClick(surface, {clientX: 100, clientY: 20});
+            const ta = screen.getByRole('textbox', {name: 'Card label'});
+            expect(ta).toHaveValue('Opening');
+
+            fireEvent.change(ta, {target: {value: 'x'.repeat(MAX_LABEL_LENGTH + 20)}});
+            fireEvent.keyDown(ta, {key: 'Escape'});
+            expect(byId('A').label).toBe('x'.repeat(MAX_LABEL_LENGTH));
+            expect(screen.queryByRole('textbox', {name: 'Card label'})).not.toBeInTheDocument();
+        });
+
+        test('double-clicking an image opens the file preview', async () => {
+            const {surface} = await seed(false, card('A', 0, 1), image('i', 'A', 16, 2));
+            fireEvent.doubleClick(surface, {clientX: 50, clientY: 100});
+            expect(openModal).toHaveBeenCalledWith(expect.objectContaining({modalId: ModalIdentifiers.FILE_PREVIEW_MODAL}));
+            const arg = jest.mocked(openModal).mock.calls[0][0] as unknown as {dialogProps: {fileInfos: Array<{link: string; extension: string}>}};
+            expect(arg.dialogProps.fileInfos[0].link).toBe(getFileUrl(FILE));
+            expect(arg.dialogProps.fileInfos[0].extension).toBe('png');
+        });
+
+        test('double-clicking a final strip opens it only when the card has a final', async () => {
+            const {surface, byId} = await seed(false, card('A', 0, 1), card('B', 500, 1, {finalFileId: FINAL, finalName: 'end.jpg'}));
+            const f = sceneParts(byId('A')).final;
+            fireEvent.doubleClick(surface, {clientX: f.x + 10, clientY: f.y + 10});
+            expect(openModal).not.toHaveBeenCalled();
+
+            const g = sceneParts(byId('B')).final;
+            fireEvent.doubleClick(surface, {clientX: g.x + 10, clientY: g.y + 10});
+            expect(openModal).toHaveBeenCalledTimes(1);
+        });
+
+        test('copy and paste of a card copies its images, attached to the copy', async () => {
+            const {root, surface, els} = await seed(false, card('A', 0, 1), image('i', 'A', 16, 2));
+            click(surface, [100, 20]);
+            fireEvent.keyDown(root, {key: 'c', ctrlKey: true});
+            fireEvent.paste(root, {clipboardData: {files: [], types: ['text/plain']}});
+
+            const list = els();
+            expect(list).toHaveLength(4);
+            const copy = list.find((e) => e.type === 'scene' && e.id !== 'A')!;
+            const kid = list.find((e) => e.type === 'image' && e.id !== 'i')!;
+            expect(kid.sceneId).toBe(copy.id);
+            expect(list.find((e) => e.id === 'i')!.sceneId).toBe('A');
+        });
+
+        test('an owned card is drawn in the owner\'s colour with their name', async () => {
+            await seed(false, card('A', 0, 1, {ownerId: BOB}), card('B', 500, 1, {ownerId: GHOST}));
+            const drawn: Array<CanvasElement & {ownerName?: string}> = mockRenderer.draw.mock.calls.at(-1)![0];
+            expect(drawn.find((e) => e.id === 'A')).toMatchObject({stroke: colorFor(BOB), ownerName: 'bob'});
+            const ghost = drawn.find((e) => e.id === 'B')!;
+            expect(ghost.stroke).toBe(colorFor(GHOST));
+            expect(ghost.ownerName).toBeUndefined();
+        });
+
+        describe('read-only', () => {
+            const selection = () => mockRenderer.draw.mock.calls.at(-1)![1];
+
+            test('users select by clicking, not by dragging', async () => {
+                const {surface} = await seed(true, card('A', 0, 1), image('i', 'A', 16, 2));
+                click(surface, [50, 100]);
+                expect(selection()).toEqual(['i']);
+                click(surface, [900, 900]);
+                expect(selection()).toEqual([]);
+
+                fireEvent.pointerDown(surface, {button: 0, clientX: 50, clientY: 100});
+                fireEvent.pointerMove(surface, {clientX: 60, clientY: 100});
+                fireEvent.pointerUp(surface, {clientX: 60, clientY: 100});
+                expect(selection()).toEqual([]);
+            });
+
+            test('clicking the tick selects the card without toggling it', async () => {
+                const {surface, byId} = await seed(true, card('A', 0, 1));
+                const t = sceneParts(byId('A')).tick;
+                click(surface, [t.x + 20, t.y + 20]);
+                expect(selection()).toEqual(['A']);
+                expect(byId('A').done).toBe(false);
+            });
+
+            test('users can open an image\'s original and a final, but a header opens no editor', async () => {
+                const {surface, byId} = await seed(true, card('A', 0, 1, {finalFileId: FINAL, finalName: 'end.jpg'}), image('i', 'A', 16, 2));
+                fireEvent.doubleClick(surface, {clientX: 50, clientY: 100});
+                expect(openModal).toHaveBeenCalledTimes(1);
+                const f = sceneParts(byId('A')).final;
+                fireEvent.doubleClick(surface, {clientX: f.x + 10, clientY: f.y + 10});
+                expect(openModal).toHaveBeenCalledTimes(2);
+
+                fireEvent.doubleClick(surface, {clientX: 100, clientY: 20});
+                expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+            });
         });
     });
 });

@@ -4716,6 +4716,7 @@
   "canvas.import.failed": "Yüklenemedi: {names}",
   "canvas.import.skipped": "Yalnızca PNG ve JPEG görseller eklenebilir. Atlanan: {names}",
   "canvas.import.uploading": "Görseller yükleniyor {done}/{total}…",
+  "canvas.labelInput": "Kart etiketi",
   "carousel.PreviousButton": "Önceki",
   "carousel.nextButton": "Sonraki",
   "center_panel.archived.closeChannel": "Kanalı kapat",

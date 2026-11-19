@@ -19475,6 +19475,10 @@
     "defaultMessage": "Uploading images {done}/{total}…",
     "description": "Progress message on the canvas while dropped or pasted images upload; {done} of {total} files are finished."
   },
+  "canvas.labelInput": {
+    "defaultMessage": "Card label",
+    "description": "Accessible name of the text box in which a storyboard card's label is edited on the canvas."
+  },
   "canvas.props.actions": {
     "defaultMessage": "Actions",
     "description": "Canvas properties: group of buttons that act on the selected elements"
