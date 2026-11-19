@@ -258,7 +258,7 @@ describe('FileExplorer', () => {
         });
 
         test('Alt+Up in a subfolder goes up without reaching the sidebar channel shortcut', async () => {
-            jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [], path: [folder('d1', 'Docs')]});
+            jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [], path: [folder('d1', 'Docs')], access: ''});
             const push = (global as unknown as {historyMock: {push: jest.Mock}}).historyMock.push;
             push.mockClear();
             const documentKeyDown = jest.fn();
