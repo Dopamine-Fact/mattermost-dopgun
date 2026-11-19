@@ -5558,11 +5558,11 @@ func (s *RetryLayerCustomRoleStore) Update(r *model.CustomRole) (*model.CustomRo
 
 }
 
-func (s *RetryLayerDailyReportStore) AddFile(reportID string, fileID string, createAt int64) error {
+func (s *RetryLayerDailyReportStore) AddFile(reportID string, fileID string, createAt int64, maxFiles int) error {
 
 	tries := 0
 	for {
-		err := s.DailyReportStore.AddFile(reportID, fileID, createAt)
+		err := s.DailyReportStore.AddFile(reportID, fileID, createAt, maxFiles)
 		if err == nil {
 			return nil
 		}
@@ -5684,11 +5684,11 @@ func (s *RetryLayerDailyReportStore) GetAssignees(teamID string) ([]string, erro
 
 }
 
-func (s *RetryLayerDailyReportStore) GetBeforeDate(teamID string, status string, beforeDate string) ([]*model.DailyReport, error) {
+func (s *RetryLayerDailyReportStore) GetBeforeDate(teamID string, status string, beforeDate string, withFiles bool) ([]*model.DailyReport, error) {
 
 	tries := 0
 	for {
-		result, err := s.DailyReportStore.GetBeforeDate(teamID, status, beforeDate)
+		result, err := s.DailyReportStore.GetBeforeDate(teamID, status, beforeDate, withFiles)
 		if err == nil {
 			return result, nil
 		}

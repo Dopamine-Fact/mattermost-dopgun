@@ -27,6 +27,10 @@ jest.mock('mattermost-redux/selectors/entities/roles', () => ({
     haveITeamPermission: jest.fn(() => false),
 }));
 jest.mock('components/markdown', () => ({message}: {message: string}) => <p>{message}</p>);
+jest.mock('components/pdf_preview', () => ({
+    __esModule: true,
+    default: ({fileUrl}: {fileUrl: string}) => <div data-url={fileUrl}>{'PDF Preview'}</div>,
+}));
 jest.mock('client/web_websocket_client', () => ({
     addMessageListener: jest.fn(),
     removeMessageListener: jest.fn(),
@@ -59,6 +63,7 @@ const report = (extra: Partial<DailyReport>): DailyReport => ({
 
 const png = TestHelper.getFileInfoMock({id: 'f1', name: 'a.png', extension: 'png', size: 1258291, mime_type: 'image/png', has_preview_image: true});
 const mp4 = TestHelper.getFileInfoMock({id: 'f2', name: 'clip.mp4', extension: 'mp4', size: 2048, mime_type: 'video/mp4'});
+const pdf = TestHelper.getFileInfoMock({id: 'f3', name: 'plan.pdf', extension: 'pdf', size: 4096, mime_type: 'application/pdf'});
 
 const bot = TestHelper.getUserMock({id: 'u4', username: 'bot', is_bot: true});
 const exMember = TestHelper.getUserMock({id: 'u5', username: 'leaver'});
@@ -599,6 +604,24 @@ describe('DailyReports team tab', () => {
         expect(excuse).toHaveBeenCalledWith('team1', 'u3', '2026-11-16');
     });
 
+    test('team: an excuse refused because the day was sent meanwhile refreshes the list', async () => {
+        jest.spyOn(Client4, 'excuseDailyReport').mockRejectedValue({status_code: 409, message: 'Already sent'});
+        const list = mockReports([], []);
+        renderPage(true);
+        await openTeamTab();
+        await screen.findByText('mehmet', {selector: ROW_NAME});
+        const calls = list.mock.calls.length;
+
+        fireEvent.click(within(rowOf('mehmet')).getByRole('button', {name: 'Excuse'}));
+        const dialog = await screen.findByRole('dialog');
+        await act(async () => {
+            fireEvent.click(within(dialog).getByRole('button', {name: 'Excuse'}));
+        });
+
+        expect(await screen.findByText('Already sent')).toBeInTheDocument();
+        await waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(calls));
+    });
+
     test('team: no Reddet on missing or excused rows', async () => {
         mockReports([], [report({status: 'excused', message: ''})]);
         renderPage(true);
@@ -625,6 +648,23 @@ describe('DailyReports team tab', () => {
             fireEvent.click(within(dialog).getByRole('button', {name: 'Approve'}));
         });
         expect(approve).toHaveBeenCalledWith('r1', 1);
+    });
+
+    test('team: a PDF opens inside the detail and still downloads', async () => {
+        mockReports([], [report({files: [pdf]})]);
+        renderPage(true);
+        await openTeamTab();
+        fireEvent.click(await within(rowOf('ayse')).findByRole('button', {name: 'View'}));
+        const dialog = await screen.findByRole('dialog');
+        expect(within(dialog).queryByText('PDF Preview')).not.toBeInTheDocument();
+
+        fireEvent.click(within(dialog).getByRole('button', {name: 'plan.pdf'}));
+        const viewer = await within(dialog).findByText('PDF Preview');
+        expect(viewer).toHaveAttribute('data-url', expect.stringContaining('/daily_reports/r1/files/f3'));
+        expect(within(dialog).getByRole('link', {name: 'Download plan.pdf'})).toHaveAttribute('href', expect.stringContaining('/daily_reports/r1/files/f3'));
+
+        fireEvent.click(within(dialog).getByRole('button', {name: 'plan.pdf'}));
+        expect(within(dialog).queryByText('PDF Preview')).not.toBeInTheDocument();
     });
 });
 

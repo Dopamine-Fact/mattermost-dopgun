@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React, {useState} from 'react';
+import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 
 import {GenericModal} from '@mattermost/components';
@@ -14,14 +15,19 @@ import {displayUsername} from 'mattermost-redux/utils/user_utils';
 
 import ExternalLink from 'components/external_link';
 import Markdown from 'components/markdown';
+import type {Props as PDFPreviewProps} from 'components/pdf_preview';
 
 import type {GlobalState} from 'types/store';
 
 import {PreviouslyRejected, RejectedBanner, ReportDate, StatusChip, TaskChips} from './common';
 import {kindOf} from './media_section';
 
-// Images and PDFs open in a new tab; the stock file preview assumes post attachments.
+const PDFPreview = React.lazy<React.ComponentType<PDFPreviewProps>>(() => import('components/pdf_preview'));
+
+// Images open in a new tab and PDFs inline; the stock file preview assumes post attachments.
 function Gallery({report}: {report: DailyReport}) {
+    const {formatMessage} = useIntl();
+    const [openPdf, setOpenPdf] = useState('');
     if (!report.files?.length) {
         return null;
     }
@@ -51,14 +57,36 @@ function Gallery({report}: {report: DailyReport}) {
                             </ExternalLink>
                         )}
                         {kind === 'file' && (
-                            <ExternalLink
-                                className='DailyReportDetail__file'
-                                href={url}
-                                location='daily_report_detail'
-                            >
-                                <i className='icon icon-file-pdf-outline'/>
-                                {f.name}
-                            </ExternalLink>
+                            <div className='DailyReportDetail__file'>
+                                <button
+                                    type='button'
+                                    className='btn btn-link'
+                                    aria-expanded={openPdf === f.id}
+                                    onClick={() => setOpenPdf(openPdf === f.id ? '' : f.id)}
+                                >
+                                    <i className='icon icon-file-pdf-outline'/>
+                                    {f.name}
+                                </button>
+                                <ExternalLink
+                                    href={url}
+                                    location='daily_report_detail'
+                                    aria-label={formatMessage({id: 'daily_reports.downloadFile', defaultMessage: 'Download {name}'}, {name: f.name})}
+                                >
+                                    <i className='icon icon-download-outline'/>
+                                </ExternalLink>
+                            </div>
+                        )}
+                        {kind === 'file' && openPdf === f.id && (
+                            <div className='DailyReportDetail__pdf'>
+                                <React.Suspense fallback={null}>
+                                    <PDFPreview
+                                        fileInfo={f}
+                                        fileUrl={url}
+                                        scale={1}
+                                        handleBgClose={() => {}}
+                                    />
+                                </React.Suspense>
+                            </div>
                         )}
                     </li>
                 );

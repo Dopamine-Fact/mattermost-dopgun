@@ -23207,6 +23207,10 @@
     "defaultMessage": "Download CSV",
     "description": "Link that downloads the daily reports of the chosen date range as a CSV file."
   },
+  "daily_reports.downloadFile": {
+    "defaultMessage": "Download {name}",
+    "description": "Accessible label of the download icon next to a PDF attached to a daily report, in the report detail; {name} is the file name."
+  },
   "daily_reports.edit": {
     "defaultMessage": "Edit",
     "description": "Button on a sent daily report that opens it for editing."

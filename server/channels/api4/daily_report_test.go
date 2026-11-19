@@ -291,6 +291,44 @@ func TestDailyReportFilesAPI(t *testing.T) {
 		defer r2.Body.Close()
 		require.Equal(t, http.StatusOK, r2.StatusCode)
 		require.Equal(t, "image/jpeg", r2.Header.Get("Content-Type"))
+
+		head, err := reviewer.DoAPIRequestWithHeaders(ctx, http.MethodHead, "/daily_reports/"+sent.Id+"/files/"+info.Id, "", nil)
+		require.NoError(t, err)
+		defer head.Body.Close()
+		require.Equal(t, http.StatusOK, head.StatusCode)
+	})
+
+	t.Run("a draft's events reach only its author", func(t *testing.T) {
+		writer := th.CreateUser(t)
+		th.LinkUserToTeam(t, writer, th.BasicTeam)
+		writerClient := th.CreateClient()
+		_, _, err := writerClient.Login(ctx, writer.Email, writer.Password)
+		require.NoError(t, err)
+		reviewerWS := th.CreateConnectedWebSocketClientWithClient(t, reviewer)
+		defer reviewerWS.Close()
+		writerWS := th.CreateConnectedWebSocketClientWithClient(t, writerClient)
+		defer writerWS.Close()
+		next := func(ws *model.WebSocketClient) bool {
+			for {
+				select {
+				case ev := <-ws.EventChannel:
+					if ev.EventType() == model.WebsocketDailyReportUpdated {
+						return true
+					}
+				case <-time.After(time.Second):
+					return false
+				}
+			}
+		}
+
+		_, _, err = writerClient.AddMyDailyReportFile(ctx, teamID, "draft.png", pngData)
+		require.NoError(t, err)
+		require.True(t, next(writerWS), "the author's other tabs refetch")
+		require.False(t, next(reviewerWS), "the reviewer hears nothing of a draft")
+
+		_, _, err = writerClient.SubmitDailyReport(ctx, teamID, "")
+		require.NoError(t, err)
+		require.True(t, next(reviewerWS), "a sent report reaches the reviewer")
 	})
 
 	t.Run("a member who cannot review gets 403", func(t *testing.T) {

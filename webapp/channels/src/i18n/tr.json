@@ -5443,6 +5443,7 @@
   "daily_reports.cancel": "İptal",
   "daily_reports.count": "{count} rapor",
   "daily_reports.download": "CSV İndir",
+  "daily_reports.downloadFile": "{name} dosyasını indir",
   "daily_reports.edit": "Düzenle",
   "daily_reports.editReport": "Raporu Düzenle",
   "daily_reports.edited": "Düzenlendi",

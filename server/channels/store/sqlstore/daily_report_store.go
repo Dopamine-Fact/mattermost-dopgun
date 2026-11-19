@@ -107,6 +107,7 @@ func (s *SqlDailyReportStore) Update(r *model.DailyReport) (*model.DailyReport, 
 		Set("ApprovedAt", r.ApprovedAt).
 		Set("Edited", r.Edited).
 		Set("PreviousMessage", r.PreviousMessage).
+		Set("CreateAt", r.CreateAt).
 		// The rejection columns belong to Reject alone: an edit that read the report before a reject must not erase it.
 		Set("UpdateAt", r.UpdateAt).
 		Where(sq.Eq{"Id": r.Id}))
@@ -230,13 +231,17 @@ func (s *SqlDailyReportStore) GetPendingBefore(updatedBefore int64) ([]*model.Da
 		OrderBy("UpdateAt ASC", "Id ASC"), "pending")
 }
 
-func (s *SqlDailyReportStore) GetBeforeDate(teamID, status, beforeDate string) ([]*model.DailyReport, error) {
-	return s.selectReports(s.getQueryBuilder().
+func (s *SqlDailyReportStore) GetBeforeDate(teamID, status, beforeDate string, withFiles bool) ([]*model.DailyReport, error) {
+	query := s.getQueryBuilder().
 		Select(dailyReportColumns...).
 		From("DailyReports").
 		Where(sq.Eq{"TeamId": teamID, "Status": status}).
 		Where(sq.Lt{"Date": beforeDate}).
-		OrderBy("Date ASC", "Id ASC"), "team_id="+teamID+" status="+status)
+		OrderBy("Date ASC", "Id ASC")
+	if withFiles {
+		query = query.Where("EXISTS (SELECT 1 FROM DailyReportFiles WHERE DailyReportFiles.ReportId = DailyReports.Id)")
+	}
+	return s.selectReports(query, "team_id="+teamID+" status="+status)
 }
 
 func (s *SqlDailyReportStore) Delete(id string) (err error) {
@@ -259,12 +264,32 @@ func (s *SqlDailyReportStore) Delete(id string) (err error) {
 	return errors.Wrap(tx.Commit(), "commit_transaction")
 }
 
-func (s *SqlDailyReportStore) AddFile(reportID, fileID string, createAt int64) error {
-	if _, err := s.GetMaster().ExecBuilder(s.getQueryBuilder().Insert("DailyReportFiles").
+func (s *SqlDailyReportStore) AddFile(reportID, fileID string, createAt int64, maxFiles int) (err error) {
+	tx, err := s.GetMaster().Begin()
+	if err != nil {
+		return errors.Wrap(err, "begin_transaction")
+	}
+	defer finalizeTransactionX(tx, &err)
+
+	// Locking the report makes concurrent links to it count one after another.
+	var locked []string
+	if err = tx.SelectBuilder(&locked, s.getQueryBuilder().Select("Id").From("DailyReports").
+		Where(sq.Eq{"Id": reportID}).Suffix("FOR UPDATE")); err != nil {
+		return errors.Wrapf(err, "failed to lock DailyReport with id=%s", reportID)
+	}
+	var count int
+	if err = tx.GetBuilder(&count, s.getQueryBuilder().Select("COUNT(*)").From("DailyReportFiles").
+		Where(sq.Eq{"ReportId": reportID})); err != nil {
+		return errors.Wrapf(err, "failed to count DailyReportFiles for report_id=%s", reportID)
+	}
+	if count >= maxFiles {
+		return store.NewErrLimitExceeded("DailyReportFiles", count, "report_id="+reportID)
+	}
+	if _, err = tx.ExecBuilder(s.getQueryBuilder().Insert("DailyReportFiles").
 		Columns("ReportId", "FileId", "CreateAt").Values(reportID, fileID, createAt)); err != nil {
 		return errors.Wrapf(err, "failed to link file_id=%s to report_id=%s", fileID, reportID)
 	}
-	return nil
+	return errors.Wrap(tx.Commit(), "commit_transaction")
 }
 
 func (s *SqlDailyReportStore) RemoveFile(reportID, fileID string) error {

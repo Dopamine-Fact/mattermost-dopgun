@@ -14,17 +14,17 @@ type DailyReportStore struct {
 	mock.Mock
 }
 
-// AddFile provides a mock function with given fields: reportID, fileID, createAt
-func (_m *DailyReportStore) AddFile(reportID string, fileID string, createAt int64) error {
-	ret := _m.Called(reportID, fileID, createAt)
+// AddFile provides a mock function with given fields: reportID, fileID, createAt, maxFiles
+func (_m *DailyReportStore) AddFile(reportID string, fileID string, createAt int64, maxFiles int) error {
+	ret := _m.Called(reportID, fileID, createAt, maxFiles)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AddFile")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string, int64) error); ok {
-		r0 = rf(reportID, fileID, createAt)
+	if rf, ok := ret.Get(0).(func(string, string, int64, int) error); ok {
+		r0 = rf(reportID, fileID, createAt, maxFiles)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -146,9 +146,9 @@ func (_m *DailyReportStore) GetAssignees(teamID string) ([]string, error) {
 	return r0, r1
 }
 
-// GetBeforeDate provides a mock function with given fields: teamID, status, beforeDate
-func (_m *DailyReportStore) GetBeforeDate(teamID string, status string, beforeDate string) ([]*model.DailyReport, error) {
-	ret := _m.Called(teamID, status, beforeDate)
+// GetBeforeDate provides a mock function with given fields: teamID, status, beforeDate, withFiles
+func (_m *DailyReportStore) GetBeforeDate(teamID string, status string, beforeDate string, withFiles bool) ([]*model.DailyReport, error) {
+	ret := _m.Called(teamID, status, beforeDate, withFiles)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetBeforeDate")
@@ -156,19 +156,19 @@ func (_m *DailyReportStore) GetBeforeDate(teamID string, status string, beforeDa
 
 	var r0 []*model.DailyReport
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, string, string) ([]*model.DailyReport, error)); ok {
-		return rf(teamID, status, beforeDate)
+	if rf, ok := ret.Get(0).(func(string, string, string, bool) ([]*model.DailyReport, error)); ok {
+		return rf(teamID, status, beforeDate, withFiles)
 	}
-	if rf, ok := ret.Get(0).(func(string, string, string) []*model.DailyReport); ok {
-		r0 = rf(teamID, status, beforeDate)
+	if rf, ok := ret.Get(0).(func(string, string, string, bool) []*model.DailyReport); ok {
+		r0 = rf(teamID, status, beforeDate, withFiles)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*model.DailyReport)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string, string, string) error); ok {
-		r1 = rf(teamID, status, beforeDate)
+	if rf, ok := ret.Get(1).(func(string, string, string, bool) error); ok {
+		r1 = rf(teamID, status, beforeDate, withFiles)
 	} else {
 		r1 = ret.Error(1)
 	}

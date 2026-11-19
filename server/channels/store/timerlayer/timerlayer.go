@@ -4625,10 +4625,10 @@ func (s *TimerLayerCustomRoleStore) Update(r *model.CustomRole) (*model.CustomRo
 	return result, err
 }
 
-func (s *TimerLayerDailyReportStore) AddFile(reportID string, fileID string, createAt int64) error {
+func (s *TimerLayerDailyReportStore) AddFile(reportID string, fileID string, createAt int64, maxFiles int) error {
 	start := time.Now()
 
-	err := s.DailyReportStore.AddFile(reportID, fileID, createAt)
+	err := s.DailyReportStore.AddFile(reportID, fileID, createAt, maxFiles)
 
 	elapsed := float64(time.Since(start)) / float64(time.Second)
 	if s.Root.Metrics != nil {
@@ -4721,10 +4721,10 @@ func (s *TimerLayerDailyReportStore) GetAssignees(teamID string) ([]string, erro
 	return result, err
 }
 
-func (s *TimerLayerDailyReportStore) GetBeforeDate(teamID string, status string, beforeDate string) ([]*model.DailyReport, error) {
+func (s *TimerLayerDailyReportStore) GetBeforeDate(teamID string, status string, beforeDate string, withFiles bool) ([]*model.DailyReport, error) {
 	start := time.Now()
 
-	result, err := s.DailyReportStore.GetBeforeDate(teamID, status, beforeDate)
+	result, err := s.DailyReportStore.GetBeforeDate(teamID, status, beforeDate, withFiles)
 
 	elapsed := float64(time.Since(start)) / float64(time.Second)
 	if s.Root.Metrics != nil {
