@@ -19,12 +19,26 @@ export type DriveItem = {
     delete_at: number;
     deleted_by: string;
     file_info?: FileInfo;
+
+    /** Folder rules from an episode template; empty on folders without rules. */
+    view_departments?: string[];
+    write_departments?: string[];
+    read_only?: boolean;
+
+    /** Source folder id when this folder mirrors another. */
+    mirror_of?: string;
 };
 
 /** A drive folder's children and its path from the channel root (root excluded). */
 export type DriveListing = {
     items: DriveItem[];
     path: DriveItem[];
+
+    /** How the viewer may change this folder: '' means no write rule applies. */
+    access: '' | 'write' | 'read';
+
+    /** A mirror whose source folder is gone. */
+    source_missing?: boolean;
 };
 
 export type DriveChatFileSort = 'create_at' | 'name' | 'size';

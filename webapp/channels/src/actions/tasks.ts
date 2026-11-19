@@ -5,7 +5,7 @@ import type {Channel} from '@mattermost/types/channels';
 import type {Task, TaskCreate, TaskPatch, TaskSectionCreate, TaskSectionPatch} from '@mattermost/types/tasks';
 
 import {TaskTypes} from 'mattermost-redux/action_types';
-import {createChannel, deleteChannel} from 'mattermost-redux/actions/channels';
+import {createChannel, deleteChannel, getChannelAndMyMember} from 'mattermost-redux/actions/channels';
 import {logError} from 'mattermost-redux/actions/errors';
 import {forceLogoutIfNecessary} from 'mattermost-redux/actions/helpers';
 import {receivedPosts} from 'mattermost-redux/actions/posts';
@@ -15,8 +15,6 @@ import {getCurrentUserId} from 'mattermost-redux/selectors/entities/common';
 import {generateId} from 'mattermost-redux/utils/helpers';
 
 import {getConnectionId} from 'selectors/general';
-
-import {templateLines} from 'components/tasks/task_utils';
 
 import {cleanUpUrlable} from 'utils/url';
 
@@ -127,47 +125,27 @@ export function createRevisionChannel(teamId: string, displayName: string, video
     };
 }
 
-// createEpisodeChannel makes a revision channel that is also a canvas, then seeds the team's folder and task templates.
-// Folders and tasks that fail are returned in failed (template lines) and do not stop the rest.
+// createEpisodeChannel has the server create the channel, its revision list, the template folders (with their rules) and tasks;
+// the video and canvas follow, and if either fails the list and channel are removed again.
+// Folders and tasks the server could not create come back in failed (template lines).
 export function createEpisodeChannel(teamId: string, displayName: string, video: File): ActionFuncAsync<{channel: Channel; failed: string[]}> {
-    return async (dispatch, getState) => {
-        const team = getState().entities.teams.teams[teamId];
-        const created = await dispatch(createLinkedChannel(teamId, displayName, video, (channel) => run(() => Client4.createCanvas(teamId, channel.id))));
+    return async (dispatch) => {
+        const created = await dispatch(run(() => Client4.createEpisode(teamId, cleanUpUrlable(displayName) || generateId(), displayName)));
         if (!created.data) {
             return {error: created.error};
         }
-        const {channel, sectionId} = created.data;
-        const failed: string[] = [];
+        const {channel, section, failed} = created.data;
+        await dispatch(getChannelAndMyMember(channel.id));
+        dispatch({type: TaskTypes.TASK_SECTION_RECEIVED, data: section});
 
-        // Folder ids by path; a failed folder is cached as null so its children are reported, not retried.
-        const folders = new Map<string, string | null>();
-        for (const line of templateLines(team?.episode_folders)) {
-            let parentId = '';
-            let path = '';
-            for (const name of line.split('/')) {
-                path = path ? `${path}/${name}` : name;
-                if (!folders.has(path)) {
-                    try {
-                        // eslint-disable-next-line no-await-in-loop
-                        folders.set(path, (await Client4.createDriveFolder(channel.id, parentId, name)).id);
-                    } catch {
-                        folders.set(path, null);
-                    }
-                }
-                const id = folders.get(path);
-                if (!id) {
-                    failed.push(line);
-                    break;
-                }
-                parentId = id;
-            }
+        let error = (await dispatch(setTaskSectionVideo(section.id, video))).error;
+        if (!error) {
+            error = (await dispatch(run(() => Client4.createCanvas(teamId, channel.id)))).error;
         }
-
-        for (const title of templateLines(team?.episode_tasks)) {
-            // eslint-disable-next-line no-await-in-loop
-            if ((await dispatch(createTask({team_id: teamId, title, section_id: sectionId, status: 'todo'}))).error) {
-                failed.push(title);
-            }
+        if (error) {
+            await dispatch(deleteTaskSection(section.id));
+            await dispatch(deleteChannel(channel.id));
+            return {error};
         }
         return {data: {channel, failed}};
     };

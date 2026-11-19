@@ -22,11 +22,6 @@ export type ViewProps = {
 
 export const STATUSES: TaskStatus[] = ['todo', 'in_progress', 'done'];
 
-// templateLines splits a team's episode template the way the server does: trimmed lines, blanks dropped.
-export function templateLines(text = ''): string[] {
-    return text.split('\n').map((line) => line.trim()).filter(Boolean);
-}
-
 export const statusMessages = defineMessages({
     todo: {id: 'tasks.status.todo', defaultMessage: 'To do'},
     in_progress: {id: 'tasks.status.inProgress', defaultMessage: 'In progress'},

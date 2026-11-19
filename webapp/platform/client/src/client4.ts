@@ -135,7 +135,7 @@ import type {Scheme} from '@mattermost/types/schemes';
 import type {Session} from '@mattermost/types/sessions';
 import type {CompleteOnboardingRequest} from '@mattermost/types/setup';
 import type {RemoteClusterInfo, SharedChannelRemote} from '@mattermost/types/shared_channels';
-import type {Task, TaskComment, TaskCreate, TaskPatch, TaskSection, TaskSectionCreate, TaskSectionPatch, TaskSectionVideo} from '@mattermost/types/tasks';
+import type {EpisodeCreated, Task, TaskComment, TaskCreate, TaskPatch, TaskSection, TaskSectionCreate, TaskSectionPatch, TaskSectionVideo} from '@mattermost/types/tasks';
 import type {
     GetTeamMembersOpts,
     MemberInviteProfile,
@@ -5420,6 +5420,13 @@ export default class Client4 {
 
     getTaskCommentFileUrl = (commentId: string, fileId: string) => {
         return `${this.getBaseRoute()}/task_comments/${commentId}/files/${fileId}`;
+    };
+
+    createEpisode = (teamId: string, name: string, displayName: string) => {
+        return this.doFetch<EpisodeCreated>(
+            `${this.getTeamRoute(teamId)}/episodes`,
+            {method: 'post', body: JSON.stringify({name, display_name: displayName})},
+        );
     };
 
     createCanvas = (teamId: string, channelId: string) => {

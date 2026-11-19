@@ -136,6 +136,7 @@ describe('FileExplorer', () => {
         jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({
             items: [fileItem('i1', fileInfo('f1', 'b.txt', 10)), folder('d2', 'Zeta'), folder('d1', 'Alpha')],
             path: [],
+            access: '',
         });
         renderAt('/team/files/town');
         await waitFor(() => expect(cellNames()).toEqual(['Chat attachments', 'Alpha', 'Zeta', 'b.txt']));
@@ -145,6 +146,7 @@ describe('FileExplorer', () => {
         jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({
             items: [fileItem('i1', fileInfo('f1', 'big.txt', 900)), fileItem('i2', fileInfo('f2', 'small.txt', 5)), folder('d1', 'Docs')],
             path: [],
+            access: '',
         });
         renderAt('/team/files/town');
         await screen.findByRole('gridcell', {name: 'big.txt'});
@@ -158,7 +160,7 @@ describe('FileExplorer', () => {
     test('double-clicking a file opens the preview with the folder files', async () => {
         const a = fileInfo('f1', 'a.png', 10);
         const b = fileInfo('f2', 'b.txt', 20);
-        jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [folder('d1', 'Docs'), fileItem('i1', a), fileItem('i2', b)], path: []});
+        jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [folder('d1', 'Docs'), fileItem('i1', a), fileItem('i2', b)], path: [], access: ''});
         renderAt('/team/files/town');
 
         fireEvent.doubleClick(await screen.findByRole('gridcell', {name: 'b.txt'}));
@@ -169,7 +171,7 @@ describe('FileExplorer', () => {
     });
 
     test('drive_changed for the open folder reloads it', async () => {
-        const list = jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [], path: []});
+        const list = jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [], path: [], access: ''});
         renderAt('/team/files/town');
         await screen.findByRole('gridcell', {name: 'Chat attachments'});
         const before = list.mock.calls.length;
@@ -186,7 +188,7 @@ describe('FileExplorer', () => {
     });
     describe('embedded in a channel', () => {
         beforeEach(() => {
-            jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [folder('d1', 'Docs')], path: []});
+            jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [folder('d1', 'Docs')], path: [], access: ''});
         });
 
         test('embedded, opening a folder goes through the host URL', async () => {
@@ -213,7 +215,7 @@ describe('FileExplorer', () => {
         });
 
         test('embedded, a folder link renders while its path loads, then Up leads to the channel root', async () => {
-            jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [], path: [folder('d1', 'Docs')]});
+            jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [], path: [folder('d1', 'Docs')], access: ''});
             renderEmbedded('/team/channels/town?folder=d1');
             expect(await screen.findByText('Docs', {selector: '[aria-current=location]'})).toBeInTheDocument();
             expect(screen.getByRole('button', {name: 'Up'})).toBeEnabled();
@@ -244,7 +246,7 @@ describe('FileExplorer', () => {
 
         beforeEach(() => {
             jest.spyOn(Client4, 'getDriveFolder').mockImplementation(async (_c, parentId = '') => (
-                parentId ? {items: [], path: [folder('d1', 'Docs')]} : {items: [folder('d1', 'Docs'), mine, theirs], path: []}
+                parentId ? {items: [], path: [folder('d1', 'Docs')], access: ''} : {items: [folder('d1', 'Docs'), mine, theirs], path: [], access: ''}
             ));
         });
 
