@@ -24551,6 +24551,10 @@
     "defaultMessage": "No items match your search.",
     "description": "File explorer empty state when the 'Search this folder' filter matches nothing."
   },
+  "file_explorer.empty.sourceMissing": {
+    "defaultMessage": "The folder this one shows was deleted.",
+    "description": "File explorer empty state of a mirror folder whose source folder was deleted, trashed or moved out of the channel."
+  },
   "file_explorer.empty.trash": {
     "defaultMessage": "The Recycle Bin is empty.",
     "description": "File explorer empty state of a channel's Recycle Bin."
@@ -24578,6 +24582,10 @@
   "file_explorer.menu": {
     "defaultMessage": "Item actions",
     "description": "Accessible name of the file explorer right-click menu."
+  },
+  "file_explorer.mirror": {
+    "defaultMessage": "Shows another folder",
+    "description": "Tooltip on a folder icon in the file explorer: the folder is a mirror that lists the contents of another folder and cannot be changed."
   },
   "file_explorer.newFolder": {
     "defaultMessage": "New folder",
@@ -24626,6 +24634,10 @@
   "file_explorer.purge.title": {
     "defaultMessage": "Delete permanently?",
     "description": "Title of the file explorer dialog that confirms a permanent delete or emptying the Recycle Bin."
+  },
+  "file_explorer.readOnly": {
+    "defaultMessage": "Read-only folder",
+    "description": "Tooltip on a folder icon in the file explorer: an episode folder rule makes this folder read-only."
   },
   "file_explorer.recycleBin": {
     "defaultMessage": "Recycle Bin",

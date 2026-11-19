@@ -135,6 +135,9 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
     const data = useExplorerData(channel?.id, folderId, chatSort);
     const uploads = useExplorerUploads(data.reload);
 
+    // Managers bypass write rules, but nothing on a mirror path can be changed, by anyone.
+    const writable = inDrive && !data.inMirror && (data.canManage || data.access !== 'read');
+
     // Opening a folder unmounts the focused item; keep keyboard users inside the list, like Explorer.
     const mainRef = useRef<HTMLElement>(null);
     const focusedLocation = useRef('');
@@ -265,11 +268,11 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
         open: selected.length === 1,
         cut: inDrive && canChange,
         copy: !inTrash && selected.length > 0 && selected.every(isDriveObject),
-        paste: inDrive && Boolean(clipboard),
+        paste: writable && Boolean(clipboard),
         rename: inDrive && selected.length === 1 && canChange,
         remove: inDrive && canChange,
         download: !inTrash && selected.length > 0 && selected.every(isDriveObject),
-        newFolder: inDrive,
+        newFolder: writable,
         restore: inTrash && canChange,
         purge: inTrash && canChange,
         empty: inTrash && data.items.some((e) => e.canModify),
@@ -356,10 +359,10 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
         if (entry?.kind === 'channel') {
             return {key: entry.key, target: {channelId: entry.channel!.id, folderId: '', ancestors: []}, location: [entry.name]};
         }
-        if (entry?.kind === 'folder' && inDrive) {
+        if (entry?.kind === 'folder' && writable) {
             return {key: entry.key, target: {channelId, folderId: entry.key, ancestors: pathIds}, location: [...here, entry.name]};
         }
-        return inDrive ? {key: '', target: {channelId, folderId, ancestors: pathIds}, location: here} : undefined;
+        return writable ? {key: '', target: {channelId, folderId, ancestors: pathIds}, location: here} : undefined;
     };
     const dragHandlers = {
         onDragOver: (e: React.DragEvent) => {
@@ -492,7 +495,7 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
             ...(inTrash ? [{key: 'empty', label: L.empty, onClick: actions.empty, disabled: !can.empty, destructive: true}] : []),
             ...(inDrive ? [
                 {key: 'paste', label: L.paste, onClick: actions.paste, disabled: !can.paste},
-                {key: 'newFolder', label: L.newFolder, onClick: actions.newFolder},
+                {key: 'newFolder', label: L.newFolder, onClick: actions.newFolder, disabled: !can.newFolder},
             ] : []),
             {key: 'refresh', label: L.refresh, onClick: data.reload, divider: inDrive || inTrash},
         ];
@@ -524,7 +527,7 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
                 key='upload'
                 size='x-small'
                 emphasis='tertiary'
-                disabled={!inDrive}
+                disabled={!writable}
                 aria-haspopup='menu'
                 leadingIcon={<Icon glyph={<UploadOutlineIcon/>}/>}
                 trailingIcon={<Icon glyph={<ChevronDownIcon/>}/>}
@@ -592,6 +595,13 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
                 <FormattedMessage
                     id='file_explorer.empty.chat'
                     defaultMessage='No files have been shared in this channel yet.'
+                />
+            );
+        } else if (data.sourceMissing) {
+            empty = (
+                <FormattedMessage
+                    id='file_explorer.empty.sourceMissing'
+                    defaultMessage='The folder this one shows was deleted.'
                 />
             );
         } else if (channel) {

@@ -6,7 +6,7 @@ import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 
 import type {Channel} from '@mattermost/types/channels';
-import type {DriveChatFileSort, DriveItem} from '@mattermost/types/drive';
+import type {DriveChatFileSort, DriveItem, DriveListing} from '@mattermost/types/drive';
 import type {FileInfo} from '@mattermost/types/files';
 
 import {Client4} from 'mattermost-redux/client';
@@ -42,7 +42,9 @@ type DriveChangedMessage = {event: string; data?: unknown; broadcast?: {channel_
 
 export type ChatSort = {by: DriveChatFileSort; desc: boolean};
 
-type Loaded = {key: string; items: DriveItem[]; files: FileInfo[]; path: DriveItem[]; page: number; hasMore: boolean};
+type Loaded = {key: string; items: DriveItem[]; files: FileInfo[]; path: DriveItem[]; page: number; hasMore: boolean; access: DriveListing['access']; sourceMissing: boolean};
+
+const hasRules = (it: DriveItem) => Boolean(it.view_departments?.length || it.write_departments?.length || it.read_only || it.mirror_of);
 
 /** Open and private channels the user belongs to in the current team, by display name. */
 export function useExplorerChannels(): Channel[] {
@@ -90,13 +92,13 @@ export function useExplorerData(channelId?: string, folderId = '', chatSort: Cha
         const load = async (): Promise<Loaded> => {
             if (folderId === CHAT_FOLDER) {
                 const files = await Client4.getDriveChatFiles(channelId, 0, CHAT_PAGE_SIZE, chatSort.by, chatSort.desc);
-                return {key, items: [], files, path: [], page: 0, hasMore: files.length === CHAT_PAGE_SIZE};
+                return {key, items: [], files, path: [], page: 0, hasMore: files.length === CHAT_PAGE_SIZE, access: '', sourceMissing: false};
             }
             if (folderId === TRASH_FOLDER) {
-                return {key, items: await Client4.getDriveTrash(channelId), files: [], path: [], page: 0, hasMore: false};
+                return {key, items: await Client4.getDriveTrash(channelId), files: [], path: [], page: 0, hasMore: false, access: '', sourceMissing: false};
             }
             const listing = await Client4.getDriveFolder(channelId, folderId);
-            return {key, items: listing.items, files: [], path: listing.path, page: 0, hasMore: false};
+            return {key, items: listing.items, files: [], path: listing.path, page: 0, hasMore: false, access: listing.access, sourceMissing: Boolean(listing.source_missing)};
         };
         load().then((data) => {
             if (!cancelled) {
@@ -153,6 +155,9 @@ export function useExplorerData(channelId?: string, folderId = '', chatSort: Cha
     const chatName = intl.formatMessage({id: 'file_explorer.chatAttachments', defaultMessage: 'Chat attachments'});
     const current = loaded?.key === key ? loaded : undefined;
 
+    // The listing's path runs through the mirror when browsing inside one; everything on a mirror path is read-only, managers too.
+    const inMirror = Boolean(current?.path.some((p) => p.mirror_of));
+
     const items = useMemo((): ExplorerEntry[] => {
         if (!channelId) {
             return channels.map((c) => ({key: c.id, kind: 'channel', name: c.display_name, channel: c, readOnly: true, canModify: false}));
@@ -164,6 +169,7 @@ export function useExplorerData(channelId?: string, folderId = '', chatSort: Cha
             return current.files.map((f) => ({key: `chat:${f.id}`, kind: 'file', name: f.name, fileInfo: f, readOnly: true, canModify: false}));
         }
         const inTrash = folderId === TRASH_FOLDER;
+        const access = current.access;
         const drive = current.items.map((it): ExplorerEntry => ({
             key: it.id,
             kind: it.type,
@@ -171,10 +177,10 @@ export function useExplorerData(channelId?: string, folderId = '', chatSort: Cha
             driveItem: it,
             fileInfo: it.file_info,
             readOnly: inTrash,
-            canModify: it.creator_id === me || canManage,
+            canModify: inTrash ? it.creator_id === me || canManage : !inMirror && (canManage || (!hasRules(it) && (access === 'write' || (access === '' && it.creator_id === me)))),
         }));
         return folderId ? drive : [{key: CHAT_FOLDER, kind: 'chat', name: chatName, readOnly: true, canModify: false}, ...drive];
-    }, [canManage, channelId, channels, chatName, current, folderId, me]);
+    }, [canManage, channelId, channels, chatName, current, folderId, inMirror, me]);
 
     return {
         items,
@@ -185,5 +191,9 @@ export function useExplorerData(channelId?: string, folderId = '', chatSort: Cha
         loadMore,
         hasMore: Boolean(current?.hasMore),
         changeCount,
+        canManage,
+        access: current?.access ?? '',
+        inMirror,
+        sourceMissing: Boolean(current?.sourceMissing),
     };
 }

@@ -239,6 +239,74 @@ describe('FileExplorer', () => {
         });
     });
 
+    describe('folder rules', () => {
+        const mine = fileItem('i1', fileInfo('f1', 'a.txt', 10));
+        const theirs = {...fileItem('i2', fileInfo('f2', 'b.txt', 10)), creator_id: 'u2'};
+        const list = (items: DriveItem[], access: '' | 'write' | 'read', extra = {}) => jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items, path: [], access, ...extra});
+        const button = (name: string) => screen.getByRole('button', {name});
+
+        test('a read-only folder disables New folder and Delete, even for my own file', async () => {
+            list([mine], 'read');
+            renderAt('/team/files/town');
+            fireEvent.click(await screen.findByRole('gridcell', {name: 'a.txt'}));
+            expect(button('New folder')).toBeDisabled();
+            expect(button('Delete')).toBeDisabled();
+            expect(button('Upload')).toBeDisabled();
+        });
+
+        test('a write folder lets me delete a colleague file', async () => {
+            list([theirs], 'write');
+            renderAt('/team/files/town');
+            fireEvent.click(await screen.findByRole('gridcell', {name: 'b.txt'}));
+            expect(button('Delete')).toBeEnabled();
+            expect(button('New folder')).toBeEnabled();
+        });
+
+        test('without a rule I can still only change my own files', async () => {
+            list([mine, theirs], '');
+            renderAt('/team/files/town');
+            fireEvent.click(await screen.findByRole('gridcell', {name: 'b.txt'}));
+            expect(button('Delete')).toBeDisabled();
+            fireEvent.click(screen.getByRole('gridcell', {name: 'a.txt'}));
+            expect(button('Delete')).toBeEnabled();
+        });
+
+        test('a folder that carries rules cannot be deleted by a non-manager', async () => {
+            list([{...folder('d1', 'BG'), write_departments: ['bg']}], 'write');
+            renderAt('/team/files/town');
+            fireEvent.click(await screen.findByRole('gridcell', {name: 'BG'}));
+            expect(button('Delete')).toBeDisabled();
+        });
+
+        test('an empty mirror whose source is gone says so', async () => {
+            list([], 'read', {path: [{...folder('m1', 'Mirror'), mirror_of: 'gone'}], source_missing: true});
+            renderAt('/team/files/town/m1');
+            await screen.findByText('The folder this one shows was deleted.');
+        });
+
+        test('a channel manager browsing a mirror still cannot create or delete', async () => {
+            list([mine], 'read', {path: [{...folder('m1', 'Mirror'), mirror_of: 's1'}]});
+            const admin = TestHelper.getUserMock({id: 'me', username: 'me', roles: 'system_user system_admin'});
+            renderWithContext(
+                <Route
+                    path='/:team/files/:channelName?/:folderId?'
+                    component={FileExplorer}
+                />,
+                {
+                    entities: {
+                        ...storeState.entities,
+                        users: {currentUserId: 'me', profiles: {me: admin}},
+                        roles: {roles: {system_admin: TestHelper.getRoleMock({name: 'system_admin', permissions: ['manage_channel_roles']})}},
+                    },
+                },
+                {history: createMemoryHistory({initialEntries: ['/team/files/town/m1']})},
+            );
+            fireEvent.click(await screen.findByRole('gridcell', {name: 'a.txt'}));
+            expect(button('New folder')).toBeDisabled();
+            expect(button('Delete')).toBeDisabled();
+        });
+    });
+
     describe('file operations', () => {
         const mine = fileItem('i1', fileInfo('f1', 'a.txt', 10));
         const theirs = {...fileItem('i2', fileInfo('f2', 'b.txt', 10)), creator_id: 'u2'};

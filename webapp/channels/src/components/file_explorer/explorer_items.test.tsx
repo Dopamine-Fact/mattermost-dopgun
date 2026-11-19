@@ -3,6 +3,8 @@
 
 import React from 'react';
 
+import type {DriveItem} from '@mattermost/types/drive';
+
 import {getFileThumbnailUrl} from 'mattermost-redux/utils/file_utils';
 
 import {fireEvent, renderWithContext, screen} from 'tests/react_testing_utils';
@@ -51,5 +53,31 @@ describe('ExplorerItems', () => {
     test('only one item is tabbable at a time', () => {
         renderItems('icons');
         expect(screen.getAllByRole('gridcell').map((c) => c.getAttribute('tabindex'))).toEqual(['0', '-1']);
+    });
+
+    test('a read-only folder says so and a mirror says what it shows', () => {
+        const item = (extra: Partial<DriveItem>): DriveItem => ({id: 'x', channel_id: 'c1', parent_id: '', type: 'folder', name: 'F', file_id: '', creator_id: 'me', create_at: 1, update_at: 1, delete_at: 0, deleted_by: '', ...extra});
+        const folders: ExplorerEntry[] = [
+            {key: 'a', kind: 'folder', name: 'Locked', driveItem: item({id: 'a', read_only: true}), readOnly: false, canModify: false},
+            {key: 'b', kind: 'folder', name: 'Mirror', driveItem: item({id: 'b', mirror_of: 's'}), readOnly: false, canModify: false},
+            {key: 'c', kind: 'folder', name: 'Plain', driveItem: item({id: 'c'}), readOnly: false, canModify: true},
+        ];
+        renderWithContext(
+            <ExplorerItems
+                entries={folders}
+                view='details'
+                selected={new Set()}
+                sort={{by: 'name', desc: false}}
+                onSort={jest.fn()}
+                onSelect={jest.fn()}
+                onOpen={jest.fn()}
+                onContextMenu={jest.fn()}
+                onRenameDone={jest.fn()}
+                getUserName={() => 'me'}
+            />,
+        );
+        expect(screen.getByTitle('Read-only folder')).toBeInTheDocument();
+        expect(screen.getByTitle('Shows another folder')).toBeInTheDocument();
+        expect(screen.getAllByTitle(/folder/i)).toHaveLength(2);
     });
 });
