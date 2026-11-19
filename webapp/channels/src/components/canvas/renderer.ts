@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {getStroke} from 'perfect-freehand';
+import {getStrokePoints} from 'perfect-freehand';
 import {Viewport} from 'pixi-viewport';
 import {Application, Container, Graphics, Text} from 'pixi.js';
 import 'pixi.js/unsafe-eval'; // the server's CSP (script-src 'self') forbids eval; this swaps Pixi's generated code for static versions
@@ -138,9 +138,13 @@ function build(el: CanvasElement): Graphics | Text {
     const g = new Graphics();
     const width = clamp(num(el.strokeWidth, 2), 0.5, 16);
     if (el.type === 'pen') {
-        const outline = getStroke(pairs(el.points), {size: width * 4.25, thinning: 0.6, smoothing: 0.5, streamline: 0.5, last: true});
-        if (outline.length > 2) {
-            g.poly(outline.flat()).fill(stroke);
+        // Stroke the smoothed centre line: filling perfect-freehand's outline lets earcut fill the inside of a loop that crosses itself.
+        const pts = getStrokePoints(pairs(el.points), {size: width * 4.25, streamline: 0.5, last: true}).flatMap((p) => p.point);
+        if (pts.length >= 4) {
+            polyline(g, pts);
+            g.stroke({width: width * 2.5, color: stroke, cap: 'round', join: 'round'});
+        } else if (pts.length === 2) {
+            g.circle(pts[0], pts[1], width * 1.25).fill(stroke); // a click without a drag leaves a dot
         }
         return g;
     }
