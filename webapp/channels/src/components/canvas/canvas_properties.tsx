@@ -123,7 +123,7 @@ type Props = {
 
     /** Names are already resolved; shown only when one element is selected. */
     info?: {createdBy?: string; createdAt?: number; updatedBy?: string; updatedAt?: number; uploadedBy?: string};
-    scene?: {ownerId?: string; done: boolean; members: UserProfile[]};
+    scene?: {ownerId?: string; ownerName?: string; done: boolean; members: UserProfile[]};
 
     /** ownerId undefined means "none" */
     onSceneChange?: (patch: {ownerId?: string; done?: boolean}) => void;
@@ -148,15 +148,14 @@ function Info({info}: {info: NonNullable<Props['info']>}) {
 
 function SceneFields({scene, readOnly, onSceneChange}: {scene: NonNullable<Props['scene']>; readOnly?: boolean; onSceneChange?: Props['onSceneChange']}) {
     const {formatMessage} = useIntl();
-    const {ownerId, done, members} = scene;
-    const name = (id: string) => members.find((m) => m.id === id)?.username ?? id;
+    const {ownerId, ownerName, done, members} = scene;
     if (readOnly) {
         return (
             <div className='CanvasBoard__propsSection CanvasBoard__propsInfo'>
                 {ownerId && (
                     <>
                         <div className='CanvasBoard__propsLabel'>{formatMessage(messages.owner)}</div>
-                        <div>{name(ownerId)}</div>
+                        <div>{ownerName ?? ownerId}</div>
                     </>
                 )}
                 {done && <div>{formatMessage(messages.done)}</div>}
@@ -173,7 +172,7 @@ function SceneFields({scene, readOnly, onSceneChange}: {scene: NonNullable<Props
                     onChange={(e) => onSceneChange?.({ownerId: e.target.value || undefined})}
                 >
                     <option value=''>{formatMessage(messages.noOwner)}</option>
-                    {ownerId && !members.some((m) => m.id === ownerId) && <option value={ownerId}>{ownerId}</option>}
+                    {ownerId && !members.some((m) => m.id === ownerId) && <option value={ownerId}>{ownerName ?? ownerId}</option>}
                     {members.map((m) => (
                         <option
                             key={m.id}
@@ -338,7 +337,7 @@ export default function CanvasProperties({types, values, onChange, onCommit, onA
             onKeyDown={stopKeys}
         >
             {summary}
-            {!onlyImages && (
+            {!onlyImages && !scene?.ownerId && ( // an owned card is framed in its owner's colour
                 <Colors
                     label={onlyScenes ? messages.frame : messages.stroke}
                     colors={STROKE_COLORS}

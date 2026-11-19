@@ -19467,6 +19467,10 @@
     "defaultMessage": "Could not upload: {names}",
     "description": "Message on the canvas after images were dropped or pasted and some uploads failed; {names} is a comma-separated list of the file names."
   },
+  "canvas.import.oneFinal": {
+    "defaultMessage": "A card holds one final image. Skipped: {names}",
+    "description": "Message on the canvas after several images were dropped on a storyboard card's final-image strip; only the first is kept. {names} is a comma-separated list of the other file names."
+  },
   "canvas.import.skipped": {
     "defaultMessage": "Only PNG and JPEG images can be added. Skipped: {names}",
     "description": "Message on the canvas after files other than PNG or JPEG images were dropped or pasted; {names} is a comma-separated list of the refused file names."
@@ -19478,6 +19482,10 @@
   "canvas.labelInput": {
     "defaultMessage": "Card label",
     "description": "Accessible name of the text box in which a storyboard card's label is edited on the canvas."
+  },
+  "canvas.paste.leftOut": {
+    "defaultMessage": "Images copied from another channel were left out, as they can only be viewed there.",
+    "description": "Message on the canvas after elements copied from another channel's canvas were pasted; their images and final images were not pasted because those files belong to the other channel."
   },
   "canvas.properties.created": {
     "defaultMessage": "Created by {name} · {date}",

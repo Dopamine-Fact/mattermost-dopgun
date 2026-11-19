@@ -7,6 +7,8 @@ import type * as Y from 'yjs';
 
 import type {FileInfo} from '@mattermost/types/files';
 
+import {UserTypes} from 'mattermost-redux/action_types';
+import {getMissingProfilesByIds, getProfilesInChannel} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
 import {getFileUrl} from 'mattermost-redux/utils/file_utils';
 
@@ -18,7 +20,7 @@ import {ModalIdentifiers} from 'utils/constants';
 import CanvasBoard, {colorFor} from './canvas_board';
 import {uploadImages} from './canvas_uploads';
 import {unionBounds} from './geometry';
-import {DEFAULT_STYLE, MAX_LABEL_LENGTH, MAX_TEXT_LENGTH, REMOTE, addElement, readElements} from './model';
+import {DEFAULT_STYLE, MAX_LABEL_LENGTH, MAX_TEXT_LENGTH, REMOTE, addElement, deleteElements, readElements} from './model';
 import type {CanvasElement} from './model';
 import {SCENE_HEADER, sceneParts} from './storyboard';
 import {CanvasSync} from './sync';
@@ -61,6 +63,7 @@ jest.mock('actions/views/modals', () => ({openModal: jest.fn((arg) => ({type: 'M
 jest.mock('mattermost-redux/actions/users', () => ({
     ...jest.requireActual('mattermost-redux/actions/users'),
     getProfilesInChannel: jest.fn(() => () => Promise.resolve({data: []})),
+    getMissingProfilesByIds: jest.fn(),
 }));
 jest.mock('components/file_preview_modal', () => () => null);
 
@@ -88,10 +91,10 @@ const BOB = 'b'.repeat(26);
 const GHOST = 'c'.repeat(26);
 const state = {entities: {users: {currentUserId: 'user1', profiles: {user1: {id: 'user1', username: 'alice'}, [BOB]: {id: BOB, username: 'bob'}}, profilesInChannel: {channel1: new Set(['user1', BOB])}}}};
 
-async function renderBoard(readOnly = false) {
-    renderWithContext(
+async function renderBoard(readOnly = false, channelId = 'channel1') {
+    const {unmount} = renderWithContext(
         <CanvasBoard
-            channelId='channel1'
+            channelId={channelId}
             readOnly={readOnly}
         />,
         state,
@@ -100,6 +103,7 @@ async function renderBoard(readOnly = false) {
     const sync = jest.mocked(CanvasSync).mock.results.at(-1)!.value;
     const doc: Y.Doc = sync.doc;
     return {
+        unmount,
         root: screen.getByRole('application'),
         surface: screen.getByTestId('canvasSurface'),
         doc,
@@ -120,6 +124,7 @@ const box = (el: CanvasElement) => [el.x, el.y, el.w, el.h].map(Math.round); // 
 describe('CanvasBoard', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        jest.mocked(getMissingProfilesByIds).mockReturnValue({type: 'MOCK_NOOP'} as never);
     });
 
     test('toolbar renders all 9 tools', async () => {
@@ -517,12 +522,49 @@ describe('CanvasBoard', () => {
             const {surface, els} = await renderBoard();
             await drop(surface, [png('a.png')]);
             const f = sceneParts(scenes(els())[0]).final;
-            await drop(surface, [png('final.png')], [f.x + (f.w / 2), f.y + (f.h / 2)]);
+            await drop(surface, [png('final.png'), png('other.png')], [f.x + (f.w / 2), f.y + (f.h / 2)]);
 
             const after = scenes(els())[0];
             expect(after.finalFileId).toHaveLength(26);
             expect(after.finalName).toBe('final.png');
             expect(images(els())).toHaveLength(1);
+            expect(screen.getByText(/one final image.*other\.png/)).toBeInTheDocument();
+        });
+
+        test('a final dropped on a card deleted during the upload is dropped too', async () => {
+            const {surface, doc, els} = await renderBoard();
+            await drop(surface, [png('a.png')]);
+            const card = scenes(els())[0];
+            const f = sceneParts(card).final;
+            const upload = jest.mocked(uploadImages).getMockImplementation()!;
+            jest.mocked(uploadImages).mockImplementationOnce(async (...args) => {
+                deleteElements(doc, [card.id]);
+                return upload(...args);
+            });
+            await drop(surface, [png('final.png')], [f.x + (f.w / 2), f.y + (f.h / 2)]);
+            expect(els()).toHaveLength(0);
+        });
+
+        test('an upload that finishes during a drag waits for it, so cancelling the drag keeps the import', async () => {
+            const {root, surface, doc, els} = await renderBoard();
+            act(() => addElement(doc, {...DEFAULT_STYLE, id: 'A', type: 'scene', x: 0, y: 0, w: 300, h: 300, z: 1, seed: 1, label: 'A', done: false}));
+            const upload = jest.mocked(uploadImages).getMockImplementation()!;
+            let finish = () => {};
+            jest.mocked(uploadImages).mockImplementationOnce((...args) => new Promise((resolve) => {
+                finish = () => resolve(upload(...args));
+            }));
+            await drop(surface, [png('late.png')], [1000, 1000]);
+
+            fireEvent.pointerDown(surface, {button: 0, clientX: 100, clientY: 20});
+            fireEvent.pointerMove(surface, {clientX: 150, clientY: 50});
+            await act(async () => finish());
+            expect(scenes(els())).toHaveLength(1); // not written mid-drag
+            fireEvent.pointerCancel(surface, {clientX: 150, clientY: 50});
+
+            expect(els().find((e) => e.id === 'A')).toMatchObject({x: 0, y: 0});
+            expect(scenes(els()).map((c) => c.label).sort()).toEqual(['A', 'late']);
+            fireEvent.keyDown(root, {key: 'z', ctrlKey: true});
+            expect(scenes(els()).map((c) => c.label)).toEqual(['A']);
         });
 
         test('non-images are refused with a message', async () => {
@@ -700,17 +742,86 @@ describe('CanvasBoard', () => {
             expect(root).toBeInTheDocument();
         });
 
-        test('pasting a lone image does not keep it attached to the original card', async () => {
-            const {root, surface, els} = await seed(false, card('A', 0, 1), image('i', 'A', 16, 2));
+        test('a lone image copy joins the card under its centre, or none', async () => {
+            const {root, surface, els, byId} = await seed(false, card('A', 0, 1), card('B', 500, 2), image('i', 'A', 16, 3));
+            click(surface, [50, 100]);
+            fireEvent.keyDown(root, {key: 'd', ctrlKey: true}); // lands 10 px down and right, still on A
+            const dup = els().find((e) => e.type === 'image' && e.id !== 'i')!;
+            expect(dup.sceneId).toBe('A');
+
             click(surface, [50, 100]);
             fireEvent.keyDown(root, {key: 'c', ctrlKey: true});
+            fireEvent.pointerMove(surface, {clientX: 600, clientY: 100});
             fireEvent.paste(root, {clipboardData: {files: [], types: ['text/plain']}});
-            fireEvent.keyDown(root, {key: 'd', ctrlKey: true});
+            fireEvent.pointerMove(surface, {clientX: 2000, clientY: 2000});
+            fireEvent.paste(root, {clipboardData: {files: [], types: ['text/plain']}});
 
-            const copies = els().filter((e) => e.type === 'image' && e.id !== 'i');
-            expect(copies).toHaveLength(2);
-            expect(copies.every((e) => e.sceneId === undefined)).toBe(true);
-            expect(els().find((e) => e.id === 'i')!.sceneId).toBe('A');
+            const pasted = els().filter((e) => e.type === 'image' && e.id !== 'i' && e.id !== dup.id);
+            expect(pasted.map((e) => e.sceneId)).toEqual(['B', undefined]);
+            expect(byId('i').sceneId).toBe('A');
+        });
+
+        test('pasting from another channel\'s canvas leaves its images and finals out, with a notice', async () => {
+            const first = await seed(false, card('A', 0, 1, {finalFileId: FINAL, finalName: 'end.jpg'}), image('i', 'A', 16, 2), card('B', 500, 3));
+            click(first.surface, [100, 20]);
+            fireEvent.pointerDown(first.surface, {button: 0, clientX: 600, clientY: 20, shiftKey: true});
+            fireEvent.pointerUp(first.surface, {clientX: 600, clientY: 20});
+            fireEvent.keyDown(first.root, {key: 'c', ctrlKey: true});
+            first.unmount();
+
+            const {root, els} = await renderBoard(false, 'channel2');
+            fireEvent.paste(root, {clipboardData: {files: [], types: ['text/plain']}});
+            const list = els();
+            expect(list.map((e) => e.type)).toEqual(['scene', 'scene']);
+            expect(list.every((e) => e.finalFileId === undefined && e.finalName === undefined)).toBe(true);
+            expect(screen.getByText(/another channel/)).toBeInTheDocument();
+        });
+
+        test('pasting a lone image from another channel pastes nothing but the notice', async () => {
+            const first = await seed(false, card('A', 0, 1), image('i', 'A', 16, 2));
+            click(first.surface, [50, 100]);
+            fireEvent.keyDown(first.root, {key: 'c', ctrlKey: true});
+            first.unmount();
+
+            const {root, els} = await renderBoard(false, 'channel2');
+            fireEvent.paste(root, {clipboardData: {files: [], types: ['text/plain']}});
+            expect(els()).toHaveLength(0);
+            expect(screen.getByText(/another channel/)).toBeInTheDocument();
+        });
+
+        test('a click that jitters under 4 px moves nothing, even on an image\'s overhang', async () => {
+            const {surface, byId} = await seed(false, card('A', 0, 1), image('i', 'A', 250, 3));
+            const before = byId('i');
+            fireEvent.pointerDown(surface, {button: 0, clientX: 330, clientY: 100});
+            fireEvent.pointerMove(surface, {clientX: 332, clientY: 101});
+            fireEvent.pointerUp(surface, {clientX: 332, clientY: 101});
+            expect(byId('i')).toEqual(before);
+
+            drag(surface, [330, 100], [340, 100]); // past the threshold it moves by the whole distance
+            expect(byId('i').x).toBe(260);
+        });
+
+        test('bringing a card to front keeps its images above it', async () => {
+            const {surface, byId} = await seed(false, card('A', 0, 1), image('i', 'A', 16, 2), {...card('R', 0, 3), type: 'rect', y: 200, h: 50});
+            click(surface, [150, 20]);
+            fireEvent.click(screen.getByRole('button', {name: 'Bring to front'}));
+            expect(byId('A').z).toBeGreaterThan(byId('R').z);
+            expect(byId('i').z).toBeGreaterThan(byId('A').z);
+        });
+
+        test('aligning cards moves their images with them, as one undo step', async () => {
+            const {root, surface, byId} = await seed(false, card('A', 0, 1), image('i', 'A', 16, 2), card('B', 500, 3), image('j', 'B', 516, 4));
+            click(surface, [100, 20]);
+            fireEvent.pointerDown(surface, {button: 0, clientX: 600, clientY: 20, shiftKey: true});
+            fireEvent.pointerUp(surface, {clientX: 600, clientY: 20});
+            fireEvent.click(screen.getByRole('button', {name: 'Align left'}));
+            expect(byId('B').x).toBe(0);
+            expect(byId('j').x).toBe(16);
+            expect(byId('i').x).toBe(16);
+
+            fireEvent.keyDown(root, {key: 'z', ctrlKey: true});
+            expect(byId('B').x).toBe(500);
+            expect(byId('j').x).toBe(516);
         });
 
         test('clicking an image does not re-parent it', async () => {
@@ -760,6 +871,18 @@ describe('CanvasBoard', () => {
             expect(screen.queryByRole('textbox', {name: 'Card label'})).not.toBeInTheDocument();
         });
 
+        test('Enter commits the label, which keeps no line breaks', async () => {
+            const {surface, byId} = await seed(false, card('A', 0, 1, {label: 'Old'}));
+            fireEvent.doubleClick(surface, {clientX: 100, clientY: 20});
+            const ta = screen.getByRole('textbox', {name: 'Card label'});
+            fireEvent.change(ta, {target: {value: 'Open\r\ning'}});
+            const enter = createEvent.keyDown(ta, {key: 'Enter'});
+            fireEvent(ta, enter);
+            expect(enter.defaultPrevented).toBe(true);
+            expect(byId('A').label).toBe('Opening');
+            expect(screen.queryByRole('textbox', {name: 'Card label'})).not.toBeInTheDocument();
+        });
+
         test('double-clicking an image opens the file preview', async () => {
             const {surface} = await seed(false, card('A', 0, 1), image('i', 'A', 16, 2));
             fireEvent.doubleClick(surface, {clientX: 50, clientY: 100});
@@ -792,6 +915,37 @@ describe('CanvasBoard', () => {
             const kid = list.find((e) => e.type === 'image' && e.id !== 'i')!;
             expect(kid.sceneId).toBe(copy.id);
             expect(list.find((e) => e.id === 'i')!.sceneId).toBe('A');
+        });
+
+        describe('names', () => {
+            const casper = () => jest.mocked(getMissingProfilesByIds).mockImplementation((ids: string[]) => ({
+                type: UserTypes.RECEIVED_PROFILES_LIST,
+                data: ids.filter((id) => id === GHOST).map((id) => ({id, username: 'casper'})),
+            }) as never);
+
+            test('read-only users load the channel members and see usernames, not ids', async () => {
+                casper();
+                const {surface} = await seed(true, card('A', 0, 1, {ownerId: GHOST}));
+                expect(getProfilesInChannel).toHaveBeenCalledWith('channel1', 0, 200);
+                click(surface, [100, 20]);
+                const panel = screen.getByRole('region', {name: 'Properties'});
+                expect(within(panel).getByText('casper')).toBeInTheDocument();
+                expect(within(panel).queryByText(GHOST)).not.toBeInTheDocument();
+            });
+
+            test('a non-member owner and authors are fetched once, then named everywhere', async () => {
+                casper();
+                const {doc, surface} = await seed(false, card('A', 0, 1, {ownerId: GHOST}), card('B', 500, 2, {ownerId: GHOST}));
+                expect(getMissingProfilesByIds).toHaveBeenCalledTimes(1);
+                expect(getMissingProfilesByIds).toHaveBeenCalledWith([GHOST]);
+                act(() => doc.getMap<Y.Map<unknown>>('elements').get('A')!.set('updatedBy', BOB));
+                expect(getMissingProfilesByIds).toHaveBeenLastCalledWith([BOB, GHOST]);
+
+                const drawn: Array<CanvasElement & {ownerName?: string}> = mockRenderer.draw.mock.calls.at(-1)![0];
+                expect(drawn.find((e) => e.id === 'A')!.ownerName).toBe('casper');
+                click(surface, [100, 20]);
+                expect(screen.getByRole('option', {name: 'casper'})).toBeInTheDocument();
+            });
         });
 
         test('an owned card is drawn in the owner\'s colour with their name', async () => {

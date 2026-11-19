@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
+import React, {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import {defineMessages, useIntl} from 'react-intl';
 import {useDispatch, useSelector, useStore} from 'react-redux';
 
@@ -11,9 +11,8 @@ import {IconButton} from '@mattermost/compass-ui/components/icon-button';
 import {WithTooltip} from '@mattermost/shared/components/tooltip';
 import type {UserProfile} from '@mattermost/types/users';
 
-import {getProfilesInChannel} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
-import {getCurrentUser, getCurrentUserId, getUsers, makeGetProfilesInChannel} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUser, getCurrentUserId, getUsers} from 'mattermost-redux/selectors/entities/users';
 import {getFileUrl} from 'mattermost-redux/utils/file_utils';
 
 import {openModal} from 'actions/views/modals';
@@ -33,7 +32,7 @@ import type {PanelAction} from './canvas_properties';
 import CanvasToolbar, {TOOLS, keepFocus} from './canvas_toolbar';
 import type {Tool} from './canvas_toolbar';
 import {isImageFile, uploadImages} from './canvas_uploads';
-import {align, bounds, hitTest, inRect, resizeAll, unionBounds} from './geometry';
+import {bounds, hitTest, inRect, resizeAll, unionBounds} from './geometry';
 import type {Bounds, Handle, Point, ResizePatch} from './geometry';
 import {
     DEFAULT_STYLE,
@@ -58,9 +57,10 @@ import {
 import type {CanvasElement, ElementStyle, ElementType} from './model';
 import {CanvasRenderer} from './renderer';
 import type {DrawElement, RemoteCursor, RemoteSelection} from './renderer';
-import {SCENE_HEADER, labelFor, layoutScenes, membershipPatches, sceneAt, sceneParts, sortByName, stackInScene} from './storyboard';
+import {SCENE_HEADER, alignWithImages, joinCards, labelFor, layoutScenes, membershipPatches, sceneAt, sceneParts, sortByName, stackInScene} from './storyboard';
 import {CanvasSync} from './sync';
 import type {SyncStatus} from './sync';
+import {useCanvasPeople} from './use_canvas_people';
 
 import './canvas.scss';
 
@@ -69,7 +69,7 @@ const MAX_PEN_POINTS = 1000;
 const FLUSH_MS = 200; // how often a pen stroke or resize in progress reaches the doc
 const HIT_PX = 6;
 const MAX_SELECTION = 50;
-const CLICK_PX = 4; // a read-only press that moves less than this (screen pixels) is a click
+const CLICK_PX = 4; // a press that moves less than this (screen pixels) is a click: it neither selects nor drags
 const MIN_CARD = 2 * SCENE_HEADER;
 const LABEL_FONT = 20;
 const PEER_COLORS = ['#e03131', '#2f9e44', '#1971c2', '#f08c00', '#9c36b5', '#0c8599', '#e8590c', '#5c940d'];
@@ -87,6 +87,8 @@ const messages = defineMessages({
     uploading: {id: 'canvas.import.uploading', defaultMessage: 'Uploading images {done}/{total}…'},
     skipped: {id: 'canvas.import.skipped', defaultMessage: 'Only PNG and JPEG images can be added. Skipped: {names}'},
     uploadFailed: {id: 'canvas.import.failed', defaultMessage: 'Could not upload: {names}'},
+    oneFinal: {id: 'canvas.import.oneFinal', defaultMessage: 'A card holds one final image. Skipped: {names}'},
+    leftOut: {id: 'canvas.paste.leftOut', defaultMessage: 'Images copied from another channel were left out, as they can only be viewed there.'},
     dismiss: {id: 'canvas.import.dismiss', defaultMessage: 'Dismiss'},
     labelInput: {id: 'canvas.labelInput', defaultMessage: 'Card label'},
 });
@@ -121,7 +123,7 @@ function clampCard(pt: ResizePatch, handle: Handle): ResizePatch {
 }
 
 // In memory and shared by every board on the page, so elements can be copied between canvases.
-let clipboard: CanvasElement[] = [];
+let clipboard: {channelId: string; els: CanvasElement[]} = {channelId: '', els: []};
 
 const handleAt = (b: Bounds, p: Point, tol: number) =>
     HANDLES.find(([, fx, fy]) => Math.abs(p.x - (b.x + (fx * b.w))) <= tol && Math.abs(p.y - (b.y + (fy * b.h))) <= tol)?.[0];
@@ -133,7 +135,7 @@ type PenGesture = {kind: 'pen'; el: CanvasElement; abs: number[]; flushed: numbe
 type ResizeGesture = {kind: 'resize'; start: Point; orig: CanvasElement[]; handle: Handle; pending?: ResizePatch[]; flushedAt: number};
 
 type Gesture = (
-    {kind: 'move'; start: Point; orig: CanvasElement[]} |
+    {kind: 'move'; start: Point; screen: Point; orig: CanvasElement[]; moved?: boolean} |
     ResizeGesture |
     {kind: 'marquee'; start: Point; base: string[]} |
     {kind: 'draw'; start: Point; type: ElementType; id?: string} |
@@ -169,7 +171,6 @@ function Board({channelId, readOnly}: Props) {
     const users = useSelector(getUsers);
     const store = useStore<GlobalState>();
     const dispatch = useDispatch();
-    const getChannelProfiles = useMemo(() => makeGetProfilesInChannel(), []);
 
     const [{doc, elements, undo}] = useState(createCanvasDoc);
     const [ready, setReady] = useState(false);
@@ -190,13 +191,7 @@ function Board({channelId, readOnly}: Props) {
     const [canUndo, setCanUndo] = useState(false);
     const [canRedo, setCanRedo] = useState(false);
     const [progress, setProgress] = useState<{done: number; total: number}>();
-    const [notice, setNotice] = useState<{skipped: string[]; failed: string[]}>();
-
-    // Uploader user id by file id, from the file's info; a fetch that fails just leaves the line out.
-    const [uploaders, setUploaders] = useState<Record<string, string>>({});
-    const fetchedRef = useRef(new Set<string>());
-    const aliveRef = useRef(true);
-    const channelMembers = useSelector((s: GlobalState) => getChannelProfiles(s, channelId));
+    const [notice, setNotice] = useState<{skipped: string[]; failed: string[]; extra?: string[]; leftOut?: boolean}>();
 
     const rootRef = useRef<HTMLDivElement>(null);
     const surfaceRef = useRef<HTMLDivElement>(null);
@@ -208,6 +203,9 @@ function Board({channelId, readOnly}: Props) {
     const pointersRef = useRef(new Set<number>());
     const pointerRef = useRef<Point | undefined>(undefined);
     const readDownRef = useRef<Point | undefined>(undefined);
+
+    // Writes held back until the gesture ends, so they neither join its undo step nor are undone with it.
+    const deferredRef = useRef<Array<() => void>>([]);
 
     // Handlers read these rather than state, which can lag behind the doc within one event.
     const elsRef = useRef<CanvasElement[]>([]);
@@ -261,6 +259,12 @@ function Board({channelId, readOnly}: Props) {
             setMarquee(undefined);
             select(g.base);
         }
+        runDeferred();
+    };
+    const runDeferred = () => {
+        const fns = deferredRef.current;
+        deferredRef.current = [];
+        fns.forEach((fn) => fn());
     };
     const discrete = (fn: () => void) => {
         undo.stopCapturing();
@@ -275,7 +279,9 @@ function Board({channelId, readOnly}: Props) {
     const duplicateSelection = () => {
         let ids: string[] = [];
         discrete(() => {
+            const before = new Set(elsRef.current.map((el) => el.id));
             ids = duplicateElements(doc, selRef.current);
+            updateInBatches(doc, joinCards(elsRef.current.filter((el) => !before.has(el.id)), elsRef.current));
         });
         select(ids);
     };
@@ -493,7 +499,7 @@ function Board({channelId, readOnly}: Props) {
         edit(undefined);
         const text = textRef.current?.value ?? ed.text;
         if (ed.field) {
-            discrete(() => updateElements(doc, [ed.id], {label: text.slice(0, MAX_LABEL_LENGTH)}));
+            discrete(() => updateElements(doc, [ed.id], {label: text.replace(/[\r\n]/g, '').slice(0, MAX_LABEL_LENGTH)}));
             return;
         }
         const zoom = renderer?.getZoom() ?? 1;
@@ -555,7 +561,7 @@ function Board({channelId, readOnly}: Props) {
             } else if (id) {
                 const ids = sel.includes(id) ? sel : [id];
                 select(ids);
-                beginGesture({kind: 'move', pointerId, start: p, orig: pick(withChildren(all, ids))});
+                beginGesture({kind: 'move', pointerId, start: p, screen: {x: e.clientX, y: e.clientY}, orig: pick(withChildren(all, ids))});
             } else {
                 const base = e.shiftKey ? sel : [];
                 select(base);
@@ -618,7 +624,10 @@ function Board({channelId, readOnly}: Props) {
         const dx = p.x - g.start.x;
         const dy = p.y - g.start.y;
         if (g.kind === 'move') {
-            moveBy(g.orig, dx, dy);
+            g.moved ||= Math.hypot(e.clientX - g.screen.x, e.clientY - g.screen.y) > CLICK_PX;
+            if (g.moved) {
+                moveBy(g.orig, dx, dy);
+            }
         } else if (g.kind === 'resize') {
             g.pending = resizeAll(g.orig, g.handle, dx, dy).map((pt, i) => (g.orig[i].type === 'scene' ? clampCard(pt, g.handle) : pt));
             setPreview(g.orig.map((el, i) => ({...el, ...g.pending?.[i]})));
@@ -660,12 +669,9 @@ function Board({channelId, readOnly}: Props) {
             flushPen(g);
         } else if (g.kind === 'resize') {
             flushResize(g);
-        } else if (g.kind === 'move' && renderer) {
+        } else if (g.kind === 'move' && g.moved && renderer) {
             // Dropping an image on a card (or on the empty board) re-parents it, in the same undo step as the move.
-            const p = renderer.toWorld(e.clientX, e.clientY);
-            if (p.x !== g.start.x || p.y !== g.start.y) {
-                updateInBatches(doc, membershipPatches(elsRef.current, selRef.current, p, topZ()));
-            }
+            updateInBatches(doc, membershipPatches(elsRef.current, selRef.current, renderer.toWorld(e.clientX, e.clientY), topZ()));
         }
         endGesture();
         if (g.kind === 'marquee') {
@@ -676,6 +682,7 @@ function Board({channelId, readOnly}: Props) {
         } else if (g.kind === 'text') {
             edit({id: generateId(), x: g.start.x, y: g.start.y, isNew: true, style, text: ''});
         }
+        runDeferred();
     };
 
     const onPointerLeave = () => {
@@ -724,18 +731,30 @@ function Board({channelId, readOnly}: Props) {
     };
 
     const copy = () => {
-        clipboard = pick(withChildren(elsRef.current, selRef.current));
+        clipboard = {channelId, els: pick(withChildren(elsRef.current, selRef.current))};
     };
 
     const paste = () => {
-        if (!clipboard.length) {
+        // A file can only be viewed in its own channel, so images and finals stay behind on another channel's canvas.
+        let list = clipboard.els;
+        if (clipboard.channelId !== channelId) {
+            list = list.filter((el) => el.type !== 'image').map((el) => ({...el, finalFileId: undefined, finalName: undefined}));
+            if (list.length < clipboard.els.length || clipboard.els.some((el) => el.finalFileId)) {
+                setNotice({skipped: [], failed: [], leftOut: true});
+            }
+        }
+        if (!list.length) {
             return;
         }
-        const u = unionBounds(clipboard);
+        const u = unionBounds(list);
         const at = pointerRef.current ?? {x: u.x + (u.w / 2) + 10, y: u.y + (u.h / 2) + 10};
         const dx = at.x - (u.x + (u.w / 2));
         const dy = at.y - (u.y + (u.h / 2));
-        const copies = copyElements(clipboard, dx, dy, topZ());
+        const copies = copyElements(list, dx, dy, topZ());
+        const joined = new Map(joinCards(copies, [...elsRef.current, ...copies]).map((j) => [j.id, j.sceneId]));
+        copies.forEach((el) => {
+            el.sceneId = joined.get(el.id) ?? el.sceneId;
+        });
         const ids = new Set(copies.map((el) => el.id));
         discrete(() => writeInBatches(doc, copies));
         select(copies.filter((el) => !(el.type === 'image' && el.sceneId && ids.has(el.sceneId))).map((el) => el.id));
@@ -748,6 +767,7 @@ function Board({channelId, readOnly}: Props) {
         const before = elsRef.current;
         const finalCard = [...before].reverse().find((el) => el.type === 'scene' && contains(sceneParts(bounds(el)).final, at));
         const target = finalCard ?? sceneAt(before, at);
+        const extra = finalCard ? picked.slice(1).map((f) => f.name) : [];
         if (finalCard) {
             picked = picked.slice(0, 1);
         }
@@ -760,7 +780,7 @@ function Board({channelId, readOnly}: Props) {
         setProgress({done: 0, total: picked.length});
         const {uploaded, failed} = await uploadImages(channelId, picked, (done, total) => setProgress({done, total}));
         setProgress(undefined);
-        setNotice(skipped.length || failed.length ? {skipped, failed: failed.map((f) => f.name)} : undefined);
+        setNotice(skipped.length || failed.length || extra.length ? {skipped, failed: failed.map((f) => f.name), extra} : undefined);
         if (!uploaded.length) {
             return;
         }
@@ -770,33 +790,42 @@ function Board({channelId, readOnly}: Props) {
             name: file.name,
             aspect: Number.isFinite(info.width) && Number.isFinite(info.height) && info.width > 0 && info.height > 0 ? info.width / info.height : 1,
         }));
-        const now = elsRef.current;
-        const card = target && now.find((el) => el.id === target.id); // it may have been deleted during the upload
-        const top = topZ();
         const aspects = items.map((i) => i.aspect);
         const imageAt = (i: number, b: Bounds, sceneId: string, z: number) => newElement('image', b, {...items[i], w: b.w, h: b.h, sceneId, z});
-
-        if (card && finalCard) {
-            discrete(() => updateElements(doc, [card.id], {finalFileId: items[0].fileId, finalName: items[0].name}));
-        } else if (card) {
-            const existing = now.filter((el) => el.type === 'image' && el.sceneId === card.id).length;
-            const added = stackInScene(bounds(card), existing, aspects).map((b, i) => imageAt(i, b, card.id, top + 1 + i));
-            discrete(() => writeInBatches(doc, added));
-            select(added.map((el) => el.id));
+        const place = () => {
+            const now = elsRef.current;
+            const card = target && now.find((el) => el.id === target.id); // it may have been deleted during the upload
+            const top = topZ();
+            if (finalCard && !card) {
+                return;
+            }
+            if (card && finalCard) {
+                discrete(() => updateElements(doc, [card.id], {finalFileId: items[0].fileId, finalName: items[0].name}));
+            } else if (card) {
+                const existing = now.filter((el) => el.type === 'image' && el.sceneId === card.id).length;
+                const added = stackInScene(bounds(card), existing, aspects).map((b, i) => imageAt(i, b, card.id, top + 1 + i));
+                discrete(() => writeInBatches(doc, added));
+                select(added.map((el) => el.id));
+            } else {
+                const layout = layoutScenes(aspects, at);
+                const cards = layout.map(({scene}, i) => newElement('scene', scene, {
+                    w: scene.w,
+                    h: scene.h,
+                    z: top + 1 + i,
+                    stroke: style.stroke,
+                    fill: '#ffffff',
+                    label: labelFor(items[i].name),
+                    done: false,
+                }));
+                const added = layout.map(({image}, i) => imageAt(i, image, cards[i].id, top + 1 + cards.length + i));
+                discrete(() => writeInBatches(doc, [...cards, ...added]));
+                select(cards.map((el) => el.id));
+            }
+        };
+        if (gestureRef.current) {
+            deferredRef.current.push(place);
         } else {
-            const layout = layoutScenes(aspects, at);
-            const cards = layout.map(({scene}, i) => newElement('scene', scene, {
-                w: scene.w,
-                h: scene.h,
-                z: top + 1 + i,
-                stroke: style.stroke,
-                fill: '#ffffff',
-                label: labelFor(items[i].name),
-                done: false,
-            }));
-            const added = layout.map(({image}, i) => imageAt(i, image, cards[i].id, top + 1 + cards.length + i));
-            discrete(() => writeInBatches(doc, [...cards, ...added]));
-            select(cards.map((el) => el.id));
+            place();
         }
     };
     const importRef = useRef(importFiles);
@@ -895,10 +924,10 @@ function Board({channelId, readOnly}: Props) {
         } else if (a === 'delete') {
             deleteSelection();
         } else if (a === 'back' || a === 'backward' || a === 'forward' || a === 'front') {
-            discrete(() => reorder(doc, sel, a));
+            discrete(() => reorder(doc, withChildren(elsRef.current, sel), a));
         } else {
-            const moved = align(pick(sel), a);
-            discrete(() => doc.transact(() => Object.entries(moved).forEach(([id, p]) => updateElements(doc, [id], p)), LOCAL));
+            const moved = alignWithImages(elsRef.current, sel, a);
+            discrete(() => doc.transact(() => moved.forEach(({id, x, y}) => updateElements(doc, [id], {x, y})), LOCAL));
         }
     };
 
@@ -965,8 +994,8 @@ function Board({channelId, readOnly}: Props) {
     };
 
     const onTextKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Escape') {
-            e.preventDefault();
+        if (e.key === 'Escape' || (e.key === 'Enter' && !e.shiftKey && editingRef.current?.field)) {
+            e.preventDefault(); // a card label is one line
             commitText();
             rootRef.current?.focus({preventScroll: true});
         }
@@ -999,34 +1028,11 @@ function Board({channelId, readOnly}: Props) {
         );
     }
 
-    useEffect(() => {
-        aliveRef.current = true;
-        if (!readOnly) {
-            dispatch(getProfilesInChannel(channelId, 0, 200));
-        }
-        return () => {
-            aliveRef.current = false;
-        };
-
-        // Members load once per mount.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
     // What the panel edits: the selection if there is one, else the style of the next element drawn.
     const picked = els.filter((el) => selected.includes(el.id));
     const single = picked.length === 1 ? picked[0] : undefined;
     const fileId = single?.type === 'image' ? single.fileId : undefined;
-    useEffect(() => {
-        if (!fileId || fetchedRef.current.has(fileId)) {
-            return;
-        }
-        fetchedRef.current.add(fileId);
-        Client4.getFileInfo(fileId).then((info) => {
-            if (aliveRef.current) {
-                setUploaders((u) => ({...u, [fileId]: info.user_id}));
-            }
-        }).catch(() => {});
-    }, [fileId]);
+    const {members: channelMembers, uploaderId} = useCanvasPeople(channelId, els, fileId);
 
     const nameOf = (id?: string) => (id ? (users[id]?.username ?? id) : undefined);
     const owner = single?.type === 'scene' && single.ownerId ? users[single.ownerId] : undefined;
@@ -1035,11 +1041,11 @@ function Board({channelId, readOnly}: Props) {
         createdAt: single.createdAt,
         updatedBy: nameOf(single.updatedBy),
         updatedAt: single.updatedAt,
-        uploadedBy: fileId ? nameOf(uploaders[fileId]) : undefined,
+        uploadedBy: nameOf(uploaderId),
     };
 
-    // The owner is listed even when not a member of this channel (and, read-only, members are not loaded at all).
-    const panelScene = single?.type === 'scene' ? {ownerId: single.ownerId, done: single.done ?? false, members: [...channelMembers, ...(owner && !channelMembers.some((m) => m.id === owner.id) ? [owner] : [])].sort((a, b) => a.username.localeCompare(b.username))} : undefined;
+    // The owner is listed even when not a member of this channel.
+    const panelScene = single?.type === 'scene' ? {ownerId: single.ownerId, ownerName: nameOf(single.ownerId), done: single.done ?? false, members: [...channelMembers, ...(owner && !channelMembers.some((m) => m.id === owner.id) ? [owner] : [])].sort((a, b) => a.username.localeCompare(b.username))} : undefined;
     const onSceneChange = (patch: {ownerId?: string; done?: boolean}) => discrete(() => updateElements(doc, [single!.id], patch));
     let panelTypes: ElementType[] = [...new Set(picked.map((el) => el.type))];
     if (!picked.length && activeTool in DRAW_TOOLS) {
@@ -1133,6 +1139,8 @@ function Board({channelId, readOnly}: Props) {
                                 {[
                                     notice!.skipped.length ? formatMessage(messages.skipped, {names: nameList(notice!.skipped)}) : '',
                                     notice!.failed.length ? formatMessage(messages.uploadFailed, {names: nameList(notice!.failed)}) : '',
+                                    notice!.extra?.length ? formatMessage(messages.oneFinal, {names: nameList(notice!.extra)}) : '',
+                                    notice!.leftOut ? formatMessage(messages.leftOut) : '',
                                 ].filter(Boolean).join(' ')}
                             </span>
                             <WithTooltip title={formatMessage(messages.dismiss)}>

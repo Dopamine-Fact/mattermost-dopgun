@@ -347,6 +347,11 @@ describe('CanvasBoard properties panel', () => {
             expect(screen.getByRole('slider', {name: 'Opacity'})).toBeInTheDocument();
         });
 
+        test('an owned card hides the frame colour, which the owner colour replaces', () => {
+            renderScene({scene: {ownerId: 'user1', done: false, members}});
+            expect(has('Frame colour')).toBe(false);
+        });
+
         test('picks an owner from members, with None', () => {
             const {onSceneChange} = renderScene({scene: {ownerId: 'user1', done: false, members}});
             const select = screen.getByRole('combobox', {name: 'Owner'});
@@ -373,7 +378,7 @@ describe('CanvasBoard properties panel', () => {
         });
 
         test('read-only shows info, owner and done without controls', () => {
-            renderScene({readOnly: true, scene: {ownerId: 'user2', done: true, members}, info: {createdBy: 'alice', createdAt: 1700000000000}});
+            renderScene({readOnly: true, scene: {ownerId: 'user2', ownerName: 'bob', done: true, members}, info: {createdBy: 'alice', createdAt: 1700000000000}});
             expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
             expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
             expect(screen.queryByRole('button')).not.toBeInTheDocument();
