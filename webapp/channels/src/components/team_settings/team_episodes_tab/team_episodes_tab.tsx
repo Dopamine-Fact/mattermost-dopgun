@@ -6,6 +6,8 @@ import {defineMessages} from 'react-intl';
 
 import SaveChangesPanel, {type SaveChangesPanelState} from 'components/widgets/modals/components/save_changes_panel';
 
+import {parseEpisodeFolders, serializeEpisodeFolders} from './episode_folders';
+import type {EpisodeFolder} from './episode_folders';
 import TeamEpisodeTemplatesSection from './team_episode_templates_section';
 import TeamTasksSection from './team_tasks_section';
 
@@ -16,7 +18,7 @@ import './team_episodes_tab.scss';
 const translations = defineMessages({
     EpisodeFoldersInvalid: {
         id: 'general_tab.episodeFoldersInvalid',
-        defaultMessage: 'Invalid default episode folders. Use at most 100 lines and 4000 characters, one folder path per line with valid folder names separated by /.',
+        defaultMessage: 'Invalid default episode folders. Use at most 100 folders with valid names, make sure everyone who may change a folder can see it, and mirror only a plain folder that is not inside or around the mirror.',
     },
     EpisodeTasksInvalid: {
         id: 'general_tab.episodeTasksInvalid',
@@ -30,7 +32,7 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
     const [tasksEnabled, setTasksEnabled] = useState<boolean>(Boolean(team.tasks_enabled));
     const [revisionsEnabled, setRevisionsEnabled] = useState<boolean>(Boolean(team.revisions_enabled));
     const [canvasEnabled, setCanvasEnabled] = useState<boolean>(Boolean(team.canvas_enabled));
-    const [episodeFolders, setEpisodeFolders] = useState<string>(team.episode_folders ?? '');
+    const [episodeFolders, setEpisodeFolders] = useState<EpisodeFolder[]>(() => parseEpisodeFolders(team.episode_folders));
     const [episodeTasks, setEpisodeTasks] = useState<string>(team.episode_tasks ?? '');
 
     // Which template the server rejected on the last save.
@@ -38,7 +40,8 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
     const [saveChangesPanelState, setSaveChangesPanelState] = useState<SaveChangesPanelState>();
 
     const handleSaveChanges = useCallback(async () => {
-        const foldersChanged = episodeFolders !== (team.episode_folders ?? '');
+        const serializedFolders = serializeEpisodeFolders(episodeFolders);
+        const foldersChanged = serializedFolders !== serializeEpisodeFolders(parseEpisodeFolders(team.episode_folders));
         const tasksChanged = episodeTasks !== (team.episode_tasks ?? '');
         const changed = foldersChanged || tasksChanged || tasksEnabled !== Boolean(team.tasks_enabled) || revisionsEnabled !== Boolean(team.revisions_enabled) || canvasEnabled !== Boolean(team.canvas_enabled);
         if (changed) {
@@ -47,7 +50,7 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
                 tasks_enabled: tasksEnabled,
                 revisions_enabled: revisionsEnabled,
                 canvas_enabled: canvasEnabled,
-                ...(foldersChanged && {episode_folders: episodeFolders}),
+                ...(foldersChanged && {episode_folders: serializedFolders}),
                 ...(tasksChanged && {episode_tasks: episodeTasks}),
             });
             if (error) {
@@ -77,7 +80,7 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
         setTasksEnabled(Boolean(team.tasks_enabled));
         setRevisionsEnabled(Boolean(team.revisions_enabled));
         setCanvasEnabled(Boolean(team.canvas_enabled));
-        setEpisodeFolders(team.episode_folders ?? '');
+        setEpisodeFolders(parseEpisodeFolders(team.episode_folders));
         setEpisodeTasks(team.episode_tasks ?? '');
         setTemplateError(undefined);
         handleClose();
@@ -107,6 +110,7 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
             />
             {tasksEnabled && revisionsEnabled && (
                 <TeamEpisodeTemplatesSection
+                    teamId={team.id}
                     folders={episodeFolders}
                     tasks={episodeTasks}
                     handleFoldersChange={edited(setEpisodeFolders)}
