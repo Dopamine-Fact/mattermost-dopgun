@@ -4673,6 +4673,22 @@ func (s *TimerLayerDailyReportStore) Delete(id string) error {
 	return err
 }
 
+func (s *TimerLayerDailyReportStore) Excuse(id string, reviewerID string, excusedAt int64) error {
+	start := time.Now()
+
+	err := s.DailyReportStore.Excuse(id, reviewerID, excusedAt)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.Excuse", success, elapsed)
+	}
+	return err
+}
+
 func (s *TimerLayerDailyReportStore) Get(id string) (*model.DailyReport, error) {
 	start := time.Now()
 

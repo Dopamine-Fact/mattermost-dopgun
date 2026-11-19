@@ -68,6 +68,24 @@ func (_m *DailyReportStore) Delete(id string) error {
 	return r0
 }
 
+// Excuse provides a mock function with given fields: id, reviewerID, excusedAt
+func (_m *DailyReportStore) Excuse(id string, reviewerID string, excusedAt int64) error {
+	ret := _m.Called(id, reviewerID, excusedAt)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Excuse")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, int64) error); ok {
+		r0 = rf(id, reviewerID, excusedAt)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Get provides a mock function with given fields: id
 func (_m *DailyReportStore) Get(id string) (*model.DailyReport, error) {
 	ret := _m.Called(id)

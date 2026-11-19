@@ -131,6 +131,17 @@ func (s *SqlDailyReportStore) Approve(id, approverID string, auto bool, approved
 		Where(reviewWhere(id, seenUpdateAt, model.DailyReportStatusPending)))
 }
 
+// Excuse turns a draft into an excused day; see DailyReportStore.Excuse.
+func (s *SqlDailyReportStore) Excuse(id, reviewerID string, excusedAt int64) error {
+	return s.review(id, "excuse", s.getQueryBuilder().
+		Update("DailyReports").
+		Set("Status", model.DailyReportStatusExcused).
+		Set("ApprovedBy", reviewerID).
+		Set("ApprovedAt", excusedAt).
+		Set("UpdateAt", model.GetMillis()).
+		Where(reviewWhere(id, 0, model.DailyReportStatusDraft)))
+}
+
 // Reject rejects a pending or approved report; see DailyReportStore.Reject.
 func (s *SqlDailyReportStore) Reject(id, rejecterID, reason string, rejectedAt, seenUpdateAt int64) error {
 	return s.review(id, "reject", s.getQueryBuilder().

@@ -25,6 +25,7 @@ func TestDailyReportStore(t *testing.T, rctx request.CTX, ss store.Store) {
 	t.Run("Assignees", func(t *testing.T) { testDailyReportAssignees(t, ss) })
 	t.Run("Files", func(t *testing.T) { testDailyReportFiles(t, ss) })
 	t.Run("GetBeforeDate", func(t *testing.T) { testDailyReportGetBeforeDate(t, ss) })
+	t.Run("Excuse", func(t *testing.T) { testDailyReportExcuse(t, ss) })
 }
 
 func newDailyReport(teamID, userID, date string) *model.DailyReport {
@@ -336,4 +337,24 @@ func testDailyReportGetBeforeDate(t *testing.T, ss store.Store) {
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	require.Equal(t, oldDraft.Id, got[0].Id)
+}
+
+func testDailyReportExcuse(t *testing.T, ss store.Store) {
+	draft := newDailyReport(model.NewId(), model.NewId(), "2026-11-18")
+	draft.Status = model.DailyReportStatusDraft
+	draft, err := ss.DailyReport().Save(draft)
+	require.NoError(t, err)
+	require.NoError(t, ss.DailyReport().Excuse(draft.Id, "reviewer", 1234))
+	got, err := ss.DailyReport().Get(draft.Id)
+	require.NoError(t, err)
+	require.Equal(t, model.DailyReportStatusExcused, got.Status)
+	require.Equal(t, "reviewer", got.ApprovedBy)
+	require.Equal(t, int64(1234), got.ApprovedAt)
+
+	sent, err := ss.DailyReport().Save(newDailyReport(model.NewId(), model.NewId(), "2026-11-18"))
+	require.NoError(t, err)
+	var conflictErr *store.ErrConflict
+	require.ErrorAs(t, ss.DailyReport().Excuse(sent.Id, "reviewer", 1234), &conflictErr, "only a draft can be excused in place")
+	var nfErr *store.ErrNotFound
+	require.ErrorAs(t, ss.DailyReport().Excuse(model.NewId(), "reviewer", 1234), &nfErr)
 }

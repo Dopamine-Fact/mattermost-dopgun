@@ -455,8 +455,15 @@ func (a *App) ExportDailyReportsCSV(w io.Writer, reports []*model.DailyReport) *
 
 	cw := csv.NewWriter(w)
 	_ = cw.Write([]string{"date", "user", "message", "finished_tasks", "status", "rejected_by", "reject_reason", "edited",
-		"auto_approved", "approved_by", "approved_at", "submitted_at"})
+		"auto_approved", "approved_by", "approved_at", "submitted_at", "attachments"})
 	for _, r := range reports {
+		if r.Status == model.DailyReportStatusDraft {
+			continue
+		}
+		files := make([]string, len(r.Files))
+		for i, f := range r.Files {
+			files[i] = f.Name
+		}
 		titles := make([]string, len(r.Tasks))
 		for i, t := range r.Tasks {
 			titles[i] = t.Title
@@ -469,7 +476,7 @@ func (a *App) ExportDailyReportsCSV(w io.Writer, reports []*model.DailyReport) *
 			r.Date, csvSafe(name(r.UserId)), csvSafe(r.Message), csvSafe(strings.Join(titles, "; ")), r.Status,
 			csvSafe(name(r.RejectedBy)), csvSafe(r.RejectReason), strconv.FormatBool(r.Edited),
 			strconv.FormatBool(r.AutoApproved), name(r.ApprovedBy), approvedAt,
-			time.UnixMilli(r.CreateAt).UTC().Format(time.RFC3339),
+			time.UnixMilli(r.CreateAt).UTC().Format(time.RFC3339), csvSafe(strings.Join(files, ", ")),
 		})
 	}
 	cw.Flush()
@@ -487,7 +494,8 @@ func csvSafe(s string) string {
 	return s
 }
 
-// RunDailyReportTick sends the 10 and 5 minute reminders and auto-approves reports left pending for 30 minutes.
+// RunDailyReportTick sends the 10 and 5 minute reminders, removes what past days left unsent, and auto-approves
+// reports left pending for 30 minutes.
 // It runs every minute on the leader; each step logs its failures and carries on.
 func (a *App) RunDailyReportTick(rctx request.CTX, now time.Time) {
 	teams, err := a.Srv().Store().Team().GetAll()
@@ -497,6 +505,7 @@ func (a *App) RunDailyReportTick(rctx request.CTX, now time.Time) {
 	for _, team := range teams {
 		if team.DailyReportsEnabled && team.DeleteAt == 0 {
 			a.sendDailyReportReminders(rctx, team, now)
+			a.cleanUpDailyReportFiles(rctx, team, now)
 		}
 	}
 
@@ -563,7 +572,7 @@ func (a *App) sendDailyReportReminders(rctx request.CTX, team *model.Team, now t
 	}
 	reported := make(map[string]bool, len(reports))
 	for _, r := range reports {
-		reported[r.UserId] = true
+		reported[r.UserId] = r.Status != model.DailyReportStatusDraft
 	}
 	for _, user := range users {
 		if user.IsBot || reported[user.Id] || (len(assignees) > 0 && !slices.Contains(assignees, user.Id)) {
@@ -771,4 +780,96 @@ func (a *App) dailyReportFilesChanged(rctx request.CTX, where string, report *mo
 	}
 	a.publishDailyReport(rctx, report)
 	return nil
+}
+
+// ExcuseDailyReport marks userID's day as excused by reviewerID. date must be today or earlier (team-local);
+// a sent report that day is a 409, and a draft is turned into an excused day with its files kept.
+func (a *App) ExcuseDailyReport(rctx request.CTX, teamID, userID, date, reviewerID string) (*model.DailyReport, *model.AppError) {
+	team, appErr := a.RequireDailyReportsEnabled(teamID)
+	if appErr != nil {
+		return nil, appErr
+	}
+	loc, appErr := teamLocation("ExcuseDailyReport", team)
+	if appErr != nil {
+		return nil, appErr
+	}
+	if _, err := time.Parse(time.DateOnly, date); err != nil || date > time.Now().In(loc).Format(time.DateOnly) {
+		return nil, model.NewAppError("ExcuseDailyReport", "app.daily_report.invalid_date.app_error", nil, "date="+date, http.StatusBadRequest)
+	}
+
+	ds := a.Srv().Store().DailyReport()
+	now := model.GetMillis()
+	report, err := ds.GetForUserDate(teamID, userID, date)
+	var nfErr *store.ErrNotFound
+	var conflictErr *store.ErrConflict
+	if errors.As(err, &nfErr) {
+		report, err = ds.Save(&model.DailyReport{TeamId: teamID, UserId: userID, Date: date, Status: model.DailyReportStatusExcused,
+			ApprovedBy: reviewerID, ApprovedAt: now, Tasks: []model.DailyReportTask{}})
+		if errors.As(err, &conflictErr) { // the author uploaded or sent meanwhile: judge that row below
+			report, err = ds.GetForUserDate(teamID, userID, date)
+		}
+	}
+	if err == nil && report.Status == model.DailyReportStatusDraft {
+		// Guarded on the draft status: a send landing in between wins and comes back as a conflict.
+		if err = ds.Excuse(report.Id, reviewerID, now); err == nil || errors.As(err, &conflictErr) {
+			report, err = ds.Get(report.Id)
+		}
+	}
+	if err != nil {
+		return nil, dailyReportStoreError("ExcuseDailyReport", teamID, err)
+	}
+	if report.IsSent() {
+		return nil, model.NewAppError("ExcuseDailyReport", "app.daily_report.already_sent.app_error", nil, "id="+report.Id, http.StatusConflict)
+	}
+	a.publishDailyReport(rctx, report)
+	if appErr := a.fillDailyReportFiles([]*model.DailyReport{report}); appErr != nil {
+		return nil, appErr
+	}
+	return report, nil
+}
+
+// cleanUpDailyReportFiles removes what past days left unsent: drafts go with their files, excused days keep the row
+// and lose their files, which nobody but the author ever saw.
+func (a *App) cleanUpDailyReportFiles(rctx request.CTX, team *model.Team, now time.Time) {
+	logger := rctx.Logger().With(mlog.String("team_id", team.Id))
+	today, err := DailyReportDate(team, now)
+	if err != nil {
+		return // sendDailyReportReminders already warned about the schedule
+	}
+	ds := a.Srv().Store().DailyReport()
+	for _, status := range []string{model.DailyReportStatusDraft, model.DailyReportStatusExcused} {
+		reports, err := ds.GetBeforeDate(team.Id, status, today)
+		if err != nil {
+			logger.Error("Daily report cleanup: failed to load the reports", mlog.String("status", status), mlog.Err(err))
+			continue
+		}
+		if len(reports) == 0 {
+			continue
+		}
+		ids := make([]string, len(reports))
+		for i, r := range reports {
+			ids[i] = r.Id
+		}
+		links, err := ds.GetFileIds(ids)
+		if err != nil {
+			logger.Error("Daily report cleanup: failed to load the files", mlog.Err(err))
+			continue
+		}
+		for _, r := range reports {
+			if status == model.DailyReportStatusDraft {
+				err = ds.Delete(r.Id)
+			} else {
+				for _, fileID := range links[r.Id] {
+					if err = ds.RemoveFile(r.Id, fileID); err != nil {
+						break
+					}
+				}
+			}
+			if err != nil {
+				logger.Error("Daily report cleanup: failed to remove the report's files", mlog.String("report_id", r.Id), mlog.Err(err))
+				continue
+			}
+			a.removeTaskFiles(rctx, links[r.Id])
+		}
+	}
 }
