@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -82,6 +83,18 @@ func requireCanAssign(c *Context, teamID, assigneeID string, permission *model.P
 	if assigneeID != "" && !c.App.CanActOnUser(c.AppContext, c.AppContext.Session().UserId, assigneeID, teamID, permission) {
 		c.Err = model.NewAppError("requireCanAssign", "api.task.assignee_not_outranked.app_error", nil, "", http.StatusForbidden)
 	}
+}
+
+// isTaskClaim: a department member taking an unassigned task of their department for themselves.
+func isTaskClaim(c *Context, task *model.Task, assigneeID string) (bool, *model.AppError) {
+	if assigneeID != c.AppContext.Session().UserId || task.AssigneeId != "" || task.DepartmentId == "" {
+		return false, nil
+	}
+	depts, appErr := c.App.UserDepartments(c.AppContext, task.TeamId, assigneeID)
+	if appErr != nil {
+		return false, appErr
+	}
+	return depts[task.DepartmentId], nil
 }
 
 func writeTaskJSON(w http.ResponseWriter, status int, v any) {
@@ -182,13 +195,28 @@ func patchTask(c *Context, w http.ResponseWriter, r *http.Request) {
 		c.SetInvalidParamWithErr("task", err)
 		return
 	}
-	if patch.AssigneeId != nil && *patch.AssigneeId != task.AssigneeId {
-		permission := requireTaskPermission(c, task)
-		if c.Err != nil {
+	changesRules := (patch.DepartmentId != nil && *patch.DepartmentId != task.DepartmentId) ||
+		(patch.WaitsFor != nil && !slices.Equal(*patch.WaitsFor, task.WaitsFor))
+	if changesRules {
+		if requireTaskPermission(c, task); c.Err != nil {
 			return
 		}
-		if requireCanAssign(c, task.TeamId, *patch.AssigneeId, permission); c.Err != nil {
+	}
+	if patch.AssigneeId != nil && *patch.AssigneeId != task.AssigneeId {
+		claim, appErr := isTaskClaim(c, task, *patch.AssigneeId)
+		if appErr != nil {
+			c.Err = appErr
 			return
+		}
+		// A claim skips the permission checks; PatchTask still refuses it while the task is locked.
+		if !claim {
+			permission := requireTaskPermission(c, task)
+			if c.Err != nil {
+				return
+			}
+			if requireCanAssign(c, task.TeamId, *patch.AssigneeId, permission); c.Err != nil {
+				return
+			}
 		}
 	}
 

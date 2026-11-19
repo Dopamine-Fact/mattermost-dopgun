@@ -646,3 +646,83 @@ func TestDeleteTaskPostAsManager(t *testing.T) {
 	require.Error(t, err)
 	CheckForbiddenStatus(t, resp)
 }
+
+func TestPatchTaskDepartmentRules(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	ctx := context.Background()
+	team := th.BasicTeam
+	_, _, err := th.SystemAdminClient.PatchTeam(ctx, team.Id, &model.TeamPatch{TasksEnabled: new(true)})
+	require.NoError(t, err)
+
+	deptD := newTestDepartment(t, th, team.Id, "D")
+	deptE := newTestDepartment(t, th, team.Id, "E")
+	leadClient, _ := rankedClient(t, th, team, newTestRank(t, th, team.Id, deptD.Id, "Lead", model.PermissionManageTasks.Id))
+	memberClient, member := rankedClient(t, th, team, newTestRank(t, th, team.Id, deptD.Id, "Mid"))
+	otherClient, _ := rankedClient(t, th, team, newTestRank(t, th, team.Id, deptE.Id, "Mid"))
+
+	mk := func(task *model.Task) *model.Task {
+		task.TeamId, task.CreatorId = team.Id, th.SystemAdminUser.Id
+		created, appErr := th.App.CreateTask(th.Context, task, "")
+		require.Nil(t, appErr)
+		return created
+	}
+	claim := &model.TaskPatch{AssigneeId: &member.Id}
+
+	t.Run("department and waits_for need manage_tasks", func(t *testing.T) {
+		task, pred := mk(&model.Task{Title: "T"}), mk(&model.Task{Title: "Pred"})
+		waits := model.StringArray{pred.Id}
+
+		patched, _, err := leadClient.PatchTask(ctx, task.Id, &model.TaskPatch{DepartmentId: &deptD.Id, WaitsFor: &waits})
+		require.NoError(t, err)
+		require.Equal(t, deptD.Id, patched.DepartmentId)
+		require.Equal(t, waits, patched.WaitsFor)
+
+		_, resp, err := memberClient.PatchTask(ctx, task.Id, &model.TaskPatch{DepartmentId: &deptE.Id})
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		_, resp, err = memberClient.PatchTask(ctx, task.Id, &model.TaskPatch{WaitsFor: &model.StringArray{}})
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		// Re-sending the current values changes nothing.
+		_, _, err = memberClient.PatchTask(ctx, task.Id, &model.TaskPatch{DepartmentId: &deptD.Id, WaitsFor: &waits, Title: new("Renamed")})
+		require.NoError(t, err)
+	})
+
+	t.Run("claim", func(t *testing.T) {
+		task := mk(&model.Task{Title: "Pool", DepartmentId: deptD.Id})
+
+		_, resp, err := memberClient.PatchTask(ctx, task.Id, &model.TaskPatch{AssigneeId: &th.BasicUser2.Id})
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		_, resp, err = memberClient.PatchTask(ctx, task.Id, &model.TaskPatch{AssigneeId: &member.Id, DepartmentId: &deptE.Id})
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+
+		patched, _, err := memberClient.PatchTask(ctx, task.Id, claim)
+		require.NoError(t, err)
+		require.Equal(t, member.Id, patched.AssigneeId)
+
+		// Already assigned: a second claim is an ordinary assignment.
+		_, resp, err = memberClient.PatchTask(ctx, mk(&model.Task{Title: "Taken", DepartmentId: deptD.Id, AssigneeId: th.BasicUser2.Id}).Id, claim)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+	})
+
+	t.Run("other department cannot claim", func(t *testing.T) {
+		task := mk(&model.Task{Title: "Pool", DepartmentId: deptD.Id})
+		other := &model.TaskPatch{AssigneeId: &th.BasicUser.Id}
+		_, resp, err := otherClient.PatchTask(ctx, task.Id, other)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+	})
+
+	t.Run("claim on a locked pool task is refused", func(t *testing.T) {
+		pred := mk(&model.Task{Title: "Pred"})
+		task := mk(&model.Task{Title: "Locked", DepartmentId: deptD.Id, WaitsFor: model.StringArray{pred.Id}})
+		_, resp, err := memberClient.PatchTask(ctx, task.Id, claim)
+		require.Error(t, err)
+		CheckBadRequestStatus(t, resp)
+		require.Contains(t, err.Error(), "locked")
+	})
+}
