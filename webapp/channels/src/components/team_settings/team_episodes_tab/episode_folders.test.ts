@@ -3,6 +3,8 @@
 
 import {
     addEpisodeFolder,
+    episodeFoldersTooLarge,
+    isValidFolderName,
     mirrorSources,
     parseEpisodeFolders,
     removeEpisodeFolder,
@@ -65,5 +67,20 @@ describe('episode folders', () => {
         expect(mirrorSources(folders, 'Other')).toEqual(['BG', 'BG/Layout', 'Anim']);
         expect(mirrorSources(folders, 'BG/Layout')).toEqual(['Anim', 'Other']);
         expect(mirrorSources(folders, 'Anim')).toEqual(['BG', 'BG/Layout', 'Other']);
+    });
+
+    test('folder names follow the server rules', () => {
+        ['Ref', 'a b', 'Ünï'].forEach((n) => expect(isValidFolderName(n)).toBe(true));
+        ['', '.', '..', 'a.', ' a', 'a ', 'ab', 'a/b', 'a'.concat(String.fromCharCode(92), 'b'), 'a:b', 'a|b'].forEach((n) => expect(isValidFolderName(n)).toBe(false));
+        expect(isValidFolderName('a'.repeat(255))).toBe(true);
+        expect(isValidFolderName('a'.repeat(256))).toBe(false);
+        expect(isValidFolderName('😀'.repeat(255))).toBe(true);
+        expect(isValidFolderName('😀'.repeat(256))).toBe(false);
+    });
+
+    test('a template over the server size limit is too large', () => {
+        const ids = (n: number) => Array.from({length: n}, () => 'x'.repeat(26));
+        expect(episodeFoldersTooLarge([{path: 'A', view_departments: ids(10)}])).toBe(false);
+        expect(episodeFoldersTooLarge([{path: 'A', view_departments: ids(3500)}])).toBe(true);
     });
 });

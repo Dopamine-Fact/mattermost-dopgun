@@ -17,7 +17,18 @@ const NEW_FOLDER_NAME = 'New folder';
 const isUnder = (path: string, root: string) => path === root || path.startsWith(root + '/');
 
 // Same rules as the server's IsValidDriveItemName.
-export const isValidFolderName = (name: string) => name.trim() !== '' && name !== '.' && name !== '..' && !(/[/:*?"<>|]/).test(name) && !name.includes(String.fromCharCode(92));
+const NAME_MAX_RUNES = 255;
+// eslint-disable-next-line no-control-regex
+const FORBIDDEN_NAME_CHARS = /[/\\:*?"<>|\u0000-\u001f]/;
+export const isValidFolderName = (name: string) => (
+    name !== '' && name !== '.' && name !== '..' && [...name].length <= NAME_MAX_RUNES &&
+    !name.startsWith(' ') && !name.endsWith(' ') && !name.endsWith('.') && !FORBIDDEN_NAME_CHARS.test(name)
+);
+
+// Matches the server's TeamEpisodeFoldersMaxRunes.
+export const MAX_EPISODE_FOLDERS_RUNES = 100000;
+
+export const episodeFoldersTooLarge = (folders: EpisodeFolder[]) => [...serializeEpisodeFolders(folders)].length > MAX_EPISODE_FOLDERS_RUNES;
 
 export const parentPath = (path: string) => path.slice(0, Math.max(path.lastIndexOf('/'), 0));
 

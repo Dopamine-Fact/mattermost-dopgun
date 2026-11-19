@@ -25108,7 +25108,7 @@
     "description": "Heading and label of the Team Settings text box listing the folders every new episode channel's files start with."
   },
   "general_tab.episodeFoldersInvalid": {
-    "defaultMessage": "Invalid default episode folders. Use at most 100 folders with valid names, make sure everyone who may change a folder can see it, and mirror only a plain folder that is not inside or around the mirror.",
+    "defaultMessage": "Invalid default episode folders. Use at most 100 folders and 100000 characters in total, with valid names, make sure everyone who may change a folder can see it, and mirror only a plain folder that is not inside or around the mirror.",
     "description": "Error under the Default episode folders panel in Team Settings when the server rejects the template."
   },
   "general_tab.episodeTasks": {
@@ -33810,6 +33810,10 @@
   "team_settings.episodeFolders.rename": {
     "defaultMessage": "Rename {path}",
     "description": "Accessible label of the pencil button on a folder row in the episode folder template; {path} is the folder, like BG/Layout."
+  },
+  "team_settings.episodeFolders.tooLarge": {
+    "defaultMessage": "This template is too large to save. Remove folders or departments to make it smaller.",
+    "description": "Shown in Team Settings › Episodes when a change would make the episode folder template exceed the size the server accepts; the change is not applied."
   },
   "team_settings.episodeFolders.tree": {
     "defaultMessage": "Episode folders",

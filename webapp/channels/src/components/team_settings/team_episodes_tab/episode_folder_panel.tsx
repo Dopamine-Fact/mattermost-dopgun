@@ -12,6 +12,7 @@ import {useTeamDepartments} from 'components/profile_popover/use_custom_roles';
 
 import {
     addEpisodeFolder,
+    episodeFoldersTooLarge,
     folderName,
     folderNameTaken,
     isValidFolderName,
@@ -35,6 +36,7 @@ const msg = defineMessages({
     nameLabel: {id: 'team_settings.episodeFolders.nameLabel', defaultMessage: 'Folder name'},
     nameInvalid: {id: 'team_settings.episodeFolders.nameInvalid', defaultMessage: 'Folder names cannot be empty, "." or "..", or contain / \\ : * ? " < > |.'},
     nameTaken: {id: 'team_settings.episodeFolders.nameTaken', defaultMessage: 'A folder with this name already exists here.'},
+    tooLarge: {id: 'team_settings.episodeFolders.tooLarge', defaultMessage: 'This template is too large to save. Remove folders or departments to make it smaller.'},
     limit: {id: 'team_settings.episodeFolders.limit', defaultMessage: 'A template holds at most {max} folders.'},
     readOnly: {id: 'team_settings.episodeFolders.readOnly', defaultMessage: 'Read-only'},
     mirror: {id: 'team_settings.episodeFolders.mirror', defaultMessage: 'Mirror'},
@@ -158,7 +160,16 @@ const FolderDetail = ({folder, folders, departments, onChange}: DetailProps) => 
     };
 
     // Writers must stay among the viewers.
-    const setView = (ids: string[]) => set({view_departments: ids, write_departments: ids.length ? write.filter((id) => ids.includes(id)) : write});
+    // When narrowing leaves a chosen writer list empty, fail closed: nobody may change it, rather than everyone who sees it.
+    const setView = (ids: string[]) => {
+        const kept = ids.length ? write.filter((id) => ids.includes(id)) : write;
+        if (write.length && !kept.length) {
+            setWriteMode('nobody');
+            set({view_departments: ids, write_departments: [], read_only: true});
+            return;
+        }
+        set({view_departments: ids, write_departments: kept});
+    };
 
     const radio = (name: string, checked: boolean, label: string, onSelect: () => void, disabled?: boolean) => (
         <label className='EpisodeFolders__option'>
@@ -262,20 +273,32 @@ const EpisodeFolderPanel = ({teamId, folders, onChange}: Props) => {
     const {formatMessage} = useIntl();
     const departments = useTeamDepartments(teamId);
     const [selected, setSelected] = useState<string>();
+    const [tooLarge, setTooLarge] = useState(false);
     const [renaming, setRenaming] = useState<{path: string; text: string}>();
 
     const full = folders.length >= MAX_EPISODE_FOLDERS;
     const sorted = [...folders].sort(byPath);
     const current = folders.find((f) => f.path === selected);
 
+    // Refuses a change that would push the template over the server's size limit.
+    const apply = (next: EpisodeFolder[]) => {
+        setTooLarge(episodeFoldersTooLarge(next));
+        if (episodeFoldersTooLarge(next)) {
+            return false;
+        }
+        onChange(next);
+        return true;
+    };
+
     const add = (parent: string) => {
         const next = addEpisodeFolder(folders, parent);
-        onChange(next.folders);
-        setSelected(next.path);
+        if (apply(next.folders)) {
+            setSelected(next.path);
+        }
     };
 
     const remove = (path: string) => {
-        onChange(removeEpisodeFolder(folders, path));
+        apply(removeEpisodeFolder(folders, path));
         if (selected && isWithin(selected, path)) {
             setSelected(undefined);
         }
@@ -297,7 +320,7 @@ const EpisodeFolderPanel = ({teamId, folders, onChange}: Props) => {
         if (text === folderName(path) || renameProblem(path, text)) {
             return;
         }
-        onChange(renameEpisodeFolder(folders, path, text));
+        apply(renameEpisodeFolder(folders, path, text));
         if (selected && isWithin(selected, path)) {
             const parent = parentPath(path);
             setSelected((parent ? parent + '/' : '') + text + selected.slice(path.length));
@@ -402,6 +425,14 @@ const EpisodeFolderPanel = ({teamId, folders, onChange}: Props) => {
                     <PlusIcon size={16}/>
                     {formatMessage(msg.addFolder)}
                 </button>
+                {tooLarge && (
+                    <p
+                        role='alert'
+                        className='EpisodeFolders__error'
+                    >
+                        {formatMessage(msg.tooLarge)}
+                    </p>
+                )}
                 {full && <p className='EpisodeFolders__hint'>{formatMessage(msg.limit, {max: MAX_EPISODE_FOLDERS})}</p>}
             </div>
             {current ? (
@@ -410,7 +441,7 @@ const EpisodeFolderPanel = ({teamId, folders, onChange}: Props) => {
                     folder={current}
                     folders={folders}
                     departments={departments}
-                    onChange={(next) => onChange(folders.map((f) => (f.path === next.path ? next : f)))}
+                    onChange={(next) => apply(folders.map((f) => (f.path === next.path ? next : f)))}
                 />
             ) : (
                 <p className='EpisodeFolders__hint'>{formatMessage(msg.pick)}</p>

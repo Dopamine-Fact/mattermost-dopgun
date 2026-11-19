@@ -93,4 +93,29 @@ describe('EpisodeFolderPanel', () => {
         await userEvent.click(screen.getByRole('button', {name: 'Delete A'}));
         expect(onChange).toHaveBeenLastCalledWith([]);
     });
+
+    test('narrowing the viewers so no writer is left makes the folder read-only', async () => {
+        const onChange = setup([{path: 'A', view_departments: [BG, ANIM], write_departments: [ANIM]}]);
+        await select('A');
+        await userEvent.click(group('Who sees it').getByRole('checkbox', {name: 'ANIM'}));
+
+        expect(onChange).toHaveBeenLastCalledWith([{path: 'A', view_departments: [BG], read_only: true}]);
+        expect(group('Who may change it').getByRole('radio', {name: 'Nobody'})).toBeChecked();
+    });
+
+    test('a change that would push the template over the size limit is refused', async () => {
+        const folder = (n: number, pad = 0): EpisodeFolder => ({path: 'A' + 'p'.repeat(pad), view_departments: Array.from({length: n}, () => 'x'.repeat(26))});
+        const size = (f: EpisodeFolder) => JSON.stringify([f]).length;
+
+        // Pad the template to 99990 characters, so adding a folder crosses 100000.
+        let n = 0;
+        while (size(folder(n + 1)) <= 99990) {
+            n++;
+        }
+        const onChange = setup([folder(n, 99990 - size(folder(n)))]);
+        await userEvent.click(screen.getByRole('button', {name: 'Add folder'}));
+
+        expect(onChange).not.toHaveBeenCalled();
+        expect(screen.getByRole('alert')).toHaveTextContent('too large');
+    });
 });

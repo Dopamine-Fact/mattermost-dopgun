@@ -18,7 +18,7 @@ import './team_episodes_tab.scss';
 const translations = defineMessages({
     EpisodeFoldersInvalid: {
         id: 'general_tab.episodeFoldersInvalid',
-        defaultMessage: 'Invalid default episode folders. Use at most 100 folders with valid names, make sure everyone who may change a folder can see it, and mirror only a plain folder that is not inside or around the mirror.',
+        defaultMessage: 'Invalid default episode folders. Use at most 100 folders and 100000 characters in total, with valid names, make sure everyone who may change a folder can see it, and mirror only a plain folder that is not inside or around the mirror.',
     },
     EpisodeTasksInvalid: {
         id: 'general_tab.episodeTasksInvalid',
