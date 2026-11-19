@@ -21,6 +21,7 @@ func TestTaskStore(t *testing.T, rctx request.CTX, ss store.Store) {
 	t.Run("DeleteSectionClearsVersions", func(t *testing.T) { testTaskStoreDeleteSectionClearsVersions(t, ss) })
 	t.Run("SaveKeepsVideoFileId", func(t *testing.T) { testTaskStoreSaveKeepsVideoFileId(t, ss) })
 	t.Run("GetSectionByChannel", func(t *testing.T) { testTaskStoreGetSectionByChannel(t, ss) })
+	t.Run("RuleFields", func(t *testing.T) { testTaskRuleFields(t, ss) })
 	t.Run("GetPostIdsForTask", func(t *testing.T) { testTaskStoreGetPostIdsForTask(t, rctx, ss) })
 }
 
@@ -208,4 +209,33 @@ func testDeleteTaskSection(t *testing.T, ss store.Store) {
 	got, err := ss.Task().Get(task.Id)
 	require.NoError(t, err)
 	require.Empty(t, got.SectionId)
+}
+
+func testTaskRuleFields(t *testing.T, ss store.Store) {
+	deptId, folderId := model.NewId(), model.NewId()
+	waits := model.StringArray{model.NewId(), model.NewId()}
+	saved, err := ss.Task().Save(&model.Task{TeamId: model.NewId(), CreatorId: model.NewId(), Title: "ruled", DepartmentId: deptId, WaitsFor: waits, FolderId: folderId})
+	require.NoError(t, err)
+
+	got, err := ss.Task().Get(saved.Id)
+	require.NoError(t, err)
+	require.Equal(t, deptId, got.DepartmentId)
+	require.Equal(t, waits, got.WaitsFor)
+	require.Equal(t, folderId, got.FolderId)
+
+	got.WaitsFor = model.StringArray{}
+	_, err = ss.Task().Update(got)
+	require.NoError(t, err)
+	got, err = ss.Task().Get(saved.Id)
+	require.NoError(t, err)
+	require.Equal(t, model.StringArray{}, got.WaitsFor)
+	require.Equal(t, folderId, got.FolderId, "Update must not change FolderId")
+
+	plain, err := ss.Task().Save(&model.Task{TeamId: model.NewId(), CreatorId: model.NewId(), Title: "plain"})
+	require.NoError(t, err)
+	got, err = ss.Task().Get(plain.Id)
+	require.NoError(t, err)
+	require.Empty(t, got.DepartmentId)
+	require.Equal(t, model.StringArray{}, got.WaitsFor)
+	require.Empty(t, got.FolderId)
 }

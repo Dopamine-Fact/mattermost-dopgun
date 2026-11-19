@@ -21,7 +21,7 @@ func newSqlTaskStore(sqlStore *SqlStore) store.TaskStore {
 	return &SqlTaskStore{sqlStore}
 }
 
-var taskColumns = []string{"Id", "TeamId", "SectionId", "Title", "Description", "AssigneeId", "StartAt", "DueAt", "Status", "SortOrder", "VideoTime", "VideoFileId", "CreatorId", "CreateAt", "UpdateAt"}
+var taskColumns = []string{"Id", "TeamId", "SectionId", "Title", "Description", "AssigneeId", "StartAt", "DueAt", "Status", "SortOrder", "VideoTime", "VideoFileId", "DepartmentId", "WaitsFor", "FolderId", "CreatorId", "CreateAt", "UpdateAt"}
 
 var taskCommentColumns = []string{"Id", "TaskId", "UserId", "Message", "FileIds", "CreateAt"}
 
@@ -36,7 +36,7 @@ func (s *SqlTaskStore) Save(task *model.Task) (*model.Task, error) {
 	_, err := s.GetMaster().ExecBuilder(s.getQueryBuilder().
 		Insert("Tasks").
 		Columns(taskColumns...).
-		Values(task.Id, task.TeamId, task.SectionId, task.Title, task.Description, task.AssigneeId, task.StartAt, task.DueAt, task.Status, task.SortOrder, task.VideoTime, task.VideoFileId, task.CreatorId, task.CreateAt, task.UpdateAt))
+		Values(task.Id, task.TeamId, task.SectionId, task.Title, task.Description, task.AssigneeId, task.StartAt, task.DueAt, task.Status, task.SortOrder, task.VideoTime, task.VideoFileId, task.DepartmentId, task.WaitsFor, task.FolderId, task.CreatorId, task.CreateAt, task.UpdateAt))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to save Task with id=%s", task.Id)
 	}
@@ -84,6 +84,8 @@ func (s *SqlTaskStore) Update(task *model.Task) (*model.Task, error) {
 		Set("Status", task.Status).
 		Set("SortOrder", task.SortOrder).
 		Set("VideoTime", task.VideoTime).
+		Set("DepartmentId", task.DepartmentId).
+		Set("WaitsFor", task.WaitsFor).
 		Set("UpdateAt", task.UpdateAt).
 		Where(sq.Eq{"Id": task.Id}))
 	if err != nil {
