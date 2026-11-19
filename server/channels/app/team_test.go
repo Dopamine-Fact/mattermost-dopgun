@@ -2653,3 +2653,25 @@ func (r *limitedRewindReader) Seek(offset int64, whence int) (int64, error) {
 	}
 	return r.Reader.Seek(offset, whence)
 }
+
+func TestPatchTeamEpisodeTasksDepartments(t *testing.T) {
+	th := Setup(t).InitBasic(t)
+	own, appErr := th.App.CreateDepartment(th.Context, th.BasicTeam.Id, "BG", "#3366ff")
+	require.Nil(t, appErr)
+	otherTeam := th.CreateTeam(t)
+	foreign, appErr := th.App.CreateDepartment(th.Context, otherTeam.Id, "BG", "#3366ff")
+	require.Nil(t, appErr)
+
+	tasks := func(dept string) *string {
+		return model.NewPointer(`[{"key":"a","title":"A","department_id":"` + dept + `"}]`)
+	}
+	_, appErr = th.App.PatchTeam(th.BasicTeam.Id, &model.TeamPatch{EpisodeTasks: tasks(foreign.Id)})
+	require.NotNil(t, appErr)
+	require.Equal(t, 400, appErr.StatusCode)
+	_, appErr = th.App.PatchTeam(th.BasicTeam.Id, &model.TeamPatch{EpisodeTasks: tasks(model.NewId())})
+	require.NotNil(t, appErr)
+
+	team, appErr := th.App.PatchTeam(th.BasicTeam.Id, &model.TeamPatch{EpisodeTasks: tasks(own.Id)})
+	require.Nil(t, appErr)
+	require.Contains(t, team.EpisodeTasks, own.Id)
+}

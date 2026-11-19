@@ -19823,8 +19823,8 @@
   },
   {
     "id": "model.team.is_valid.episode_tasks.app_error",
-    "translation": "Invalid default episode tasks. Use at most 100 lines and 4000 characters.",
-    "description": "API error when a team's default episode task list has more than 100 lines or more than 4000 characters."
+    "translation": "Invalid default episode tasks. Use at most 100 tasks and 100000 characters, each task with a title and a unique key, and departments, waits-for and folders that exist in the template.",
+    "description": "API error when a team's default episode task list has more than 100 tasks or 100000 characters, a task with an empty title, a repeated key, an unknown or repeated waits-for, a due date outside 0 to 365 days or a folder that is not in the folder template, or names a department of another team."
   },
   {
     "id": "model.team.is_valid.id.app_error",

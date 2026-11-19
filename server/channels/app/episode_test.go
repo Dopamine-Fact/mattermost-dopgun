@@ -182,17 +182,24 @@ func TestCreateEpisodeTaskRules(t *testing.T) {
 	_, appErr := th.App.UpdateUser(th.Context, th.BasicUser, false)
 	require.Nil(t, appErr)
 
+	// The code reads the clock itself, so accept the due date of the day before or after the call: a run that
+	// straddles midnight must not flake.
+	loc, lerr := time.LoadLocation("Europe/Istanbul")
+	require.NoError(t, lerr)
+	before := time.Now().In(loc)
 	got, appErr := th.App.CreateEpisode(th.Context, th.BasicUser.Id, th.BasicTeam.Id, &model.EpisodeCreate{Name: "ep-rules", DisplayName: "Rules"})
+	after := time.Now().In(loc)
 	require.Nil(t, appErr)
 	require.Empty(t, got.Failed)
 	require.Len(t, got.TaskIds, 3)
 
 	byTitle := episodeTasksByTitle(t, th, got.Section.Id)
 	story, layout := byTitle["Storyboard"], byTitle["Layout"]
-	loc, lerr := time.LoadLocation("Europe/Istanbul")
-	require.NoError(t, lerr)
-	day := time.Now().In(loc).AddDate(0, 0, 5)
-	require.Equal(t, time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, loc).UnixMilli(), story.DueAt)
+	due := func(now time.Time) int64 {
+		day := now.AddDate(0, 0, 5)
+		return time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, loc).UnixMilli()
+	}
+	require.Contains(t, []int64{due(before), due(after)}, story.DueAt)
 	require.Equal(t, dept, story.DepartmentId)
 	require.Empty(t, story.AssigneeId)
 	require.Equal(t, model.StringArray{}, story.WaitsFor)
@@ -235,11 +242,17 @@ func TestCreateEpisodeTaskRulesLegacyTemplate(t *testing.T) {
 	}
 }
 
-// An assignee outside the team makes CreateTask fail; its successor must not keep the dead key.
-func TestCreateEpisodeFailedPredecessorIsDropped(t *testing.T) {
-	th := setupEpisode(t, "", fmt.Sprintf(`[{"key":"a","title":"Ghost","assignee_id":"%s"},{"key":"b","title":"After","waits_for":["a"]}]`, model.NewId()))
-	got, appErr := th.App.CreateEpisode(th.Context, th.BasicUser.Id, th.BasicTeam.Id, &model.EpisodeCreate{Name: "ep-fail", DisplayName: "Fail"})
+// A template assignee who is no longer an active team member seeds the task unassigned, not failed; with a
+// department it is a pool task.
+func TestCreateEpisodeAssigneeLeftTeam(t *testing.T) {
+	gone, dept := model.NewId(), model.NewId()
+	th := setupEpisode(t, "", fmt.Sprintf(`[{"key":"a","title":"Pool","department_id":"%s","assignee_id":"%s"},{"key":"b","title":"Plain","assignee_id":"%s"}]`, dept, gone, gone))
+	got, appErr := th.App.CreateEpisode(th.Context, th.BasicUser.Id, th.BasicTeam.Id, &model.EpisodeCreate{Name: "ep-gone", DisplayName: "Gone"})
 	require.Nil(t, appErr)
-	require.Equal(t, []string{"Ghost"}, got.Failed)
-	require.Equal(t, model.StringArray{}, episodeTasksByTitle(t, th, got.Section.Id)["After"].WaitsFor)
+	require.Empty(t, got.Failed)
+	byTitle := episodeTasksByTitle(t, th, got.Section.Id)
+	require.Len(t, byTitle, 2)
+	require.Empty(t, byTitle["Pool"].AssigneeId)
+	require.Equal(t, dept, byTitle["Pool"].DepartmentId)
+	require.Empty(t, byTitle["Plain"].AssigneeId)
 }

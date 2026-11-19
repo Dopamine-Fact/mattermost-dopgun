@@ -726,3 +726,72 @@ func TestPatchTaskDepartmentRules(t *testing.T) {
 		require.Contains(t, err.Error(), "locked")
 	})
 }
+
+func TestTaskRulesHardening(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	ctx := context.Background()
+	team := th.BasicTeam
+	teamID := team.Id
+	video := videoSection(t, th)
+
+	deptD := newTestDepartment(t, th, teamID, "D")
+	leadClient, _ := rankedClient(t, th, team, newTestRank(t, th, teamID, deptD.Id, "Lead", model.PermissionManageTasks.Id, model.PermissionManageRevisions.Id))
+	memberClient, member := rankedClient(t, th, team, newTestRank(t, th, teamID, deptD.Id, "Mid"))
+
+	newSection := func(name string) *model.TaskSection {
+		s, appErr := th.App.CreateTaskSection(th.Context, &model.TaskSection{TeamId: teamID, Name: name}, "")
+		require.Nil(t, appErr)
+		return s
+	}
+	mk := func(task *model.Task) *model.Task {
+		task.TeamId, task.CreatorId = teamID, th.SystemAdminUser.Id
+		created, appErr := th.App.CreateTask(th.Context, task, "")
+		require.Nil(t, appErr)
+		return created
+	}
+
+	t.Run("moving a linked task to another section needs manage_tasks", func(t *testing.T) {
+		from, to := newSection("From"), newSection("To")
+		pred := mk(&model.Task{Title: "Pred", SectionId: from.Id})
+		waiting := mk(&model.Task{Title: "Waiting", SectionId: from.Id, WaitsFor: model.StringArray{pred.Id}})
+		free := mk(&model.Task{Title: "Free", SectionId: from.Id, FolderId: model.NewId()})
+		move := &model.TaskPatch{SectionId: &to.Id}
+
+		_, resp, err := memberClient.PatchTask(ctx, waiting.Id, move)
+		require.Error(t, err, "it waits for another task")
+		CheckForbiddenStatus(t, resp)
+		_, resp, err = memberClient.PatchTask(ctx, pred.Id, move)
+		require.Error(t, err, "another task waits for it")
+		CheckForbiddenStatus(t, resp)
+
+		movedFree, _, err := memberClient.PatchTask(ctx, free.Id, move)
+		require.NoError(t, err, "an unlinked task moves freely")
+		require.Empty(t, movedFree.FolderId, "the episode folder stays behind")
+		moved, _, err := leadClient.PatchTask(ctx, waiting.Id, move)
+		require.NoError(t, err)
+		require.Equal(t, to.Id, moved.SectionId)
+		require.Empty(t, moved.WaitsFor)
+	})
+
+	t.Run("create ignores the folder and refuses waits_for and revision departments", func(t *testing.T) {
+		section := newSection("Create")
+		pred := mk(&model.Task{Title: "Pred", SectionId: section.Id})
+		created, _, err := leadClient.CreateTask(ctx, &model.Task{TeamId: teamID, SectionId: section.Id, Title: "New", FolderId: model.NewId(), WaitsFor: model.StringArray{pred.Id, model.NewId()}, DepartmentId: deptD.Id})
+		require.NoError(t, err)
+		require.Empty(t, created.FolderId)
+		require.Empty(t, created.WaitsFor)
+		require.Equal(t, deptD.Id, created.DepartmentId)
+
+		_, resp, err := leadClient.CreateTask(ctx, &model.Task{TeamId: teamID, SectionId: video.Id, Title: "Rev", VideoFileId: video.VideoFileId, DepartmentId: deptD.Id})
+		require.Error(t, err)
+		CheckBadRequestStatus(t, resp)
+	})
+
+	t.Run("a revision is never claimed", func(t *testing.T) {
+		revision := mk(&model.Task{Title: "Rev", SectionId: video.Id, VideoFileId: video.VideoFileId, DepartmentId: deptD.Id})
+		_, resp, err := memberClient.PatchTask(ctx, revision.Id, &model.TaskPatch{AssigneeId: &member.Id})
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+	})
+}

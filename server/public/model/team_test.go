@@ -368,6 +368,7 @@ func TestTeamIsValidEpisodeTasks(t *testing.T) {
 		"due 366":        entry(`,"due_days":366`),
 		"missing wait":   entry(`,"waits_for":["zz"]`),
 		"waits itself":   entry(`,"waits_for":["a"]`),
+		"duplicate wait": `[{"key":"a","title":"A","waits_for":["b","b"]},{"key":"b","title":"B"}]`,
 		"cycle":          `[{"key":"a","title":"A","waits_for":["b"]},{"key":"b","title":"B","waits_for":["a"]}]`,
 		"unknown folder": entry(`,"folder":"Nope"`),
 		"mirror folder":  entry(`,"folder":"M"`),

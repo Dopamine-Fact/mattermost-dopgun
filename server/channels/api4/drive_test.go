@@ -437,6 +437,47 @@ func TestDriveTaskFiles(t *testing.T) {
 		}
 	})
 
+	t.Run("DeleteFileOnlyRootKeepsReplies", func(t *testing.T) {
+		p, fileID := post(deptClient, writeTask, "", "thread.png")
+		reply, _, err := otherClient.CreatePost(ctx, &model.Post{ChannelId: channelID, Message: "a reply", RootId: p.Id})
+		require.NoError(t, err)
+
+		_, err = deptClient.DeleteDriveTaskFile(ctx, channelID, fileID)
+		require.NoError(t, err)
+		got, _, err := th.SystemAdminClient.GetPost(ctx, reply.Id, "")
+		require.NoError(t, err)
+		require.Zero(t, got.DeleteAt)
+		root, _, err := th.SystemAdminClient.GetPost(ctx, p.Id, "")
+		require.NoError(t, err)
+		require.Zero(t, root.DeleteAt)
+		require.Empty(t, root.FileIds)
+	})
+
+	t.Run("TrashedFolder", func(t *testing.T) {
+		_, fileID := post(deptClient, writeTask, "m", "bin.png")
+		parent, err := th.App.Srv().Store().DriveItem().Save(&model.DriveItem{ChannelId: channelID, Type: model.DriveItemTypeFolder, Name: "Parent", CreatorId: th.BasicUser.Id})
+		require.NoError(t, err)
+		child, err := th.App.Srv().Store().DriveItem().Save(&model.DriveItem{ChannelId: channelID, ParentId: parent.Id, Type: model.DriveItemTypeFolder, Name: "Child", CreatorId: th.BasicUser.Id})
+		require.NoError(t, err)
+		nested, err := th.App.Srv().Store().Task().Save(&model.Task{TeamId: teamID, SectionId: section.Id, CreatorId: th.BasicUser.Id, Title: "Nested", FolderId: child.Id})
+		require.NoError(t, err)
+		_, nestedFile := post(deptClient, nested, "m", "nested.png")
+
+		parent.DeleteAt = model.GetMillis()
+		require.NoError(t, th.App.Srv().Store().DriveItem().UpdateMany([]*model.DriveItem{parent}))
+		_, resp, err := th.SystemAdminClient.RenameDriveTaskFile(ctx, channelID, nestedFile, "x.png")
+		require.Error(t, err, "a trashed ancestor trashes the folder too")
+		CheckNotFoundStatus(t, resp)
+
+		writeFolder, err := th.App.Srv().Store().DriveItem().Get(writeTask.FolderId)
+		require.NoError(t, err)
+		writeFolder.DeleteAt = model.GetMillis()
+		require.NoError(t, th.App.Srv().Store().DriveItem().UpdateMany([]*model.DriveItem{writeFolder}))
+		resp, err = th.SystemAdminClient.DeleteDriveTaskFile(ctx, channelID, fileID)
+		require.Error(t, err)
+		CheckNotFoundStatus(t, resp)
+	})
+
 	t.Run("NotATaskFile", func(t *testing.T) {
 		loose := driveAPIUpload(t, th.SystemAdminClient, channelID, "loose.png", []byte("l"))
 		_, resp, err := th.SystemAdminClient.RenameDriveTaskFile(ctx, channelID, loose, "x.png")
