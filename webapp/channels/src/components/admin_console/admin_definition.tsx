@@ -46,6 +46,7 @@ import BillingSubscriptions, {searchableStrings as billingSubscriptionSearchable
 import CompanyInfo, {searchableStrings as billingCompanyInfoSearchableStrings} from './billing/company_info';
 import BoardAttributes, {searchableStrings as boardAttributesSearchableStrings} from './board_attributes';
 import BrandImageSetting from './brand_image_setting/brand_image_setting';
+import BreaksReport from './breaks_report/breaks_report';
 import ClassificationMarkings, {searchableStrings as classificationMarkingsSearchableStrings} from './classification_markings';
 import ClientSideUserIdsSetting from './client_side_userids_setting';
 import ClusterSettings, {searchableStrings as clusterSearchableStrings} from './cluster_settings';
@@ -515,6 +516,15 @@ const AdminDefinition: AdminDefinitionType = {
                 schema: {
                     id: 'SystemRoles',
                     component: SystemRoles,
+                },
+            },
+            breaks_report: {
+                url: 'user_management/breaks',
+                title: defineMessage({id: 'admin.sidebar.breaks', defaultMessage: 'Breaks'}),
+                isHidden: it.not(it.isSystemAdmin),
+                schema: {
+                    id: 'BreaksReport',
+                    component: BreaksReport,
                 },
             },
         },
