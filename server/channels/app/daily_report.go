@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"net/http"
 	"slices"
@@ -294,11 +295,17 @@ func (a *App) GetDailyReports(teamID, fromDate, toDate, userID string) ([]*model
 // ApproveDailyReport marks the report approved by approverID; an already approved report is returned unchanged.
 // seenUpdateAt > 0 is the UpdateAt the reviewer looked at: if the report changed since, nothing happens and it is a 409.
 func (a *App) ApproveDailyReport(rctx request.CTX, reportID, approverID string, seenUpdateAt int64) (*model.DailyReport, *model.AppError) {
-	report, _, appErr := a.reviewDailyReport(rctx, "ApproveDailyReport", reportID, model.DailyReportStatusApproved,
+	report, wrote, appErr := a.reviewDailyReport(rctx, "ApproveDailyReport", reportID, model.DailyReportStatusApproved,
 		func(s store.DailyReportStore) error {
 			return s.Approve(reportID, approverID, false, model.GetMillis(), seenUpdateAt)
 		})
-	return report, appErr
+	if appErr != nil || !wrote {
+		return report, appErr
+	}
+	if appErr := a.postDailyReportReviewed(rctx, report, "app.daily_report.approved_dm", report.ApprovedBy, nil); appErr != nil {
+		rctx.Logger().Warn("ApproveDailyReport: failed to DM the author", mlog.String("report_id", reportID), mlog.Err(appErr))
+	}
+	return report, nil
 }
 
 // RejectDailyReport sends the report back to its author with a required reason and DMs them. Pending and approved
@@ -316,7 +323,9 @@ func (a *App) RejectDailyReport(rctx request.CTX, reportID, rejecterID, reason s
 	if appErr != nil || !wrote {
 		return report, appErr
 	}
-	if appErr := a.postDailyReportRejected(rctx, report); appErr != nil {
+	if appErr := a.postDailyReportReviewed(rctx, report, "app.daily_report.rejected_dm", report.RejectedBy, map[string]any{
+		"Reason": strings.ReplaceAll(report.RejectReason, "\n", "\n> "), // the template quotes the first line
+	}); appErr != nil {
 		rctx.Logger().Warn("RejectDailyReport: failed to DM the author", mlog.String("report_id", reportID), mlog.Err(appErr))
 	}
 	return report, nil
@@ -361,12 +370,13 @@ func (a *App) reviewDailyReport(rctx request.CTX, where, reportID, status string
 	return updated, true, nil
 }
 
-func (a *App) postDailyReportRejected(rctx request.CTX, report *model.DailyReport) *model.AppError {
+// postDailyReportReviewed DMs the author the translation id, filled with Date, Reviewer, Link and extra.
+func (a *App) postDailyReportReviewed(rctx request.CTX, report *model.DailyReport, id, reviewerID string, extra map[string]any) *model.AppError {
 	author, appErr := a.GetUser(rctx, report.UserId)
 	if appErr != nil {
 		return appErr
 	}
-	reviewer, appErr := a.GetUser(rctx, report.RejectedBy)
+	reviewer, appErr := a.GetUser(rctx, reviewerID)
 	if appErr != nil {
 		return appErr
 	}
@@ -374,13 +384,14 @@ func (a *App) postDailyReportRejected(rctx request.CTX, report *model.DailyRepor
 	if appErr != nil {
 		return appErr
 	}
-	T := i18n.GetUserTranslations(author.Locale)
-	return a.postDailyReportDM(rctx, author, T("app.daily_report.rejected_dm", map[string]any{
+	args := map[string]any{
 		"Date":     report.Date,
 		"Reviewer": reviewer.Username,
-		"Reason":   strings.ReplaceAll(report.RejectReason, "\n", "\n> "), // the template quotes the first line
 		"Link":     fmt.Sprintf("%s/%s/daily_reports", a.GetSiteURL(), team.Name),
-	}))
+	}
+	maps.Copy(args, extra)
+	T := i18n.GetUserTranslations(author.Locale)
+	return a.postDailyReportDM(rctx, author, T(id, args))
 }
 
 // GetDailyReportAssignees lists who must report for the team; empty means every member. Listed users who have since
