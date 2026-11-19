@@ -34,14 +34,14 @@ export const parentPath = (path: string) => path.slice(0, Math.max(path.lastInde
 
 export const folderName = (path: string) => path.slice(path.lastIndexOf('/') + 1);
 
-/** Reads the JSON template, or the old one-path-per-line text as rule-less entries. */
+/** Reads the JSON template, or else (like the server) the old one-path-per-line text as rule-less entries. */
 export function parseEpisodeFolders(text?: string): EpisodeFolder[] {
     const value = (text ?? '').trim();
     if (value.startsWith('[')) {
         try {
             return JSON.parse(value) as EpisodeFolder[];
         } catch {
-            return [];
+            // not JSON: an old text template whose first line starts with "["
         }
     }
     const seen = new Set<string>();

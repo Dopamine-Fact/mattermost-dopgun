@@ -26,6 +26,14 @@ describe('episode folders', () => {
         expect(parseEpisodeFolders(undefined)).toEqual([]);
     });
 
+    test('text that starts with "[" but is not JSON is read as lines', () => {
+        expect(parseEpisodeFolders('[01] Layout\nX')).toEqual([{path: '[01] Layout'}, {path: 'X'}]);
+    });
+
+    test('text lines that differ only in case keep the first', () => {
+        expect(parseEpisodeFolders('Layout\nlayout')).toEqual([{path: 'Layout'}]);
+    });
+
     test('a JSON template round trips unchanged', () => {
         const text = serializeEpisodeFolders(template);
         expect(parseEpisodeFolders(text)).toEqual(template);

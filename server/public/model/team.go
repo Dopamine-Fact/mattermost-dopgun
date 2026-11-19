@@ -200,18 +200,22 @@ func (e *EpisodeFolder) Rules() DriveRules {
 	return r
 }
 
-// ParseEpisodeFolders reads the JSON list, or (text not starting with "[") the old one-path-per-line format.
+// ParseEpisodeFolders reads the JSON list, or else the old one-path-per-line format (case-insensitive duplicate
+// lines dropped, the first kept). Malformed JSON read as lines still fails validation: `"` is not a valid name.
 func ParseEpisodeFolders(text string) ([]*EpisodeFolder, error) {
 	if strings.HasPrefix(strings.TrimSpace(text), "[") {
 		var folders []*EpisodeFolder
-		if err := json.Unmarshal([]byte(text), &folders); err != nil {
-			return nil, err
+		if err := json.Unmarshal([]byte(text), &folders); err == nil {
+			return folders, nil
 		}
-		return folders, nil
 	}
 	var folders []*EpisodeFolder
+	seen := map[string]bool{}
 	for _, line := range EpisodeTemplateLines(text) {
-		folders = append(folders, &EpisodeFolder{Path: line})
+		if key := strings.ToLower(line); !seen[key] {
+			seen[key] = true
+			folders = append(folders, &EpisodeFolder{Path: line})
+		}
 	}
 	return folders, nil
 }

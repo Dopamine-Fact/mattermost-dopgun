@@ -285,8 +285,18 @@ func TestParseEpisodeFolders(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, got)
 
-	_, err = ParseEpisodeFolders("[{")
-	require.Error(t, err)
+	// Text whose first line starts with "[" but is not JSON is the old line format.
+	got, err = ParseEpisodeFolders("[01] Layout\nX")
+	require.NoError(t, err)
+	require.Equal(t, []*EpisodeFolder{{Path: "[01] Layout"}, {Path: "X"}}, got)
+	require.True(t, isValidEpisodeFolders("[01] Layout\nX"))
+	require.False(t, isValidEpisodeFolders(`[{"path":"A"`), "malformed JSON fails name validation")
+
+	// Text lines that differ only in case keep the first, as before.
+	got, err = ParseEpisodeFolders("Layout\nlayout")
+	require.NoError(t, err)
+	require.Equal(t, []*EpisodeFolder{{Path: "Layout"}}, got)
+	require.True(t, isValidEpisodeFolders("Layout\nlayout"))
 }
 
 func TestIsValidEpisodeFolders(t *testing.T) {
