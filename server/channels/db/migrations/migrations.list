@@ -517,3 +517,5 @@ channels/db/migrations/postgres/000260_daily_report_files.down.sql
 channels/db/migrations/postgres/000260_daily_report_files.up.sql
 channels/db/migrations/postgres/000261_task_rules.down.sql
 channels/db/migrations/postgres/000261_task_rules.up.sql
+channels/db/migrations/postgres/000262_status_periods.down.sql
+channels/db/migrations/postgres/000262_status_periods.up.sql

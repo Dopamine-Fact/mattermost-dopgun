@@ -96,6 +96,7 @@ type Store interface {
 	DailyReport() DailyReportStore
 	CustomRole() CustomRoleStore
 	Department() DepartmentStore
+	StatusPeriod() StatusPeriodStore
 	DriveItem() DriveItemStore
 	View() ViewStore
 	PropertyGroup() PropertyGroupStore
@@ -1297,6 +1298,17 @@ type CustomRoleStore interface {
 
 // DepartmentStore holds a team's departments. A duplicate live name in a team, or a second studio department,
 // returns *store.ErrConflict.
+// StatusPeriodStore keeps each user's active and away periods; at most one row per user is open (EndAt = 0).
+type StatusPeriodStore interface {
+	// Switch closes the user's open row at `at` unless it already has `kind`, then opens a `kind` row unless kind is
+	// "" or one is already open.
+	Switch(userID, kind string, at int64) error
+	// End closes the user's open row at `at` only if it has `kind`.
+	End(userID, kind string, at int64) error
+	// GetRange returns rows overlapping [from, to), all users when userID is "", ordered by UserId then StartAt.
+	GetRange(userID string, from, to int64) ([]*model.StatusPeriod, error)
+}
+
 type DepartmentStore interface {
 	Save(d *model.Department) (*model.Department, error)
 	// Update writes Name, Color and UpdateAt; *store.ErrNotFound when missing or deleted.

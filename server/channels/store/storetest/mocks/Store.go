@@ -1455,6 +1455,26 @@ func (_m *Store) Status() store.StatusStore {
 	return r0
 }
 
+// StatusPeriod provides a mock function with no fields
+func (_m *Store) StatusPeriod() store.StatusPeriodStore {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for StatusPeriod")
+	}
+
+	var r0 store.StatusPeriodStore
+	if rf, ok := ret.Get(0).(func() store.StatusPeriodStore); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.StatusPeriodStore)
+		}
+	}
+
+	return r0
+}
+
 // System provides a mock function with no fields
 func (_m *Store) System() store.SystemStore {
 	ret := _m.Called()

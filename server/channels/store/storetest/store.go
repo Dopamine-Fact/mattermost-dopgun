@@ -71,6 +71,7 @@ type Store struct {
 	DailyReportStore                mocks.DailyReportStore
 	CustomRoleStore                 mocks.CustomRoleStore
 	DepartmentStore                 mocks.DepartmentStore
+	StatusPeriodStore               mocks.StatusPeriodStore
 	DriveItemStore                  mocks.DriveItemStore
 	PropertyGroupStore              mocks.PropertyGroupStore
 	PropertyFieldStore              mocks.PropertyFieldStore
@@ -145,6 +146,7 @@ func (s *Store) Canvas() store.CanvasStore                   { return &s.CanvasS
 func (s *Store) DailyReport() store.DailyReportStore         { return &s.DailyReportStore }
 func (s *Store) CustomRole() store.CustomRoleStore           { return &s.CustomRoleStore }
 func (s *Store) Department() store.DepartmentStore           { return &s.DepartmentStore }
+func (s *Store) StatusPeriod() store.StatusPeriodStore       { return &s.StatusPeriodStore }
 func (s *Store) DriveItem() store.DriveItemStore             { return &s.DriveItemStore }
 func (s *Store) PropertyGroup() store.PropertyGroupStore     { return &s.PropertyGroupStore }
 func (s *Store) PropertyField() store.PropertyFieldStore     { return &s.PropertyFieldStore }
@@ -276,6 +278,7 @@ func (s *Store) AssertExpectations(t mock.TestingT) bool {
 		&s.DailyReportStore,
 		&s.CustomRoleStore,
 		&s.DepartmentStore,
+		&s.StatusPeriodStore,
 		&s.DriveItemStore,
 		&s.AccessControlPolicyStore,
 		&s.AttributesStore,

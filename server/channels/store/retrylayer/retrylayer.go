@@ -75,6 +75,7 @@ type RetryLayer struct {
 	SessionAttributeStore           store.SessionAttributeStore
 	SharedChannelStore              store.SharedChannelStore
 	StatusStore                     store.StatusStore
+	StatusPeriodStore               store.StatusPeriodStore
 	SystemStore                     store.SystemStore
 	TaskStore                       store.TaskStore
 	TeamStore                       store.TeamStore
@@ -312,6 +313,10 @@ func (s *RetryLayer) SharedChannel() store.SharedChannelStore {
 
 func (s *RetryLayer) Status() store.StatusStore {
 	return s.StatusStore
+}
+
+func (s *RetryLayer) StatusPeriod() store.StatusPeriodStore {
+	return s.StatusPeriodStore
 }
 
 func (s *RetryLayer) System() store.SystemStore {
@@ -643,6 +648,11 @@ type RetryLayerSharedChannelStore struct {
 
 type RetryLayerStatusStore struct {
 	store.StatusStore
+	Root *RetryLayer
+}
+
+type RetryLayerStatusPeriodStore struct {
+	store.StatusPeriodStore
 	Root *RetryLayer
 }
 
@@ -16910,6 +16920,69 @@ func (s *RetryLayerStatusStore) UpdateLastActivityAt(userID string, lastActivity
 
 }
 
+func (s *RetryLayerStatusPeriodStore) End(userID string, kind string, at int64) error {
+
+	tries := 0
+	for {
+		err := s.StatusPeriodStore.End(userID, kind, at)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerStatusPeriodStore) GetRange(userID string, from int64, to int64) ([]*model.StatusPeriod, error) {
+
+	tries := 0
+	for {
+		result, err := s.StatusPeriodStore.GetRange(userID, from, to)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerStatusPeriodStore) Switch(userID string, kind string, at int64) error {
+
+	tries := 0
+	for {
+		err := s.StatusPeriodStore.Switch(userID, kind, at)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
 func (s *RetryLayerSystemStore) Get() (model.StringMap, error) {
 
 	tries := 0
@@ -17567,27 +17640,6 @@ func (s *RetryLayerTeamStore) ClearCaches() {
 
 }
 
-func (s *RetryLayerTeamStore) MembersWithRoles(teamID string, roleNames []string) (map[string][]string, error) {
-
-	tries := 0
-	for {
-		result, err := s.TeamStore.MembersWithRoles(teamID, roleNames)
-		if err == nil {
-			return result, nil
-		}
-		if !isRepeatableError(err) {
-			return result, err
-		}
-		tries++
-		if tries >= 3 {
-			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
-			return result, err
-		}
-		timepkg.Sleep(100 * timepkg.Millisecond)
-	}
-
-}
-
 func (s *RetryLayerTeamStore) Get(id string) (*model.Team, error) {
 
 	tries := 0
@@ -18158,6 +18210,27 @@ func (s *RetryLayerTeamStore) GroupSyncedTeamCount() (int64, error) {
 func (s *RetryLayerTeamStore) InvalidateAllTeamIdsForUser(userID string) {
 
 	s.TeamStore.InvalidateAllTeamIdsForUser(userID)
+
+}
+
+func (s *RetryLayerTeamStore) MembersWithRoles(teamID string, roleNames []string) (map[string][]string, error) {
+
+	tries := 0
+	for {
+		result, err := s.TeamStore.MembersWithRoles(teamID, roleNames)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
 
 }
 
@@ -22667,6 +22740,7 @@ func New(childStore store.Store) *RetryLayer {
 	newStore.SessionAttributeStore = &RetryLayerSessionAttributeStore{SessionAttributeStore: childStore.SessionAttribute(), Root: &newStore}
 	newStore.SharedChannelStore = &RetryLayerSharedChannelStore{SharedChannelStore: childStore.SharedChannel(), Root: &newStore}
 	newStore.StatusStore = &RetryLayerStatusStore{StatusStore: childStore.Status(), Root: &newStore}
+	newStore.StatusPeriodStore = &RetryLayerStatusPeriodStore{StatusPeriodStore: childStore.StatusPeriod(), Root: &newStore}
 	newStore.SystemStore = &RetryLayerSystemStore{SystemStore: childStore.System(), Root: &newStore}
 	newStore.TaskStore = &RetryLayerTaskStore{TaskStore: childStore.Task(), Root: &newStore}
 	newStore.TeamStore = &RetryLayerTeamStore{TeamStore: childStore.Team(), Root: &newStore}

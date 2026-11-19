@@ -74,6 +74,7 @@ type TimerLayer struct {
 	SessionAttributeStore           store.SessionAttributeStore
 	SharedChannelStore              store.SharedChannelStore
 	StatusStore                     store.StatusStore
+	StatusPeriodStore               store.StatusPeriodStore
 	SystemStore                     store.SystemStore
 	TaskStore                       store.TaskStore
 	TeamStore                       store.TeamStore
@@ -311,6 +312,10 @@ func (s *TimerLayer) SharedChannel() store.SharedChannelStore {
 
 func (s *TimerLayer) Status() store.StatusStore {
 	return s.StatusStore
+}
+
+func (s *TimerLayer) StatusPeriod() store.StatusPeriodStore {
+	return s.StatusPeriodStore
 }
 
 func (s *TimerLayer) System() store.SystemStore {
@@ -642,6 +647,11 @@ type TimerLayerSharedChannelStore struct {
 
 type TimerLayerStatusStore struct {
 	store.StatusStore
+	Root *TimerLayer
+}
+
+type TimerLayerStatusPeriodStore struct {
+	store.StatusPeriodStore
 	Root *TimerLayer
 }
 
@@ -13371,6 +13381,54 @@ func (s *TimerLayerStatusStore) UpdateLastActivityAt(userID string, lastActivity
 	return err
 }
 
+func (s *TimerLayerStatusPeriodStore) End(userID string, kind string, at int64) error {
+	start := time.Now()
+
+	err := s.StatusPeriodStore.End(userID, kind, at)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("StatusPeriodStore.End", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerStatusPeriodStore) GetRange(userID string, from int64, to int64) ([]*model.StatusPeriod, error) {
+	start := time.Now()
+
+	result, err := s.StatusPeriodStore.GetRange(userID, from, to)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("StatusPeriodStore.GetRange", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerStatusPeriodStore) Switch(userID string, kind string, at int64) error {
+	start := time.Now()
+
+	err := s.StatusPeriodStore.Switch(userID, kind, at)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("StatusPeriodStore.Switch", success, elapsed)
+	}
+	return err
+}
+
 func (s *TimerLayerSystemStore) Get() (model.StringMap, error) {
 	start := time.Now()
 
@@ -13882,22 +13940,6 @@ func (s *TimerLayerTeamStore) ClearCaches() {
 	}
 }
 
-func (s *TimerLayerTeamStore) MembersWithRoles(teamID string, roleNames []string) (map[string][]string, error) {
-	start := time.Now()
-
-	result, err := s.TeamStore.MembersWithRoles(teamID, roleNames)
-
-	elapsed := float64(time.Since(start)) / float64(time.Second)
-	if s.Root.Metrics != nil {
-		success := "false"
-		if err == nil {
-			success = "true"
-		}
-		s.Root.Metrics.ObserveStoreMethodDuration("TeamStore.MembersWithRoles", success, elapsed)
-	}
-	return result, err
-}
-
 func (s *TimerLayerTeamStore) Get(id string) (*model.Team, error) {
 	start := time.Now()
 
@@ -14343,6 +14385,22 @@ func (s *TimerLayerTeamStore) InvalidateAllTeamIdsForUser(userID string) {
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("TeamStore.InvalidateAllTeamIdsForUser", success, elapsed)
 	}
+}
+
+func (s *TimerLayerTeamStore) MembersWithRoles(teamID string, roleNames []string) (map[string][]string, error) {
+	start := time.Now()
+
+	result, err := s.TeamStore.MembersWithRoles(teamID, roleNames)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TeamStore.MembersWithRoles", success, elapsed)
+	}
+	return result, err
 }
 
 func (s *TimerLayerTeamStore) MigrateTeamMembers(fromTeamID string, fromUserID string) (map[string]string, error) {
@@ -17919,6 +17977,7 @@ func New(childStore store.Store, metrics einterfaces.MetricsInterface) *TimerLay
 	newStore.SessionAttributeStore = &TimerLayerSessionAttributeStore{SessionAttributeStore: childStore.SessionAttribute(), Root: &newStore}
 	newStore.SharedChannelStore = &TimerLayerSharedChannelStore{SharedChannelStore: childStore.SharedChannel(), Root: &newStore}
 	newStore.StatusStore = &TimerLayerStatusStore{StatusStore: childStore.Status(), Root: &newStore}
+	newStore.StatusPeriodStore = &TimerLayerStatusPeriodStore{StatusPeriodStore: childStore.StatusPeriod(), Root: &newStore}
 	newStore.SystemStore = &TimerLayerSystemStore{SystemStore: childStore.System(), Root: &newStore}
 	newStore.TaskStore = &TimerLayerTaskStore{TaskStore: childStore.Task(), Root: &newStore}
 	newStore.TeamStore = &TimerLayerTeamStore{TeamStore: childStore.Team(), Root: &newStore}
