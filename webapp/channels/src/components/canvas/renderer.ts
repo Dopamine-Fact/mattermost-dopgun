@@ -290,10 +290,10 @@ function build(el: DrawElement): Container {
     return g;
 }
 
-// Everything but position and stacking; a points checksum stands in for the (possibly long) points array.
-// Only whether a final is set counts: the texture pass re-targets the sprite when the final file changes.
-function shapeKey(el: DrawElement) {
-    const {x, y, z, points, finalFileId, ...rest} = el; // eslint-disable-line @typescript-eslint/no-unused-vars
+// Everything but position, stacking and the author stamps (never drawn, and a move restamps every frame); a points checksum
+// stands in for the (possibly long) points array. Only whether a final is set counts: the texture pass re-targets the sprite.
+export function shapeKey(el: DrawElement) {
+    const {x, y, z, points, finalFileId, createdBy, createdAt, updatedBy, updatedAt, ...rest} = el; // eslint-disable-line @typescript-eslint/no-unused-vars
     const pts = Array.isArray(points) ? `${points.length}:${points.reduce((s: number, v) => s + num(v), 0)}` : '';
     return JSON.stringify(rest) + pts + (finalFileId ? ':final' : '');
 }
@@ -521,7 +521,7 @@ export class CanvasRenderer {
     // Every sprite is re-assigned before retain(), so none keeps a texture that retain() destroys.
     private placeTextures() {
         const v = this.viewport.getVisibleBounds();
-        const view = {x: v.x - v.width, y: v.y - v.height, w: v.width * 3, h: v.height * 3};
+        const view = {x: v.x - (v.width / 2), y: v.y - (v.height / 2), w: v.width * 2, h: v.height * 2}; // half a view on each side
         const zoom = this.getZoom();
         const used = new Set<string>();
         for (const el of this.els) {
@@ -535,7 +535,8 @@ export class CanvasRenderer {
             const y = num(el.y) + slot.y;
             let texture: Texture | undefined;
             if (fileId && x < view.x + view.w && view.x < x + slot.w && y < view.y + view.h && view.y < y + slot.h) {
-                const size = textureSize(slot.h * zoom);
+                // An image's sprite fills its box; a final is contained in its strip, so the strip's shape stands in for the file's.
+                const size = textureSize(slot.h * zoom, el.type === 'image' ? num(el.aspect, slot.w / slot.h) : slot.w / slot.h);
                 const key = textureKey(fileId, size);
                 texture = this.textures.get(fileId, size);
                 used.add(key);

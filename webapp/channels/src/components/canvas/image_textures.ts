@@ -3,14 +3,25 @@
 
 import {Texture} from 'pixi.js';
 
+import {Client4} from 'mattermost-redux/client';
 import {getFileThumbnailUrl, getFilePreviewUrl, getFileUrl} from 'mattermost-redux/utils/file_utils';
 
-export type TextureSize = 'thumb' | 'preview';
+export type TextureSize = 'thumb' | 'p256' | 'p512' | 'p1024';
 
-export const THUMB_MAX_PX = 160;
+// The server's thumbnail fits 120 x 100 with its aspect kept.
+const THUMB_W = 120;
+const THUMB_H = 100;
+const PREVIEW_HEIGHTS = {p256: 256, p512: 512, p1024: 1024};
 
-export function textureSize(screenHeight: number): TextureSize {
-    return screenHeight <= THUMB_MAX_PX ? 'thumb' : 'preview';
+/** The smallest texture that is sharp at this on-screen height: the thumbnail up to its real height, else a preview bucket. */
+export function textureSize(screenHeight: number, aspect = 1): TextureSize {
+    if (screenHeight <= Math.min(THUMB_H, THUMB_W / aspect)) {
+        return 'thumb';
+    }
+    if (screenHeight <= PREVIEW_HEIGHTS.p256) {
+        return 'p256';
+    }
+    return screenHeight <= PREVIEW_HEIGHTS.p512 ? 'p512' : 'p1024';
 }
 
 export function textureKey(fileId: string, size: TextureSize): string {
@@ -109,13 +120,27 @@ async function decode(url: string): Promise<HTMLImageElement> {
     return img;
 }
 
+async function fetchBitmap(url: string, resizeHeight: number): Promise<ImageBitmap> {
+    const res = await fetch(url, Client4.getOptions({method: 'get'}));
+    if (!res.ok) {
+        throw new Error(`image ${res.status}`);
+    }
+    return createImageBitmap(await res.blob(), {resizeHeight, resizeQuality: 'high'});
+}
+
+// Previews are decoded at the bucket height (a full 1920 px preview is about 8 MB of GPU memory); the bitmap is freed with the texture.
 export async function loadTexture(fileId: string, size: TextureSize): Promise<Texture> {
     if (size === 'thumb') {
         return Texture.from(await decode(getFileThumbnailUrl(fileId)));
     }
+    const height = PREVIEW_HEIGHTS[size];
+    let bitmap: ImageBitmap;
     try {
-        return Texture.from(await decode(getFilePreviewUrl(fileId)));
+        bitmap = await fetchBitmap(getFilePreviewUrl(fileId), height);
     } catch {
-        return Texture.from(await decode(getFileUrl(fileId)));
+        bitmap = await fetchBitmap(getFileUrl(fileId), height);
     }
+    const texture = Texture.from(bitmap);
+    texture.once('destroy', () => bitmap.close());
+    return texture;
 }
