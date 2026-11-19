@@ -663,6 +663,30 @@
     }
 }
 
+// The chat under a channel's tabs. Another tab covers it rather than replacing it, so it keeps its scroll position.
+.ChannelTabs__body,
+.ChannelTabs__messages {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+}
+
+.ChannelTabs__body {
+    position: relative;
+}
+
+.ChannelTabs__messages[inert] {
+    visibility: hidden;
+}
+
+.ChannelTabs__cover {
+    position: absolute;
+    z-index: 1;
+    background: var(--center-channel-bg);
+    inset: 0;
+}
+
 // Messages | Revisions tabs of a revision channel
 
 .RevisionTabs {

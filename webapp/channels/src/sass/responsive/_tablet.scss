@@ -445,11 +445,13 @@
     .inner-wrap {
         &:not(.move--left) {
             .app__content {
-                > #post-list {
+                > #post-list,
+                .ChannelTabs__messages > #post-list {
                     margin-right: 0 !important;
                 }
 
-                > .post-create__container {
+                > .post-create__container,
+                .ChannelTabs__messages > .post-create__container {
                     width: 100% !important;
                 }
             }
@@ -462,11 +464,13 @@
 
             .app__content {
                 > .Drafts__main,
-                > #post-list {
+                > #post-list,
+                .ChannelTabs__messages > #post-list {
                     margin-right: 0 !important;
                 }
 
-                > .post-create__container {
+                > .post-create__container,
+                .ChannelTabs__messages > .post-create__container {
                     width: 100% !important;
                 }
             }

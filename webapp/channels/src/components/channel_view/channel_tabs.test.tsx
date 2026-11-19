@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {createMemoryHistory} from 'history';
-import React from 'react';
+import React, {useEffect} from 'react';
 
 import type {Task, TaskSection} from '@mattermost/types/tasks';
 
@@ -87,13 +87,14 @@ type Options = {
     deleteAt?: number;
     filesEnabled?: boolean;
     history?: ReturnType<typeof createMemoryHistory>;
+    chat?: React.ReactNode;
 };
-const renderTabs = (channelId: string, {canvasEnabled = true, revisionsEnabled = true, url = '/team-one/channels/trailer', permissions = ['create_post', 'manage_tasks', 'manage_revisions'], deleteAt = 0, filesEnabled = false, history = createMemoryHistory({initialEntries: [url]})}: Options = {}) => renderWithContext(
+const renderTabs = (channelId: string, {canvasEnabled = true, revisionsEnabled = true, url = '/team-one/channels/trailer', permissions = ['create_post', 'manage_tasks', 'manage_revisions'], deleteAt = 0, filesEnabled = false, history = createMemoryHistory({initialEntries: [url]}), chat = <div>{'chat'}</div>}: Options = {}) => renderWithContext(
     <ChannelTabs
         channelId={channelId}
         composer={<div>{'composer'}</div>}
     >
-        <div>{'chat'}</div>
+        {chat}
     </ChannelTabs>,
     {
         entities: {
@@ -115,6 +116,17 @@ const renderTabs = (channelId: string, {canvasEnabled = true, revisionsEnabled =
     {history},
 );
 const tabNames = () => screen.getAllByRole('tab').map((t) => t.textContent);
+
+// The chat is kept mounted under another tab, so a remount (which loses its scroll position) shows up as a second mount.
+const mountCounter = () => {
+    const mounts = jest.fn();
+    const Chat = () => {
+        useEffect(() => mounts(), []);
+        return <div>{'chat'}</div>;
+    };
+    return {mounts, chat: <Chat/>};
+};
+const chatHidden = () => screen.getByText('chat').closest('[inert]') !== null;
 
 describe('ChannelTabs', () => {
     let getCanvas: jest.SpyInstance;
@@ -201,7 +213,7 @@ describe('ChannelTabs', () => {
     test('the Revisions tab shows the video and its revisions', () => {
         renderTabs('chan1');
         fireEvent.click(screen.getByRole('tab', {name: 'Revisions'}));
-        expect(screen.queryByText('chat')).not.toBeInTheDocument();
+        expect(chatHidden()).toBe(true);
         expect(document.querySelector('video')).toHaveAttribute('src', expect.stringContaining('/task_sections/sec1/video'));
         expect(screen.getByRole('button', {name: 'Logo too small'})).toBeInTheDocument();
         expect(screen.queryByRole('button', {name: 'Storyboard'})).toBeNull();
@@ -236,7 +248,7 @@ describe('ChannelTabs', () => {
     test('the Tasks tab lists only ordinary tasks of this section', () => {
         renderTabs('chan1');
         fireEvent.click(screen.getByRole('tab', {name: 'Tasks'}));
-        expect(screen.queryByText('chat')).not.toBeInTheDocument();
+        expect(chatHidden()).toBe(true);
         expect(screen.getByText('Storyboard')).toBeInTheDocument();
         expect(screen.queryByText('Logo too small')).toBeNull();
         expect(screen.queryByText('Unrelated')).toBeNull();
@@ -468,11 +480,30 @@ describe('ChannelTabs', () => {
         isCanvas(true);
         renderTabs('chan2');
         fireEvent.click(await screen.findByRole('tab', {name: 'Canvas'}));
-        expect(screen.queryByText('chat')).not.toBeInTheDocument();
+        expect(chatHidden()).toBe(true);
+        expect(screen.queryByText('composer')).toBeNull();
         expect(await screen.findByText('board chan2 editable')).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('tab', {name: 'Messages'}));
-        expect(screen.getByText('chat')).toBeInTheDocument();
+        expect(chatHidden()).toBe(false);
+        expect(screen.getByText('composer')).toBeInTheDocument();
+    });
+
+    test('the chat is not remounted when the canvas tab appears or when coming back from another tab', async () => {
+        isCanvas(true);
+        const {mounts, chat} = mountCounter();
+        renderTabs('chan2', {chat});
+        fireEvent.click(await screen.findByRole('tab', {name: 'Canvas'}));
+        fireEvent.click(screen.getByRole('tab', {name: 'Messages'}));
+        expect(mounts).toHaveBeenCalledTimes(1);
+    });
+
+    test('the chat is not remounted when coming back from the Tasks tab', () => {
+        const {mounts, chat} = mountCounter();
+        renderTabs('chan1', {chat});
+        fireEvent.click(screen.getByRole('tab', {name: 'Tasks'}));
+        fireEvent.click(screen.getByRole('tab', {name: 'Messages'}));
+        expect(mounts).toHaveBeenCalledTimes(1);
     });
 
     test('the board is read-only without create_post', async () => {

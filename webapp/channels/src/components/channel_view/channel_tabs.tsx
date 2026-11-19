@@ -175,15 +175,7 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
         }
     }, [dispatch, teamId, isLinked]);
 
-    if (!section && !isCanvas) {
-        return (
-            <>
-                {children}
-                {composer}
-            </>
-        );
-    }
-
+    const tabbed = Boolean(section || isCanvas);
     const folderUrl = (_: string, folder?: string) => `${location.pathname}?folder=${folder ?? ''}`;
     const switchTab = (id: Tab) => {
         if (id !== tab) {
@@ -222,28 +214,13 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
     );
 
     const filterTask = section && filterTasks.find((t) => t.id === filterTaskId);
-    let panel = (
-        <TaskFilterContext.Provider value={filterTask ? filterTask.id : ''}>
-            {filterTask ? (
-                <div
-                    className='TaskPostList__panel'
-                    role='tabpanel'
-                >
-                    <TaskPostList
-                        key={filterTask.id}
-                        taskId={filterTask.id}
-                        channelId={channelId}
-                        startAtEnd={true}
-                    />
-                </div>
-            ) : children}
-            {composer}
-        </TaskFilterContext.Provider>
-    );
+
+    // Another tab covers the chat instead of replacing it: a remounted post list loses its scroll position.
+    let panel: React.ReactNode = null;
     if (section && tab === 'revisions') {
         panel = (
             <div
-                className='RevisionTabs__panel'
+                className='RevisionTabs__panel ChannelTabs__cover'
                 role='tabpanel'
             >
                 <div className='RevisionTabs__main'>
@@ -264,7 +241,7 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
     } else if (section && tab === 'tasks') {
         panel = (
             <div
-                className='RevisionTabs__panel'
+                className='RevisionTabs__panel ChannelTabs__cover'
                 role='tabpanel'
             >
                 <div className='RevisionTabs__main'>
@@ -283,11 +260,11 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
             </div>
         );
     } else if (isCanvas && tab === 'canvas') {
-        // While the Canvas tab shows, the chat is unmounted, so the post textbox's document keydown listener
+        // While the Canvas tab shows, the composer is unmounted, so the post textbox's document keydown listener
         // (use_textbox_focus) is gone and keys the board ignores cannot steal focus.
         panel = (
             <div
-                className='CanvasTabs__panel'
+                className='CanvasTabs__panel ChannelTabs__cover'
                 role='tabpanel'
             >
                 <Suspense fallback={null}>
@@ -302,7 +279,7 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
     } else if (filesEnabled && tab === 'files') {
         panel = (
             <div
-                className='ChannelFiles__panel'
+                className='ChannelFiles__panel ChannelTabs__cover'
                 role='tabpanel'
             >
                 <Suspense fallback={null}>
@@ -319,67 +296,95 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
         );
     }
 
+    // Every branch renders the same tree, so the chat keeps its place (and its scroll) when the tabs appear.
     return (
         <>
-            <div
-                className='RevisionTabs'
-                role='tablist'
-            >
-                {tabButton('messages', (
-                    <FormattedMessage
-                        id='tasks.revisionTabs.messages'
-                        defaultMessage='Messages'
-                    />
-                ))}
-                {section && tabButton('revisions', (
-                    <FormattedMessage
-                        id='tasks.revisionTabs.revisions'
-                        defaultMessage='Revisions'
-                    />
-                ))}
-                {section && tabButton('tasks', (
-                    <FormattedMessage
-                        id='tasks.revisionTabs.tasks'
-                        defaultMessage='Tasks'
-                    />
-                ))}
-                {isCanvas && tabButton('canvas', (
-                    <FormattedMessage
-                        id='canvas.tabs.canvas'
-                        defaultMessage='Canvas'
-                    />
-                ))}
-                {filesEnabled && tabButton('files', (
-                    <FormattedMessage
-                        id='file_explorer.title'
-                        defaultMessage='Files'
-                    />
-                ))}
-                {section && tab === 'messages' && (
-                    <select
-                        className='RevisionTabs__filter'
-                        aria-label={formatMessage({id: 'channel_tabs.filter.label', defaultMessage: 'Filter by task'})}
-                        value={filterTask ? filterTask.id : ''}
-                        onChange={(e) => setFilterTaskId(e.target.value)}
-                    >
-                        <option value=''>{formatMessage({id: 'channel_tabs.filter.all', defaultMessage: 'All'})}</option>
-                        {filterTasks.map((t) => (
-                            <option
-                                key={t.id}
-                                value={t.id}
+            {tabbed && (
+                <div
+                    className='RevisionTabs'
+                    role='tablist'
+                >
+                    {tabButton('messages', (
+                        <FormattedMessage
+                            id='tasks.revisionTabs.messages'
+                            defaultMessage='Messages'
+                        />
+                    ))}
+                    {section && tabButton('revisions', (
+                        <FormattedMessage
+                            id='tasks.revisionTabs.revisions'
+                            defaultMessage='Revisions'
+                        />
+                    ))}
+                    {section && tabButton('tasks', (
+                        <FormattedMessage
+                            id='tasks.revisionTabs.tasks'
+                            defaultMessage='Tasks'
+                        />
+                    ))}
+                    {isCanvas && tabButton('canvas', (
+                        <FormattedMessage
+                            id='canvas.tabs.canvas'
+                            defaultMessage='Canvas'
+                        />
+                    ))}
+                    {filesEnabled && tabButton('files', (
+                        <FormattedMessage
+                            id='file_explorer.title'
+                            defaultMessage='Files'
+                        />
+                    ))}
+                    {section && tab === 'messages' && (
+                        <select
+                            className='RevisionTabs__filter'
+                            aria-label={formatMessage({id: 'channel_tabs.filter.label', defaultMessage: 'Filter by task'})}
+                            value={filterTask ? filterTask.id : ''}
+                            onChange={(e) => setFilterTaskId(e.target.value)}
+                        >
+                            <option value=''>{formatMessage({id: 'channel_tabs.filter.all', defaultMessage: 'All'})}</option>
+                            {filterTasks.map((t) => (
+                                <option
+                                    key={t.id}
+                                    value={t.id}
+                                >
+                                    {t.title}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                </div>
+            )}
+            <div className='ChannelTabs__body'>
+                <div
+                    className='ChannelTabs__messages'
+                    inert={Boolean(panel)}
+                >
+                    <TaskFilterContext.Provider value={filterTask ? filterTask.id : ''}>
+                        {filterTask ? (
+                            <div
+                                className='TaskPostList__panel'
+                                role='tabpanel'
                             >
-                                {t.title}
-                            </option>
-                        ))}
-                    </select>
-                )}
+                                <TaskPostList
+                                    key={filterTask.id}
+                                    taskId={filterTask.id}
+                                    channelId={channelId}
+                                    startAtEnd={true}
+                                />
+                            </div>
+                        ) : children}
+                        {!panel && composer}
+                    </TaskFilterContext.Provider>
+                </div>
+                {panel}
             </div>
-            {panel}
-            <ExplorerUploadPanel
-                uploads={uploads.uploads}
-                onCancel={uploads.cancel}
-                onClose={uploads.clearFinished}
-            />
+            {tabbed && (
+                <ExplorerUploadPanel
+                    uploads={uploads.uploads}
+                    onCancel={uploads.cancel}
+                    onClose={uploads.clearFinished}
+                />
+            )}
         </>
     );
 };
