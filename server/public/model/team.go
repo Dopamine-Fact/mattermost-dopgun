@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -57,7 +58,7 @@ type Team struct {
 	DailyReportTimezone string  `json:"daily_report_timezone"`
 	FilesEnabled        bool    `json:"files_enabled"`
 	EpisodeFolders      string  `json:"episode_folders"` // JSON folder list (or newline-separated paths) seeded into each new episode
-	EpisodeTasks        string  `json:"episode_tasks"`   // newline-separated task titles seeded into each new episode
+	EpisodeTasks        string  `json:"episode_tasks"`   // JSON task list (or newline-separated titles) seeded into each new episode
 
 	// Not persisted; derived by the store via EXISTS on AccessControlPolicies(Type='team').
 	// Use HasMembershipPolicyAction for enforcement — this is a read-path signal only.
@@ -111,7 +112,7 @@ func (o *Team) Auditable() map[string]any {
 		"daily_report_timezone": o.DailyReportTimezone,
 		"files_enabled":         o.FilesEnabled,
 		"episode_folders":       episodeFolderCount(o.EpisodeFolders),
-		"episode_tasks":         len(EpisodeTemplateLines(o.EpisodeTasks)),
+		"episode_tasks":         len(ParseEpisodeTasks(o.EpisodeTasks)),
 	}
 }
 
@@ -151,7 +152,7 @@ func (o *TeamPatch) Auditable() map[string]any {
 		"daily_report_timezone": o.DailyReportTimezone,
 		"files_enabled":         o.FilesEnabled,
 		"episode_folders":       episodeTemplatePatchLines(o.EpisodeFolders, episodeFolderCount),
-		"episode_tasks":         episodeTemplatePatchLines(o.EpisodeTasks, func(t string) int { return len(EpisodeTemplateLines(t)) }),
+		"episode_tasks":         episodeTemplatePatchLines(o.EpisodeTasks, func(t string) int { return len(ParseEpisodeTasks(t)) }),
 	}
 }
 
@@ -171,11 +172,6 @@ func EpisodeTemplateLines(text string) []string {
 		}
 	}
 	return lines
-}
-
-// isValidEpisodeTemplate checks the size limits of a newline-separated template.
-func isValidEpisodeTemplate(text string) bool {
-	return utf8.RuneCountInString(text) <= TeamEpisodeTemplateMaxRunes && len(EpisodeTemplateLines(text)) <= TeamEpisodeTemplateMaxLines
 }
 
 // EpisodeFolder is one folder of the episode template. Empty ViewDepartments = everyone. Empty WriteDepartments
@@ -390,7 +386,7 @@ func (o *Team) IsValid() *AppError {
 	if !isValidEpisodeFolders(o.EpisodeFolders) {
 		return NewAppError("Team.IsValid", "model.team.is_valid.episode_folders.app_error", nil, "id="+o.Id, http.StatusBadRequest)
 	}
-	if !isValidEpisodeTemplate(o.EpisodeTasks) {
+	if !isValidEpisodeTasks(o.EpisodeTasks, o.EpisodeFolders) {
 		return NewAppError("Team.IsValid", "model.team.is_valid.episode_tasks.app_error", nil, "id="+o.Id, http.StatusBadRequest)
 	}
 
@@ -563,4 +559,107 @@ func (o *Team) IsGroupConstrained() bool {
 func (o *Team) ShallowCopy() *Team {
 	c := *o
 	return &c
+}
+
+const episodeTaskMaxDueDays = 365
+
+// EpisodeTask is one task of the episode template. Key names it for WaitsFor; Folder is an EpisodeFolder path.
+// DueDays is a pointer so 0 (due the day the episode is created) differs from no deadline.
+type EpisodeTask struct {
+	Key          string   `json:"key"`
+	Title        string   `json:"title"`
+	DepartmentId string   `json:"department_id,omitempty"`
+	AssigneeId   string   `json:"assignee_id,omitempty"`
+	DueDays      *int     `json:"due_days,omitempty"`
+	WaitsFor     []string `json:"waits_for,omitempty"`
+	Folder       string   `json:"folder,omitempty"`
+}
+
+// ParseEpisodeTasks reads the JSON list, or else the old one-title-per-line format (keys line0, line1, ...).
+func ParseEpisodeTasks(text string) []*EpisodeTask {
+	if strings.HasPrefix(strings.TrimSpace(text), "[") {
+		var tasks []*EpisodeTask
+		if err := json.Unmarshal([]byte(text), &tasks); err == nil {
+			return tasks
+		}
+	}
+	var tasks []*EpisodeTask
+	for i, line := range EpisodeTemplateLines(text) {
+		tasks = append(tasks, &EpisodeTask{Key: "line" + strconv.Itoa(i), Title: line})
+	}
+	return tasks
+}
+
+// isValidEpisodeTasks checks the size limits, keys, titles, ids, due days, that waits-for names other entries
+// without a cycle, and that a folder is a plain (non-mirror) path of the folder template.
+func isValidEpisodeTasks(text, folders string) bool {
+	if utf8.RuneCountInString(text) > TeamEpisodeFoldersMaxRunes {
+		return false
+	}
+	tasks := ParseEpisodeTasks(text)
+	if len(tasks) > TeamEpisodeTemplateMaxLines {
+		return false
+	}
+
+	plain := map[string]bool{}
+	parsed, _ := ParseEpisodeFolders(folders)
+	for _, f := range parsed {
+		if f != nil && f.MirrorOf == "" {
+			plain[strings.ToLower(f.Path)] = true
+		}
+	}
+
+	byKey := make(map[string]*EpisodeTask, len(tasks))
+	for _, task := range tasks {
+		if task == nil || task.Key == "" || byKey[task.Key] != nil {
+			return false
+		}
+		byKey[task.Key] = task
+		if title := strings.TrimSpace(task.Title); title == "" || utf8.RuneCountInString(title) > TaskTitleMaxRunes {
+			return false
+		}
+		if (task.DepartmentId != "" && !IsValidId(task.DepartmentId)) || (task.AssigneeId != "" && !IsValidId(task.AssigneeId)) {
+			return false
+		}
+		if task.DueDays != nil && (*task.DueDays < 0 || *task.DueDays > episodeTaskMaxDueDays) {
+			return false
+		}
+		if task.Folder != "" && !plain[strings.ToLower(task.Folder)] {
+			return false
+		}
+	}
+
+	for _, task := range tasks {
+		for _, key := range task.WaitsFor {
+			if key == task.Key || byKey[key] == nil {
+				return false
+			}
+		}
+	}
+
+	// Depth-first walk of waits_for: 1 = on the current path, 2 = done.
+	state := map[string]int{}
+	var cyclic func(key string) bool
+	cyclic = func(key string) bool {
+		switch state[key] {
+		case 1:
+			return true
+		case 2:
+			return false
+		}
+		state[key] = 1
+		for _, next := range byKey[key].WaitsFor {
+			if cyclic(next) {
+				return true
+			}
+		}
+		state[key] = 2
+		return false
+	}
+	for key := range byKey {
+		if cyclic(key) {
+			return false
+		}
+	}
+	return true
 }

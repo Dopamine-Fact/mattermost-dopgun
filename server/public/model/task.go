@@ -37,21 +37,24 @@ func TaskVideoContentType(name string) string {
 // Task is an item on a team's task board. SectionId and AssigneeId are empty when unset; StartAt and DueAt are 0 when unset.
 // SortOrder orders tasks within a status column; it is a float so a dragged task can land between two others.
 type Task struct {
-	Id          string  `json:"id"`
-	TeamId      string  `json:"team_id"`
-	SectionId   string  `json:"section_id"`
-	Title       string  `json:"title"`
-	Description string  `json:"description"`
-	AssigneeId  string  `json:"assignee_id"`
-	StartAt     int64   `json:"start_at"`
-	DueAt       int64   `json:"due_at"`
-	Status      string  `json:"status"`
-	SortOrder   float64 `json:"sort_order"`
-	VideoTime   int64   `json:"video_time"`    // ms into the section's video, for revisions
-	VideoFileId string  `json:"video_file_id"` // the video version a revision was written on; empty for ordinary tasks. Set on create only.
-	CreatorId   string  `json:"creator_id"`
-	CreateAt    int64   `json:"create_at"`
-	UpdateAt    int64   `json:"update_at"`
+	Id           string      `json:"id"`
+	TeamId       string      `json:"team_id"`
+	SectionId    string      `json:"section_id"`
+	Title        string      `json:"title"`
+	Description  string      `json:"description"`
+	AssigneeId   string      `json:"assignee_id"`
+	StartAt      int64       `json:"start_at"`
+	DueAt        int64       `json:"due_at"`
+	Status       string      `json:"status"`
+	SortOrder    float64     `json:"sort_order"`
+	VideoTime    int64       `json:"video_time"`    // ms into the section's video, for revisions
+	VideoFileId  string      `json:"video_file_id"` // the video version a revision was written on; empty for ordinary tasks. Set on create only.
+	DepartmentId string      `json:"department_id"` // the department that does the task; empty = any
+	WaitsFor     StringArray `json:"waits_for"`     // ids of the tasks that must be done first
+	FolderId     string      `json:"folder_id"`     // the drive folder seeded for the task; set on create only
+	CreatorId    string      `json:"creator_id"`
+	CreateAt     int64       `json:"create_at"`
+	UpdateAt     int64       `json:"update_at"`
 }
 
 type TaskPatch struct {
@@ -64,6 +67,9 @@ type TaskPatch struct {
 	Status      *string  `json:"status"`
 	SortOrder   *float64 `json:"sort_order"`
 	VideoTime   *int64   `json:"video_time"`
+
+	DepartmentId *string      `json:"department_id"`
+	WaitsFor     *StringArray `json:"waits_for"`
 }
 
 // TaskSection groups tasks. A section linked to a channel (ChannelId) is that revision channel's list:
@@ -117,6 +123,9 @@ func (t *Task) PreSave() {
 		t.Id = NewId()
 	}
 	t.Title = strings.TrimSpace(t.Title)
+	if t.WaitsFor == nil {
+		t.WaitsFor = StringArray{}
+	}
 	t.CreateAt = GetMillis()
 	t.UpdateAt = t.CreateAt
 	if t.Status == "" {
@@ -161,6 +170,12 @@ func (t *Task) Patch(p *TaskPatch) {
 	if p.VideoTime != nil {
 		t.VideoTime = *p.VideoTime
 	}
+	if p.DepartmentId != nil {
+		t.DepartmentId = *p.DepartmentId
+	}
+	if p.WaitsFor != nil {
+		t.WaitsFor = *p.WaitsFor
+	}
 }
 
 func (t *Task) IsValid() *AppError {
@@ -178,6 +193,17 @@ func (t *Task) IsValid() *AppError {
 	}
 	if t.AssigneeId != "" && !IsValidId(t.AssigneeId) {
 		return NewAppError("Task.IsValid", "model.task.is_valid.assignee_id.app_error", nil, "id="+t.Id, http.StatusBadRequest)
+	}
+	if t.DepartmentId != "" && !IsValidId(t.DepartmentId) {
+		return NewAppError("Task.IsValid", "model.task.is_valid.department_id.app_error", nil, "id="+t.Id, http.StatusBadRequest)
+	}
+	if t.FolderId != "" && !IsValidId(t.FolderId) {
+		return NewAppError("Task.IsValid", "model.task.is_valid.folder_id.app_error", nil, "id="+t.Id, http.StatusBadRequest)
+	}
+	for _, id := range t.WaitsFor {
+		if !IsValidId(id) {
+			return NewAppError("Task.IsValid", "model.task.is_valid.waits_for.app_error", nil, "id="+t.Id, http.StatusBadRequest)
+		}
 	}
 	if t.Title == "" || utf8.RuneCountInString(t.Title) > TaskTitleMaxRunes {
 		return NewAppError("Task.IsValid", "model.task.is_valid.title.app_error", nil, "id="+t.Id, http.StatusBadRequest)

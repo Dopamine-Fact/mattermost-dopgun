@@ -19662,6 +19662,11 @@
     "description": "API validation error when a task's creator user ID is malformed."
   },
   {
+    "id": "model.task.is_valid.department_id.app_error",
+    "translation": "Invalid department id.",
+    "description": "API validation error when a task's department ID is malformed."
+  },
+  {
     "id": "model.task.is_valid.description.app_error",
     "translation": "Description is too long.",
     "description": "API validation error when a task's description exceeds the maximum length."
@@ -19670,6 +19675,11 @@
     "id": "model.task.is_valid.due_at.app_error",
     "translation": "Invalid due date.",
     "description": "API validation error when a task's due date is negative."
+  },
+  {
+    "id": "model.task.is_valid.folder_id.app_error",
+    "translation": "Invalid folder id.",
+    "description": "API validation error when a task's drive folder ID is malformed."
   },
   {
     "id": "model.task.is_valid.id.app_error",
@@ -19705,6 +19715,11 @@
     "id": "model.task.is_valid.video_time.app_error",
     "translation": "The revision time must not be negative.",
     "description": "API validation error when a revision task points at a negative time in its video."
+  },
+  {
+    "id": "model.task.is_valid.waits_for.app_error",
+    "translation": "Invalid waits-for task id.",
+    "description": "API validation error when an id in a task's list of tasks it waits for is malformed."
   },
   {
     "id": "model.task_comment.is_valid.app_error",

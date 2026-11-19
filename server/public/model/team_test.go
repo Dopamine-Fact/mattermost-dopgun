@@ -326,3 +326,62 @@ func TestIsValidEpisodeFolders(t *testing.T) {
 	require.True(t, isValidEpisodeFolders("Layout\nLayout/Ref"))
 	require.False(t, isValidEpisodeFolders(js(make101Folders())))
 }
+
+func TestParseEpisodeTasks(t *testing.T) {
+	got := ParseEpisodeTasks("Storyboard\nAnimatic")
+	require.Equal(t, []*EpisodeTask{{Key: "line0", Title: "Storyboard"}, {Key: "line1", Title: "Animatic"}}, got)
+
+	dept := NewId()
+	got = ParseEpisodeTasks(`[{"key":"a","title":"Layout","department_id":"` + dept + `","due_days":5,"waits_for":["b"],"folder":"BG/Layout"},{"key":"b","title":"Storyboard"}]`)
+	five := 5
+	require.Equal(t, []*EpisodeTask{
+		{Key: "a", Title: "Layout", DepartmentId: dept, DueDays: &five, WaitsFor: []string{"b"}, Folder: "BG/Layout"},
+		{Key: "b", Title: "Storyboard"},
+	}, got)
+}
+
+func TestTeamIsValidEpisodeTasks(t *testing.T) {
+	folders := `[{"path":"BG/Layout"},{"path":"M","mirror_of":"BG/Layout"}]`
+	id := NewId()
+	entry := func(extra string) string { return `[{"key":"a","title":"A"` + extra + `}]` }
+	many := func(n int) string {
+		var parts []string
+		for i := range n {
+			parts = append(parts, fmt.Sprintf(`{"key":"k%d","title":"T"}`, i))
+		}
+		return "[" + strings.Join(parts, ",") + "]"
+	}
+	lines100 := strings.Repeat("x\n", 99) + "x"
+	valid := []string{
+		`[{"key":"a","title":"Layout","department_id":"` + id + `","assignee_id":"` + id + `","due_days":5,"waits_for":["b"],"folder":"bg/layout"},{"key":"b","title":"Storyboard","due_days":0}]`,
+		lines100,
+		"",
+	}
+	invalid := map[string]string{
+		"101 entries":    many(101),
+		"duplicate key":  `[{"key":"a","title":"A"},{"key":"a","title":"B"}]`,
+		"empty title":    `[{"key":"a","title":" "}]`,
+		"long title":     `[{"key":"a","title":"` + strings.Repeat("a", 513) + `"}]`,
+		"bad dept":       entry(`,"department_id":"x"`),
+		"bad assignee":   entry(`,"assignee_id":"x"`),
+		"due -1":         entry(`,"due_days":-1`),
+		"due 366":        entry(`,"due_days":366`),
+		"missing wait":   entry(`,"waits_for":["zz"]`),
+		"waits itself":   entry(`,"waits_for":["a"]`),
+		"cycle":          `[{"key":"a","title":"A","waits_for":["b"]},{"key":"b","title":"B","waits_for":["a"]}]`,
+		"unknown folder": entry(`,"folder":"Nope"`),
+		"mirror folder":  entry(`,"folder":"M"`),
+	}
+	for _, tasks := range valid {
+		o := Team{Id: NewId(), CreateAt: GetMillis(), UpdateAt: GetMillis(), Email: "a@b.com", DisplayName: "T", Name: "zzzzz", Type: TeamOpen, InviteId: NewId(), EpisodeFolders: folders, EpisodeTasks: tasks}
+		require.Nil(t, o.IsValid(), tasks)
+	}
+	for name, tasks := range invalid {
+		t.Run(name, func(t *testing.T) {
+			o := Team{Id: NewId(), CreateAt: GetMillis(), UpdateAt: GetMillis(), Email: "a@b.com", DisplayName: "T", Name: "zzzzz", Type: TeamOpen, InviteId: NewId(), EpisodeFolders: folders, EpisodeTasks: tasks}
+			appErr := o.IsValid()
+			require.NotNil(t, appErr)
+			require.Equal(t, "model.team.is_valid.episode_tasks.app_error", appErr.Id)
+		})
+	}
+}

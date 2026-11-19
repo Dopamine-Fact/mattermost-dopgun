@@ -60,3 +60,31 @@ func TestTaskSectionIsValid(t *testing.T) {
 	s.Name = ""
 	require.NotNil(t, s.IsValid())
 }
+
+func TestTaskPatchRules(t *testing.T) {
+	dept, wait := NewId(), NewId()
+	task := &Task{}
+	task.Patch(&TaskPatch{DepartmentId: &dept, WaitsFor: &StringArray{wait}})
+	require.Equal(t, dept, task.DepartmentId)
+	require.Equal(t, StringArray{wait}, task.WaitsFor)
+
+	fresh := &Task{Title: "T"}
+	fresh.PreSave()
+	require.Equal(t, StringArray{}, fresh.WaitsFor)
+
+	valid := func() *Task {
+		tk := &Task{Id: NewId(), TeamId: NewId(), CreatorId: NewId(), Title: "T"}
+		tk.PreSave()
+		return tk
+	}
+	require.Nil(t, valid().IsValid())
+	bad := valid()
+	bad.DepartmentId = "x"
+	require.NotNil(t, bad.IsValid())
+	bad = valid()
+	bad.WaitsFor = StringArray{"x"}
+	require.NotNil(t, bad.IsValid())
+	bad = valid()
+	bad.FolderId = "x"
+	require.NotNil(t, bad.IsValid())
+}
