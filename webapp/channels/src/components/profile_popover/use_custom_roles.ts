@@ -87,6 +87,12 @@ export function useLoadedTeamDepartments(teamId: string): Department[] | undefin
 export const ranksHeldBy = (departments: Department[], userId: string): Rank[] =>
     departments.flatMap((department) => department.ranks.filter((rank) => rank.member_ids.includes(userId)));
 
+/** The color of the user's first rank in the team, or undefined when they hold none (or departments are not loaded). */
+export function useUserRankColor(teamId: string, userId: string): string | undefined {
+    const departments = useTeamDepartments(teamId);
+    return ranksHeldBy(departments, userId)[0]?.color;
+}
+
 /** The ranks, in department order, that a member's space-separated team roles include. */
 export const ranksOf = (departments: Department[], roleNames: string): Array<{department: Department; rank: Rank}> => {
     const held = new Set(roleNames.split(' '));

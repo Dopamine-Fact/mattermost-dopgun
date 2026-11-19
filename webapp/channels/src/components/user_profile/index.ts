@@ -12,6 +12,7 @@ import type {UserProfile as UserProfileType} from '@mattermost/types/users';
 import {fetchRemoteClusterInfo} from 'mattermost-redux/actions/shared_channels';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
 import {getRemoteDisplayName} from 'mattermost-redux/selectors/entities/shared_channels';
+import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getUser, makeGetDisplayName} from 'mattermost-redux/selectors/entities/users';
 
 import type {GlobalState} from 'types/store';
@@ -50,6 +51,7 @@ function makeMapStateToProps() {
             displayName: getDisplayName(state, ownProps.userId, true),
             user,
             theme,
+            teamId: getCurrentTeamId(state),
             isShared: Boolean(user && user.remote_id),
             remoteNames,
         };

@@ -7,6 +7,7 @@ import React, {useEffect} from 'react';
 import {isGuest} from 'mattermost-redux/utils/user_utils';
 
 import ProfilePopover from 'components/profile_popover';
+import {useUserRankColor} from 'components/profile_popover/use_custom_roles';
 import SharedUserIndicator from 'components/shared_user_indicator';
 import BotTag from 'components/widgets/tag/bot_tag';
 import GuestTag from 'components/widgets/tag/guest_tag';
@@ -31,6 +32,7 @@ export default function UserProfile({
     user,
     displayName,
     theme,
+    teamId = '',
     userId,
     channelId,
     overwriteIcon,
@@ -55,8 +57,12 @@ export default function UserProfile({
         userColor = generateColor(user.username, theme.centerChannelBg);
     }
 
+    // a rank's color names its holder everywhere; otherwise the username color, only when asked for
+    const rankColor = useUserRankColor(teamId, userId);
     let userStyle;
-    if (colorize) {
+    if (rankColor) {
+        userStyle = {color: rankColor};
+    } else if (colorize) {
         userStyle = {color: userColor};
     }
 
