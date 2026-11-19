@@ -1,8 +1,8 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import type {Bounds, Point} from './geometry';
-import {bounds} from './geometry';
+import type {AlignMode, Bounds, Point} from './geometry';
+import {align, bounds} from './geometry';
 import type {CanvasElement} from './model';
 import {MAX_LABEL_LENGTH} from './model';
 
@@ -14,6 +14,9 @@ export const CARD_IMAGE_H = 400;
 export const ROW_CARDS = 10;
 export const GAP_RATIO = 0.1;
 export const STACK_OFFSET = 24;
+
+/** A stacked image's least height, so a card at its minimum size (no room for an image) still shows what was dropped. */
+export const MIN_STACK_H = 32;
 
 const safeAspect = (a: number) => (Number.isFinite(a) && a > 0 ? a : 1);
 
@@ -60,11 +63,12 @@ export function layoutScenes(aspects: number[], at: Point): Array<{scene: Bounds
 
 export function stackInScene(scene: Bounds, existing: number, aspects: number[]): Bounds[] {
     const img = sceneParts(scene).image;
+    const h = Math.max(img.h, MIN_STACK_H);
     return aspects.map((a, k) => ({
         x: img.x + ((existing + k) * STACK_OFFSET),
         y: img.y + ((existing + k) * STACK_OFFSET),
-        w: safeAspect(a) * img.h,
-        h: img.h,
+        w: safeAspect(a) * h,
+        h,
     }));
 }
 
@@ -114,4 +118,33 @@ export function membershipPatches(els: CanvasElement[], movedIds: string[], p: P
         }
     }
     return patches;
+}
+
+/** Aligns the elements; a card's images move with it, and an image whose card is aligned too is not aligned on its own. */
+export function alignWithImages(els: CanvasElement[], ids: string[], mode: AlignMode): Array<{id: string; x: number; y: number}> {
+    const selected = new Set(ids);
+    const cards = new Map(els.filter((e) => e.type === 'scene').map((e) => [e.id, e]));
+    const cardOf = (e: CanvasElement) => (e.type === 'image' && e.sceneId ? cards.get(e.sceneId) : undefined);
+    const moved = align(els.filter((e) => selected.has(e.id) && !selected.has(cardOf(e)?.id ?? '')), mode);
+    const out = Object.entries(moved).map(([id, p]) => ({id, ...p}));
+    for (const e of els) {
+        const card = cardOf(e);
+        const to = card && moved[card.id];
+        if (card && to && !moved[e.id]) {
+            out.push({id: e.id, x: e.x + (to.x - card.x), y: e.y + (to.y - card.y)});
+        }
+    }
+    return out;
+}
+
+/** A copied image without its card joins the card under its centre, as an image dropped there would; copies sit above every card. */
+export function joinCards(copies: CanvasElement[], els: CanvasElement[]): Array<{id: string; sceneId: string}> {
+    return copies.flatMap((e) => {
+        if (e.type !== 'image' || e.sceneId) {
+            return [];
+        }
+        const b = bounds(e);
+        const card = sceneAt(els, {x: b.x + (b.w / 2), y: b.y + (b.h / 2)});
+        return card ? [{id: e.id, sceneId: card.id}] : [];
+    });
 }

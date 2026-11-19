@@ -249,6 +249,15 @@ describe('storyboard elements', () => {
         expect(withChildren(board(), [S, I1])).toEqual([S, I1, I2]);
     });
 
+    test('withChildren and delete only follow sceneId to a scene', () => {
+        const R = ID('r');
+        const {doc, elements} = createCanvasDoc();
+        [rect(R), image(I1, {sceneId: R, z: 1})].forEach((el) => addElement(doc, el));
+        expect(withChildren(readElements(elements), [R])).toEqual([R]);
+        deleteElements(doc, [R]);
+        expect(readElements(elements).map((el) => el.id)).toEqual([I1]);
+    });
+
     test('deleting a scene deletes its images in one undo step', () => {
         const {doc, elements, undo} = createCanvasDoc();
         board().forEach((el) => addElement(doc, el));

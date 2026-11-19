@@ -110,7 +110,7 @@ export const MAX_LABEL_LENGTH = 200;
 
 const TYPES = new Set<unknown>(['pen', 'rect', 'ellipse', 'line', 'arrow', 'text', 'scene', 'image']);
 const finite = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
-const isId = (v: unknown) => typeof v === 'string' && (/^[a-z0-9]{26}$/).test(v);
+export const isId = (v: unknown) => typeof v === 'string' && (/^[a-z0-9]{26}$/).test(v);
 
 /** Element ids come from generateId() (a UUID), so sceneId can't use the 26-char server id check. */
 const isElementId = (v: unknown) => typeof v === 'string' && (/^[\w-]{1,64}$/).test(v);
@@ -205,10 +205,10 @@ export function updateElements(doc: Y.Doc, ids: string[], patch: Partial<CanvasE
     }, LOCAL);
 }
 
-/** The ids plus the images of any scene among them. */
+/** The ids plus the images of any scene among them; a sceneId naming anything but a scene is ignored. */
 export function withChildren(els: CanvasElement[], ids: string[]): string[] {
     const out = new Set(ids);
-    const scenes = new Set(ids);
+    const scenes = new Set(els.filter((el) => el.type === 'scene' && out.has(el.id)).map((el) => el.id));
     els.forEach((el) => {
         if (el.type === 'image' && el.sceneId && scenes.has(el.sceneId)) {
             out.add(el.id);

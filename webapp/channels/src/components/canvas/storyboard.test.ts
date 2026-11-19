@@ -55,6 +55,12 @@ describe('storyboard', () => {
         expectBounds(b, img.x + 48, img.y + 48, img.h, img.h);
     });
 
+    it('stackInScene keeps images visible in a minimum-size card', () => {
+        const [a] = stackInScene({x: 0, y: 0, w: 96, h: 96}, 0, [2]);
+        expect(a.h).toBe(32);
+        expect(a.w).toBe(64);
+    });
+
     it('sortByName is natural', () => {
         const items = ['SC10.png', 'sc2.png', 'SC1.png'].map((name) => ({name}));
         expect(sortByName(items).map((i) => i.name)).toEqual(['SC1.png', 'sc2.png', 'SC10.png']);
