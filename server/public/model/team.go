@@ -484,12 +484,9 @@ func CleanTeamName(s string) string {
 	return s
 }
 
-// Sanitize strips what plain members may not see: the episode templates name folders some of them cannot see.
 func (o *Team) Sanitize() {
 	o.Email = ""
 	o.InviteId = ""
-	o.EpisodeFolders = ""
-	o.EpisodeTasks = ""
 }
 
 func (o *Team) Patch(patch *TeamPatch) {
