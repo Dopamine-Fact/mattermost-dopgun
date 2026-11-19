@@ -16,7 +16,10 @@ import {displayUsername} from 'mattermost-redux/utils/user_utils';
 
 import {patchTask} from 'actions/tasks';
 
-import {AddTask, AssigneeAvatar, DoneToggle, DueDate, SectionLabel, StatusSelect} from './task_bits';
+import {useLoadedTeamDepartments} from 'components/profile_popover/use_custom_roles';
+
+import {AddTask, AssigneeAvatar, DepartmentChip, DoneToggle, DueDate, LockLine, SectionLabel, StatusSelect, TakeItButton} from './task_bits';
+import {lockedBy} from './task_departments';
 import {dropToPatch, groupByStatus, STATUSES, statusMessages} from './task_utils';
 import type {ViewProps} from './task_utils';
 
@@ -27,6 +30,8 @@ const List = ({teamId, tasks, sections, usersById, selectedId, onSelect, canMana
     const nameDisplay = useSelector(getTeammateNameDisplaySetting);
     const byStatus = useMemo(() => groupByStatus(tasks), [tasks]);
     const sectionsById = useMemo(() => new Map(sections.map((s) => [s.id, s])), [sections]);
+    const departments = useLoadedTeamDepartments(teamId);
+    const byId = useMemo(() => Object.fromEntries(tasks.map((t) => [t.id, t])), [tasks]);
     const [collapsed, setCollapsed] = useState<Partial<Record<TaskStatus, boolean>>>({});
 
     const handleDragEnd = (result: DropResult) => {
@@ -90,11 +95,14 @@ const List = ({teamId, tasks, sections, usersById, selectedId, onSelect, canMana
                                             >
                                                 {byStatus[status].map((task, index) => {
                                                     const assignee = usersById[task.assignee_id];
+                                                    const waitingFor = lockedBy(task, byId);
+                                                    const locked = !canManage && waitingFor.length > 0;
                                                     return (
                                                         <Draggable
                                                             key={task.id}
                                                             draggableId={task.id}
                                                             index={index}
+                                                            isDragDisabled={locked}
                                                         >
                                                             {(drag, dragSnapshot) => (
                                                                 <div
@@ -115,16 +123,37 @@ const List = ({teamId, tasks, sections, usersById, selectedId, onSelect, canMana
                                                                     }}
                                                                 >
                                                                     <span className='TaskList__name'>
-                                                                        <DoneToggle task={task}/>
+                                                                        <DoneToggle
+                                                                            task={task}
+                                                                            locked={locked}
+                                                                        />
                                                                         <span>{task.title}</span>
+                                                                        <LockLine
+                                                                            waitingFor={waitingFor}
+                                                                            compact={true}
+                                                                        />
+                                                                        <DepartmentChip
+                                                                            task={task}
+                                                                            departments={departments}
+                                                                        />
                                                                     </span>
                                                                     <span className='TaskList__assignee'>
                                                                         <AssigneeAvatar user={assignee}/>
                                                                         {assignee && displayUsername(assignee, nameDisplay)}
+                                                                        <TakeItButton
+                                                                            task={task}
+                                                                            departments={departments}
+                                                                            locked={locked}
+                                                                        />
                                                                     </span>
                                                                     <span><DueDate task={task}/></span>
                                                                     <span><SectionLabel section={sectionsById.get(task.section_id)}/></span>
-                                                                    <span><StatusSelect task={task}/></span>
+                                                                    <span>
+                                                                        <StatusSelect
+                                                                            task={task}
+                                                                            locked={locked}
+                                                                        />
+                                                                    </span>
                                                                 </div>
                                                             )}
                                                         </Draggable>

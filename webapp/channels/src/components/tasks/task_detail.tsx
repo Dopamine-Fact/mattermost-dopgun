@@ -1,23 +1,32 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
+import {Link} from 'react-router-dom';
 
 import {CloseIcon, TrashCanOutlineIcon} from '@mattermost/compass-icons/components';
 import type {Task, TaskPatch, TaskSection} from '@mattermost/types/tasks';
 import type {UserProfile} from '@mattermost/types/users';
 
 import {Client4} from 'mattermost-redux/client';
+import {getChannel} from 'mattermost-redux/selectors/entities/channels';
+import {getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
 import {deleteTask, patchTask} from 'actions/tasks';
 
+import {useLoadedTeamDepartments} from 'components/profile_popover/use_custom_roles';
+import {episodeTaskCycle} from 'components/team_settings/team_episodes_tab/episode_tasks';
+
+import type {GlobalState} from 'types/store';
+
 import BlurInput from './blur_input';
 import {fromDateInput, toDateInput} from './dates';
-import {StatusSelect} from './task_bits';
+import {DepartmentChip, LockLine, StatusSelect, TakeItButton} from './task_bits';
 import TaskComments from './task_comments';
+import {lockedBy} from './task_departments';
 
 type Props = {
     task: Task;
@@ -48,6 +57,28 @@ const TaskDetail = ({task, sections, members, displayName, onClose, canManage}: 
             live = false;
         };
     }, [task.team_id, canManage, permission]);
+
+    // Departments, the waits-for lock and the folder belong to ordinary tasks, never to revisions.
+    const departments = useLoadedTeamDepartments(task.team_id);
+    const byId = useSelector((state: GlobalState) => state.entities.tasks.byId);
+    const waitingFor = lockedBy(task, byId);
+    const locked = !canManage && waitingFor.length > 0;
+    const channelId = sections.find((s) => s.id === task.section_id)?.channel_id ?? '';
+    const channelName = useSelector((state: GlobalState) => getChannel(state, channelId)?.name ?? '');
+    const team = useSelector((state: GlobalState) => getTeam(state, task.team_id));
+
+    // A task may wait for another of its section, unless that one (directly or not) already waits for this one.
+    const candidates = useMemo(() => {
+        if (!canManage || task.video_file_id) {
+            return [];
+        }
+        const sameSection = Object.values(byId).filter((t) => t.team_id === task.team_id && t.section_id === task.section_id && !t.video_file_id);
+        const asKeys = (waitsFor: string[]) => sameSection.map((t) => ({key: t.id, title: t.title, waits_for: t.id === task.id ? waitsFor : t.waits_for}));
+        return sameSection.
+            filter((t) => t.id !== task.id && (task.waits_for.includes(t.id) || !episodeTaskCycle(asKeys([...task.waits_for, t.id])))).
+            sort((a, b) => a.title.localeCompare(b.title));
+    }, [byId, canManage, task]);
+
     const assignable = members.filter((u) => !actionable || actionable.has(u.id) || u.id === currentUserId || u.id === task.assignee_id);
 
     return (
@@ -57,7 +88,10 @@ const TaskDetail = ({task, sections, members, displayName, onClose, canManage}: 
         >
             <div className='TaskDetail__header'>
                 <span className='TaskDetail__status'>
-                    <StatusSelect task={task}/>
+                    <StatusSelect
+                        task={task}
+                        locked={locked}
+                    />
                 </span>
                 {canManage && (
                     <button
@@ -88,6 +122,45 @@ const TaskDetail = ({task, sections, members, displayName, onClose, canManage}: 
                 aria-label={formatMessage({id: 'tasks.detail.title', defaultMessage: 'Task title'})}
             />
 
+            {!task.video_file_id && (
+                <>
+                    <LockLine waitingFor={waitingFor}/>
+                    {canManage ? (
+                        <label className='TaskDetail__field'>
+                            <FormattedMessage
+                                id='tasks.detail.department'
+                                defaultMessage='Department'
+                            />
+                            <select
+                                className='form-control'
+                                value={task.department_id}
+                                onChange={(e) => save({department_id: e.target.value})}
+                            >
+                                <option value=''>{formatMessage({id: 'tasks.detail.noDepartment', defaultMessage: 'No department'})}</option>
+                                {departments && task.department_id && !departments.some((d) => d.id === task.department_id) && (
+                                    <option value={task.department_id}>{formatMessage({id: 'tasks.department.deleted', defaultMessage: 'Deleted department'})}</option>
+                                )}
+                                {departments?.map((department) => (
+                                    <option
+                                        key={department.id}
+                                        value={department.id}
+                                    >
+                                        {department.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    ) : (
+                        <div>
+                            <DepartmentChip
+                                task={task}
+                                departments={departments}
+                            />
+                        </div>
+                    )}
+                </>
+            )}
+
             <label className='TaskDetail__field'>
                 <FormattedMessage
                     id='tasks.detail.assignee'
@@ -109,7 +182,36 @@ const TaskDetail = ({task, sections, members, displayName, onClose, canManage}: 
                         </option>
                     ))}
                 </select>
+                <TakeItButton
+                    task={task}
+                    departments={departments}
+                    locked={locked}
+                />
             </label>
+
+            {candidates.length > 0 && (
+                <fieldset className='TaskDetail__field'>
+                    <legend>
+                        <FormattedMessage
+                            id='tasks.detail.waitsFor'
+                            defaultMessage='Waits for'
+                        />
+                    </legend>
+                    {candidates.map((t) => (
+                        <label
+                            key={t.id}
+                            className='TaskDetail__check'
+                        >
+                            <input
+                                type='checkbox'
+                                checked={task.waits_for.includes(t.id)}
+                                onChange={(e) => save({waits_for: e.target.checked ? [...task.waits_for, t.id] : task.waits_for.filter((id) => id !== t.id)})}
+                            />
+                            {t.title}
+                        </label>
+                    ))}
+                </fieldset>
+            )}
 
             <div className='TaskDetail__dates'>
                 <label className='TaskDetail__field'>
@@ -162,6 +264,18 @@ const TaskDetail = ({task, sections, members, displayName, onClose, canManage}: 
                     ))}
                 </select>
             </label>
+
+            {task.folder_id && !task.video_file_id && team?.files_enabled && channelName && (
+                <Link
+                    className='TaskDetail__folder'
+                    to={`/${team.name}/channels/${channelName}?folder=${task.folder_id}`}
+                >
+                    <FormattedMessage
+                        id='tasks.detail.openFolder'
+                        defaultMessage='Open folder'
+                    />
+                </Link>
+            )}
 
             <div className='TaskDetail__field'>
                 <FormattedMessage

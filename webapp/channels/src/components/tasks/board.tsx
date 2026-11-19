@@ -10,7 +10,10 @@ import {useDispatch} from 'react-redux';
 
 import {patchTask} from 'actions/tasks';
 
-import {AddTask, AssigneeAvatar, DoneToggle, DueDate, SectionLabel} from './task_bits';
+import {useLoadedTeamDepartments} from 'components/profile_popover/use_custom_roles';
+
+import {AddTask, AssigneeAvatar, DepartmentChip, DoneToggle, DueDate, LockLine, SectionLabel, TakeItButton} from './task_bits';
+import {lockedBy} from './task_departments';
 import {dropToPatch, groupByStatus, STATUSES, statusMessages} from './task_utils';
 import type {ViewProps} from './task_utils';
 
@@ -18,6 +21,8 @@ const Board = ({teamId, tasks, sections, usersById, selectedId, onSelect, canMan
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
     const byStatus = useMemo(() => groupByStatus(tasks), [tasks]);
+    const departments = useLoadedTeamDepartments(teamId);
+    const byId = useMemo(() => Object.fromEntries(tasks.map((t) => [t.id, t])), [tasks]);
     const sectionsById = useMemo(() => new Map(sections.map((s) => [s.id, s])), [sections]);
 
     const handleDragEnd = (result: DropResult) => {
@@ -47,45 +52,66 @@ const Board = ({teamId, tasks, sections, usersById, selectedId, onSelect, canMan
                                     {...drop.droppableProps}
                                     className={classNames('TaskBoard__cards', {'TaskBoard__cards--over': dropSnapshot.isDraggingOver})}
                                 >
-                                    {byStatus[status].map((task, index) => (
-                                        <Draggable
-                                            key={task.id}
-                                            draggableId={task.id}
-                                            index={index}
-                                        >
-                                            {(drag, dragSnapshot) => (
-                                                <div
-                                                    ref={drag.innerRef}
-                                                    {...drag.draggableProps}
-                                                    {...drag.dragHandleProps}
-                                                    role='button'
-                                                    tabIndex={0}
+                                    {byStatus[status].map((task, index) => {
+                                        const waitingFor = lockedBy(task, byId);
+                                        const locked = !canManage && waitingFor.length > 0;
+                                        return (
+                                            <Draggable
+                                                key={task.id}
+                                                draggableId={task.id}
+                                                index={index}
+                                                isDragDisabled={locked}
+                                            >
+                                                {(drag, dragSnapshot) => (
+                                                    <div
+                                                        ref={drag.innerRef}
+                                                        {...drag.draggableProps}
+                                                        {...drag.dragHandleProps}
+                                                        role='button'
+                                                        tabIndex={0}
 
-                                                    // While dragging, the card takes the colour of the column it is over.
-                                                    className={classNames('TaskCard', `TaskStatus--${dragSnapshot.draggingOver ?? task.status}`, {
-                                                        'TaskCard--dragging': dragSnapshot.isDragging,
-                                                        'TaskCard--selected': task.id === selectedId,
-                                                    })}
-                                                    onClick={() => onSelect(task.id)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') {
-                                                            onSelect(task.id);
-                                                        }
-                                                    }}
-                                                >
-                                                    <SectionLabel section={sectionsById.get(task.section_id)}/>
-                                                    <div className='TaskCard__title'>
-                                                        <DoneToggle task={task}/>
-                                                        <span>{task.title}</span>
+                                                        // While dragging, the card takes the colour of the column it is over.
+                                                        className={classNames('TaskCard', `TaskStatus--${dragSnapshot.draggingOver ?? task.status}`, {
+                                                            'TaskCard--dragging': dragSnapshot.isDragging,
+                                                            'TaskCard--selected': task.id === selectedId,
+                                                        })}
+                                                        onClick={() => onSelect(task.id)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                                onSelect(task.id);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <SectionLabel section={sectionsById.get(task.section_id)}/>
+                                                        <DepartmentChip
+                                                            task={task}
+                                                            departments={departments}
+                                                        />
+                                                        <div className='TaskCard__title'>
+                                                            <DoneToggle
+                                                                task={task}
+                                                                locked={locked}
+                                                            />
+                                                            <span>{task.title}</span>
+                                                        </div>
+                                                        <div className='TaskCard__footer'>
+                                                            <AssigneeAvatar user={usersById[task.assignee_id]}/>
+                                                            <TakeItButton
+                                                                task={task}
+                                                                departments={departments}
+                                                                locked={locked}
+                                                            />
+                                                            <LockLine
+                                                                waitingFor={waitingFor}
+                                                                compact={true}
+                                                            />
+                                                            <DueDate task={task}/>
+                                                        </div>
                                                     </div>
-                                                    <div className='TaskCard__footer'>
-                                                        <AssigneeAvatar user={usersById[task.assignee_id]}/>
-                                                        <DueDate task={task}/>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </Draggable>
-                                    ))}
+                                                )}
+                                            </Draggable>
+                                        );
+                                    })}
                                     {drop.placeholder}
                                 </div>
                             )}

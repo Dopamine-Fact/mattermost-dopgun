@@ -3,7 +3,10 @@
 
 import React from 'react';
 
+import type {Department} from '@mattermost/types/custom_roles';
 import type {Task, TaskSection} from '@mattermost/types/tasks';
+
+import {Client4} from 'mattermost-redux/client';
 
 import {patchTask} from 'actions/tasks';
 
@@ -39,6 +42,9 @@ const task = (id: string, status: Task['status'], extra: Partial<Task> = {}): Ta
     creator_id: 'user1',
     create_at: 1,
     update_at: 1,
+    department_id: '',
+    waits_for: [],
+    folder_id: '',
     ...extra,
 });
 
@@ -112,5 +118,22 @@ describe('task views', () => {
 
         expect(patchTask).toHaveBeenCalledWith('a', {start_at: today, due_at: addDays(today, 5)});
         expect(bar).not.toHaveClass('TaskBar--resizing');
+    });
+
+    test('list and board rows show the department and the lock', async () => {
+        jest.spyOn(Client4, 'getTeamDepartments').mockResolvedValue([{id: 'anim', name: 'Animation', color: '#112233', ranks: []} as unknown as Department]);
+        const tasks = [
+            task('a', 'todo', {department_id: 'anim', waits_for: ['b']}),
+            task('b', 'in_progress'),
+        ];
+        const viewProps = {...props, tasks};
+        const view = renderWithContext(<List {...viewProps}/>);
+        expect(await screen.findByText('Animation')).toBeInTheDocument();
+        expect(screen.getAllByLabelText('Waiting for: Task b')).toHaveLength(1);
+        view.unmount();
+
+        renderWithContext(<Board {...viewProps}/>);
+        expect(await screen.findByText('Animation')).toBeInTheDocument();
+        expect(screen.getAllByLabelText('Waiting for: Task b')).toHaveLength(1);
     });
 });

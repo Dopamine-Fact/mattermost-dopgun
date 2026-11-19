@@ -33299,6 +33299,10 @@
     "defaultMessage": "Send",
     "description": "Button in a task's detail panel that posts the typed message about the task into its linked channel."
   },
+  "tasks.department.deleted": {
+    "defaultMessage": "Deleted department",
+    "description": "Chip on a task whose department was deleted from the team (task list, board and task details)."
+  },
   "tasks.detail.assignee": {
     "defaultMessage": "Assignee",
     "description": ""
@@ -33311,6 +33315,10 @@
     "defaultMessage": "Delete task",
     "description": ""
   },
+  "tasks.detail.department": {
+    "defaultMessage": "Department",
+    "description": "Label of the department picker in the task details panel, shown to people who can manage tasks."
+  },
   "tasks.detail.description": {
     "defaultMessage": "Description",
     "description": ""
@@ -33322,6 +33330,14 @@
   "tasks.detail.label": {
     "defaultMessage": "Task details",
     "description": ""
+  },
+  "tasks.detail.noDepartment": {
+    "defaultMessage": "No department",
+    "description": "Option in the department picker of the task details that leaves the task without a department."
+  },
+  "tasks.detail.openFolder": {
+    "defaultMessage": "Open folder",
+    "description": "Link in the task details panel that opens the task's folder in the channel Files tab."
   },
   "tasks.detail.section": {
     "defaultMessage": "Section",
@@ -33342,6 +33358,10 @@
   "tasks.detail.unassigned": {
     "defaultMessage": "Unassigned",
     "description": ""
+  },
+  "tasks.detail.waitsFor": {
+    "defaultMessage": "Waits for",
+    "description": "Legend of the checkbox list in the task details panel naming the tasks that must be done before this task can start."
   },
   "tasks.episodeChannelModal.failed": {
     "defaultMessage": "The channel was created, but these could not be added:",
@@ -33591,6 +33611,10 @@
     "defaultMessage": "Status of {title}",
     "description": ""
   },
+  "tasks.takeIt": {
+    "defaultMessage": "Take it",
+    "description": "Button on an unassigned task of a department that lets a member of that department assign the task to themself."
+  },
   "tasks.timeline.unscheduled": {
     "defaultMessage": "{count, plural, one {# task has no dates and is} other {# tasks have no dates and are}} not shown here.",
     "description": ""
@@ -33610,6 +33634,10 @@
   "tasks.view.timeline": {
     "defaultMessage": "Timeline",
     "description": ""
+  },
+  "tasks.waitingFor": {
+    "defaultMessage": "Waiting for: {titles}",
+    "description": "Shown on a task that cannot start yet; {titles} is the comma-separated list of the unfinished tasks it waits for."
   },
   "team_channel_settings.group.group_user_row.numberOfGroups": {
     "defaultMessage": "{amount, number} {amount, plural, one {Group} other {Groups}}",
