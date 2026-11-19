@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
+import React, {useState} from 'react';
 import {defineMessages, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 
@@ -30,6 +30,7 @@ const RankMembers = ({teamId, rank, departments, run}: Props) => {
     const {formatMessage} = useIntl();
     const profiles = useSelector((state: GlobalState) => getProfilesInTeam(state, teamId));
     const nameDisplay = useSelector(getTeammateNameDisplaySetting);
+    const [pick, setPick] = useState('');
 
     const holders = profiles.filter((u) => rank.member_ids.includes(u.id));
     const candidates = profiles.filter((u) => !rank.member_ids.includes(u.id) && !u.is_bot && !u.delete_at && !isGuest(u.roles));
@@ -67,8 +68,10 @@ const RankMembers = ({teamId, rank, departments, run}: Props) => {
             <select
                 className='TeamDepartments__addPerson'
                 aria-label={formatMessage(msg.addTo, {rank: rank.display_name})}
-                value=''
-                onChange={(e) => e.target.value && give(e.target.value)}
+                value={pick}
+
+                // arrow keys and type-ahead change a closed select, so choosing only stages the person
+                onChange={(e) => setPick(e.target.value)}
             >
                 <option value=''>{formatMessage(msg.add)}</option>
                 {candidates.map((user) => (
@@ -80,12 +83,25 @@ const RankMembers = ({teamId, rank, departments, run}: Props) => {
                     </option>
                 ))}
             </select>
+            {pick && (
+                <button
+                    type='button'
+                    className='btn btn-primary btn-xs'
+                    onClick={() => {
+                        setPick('');
+                        give(pick);
+                    }}
+                >
+                    {formatMessage(msg.confirmAdd)}
+                </button>
+            )}
         </div>
     );
 };
 
 const msg = defineMessages({
     add: {id: 'team_settings.departments.add_member', defaultMessage: '+ Add person'},
+    confirmAdd: {id: 'multiselect.add', defaultMessage: 'Add'},
     addTo: {id: 'team_settings.departments.add_member_to', defaultMessage: 'Add person to {rank}'},
     remove: {id: 'team_settings.departments.remove_member', defaultMessage: 'Remove {name} from {rank}'},
 });

@@ -108,6 +108,10 @@ describe('TeamDepartmentsTab', () => {
         await within(mid).findByText('alice');
         fireEvent.change(within(mid).getByRole('combobox', {name: 'Add person to Mid'}), {target: {value: 'u3'}});
 
+        // browsing the list with the keyboard changes the select too, so only the button gives the rank
+        expect(set).not.toHaveBeenCalled();
+        fireEvent.click(within(mid).getByRole('button', {name: 'Add'}));
+
         await waitFor(() => expect(set).toHaveBeenCalledWith('team1', 'u3', ['p', 'm']));
     });
 
