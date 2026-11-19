@@ -119,7 +119,7 @@ describe('TaskDetail department, pool, lock and folder', () => {
     afterEach(() => jest.restoreAllMocks());
 
     // roles are the viewer's team roles.
-    const renderIt = (t: Task, {roles = 'team_user', canManage = false}: {roles?: string; canManage?: boolean} = {}) => renderWithContext(
+    const renderIt = (t: Task, {roles = 'team_user', canManage = false, extra = {}}: {roles?: string; canManage?: boolean; extra?: Record<string, Task>} = {}) => renderWithContext(
         <TaskDetail
             task={t}
             sections={[section]}
@@ -137,7 +137,7 @@ describe('TaskDetail department, pool, lock and folder', () => {
                     myMembers: {team1: {team_id: 'team1', user_id: 'me', roles, scheme_user: true, scheme_admin: false, scheme_guest: false, mention_count: 0, msg_count: 0}},
                 },
                 channels: {channels: {ch1: TestHelper.getChannelMock({id: 'ch1', name: 'episode-1'})}},
-                tasks: {byId: {t1: t, s: story, o: other}, sectionsById: {ep: section}},
+                tasks: {byId: {t1: t, s: story, o: other, ...extra}, sectionsById: {ep: section}},
             },
         },
     );
@@ -167,6 +167,25 @@ describe('TaskDetail department, pool, lock and folder', () => {
         expect(within(status).getByRole('option', {name: 'In progress'})).toBeDisabled();
         expect(within(status).getByRole('option', {name: 'Done'})).toBeDisabled();
         expect(screen.getByRole('button', {name: 'Take it'})).toBeDisabled();
+    });
+
+    test('a non-manager cannot move a linked task between sections, a manager can', async () => {
+        const waiting = {...pool, waits_for: ['s']};
+        const first = renderIt(waiting, {roles: 'team_user rk_anim'});
+        expect(await screen.findByRole('combobox', {name: 'Section'})).toBeDisabled();
+        first.unmount();
+
+        // The storyboard waits for nothing, but the pool task waits for it.
+        const second = renderIt(story, {extra: {w: waiting}});
+        expect(await screen.findByRole('combobox', {name: 'Section'})).toBeDisabled();
+        second.unmount();
+
+        const third = renderIt(pool);
+        expect(await screen.findByRole('combobox', {name: 'Section'})).toBeEnabled();
+        third.unmount();
+
+        renderIt(waiting, {canManage: true});
+        expect(await screen.findByRole('combobox', {name: 'Section'})).toBeEnabled();
     });
 
     test('a manager can still move a locked task', async () => {

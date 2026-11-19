@@ -6,7 +6,7 @@ import React, {useEffect, useState} from 'react';
 import {defineMessages, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 
-import {PlusIcon, TrashCanOutlineIcon} from '@mattermost/compass-icons/components';
+import {ArrowDownIcon, ArrowUpIcon, PlusIcon, TrashCanOutlineIcon} from '@mattermost/compass-icons/components';
 import type {Department} from '@mattermost/types/custom_roles';
 import type {UserProfile} from '@mattermost/types/users';
 
@@ -37,6 +37,8 @@ const msg = defineMessages({
     empty: {id: 'team_settings.episodeTasks.empty', defaultMessage: 'No tasks yet. New episodes start with an empty task list.'},
     add: {id: 'team_settings.episodeTasks.add', defaultMessage: 'Add task'},
     delete: {id: 'team_settings.episodeTasks.delete', defaultMessage: 'Delete {title}'},
+    moveUp: {id: 'team_settings.episodeTasks.moveUp', defaultMessage: 'Move {title} up'},
+    moveDown: {id: 'team_settings.episodeTasks.moveDown', defaultMessage: 'Move {title} down'},
     limit: {id: 'team_settings.episodeTasks.limit', defaultMessage: 'At most {max} tasks.'},
     pick: {id: 'team_settings.episodeTasks.pick', defaultMessage: 'Select a task to edit its rules.'},
     title: {id: 'team_settings.episodeTasks.title', defaultMessage: 'Task title'},
@@ -242,6 +244,12 @@ const EpisodeTaskPanel = ({teamId, tasks, folders, onChange}: Props) => {
         setSelected(key);
     };
 
+    const move = (index: number, by: number) => {
+        const next = [...tasks];
+        next.splice(index + by, 0, ...next.splice(index, 1));
+        onChange(next);
+    };
+
     // Deleting a task also drops it from what the others wait for.
     const remove = (key: string) => {
         onChange(tasks.filter((t) => t.key !== key).map((t) => tidyEpisodeTask({...t, waits_for: t.waits_for?.filter((k) => k !== key)})));
@@ -258,7 +266,7 @@ const EpisodeTaskPanel = ({teamId, tasks, folders, onChange}: Props) => {
             <div className='EpisodeTasks__list'>
                 {tasks.length === 0 && <p className='EpisodeTasks__hint'>{formatMessage(msg.empty)}</p>}
                 <ul aria-label={formatMessage(msg.list)}>
-                    {tasks.map((t) => (
+                    {tasks.map((t, i) => (
                         <li
                             key={t.key}
                             className={classNames('EpisodeTasks__row', {'EpisodeTasks__row--selected': t.key === selected})}
@@ -270,6 +278,24 @@ const EpisodeTaskPanel = ({teamId, tasks, folders, onChange}: Props) => {
                                 onClick={() => setSelected(t.key)}
                             >
                                 <span>{t.title}</span>
+                            </button>
+                            <button
+                                type='button'
+                                className='btn btn-icon btn-sm'
+                                aria-label={formatMessage(msg.moveUp, {title: t.title})}
+                                disabled={i === 0}
+                                onClick={() => move(i, -1)}
+                            >
+                                <ArrowUpIcon size={16}/>
+                            </button>
+                            <button
+                                type='button'
+                                className='btn btn-icon btn-sm'
+                                aria-label={formatMessage(msg.moveDown, {title: t.title})}
+                                disabled={i === tasks.length - 1}
+                                onClick={() => move(i, 1)}
+                            >
+                                <ArrowDownIcon size={16}/>
                             </button>
                             <button
                                 type='button'

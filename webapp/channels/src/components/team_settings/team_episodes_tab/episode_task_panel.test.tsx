@@ -133,6 +133,17 @@ describe('EpisodeTaskPanel', () => {
         expect(onChange).toHaveBeenLastCalledWith([{key: 'a', title: 'A'}]);
     });
 
+    test('moving a task up or down changes the saved order', async () => {
+        const onChange = setup([{key: 'a', title: 'A'}, {key: 'b', title: 'B'}, {key: 'c', title: 'C'}]);
+        expect(screen.getByRole('button', {name: 'Move A up'})).toBeDisabled();
+        expect(screen.getByRole('button', {name: 'Move C down'})).toBeDisabled();
+
+        await userEvent.click(screen.getByRole('button', {name: 'Move C up'}));
+        expect(onChange).toHaveBeenLastCalledWith([expect.objectContaining({key: 'a'}), expect.objectContaining({key: 'c'}), expect.objectContaining({key: 'b'})]);
+        await userEvent.click(screen.getByRole('button', {name: 'Move A down'}));
+        expect(onChange).toHaveBeenLastCalledWith([expect.objectContaining({key: 'c'}), expect.objectContaining({key: 'a'}), expect.objectContaining({key: 'b'})]);
+    });
+
     test('a department the team no longer has shows as Deleted department', async () => {
         setup([{key: 'a', title: 'A', department_id: 'd'.repeat(26)}]);
         await userEvent.click(screen.getByRole('button', {name: 'A'}));

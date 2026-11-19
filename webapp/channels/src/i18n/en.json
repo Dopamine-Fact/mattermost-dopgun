@@ -34059,6 +34059,14 @@
     "defaultMessage": "Missing task",
     "description": "Checkbox label in the Waits for group of the episode task template for a task that no longer exists; saving clears it."
   },
+  "team_settings.episodeTasks.moveDown": {
+    "defaultMessage": "Move {title} down",
+    "description": "Accessible label of the button that moves a task one place later in the episode task template list; {title} is the task title."
+  },
+  "team_settings.episodeTasks.moveUp": {
+    "defaultMessage": "Move {title} up",
+    "description": "Accessible label of the button that moves a task one place earlier in the episode task template list; {title} is the task title."
+  },
   "team_settings.episodeTasks.noFolder": {
     "defaultMessage": "No folder",
     "description": "Option in the folder select of an episode task template; the task gets no drive folder."

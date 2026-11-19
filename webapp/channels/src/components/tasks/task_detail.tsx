@@ -63,6 +63,8 @@ const TaskDetail = ({task, sections, members, displayName, onClose, canManage}: 
     const byId = useSelector((state: GlobalState) => state.entities.tasks.byId);
     const waitingFor = lockedBy(task, byId);
     const locked = !canManage && waitingFor.length > 0;
+    // A move drops the task's links both ways, so only a manager moves a linked task (the server enforces it too).
+    const linked = task.waits_for.length > 0 || Object.values(byId).some((t) => t.waits_for.includes(task.id));
     const channelId = sections.find((s) => s.id === task.section_id)?.channel_id ?? '';
     const channelName = useSelector((state: GlobalState) => getChannel(state, channelId)?.name ?? '');
     const team = useSelector((state: GlobalState) => getTeam(state, task.team_id));
@@ -250,7 +252,7 @@ const TaskDetail = ({task, sections, members, displayName, onClose, canManage}: 
                 <select
                     className='form-control'
                     value={task.section_id}
-                    disabled={Boolean(task.video_file_id)}
+                    disabled={Boolean(task.video_file_id) || (!canManage && linked)}
                     onChange={(e) => save({section_id: e.target.value})}
                 >
                     <option value=''>{formatMessage({id: 'tasks.noSection', defaultMessage: 'No section'})}</option>
