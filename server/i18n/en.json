@@ -12487,6 +12487,11 @@
     "description": "API error when no availability status record exists for the requested user; 'status' means user presence."
   },
   {
+    "id": "app.status_period.get.app_error",
+    "translation": "Encountered an error retrieving away and active periods.",
+    "description": "API error when loading the recorded break (away) and work (active) time periods fails, e.g. for the System Console breaks report."
+  },
+  {
     "id": "app.submit_interactive_dialog.decode_json_error",
     "translation": "Encountered an error decoding JSON response from interactive dialog submission.",
     "description": "API error returned when the JSON response from submitting an interactive dialog (integration form) cannot be decoded."

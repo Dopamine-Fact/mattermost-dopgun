@@ -135,6 +135,7 @@ import type {Scheme} from '@mattermost/types/schemes';
 import type {Session} from '@mattermost/types/sessions';
 import type {CompleteOnboardingRequest} from '@mattermost/types/setup';
 import type {RemoteClusterInfo, SharedChannelRemote} from '@mattermost/types/shared_channels';
+import type {StatusPeriod} from '@mattermost/types/status_periods';
 import type {EpisodeCreated, Task, TaskComment, TaskCreate, TaskPatch, TaskSection, TaskSectionCreate, TaskSectionPatch, TaskSectionVideo} from '@mattermost/types/tasks';
 import type {
     GetTeamMembersOpts,
@@ -5272,6 +5273,11 @@ export default class Client4 {
 
     downloadDriveZip = (channelId: string, itemIds: string[]) => {
         return this.doFetch<Blob>(`${this.getDriveRoute(channelId)}/download`, {method: 'post', body: JSON.stringify({item_ids: itemIds})});
+    };
+
+    /** periods overlapping [from, to) in ms; own rows unless a system admin passes a userId, or none for everyone */
+    getStatusPeriods = (from: number, to: number, userId?: string) => {
+        return this.doFetch<StatusPeriod[]>(`${this.getBaseRoute()}/status_periods${buildQueryString({from, to, user_id: userId})}`, {method: 'get'});
     };
 
     // Department and rank methods
