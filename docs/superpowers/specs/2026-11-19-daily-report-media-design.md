@@ -66,6 +66,15 @@ The user talked about outcomes, so the approach was my call (A).
   - `excused`: set by a reviewer on a day with no sent report (no row, or a draft). Stored as a row with empty
     message, `ApprovedBy`/`ApprovedAt` = the reviewer. If the author later sends a report that day, it becomes a
     normal `pending` report (excusing does not block sending). Shown as "Excused" ("Mazeretli").
+  - "Sent" below means `pending`, `approved` or `rejected`.
+  - Reminders: a `draft` does not count as reported (reminders still fire); `excused` does (no reminder).
+    Auto-approve touches `pending` only, as today. Filter by status in the callers (`sendDailyReportReminders`,
+    list, export), not by changing store signatures.
+  - Reviewers see a report's files only when the report is sent. Files on a `draft` or `excused` row are the
+    author's alone until they send.
+  - Drafts from a past day can no longer be sent (submit is today-only, as now), so the daily-report tick deletes
+    them with their files once their day is over (team-local). It also deletes the files of past-day `excused` rows
+    (never sent, so never seen by anyone but the author).
 - New table `DailyReportFiles (ReportId, FileId, CreateAt, PRIMARY KEY (ReportId, FileId))`, index on FileId.
   `DailyReport` gains `Files []*model.FileInfo` (json `files`), filled on read.
 - Limits: 10 attachments per report; allowed extensions as in Goals (checked on the server by extension and the
@@ -76,15 +85,24 @@ The user talked about outcomes, so the approach was my call (A).
 - `POST /teams/{team_id}/daily_reports/mine/files` (multipart, one file): creates the day's `draft` row if there is
   no report for today yet, uploads the file with no channel, links it. Today only (team-local date, as submit uses).
   Allowed on the author's own report in any status for today. Returns the FileInfo.
+- `POST /daily_reports/{report_id}/files`: the same upload on an existing report of the author's, any date, under the
+  same rule as editing it (`PUT /daily_reports/{id}`) — this is how the Edit action on an older rejected report adds
+  media.
 - `DELETE /daily_reports/{report_id}/files/{file_id}`: author only; unlinks and deletes the FileInfo and the stored
-  file. On a sent report this counts as an edit (sets `Edited`, same as a text resubmit).
+  file.
+- Adding or deleting a file on a **sent** report is an edit, exactly like a text resubmit (`resubmit` in
+  `app/daily_report.go`: back to `pending`, `Edited` set, approval/rejection cleared, `PreviousMessage` keeps the
+  text). A reviewer never approves something that later changes silently. On a `draft` or `excused` row, adding or
+  deleting files changes no status.
+- Two uploads racing to create the day's draft: handle the unique-key conflict the way `SubmitDailyReport` does.
 - `GET /daily_reports/{report_id}/files/{file_id}` and `/thumbnail`, `/preview`: allowed for the author and for
   callers who pass the report-view rule. 404 when the file is not linked to that report. Streams with the stock file
   helpers (`Content-Disposition` per Mattermost's inline rules; videos must support range requests so the browser can
   seek — use the same `http.ServeContent` path the file handlers use).
 - `POST /daily_reports/excuse` with `{team_id, user_id, date}`: reviewer rule as approve (`loadReviewableReport`
   equivalent on the user), date must be today or past, refuses when a sent report exists.
-- Sending: the existing submit (`PUT .../mine`) turns today's `draft` into `pending` with the message. A report with
+- Sending: the existing submit (`PUT .../mine`) turns today's `draft` or `excused` row into `pending` with the
+  message, as a first submission (`Edited` false, `PreviousMessage` empty, excuse fields cleared), keeping its files. A report with
   attachments may have an empty message; one with neither is refused as today.
 - Existing list and export: drafts are filtered out for everyone but the author; export gains an "Attachments" column
   (file names joined with ", ").
@@ -122,12 +140,13 @@ are the mockup's.
 
 1. Filter bar: search box ("Çalışan veya rapor içeriğinde ara…", matches display name, username and message text),
    "Durum" select (Tümü + each status incl. Eksik and Mazeretli), "Ekip / Üye" select (Tümü, each department, then
-   each member), "Başlangıç" / "Bitiş" dates (default today–today; range capped at 31 days), "CSV İndir" (exports
-   the chosen range, existing endpoint).
+   each member), "Başlangıç" / "Bitiş" dates (default today–today; range capped at 31 days in the client only — the
+   server keeps its 366-day cap), "CSV İndir" (exports the chosen range, existing endpoint).
 2. "{n} rapor" count on the left, "Sıralama" select on the right: Gönderim (Yeni → Eski) default, Gönderim
    (Eski → Yeni), İsim (A → Z).
 3. One row per (person, day) in range. Missing rows are produced for each weekday (Mon–Fri) in the range for every
-   expected reporter (existing assignee/actionable rule). Columns: initials avatar, username, status chip, submit
+   expected reporter (existing assignee/actionable rule), computed in the browser in the team's local dates as today;
+   public holidays are not known and show as missing (excuse them). Columns: initials avatar, username, status chip, submit
    time (— when missing), the message rendered as markdown (bullets as in the mockup, clamped to ~4 lines; "Rapor
    içeriği bulunmuyor." when missing), an attachment chip (icon by content: image, video "n medya", or file
    "n ek"), and actions:
@@ -153,4 +172,8 @@ are the mockup's.
 - No "Reddet" on missing rows.
 - 10 attachments per report; size limit = server upload limit; PDF allowed as in the mockup.
 - Missing rows only on weekdays; team range capped at 31 days.
-- Deleting an attachment from a sent report counts as an edit.
+- Adding or deleting an attachment on a sent report counts as an edit (back to pending), like changing its text.
+- Unsent drafts are deleted with their files when their day ends; a past day can't be reported late, as today.
+- Files on a draft or excused row stay hidden from reviewers until the author sends.
+- Drafts still get the 10 and 5 minute reminders; excused days don't.
+- Public holidays show as Missing; reviewers excuse them.
