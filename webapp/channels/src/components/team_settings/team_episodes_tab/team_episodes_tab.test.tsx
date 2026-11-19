@@ -10,6 +10,10 @@ import {TestHelper} from 'utils/test_helper';
 
 import EpisodesTab from './team_episodes_tab';
 
+jest.mock('components/profile_popover/use_custom_roles', () => ({
+    useTeamDepartments: () => [],
+}));
+
 describe('components/TeamSettings/EpisodesTab', () => {
     const patchTeam = jest.fn().mockReturnValue({data: true});
     const defaultProps: ComponentProps<typeof EpisodesTab> = {
@@ -78,7 +82,7 @@ describe('components/TeamSettings/EpisodesTab', () => {
 
         test('template fields show only with tasks and revisions on', async () => {
             const {unmount} = renderWithContext(<EpisodesTab {...defaultProps}/>);
-            expect(screen.queryByTestId('episodeFoldersInput')).not.toBeInTheDocument();
+            expect(screen.queryByTestId('episodeFoldersPanel')).not.toBeInTheDocument();
             await userEvent.click(screen.getByTestId('tasksEnabledCheckbox'));
             expect(screen.queryByTestId('episodeTasksInput')).not.toBeInTheDocument();
             await userEvent.click(screen.getByTestId('revisionsEnabledCheckbox'));
@@ -86,7 +90,8 @@ describe('components/TeamSettings/EpisodesTab', () => {
             unmount();
 
             renderWithContext(<EpisodesTab {...{...defaultProps, team}}/>);
-            expect(screen.getByTestId('episodeFoldersInput')).toHaveValue('Layout');
+            expect(screen.getByTestId('episodeFoldersPanel')).toBeInTheDocument();
+            expect(screen.getByRole('button', {name: 'Layout'})).toBeInTheDocument();
             expect(screen.getByRole('heading', {name: 'Default episode folders'})).toBeInTheDocument();
             expect(screen.getByRole('heading', {name: 'Default episode tasks'})).toBeInTheDocument();
         });
@@ -103,11 +108,28 @@ describe('components/TeamSettings/EpisodesTab', () => {
             expect(patchTeam.mock.lastCall[0]).not.toHaveProperty('episode_folders');
         });
 
-        test('a rejected folder template shows the error under the field', async () => {
+        test('an old text template opened and not touched shows no save panel', () => {
+            renderWithContext(<EpisodesTab {...{...defaultProps, team, areThereUnsavedChanges: false}}/>);
+
+            expect(screen.queryByTestId('SaveChangesPanel__save-btn')).not.toBeInTheDocument();
+        });
+
+        test('saving a changed folder list sends the serialized JSON', async () => {
+            renderWithContext(<EpisodesTab {...{...defaultProps, team}}/>);
+
+            await userEvent.click(screen.getByRole('button', {name: 'Add folder'}));
+            await userEvent.click(screen.getByTestId('SaveChangesPanel__save-btn'));
+
+            expect(patchTeam).toHaveBeenLastCalledWith(expect.objectContaining({
+                episode_folders: '[{"path":"Layout"},{"path":"New folder"}]',
+            }));
+        });
+
+        test('a rejected folder template shows the error under the panel', async () => {
             patchTeam.mockReturnValueOnce({error: {server_error_id: 'model.team.is_valid.episode_folders.app_error', message: 'Invalid default episode folders.'}});
             renderWithContext(<EpisodesTab {...{...defaultProps, team}}/>);
 
-            await userEvent.type(screen.getByTestId('episodeFoldersInput'), '/bad:name');
+            await userEvent.click(screen.getByRole('button', {name: 'Add folder'}));
             await userEvent.click(screen.getByTestId('SaveChangesPanel__save-btn'));
 
             const error = await screen.findByTestId('mm-modal-generic-section-item__error');

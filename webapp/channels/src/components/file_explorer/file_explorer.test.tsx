@@ -15,7 +15,7 @@ import {selectLhsItem} from 'actions/views/lhs';
 import {openModal} from 'actions/views/modals';
 
 import WebSocketClient from 'client/web_websocket_client';
-import {act, fireEvent, renderWithContext, screen, waitFor, within} from 'tests/react_testing_utils';
+import {act, createEvent, fireEvent, renderWithContext, screen, waitFor, within} from 'tests/react_testing_utils';
 import {TestHelper} from 'utils/test_helper';
 
 import {clearClipboard} from './explorer_actions';
@@ -136,6 +136,7 @@ describe('FileExplorer', () => {
         jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({
             items: [fileItem('i1', fileInfo('f1', 'b.txt', 10)), folder('d2', 'Zeta'), folder('d1', 'Alpha')],
             path: [],
+            access: '',
         });
         renderAt('/team/files/town');
         await waitFor(() => expect(cellNames()).toEqual(['Chat attachments', 'Alpha', 'Zeta', 'b.txt']));
@@ -145,6 +146,7 @@ describe('FileExplorer', () => {
         jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({
             items: [fileItem('i1', fileInfo('f1', 'big.txt', 900)), fileItem('i2', fileInfo('f2', 'small.txt', 5)), folder('d1', 'Docs')],
             path: [],
+            access: '',
         });
         renderAt('/team/files/town');
         await screen.findByRole('gridcell', {name: 'big.txt'});
@@ -158,7 +160,7 @@ describe('FileExplorer', () => {
     test('double-clicking a file opens the preview with the folder files', async () => {
         const a = fileInfo('f1', 'a.png', 10);
         const b = fileInfo('f2', 'b.txt', 20);
-        jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [folder('d1', 'Docs'), fileItem('i1', a), fileItem('i2', b)], path: []});
+        jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [folder('d1', 'Docs'), fileItem('i1', a), fileItem('i2', b)], path: [], access: ''});
         renderAt('/team/files/town');
 
         fireEvent.doubleClick(await screen.findByRole('gridcell', {name: 'b.txt'}));
@@ -169,7 +171,7 @@ describe('FileExplorer', () => {
     });
 
     test('drive_changed for the open folder reloads it', async () => {
-        const list = jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [], path: []});
+        const list = jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [], path: [], access: ''});
         renderAt('/team/files/town');
         await screen.findByRole('gridcell', {name: 'Chat attachments'});
         const before = list.mock.calls.length;
@@ -184,9 +186,10 @@ describe('FileExplorer', () => {
 
         await waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(before));
     });
+
     describe('embedded in a channel', () => {
         beforeEach(() => {
-            jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [folder('d1', 'Docs')], path: []});
+            jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [folder('d1', 'Docs')], path: [], access: ''});
         });
 
         test('embedded, opening a folder goes through the host URL', async () => {
@@ -196,6 +199,31 @@ describe('FileExplorer', () => {
             renderEmbedded();
             fireEvent.doubleClick(await screen.findByRole('gridcell', {name: 'Docs'}));
             expect(push).toHaveBeenCalledWith('/team/channels/town?folder=d1');
+        });
+
+        // With the tree hidden, only the open folder's listing calls getDriveFolder.
+        const sendDriveChanged = (data: Record<string, unknown>) => act(async () => {
+            (WebSocketClient.addMessageListener as jest.Mock).mock.calls.forEach(([listener]) => listener({event: 'drive_changed', data, broadcast: {channel_id: 'c1'}}));
+        });
+
+        test('embedded, a drive_changed for another folder does not reload the open one', async () => {
+            renderEmbedded();
+            await screen.findByRole('gridcell', {name: 'Docs'});
+            const before = jest.mocked(Client4.getDriveFolder).mock.calls.length;
+
+            await sendDriveChanged({parent_ids: '["other"]'});
+
+            expect(Client4.getDriveFolder).toHaveBeenCalledTimes(before);
+        });
+
+        test('embedded, a restricted drive_changed reloads the open folder although it names no folder', async () => {
+            renderEmbedded();
+            await screen.findByRole('gridcell', {name: 'Docs'});
+            const before = jest.mocked(Client4.getDriveFolder).mock.calls.length;
+
+            await sendDriveChanged({parent_ids: '[]', restricted: true});
+
+            await waitFor(() => expect(Client4.getDriveFolder).toHaveBeenCalledTimes(before + 1));
         });
 
         test('embedded, the channel tree is hidden', async () => {
@@ -213,7 +241,7 @@ describe('FileExplorer', () => {
         });
 
         test('embedded, a folder link renders while its path loads, then Up leads to the channel root', async () => {
-            jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [], path: [folder('d1', 'Docs')]});
+            jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [], path: [folder('d1', 'Docs')], access: ''});
             renderEmbedded('/team/channels/town?folder=d1');
             expect(await screen.findByText('Docs', {selector: '[aria-current=location]'})).toBeInTheDocument();
             expect(screen.getByRole('button', {name: 'Up'})).toBeEnabled();
@@ -259,6 +287,148 @@ describe('FileExplorer', () => {
         });
     });
 
+    describe('folder rules', () => {
+        const mine = fileItem('i1', fileInfo('f1', 'a.txt', 10));
+        const theirs = {...fileItem('i2', fileInfo('f2', 'b.txt', 10)), creator_id: 'u2'};
+        const list = (items: DriveItem[], access: '' | 'write' | 'read', extra = {}) => jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items, path: [], access, ...extra});
+        const button = (name: string) => screen.getByRole('button', {name});
+
+        test('a read-only folder disables New folder and Delete, even for my own file', async () => {
+            list([mine], 'read');
+            renderAt('/team/files/town');
+            fireEvent.click(await screen.findByRole('gridcell', {name: 'a.txt'}));
+            expect(button('New folder')).toBeDisabled();
+            expect(button('Delete')).toBeDisabled();
+            expect(button('Upload')).toBeDisabled();
+        });
+
+        test('a write folder lets me delete a colleague file', async () => {
+            list([theirs], 'write');
+            renderAt('/team/files/town');
+            fireEvent.click(await screen.findByRole('gridcell', {name: 'b.txt'}));
+            expect(button('Delete')).toBeEnabled();
+            expect(button('New folder')).toBeEnabled();
+        });
+
+        test('without a rule I can still only change my own files', async () => {
+            list([mine, theirs], '');
+            renderAt('/team/files/town');
+            fireEvent.click(await screen.findByRole('gridcell', {name: 'b.txt'}));
+            expect(button('Delete')).toBeDisabled();
+            fireEvent.click(screen.getByRole('gridcell', {name: 'a.txt'}));
+            expect(button('Delete')).toBeEnabled();
+        });
+
+        test('a folder that carries rules cannot be deleted by a non-manager', async () => {
+            list([{...folder('d1', 'BG'), write_departments: ['bg']}], 'write');
+            renderAt('/team/files/town');
+            fireEvent.click(await screen.findByRole('gridcell', {name: 'BG'}));
+            expect(button('Delete')).toBeDisabled();
+        });
+
+        test('an empty mirror whose source is gone says so', async () => {
+            list([], 'read', {path: [{...folder('m1', 'Mirror'), mirror_of: 'gone'}], source_missing: true});
+            renderAt('/team/files/town/m1');
+            await screen.findByText('The folder this one shows was deleted.');
+        });
+
+        test('a channel manager browsing a mirror still cannot create or delete', async () => {
+            list([mine], 'read', {path: [{...folder('m1', 'Mirror'), mirror_of: 's1'}]});
+            const admin = TestHelper.getUserMock({id: 'me', username: 'me', roles: 'system_user system_admin'});
+            renderWithContext(
+                <Route
+                    path='/:team/files/:channelName?/:folderId?'
+                    component={FileExplorer}
+                />,
+                {
+                    entities: {
+                        ...storeState.entities,
+                        users: {currentUserId: 'me', profiles: {me: admin}},
+                        roles: {roles: {system_admin: TestHelper.getRoleMock({name: 'system_admin', permissions: ['manage_channel_roles']})}},
+                    },
+                },
+                {history: createMemoryHistory({initialEntries: ['/team/files/town/m1']})},
+            );
+            fireEvent.click(await screen.findByRole('gridcell', {name: 'a.txt'}));
+            expect(button('New folder')).toBeDisabled();
+            expect(button('Delete')).toBeDisabled();
+        });
+    });
+
+    describe('tree drag and drop with folder rules', () => {
+        const mine = fileItem('i1', fileInfo('f1', 'a.txt', 10));
+        const docs = folder('d1', 'Docs');
+        const mirror = {...folder('m1', 'Mirror'), mirror_of: 's1'};
+        const locked = {...folder('r1', 'Locked'), read_only: true};
+        const dataTransfer = (types: string[], files: File[] = []) => ({types, files, items: [], effectAllowed: '', dropEffect: '', setData: jest.fn()});
+
+        // jsdom's DragEvent drops ctrlKey from the init, so set it on the event itself.
+        const ctrlDrop = (el: HTMLElement, dt: unknown) => {
+            const event = createEvent.drop(el, {dataTransfer: dt});
+            Object.defineProperty(event, 'ctrlKey', {value: true});
+            fireEvent(el, event);
+        };
+        const row = (name: string) => screen.getByRole('link', {name}).closest('.ExplorerTree__row') as HTMLElement;
+
+        // Tree lists the root's folders; the open folder is a mirror holding one file.
+        const open = async () => {
+            jest.spyOn(Client4, 'getDriveFolder').mockImplementation(async (_c, parentId = '') => (
+                parentId ? {items: [mine], path: [mirror], access: 'read'} : {items: [docs, mirror, locked], path: [], access: ''}
+            ));
+            renderAt('/team/files/town/m1');
+            await screen.findByRole('gridcell', {name: 'a.txt'});
+            await screen.findByRole('link', {name: 'Locked'});
+        };
+
+        test('OS files dropped on a mirror or read-only tree folder are not uploaded', async () => {
+            await open();
+            for (const name of ['Mirror', 'Locked']) {
+                fireEvent.drop(row(name), {dataTransfer: dataTransfer(['Files'], [new File(['x'], 'x.txt')])});
+            }
+            await act(async () => {
+                await Promise.resolve();
+            });
+            expect(uploadFile).not.toHaveBeenCalled();
+        });
+
+        test('items dragged out of a mirror are not moved, but can be copied', async () => {
+            const move = jest.spyOn(Client4, 'moveDriveItems').mockResolvedValue({status: 'OK'});
+            const copy = jest.spyOn(Client4, 'copyDriveItems').mockResolvedValue({status: 'OK'});
+            await open();
+            const cell = screen.getByRole('gridcell', {name: 'a.txt'});
+            const drag = () => {
+                const dt = dataTransfer(['application/x-mattermost-drive']);
+                fireEvent.dragStart(cell, {dataTransfer: dt});
+                return dt;
+            };
+            fireEvent.drop(row('Docs'), {dataTransfer: drag()});
+            expect(move).not.toHaveBeenCalled();
+
+            ctrlDrop(row('Docs'), drag());
+            await waitFor(() => expect(copy).toHaveBeenCalledWith('c1', ['i1'], [], 'c1', 'd1'));
+            expect(move).not.toHaveBeenCalled();
+        });
+
+        test('items cannot be dropped on a mirror or read-only tree folder', async () => {
+            jest.spyOn(Client4, 'getDriveFolder').mockImplementation(async (_c, parentId = '') => (
+                parentId ? {items: [], path: [docs], access: ''} : {items: [docs, mirror, locked, mine], path: [], access: ''}
+            ));
+            const move = jest.spyOn(Client4, 'moveDriveItems').mockResolvedValue({status: 'OK'});
+            const copy = jest.spyOn(Client4, 'copyDriveItems').mockResolvedValue({status: 'OK'});
+            renderAt('/team/files/town');
+            const cell = await screen.findByRole('gridcell', {name: 'a.txt'});
+            await screen.findByRole('link', {name: 'Locked'});
+            for (const name of ['Mirror', 'Locked']) {
+                const dt = dataTransfer(['application/x-mattermost-drive']);
+                fireEvent.dragStart(cell, {dataTransfer: dt});
+                fireEvent.drop(row(name), {dataTransfer: dt});
+                ctrlDrop(row(name), dt);
+            }
+            expect(move).not.toHaveBeenCalled();
+            expect(copy).not.toHaveBeenCalled();
+        });
+    });
+
     describe('file operations', () => {
         const mine = fileItem('i1', fileInfo('f1', 'a.txt', 10));
         const theirs = {...fileItem('i2', fileInfo('f2', 'b.txt', 10)), creator_id: 'u2'};
@@ -266,7 +436,7 @@ describe('FileExplorer', () => {
 
         beforeEach(() => {
             jest.spyOn(Client4, 'getDriveFolder').mockImplementation(async (_c, parentId = '') => (
-                parentId ? {items: [], path: [folder('d1', 'Docs')]} : {items: [folder('d1', 'Docs'), mine, theirs], path: []}
+                parentId ? {items: [], path: [folder('d1', 'Docs')], access: ''} : {items: [folder('d1', 'Docs'), mine, theirs], path: [], access: ''}
             ));
         });
 

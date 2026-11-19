@@ -446,6 +446,17 @@
     }
 }
 
+.ExplorerItems__ruleIcon {
+    position: relative;
+    display: inline-flex;
+
+    svg:last-child {
+        position: absolute;
+        right: -2px;
+        bottom: -2px;
+    }
+}
+
 .ExplorerItems__tile.dropTarget,
 .ExplorerItems__row.dropTarget,
 .ExplorerTree__row.dropTarget {

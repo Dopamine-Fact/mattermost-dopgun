@@ -6467,6 +6467,27 @@ func (s *RetryLayerDriveItemStore) GetMany(ids []string) ([]*model.DriveItem, er
 
 }
 
+func (s *RetryLayerDriveItemStore) GetMirrors(channelID string, sourceIDs []string) ([]*model.DriveItem, error) {
+
+	tries := 0
+	for {
+		result, err := s.DriveItemStore.GetMirrors(channelID, sourceIDs)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
 func (s *RetryLayerDriveItemStore) GetTrash(channelID string) ([]*model.DriveItem, error) {
 
 	tries := 0

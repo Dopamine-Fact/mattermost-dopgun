@@ -1,6 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import type {Channel} from './channels';
 import type {FileInfo} from './files';
 
 export type TaskStatus = 'todo' | 'in_progress' | 'done';
@@ -89,3 +90,6 @@ export type TasksState = {
     byId: Record<string, Task>;
     sectionsById: Record<string, TaskSection>;
 };
+
+/** What the episode endpoint returns; failed lists the template folders and tasks that could not be created, task_ids the seeded tasks. */
+export type EpisodeCreated = {channel: Channel; section: TaskSection; failed: string[]; task_ids: string[]};

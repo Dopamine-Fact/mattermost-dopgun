@@ -18637,6 +18637,11 @@
     "description": "API validation error when a channel drive file or folder points to a malformed parent folder ID."
   },
   {
+    "id": "model.drive_item.is_valid.rules.app_error",
+    "translation": "Invalid drive folder rules.",
+    "description": "API validation error when a drive item has folder access rules that are not allowed: rules on a file, or an invalid department or source folder ID."
+  },
+  {
     "id": "model.drive_item.is_valid.type.app_error",
     "translation": "Invalid drive item type.",
     "description": "API validation error when a channel drive item is neither a file nor a folder."
@@ -19758,8 +19763,8 @@
   },
   {
     "id": "model.team.is_valid.episode_folders.app_error",
-    "translation": "Invalid default episode folders. Use at most 100 lines and 4000 characters, one folder path per line with valid folder names separated by /.",
-    "description": "API error when a team's default episode folder list is too long or has a line whose folder names are empty or contain characters not allowed in file names."
+    "translation": "Invalid default episode folders. Use at most 100 folders with valid folder names separated by /, and departments, mirrors and write access that match the rules.",
+    "description": "API error when a team's default episode folder list is too long, has a folder whose names are empty or contain characters not allowed in file names, or breaks the department, write-access or mirror rules."
   },
   {
     "id": "model.team.is_valid.episode_tasks.app_error",

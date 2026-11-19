@@ -6,7 +6,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import {useIntl} from 'react-intl';
 import type {IntlShape} from 'react-intl';
 
-import {FolderOutlineIcon, GlobeIcon, LockOutlineIcon, MessageTextOutlineIcon, TrashCanOutlineIcon} from '@mattermost/compass-icons/components';
+import {FolderOutlineIcon, GlobeIcon, LockOutlineIcon, MessageTextOutlineIcon, SyncIcon, TrashCanOutlineIcon} from '@mattermost/compass-icons/components';
 
 import {getFileThumbnailUrl} from 'mattermost-redux/utils/file_utils';
 
@@ -74,6 +74,7 @@ export function entryCreator(entry: ExplorerEntry): string {
 }
 
 export function EntryIcon({entry, large}: {entry: ExplorerEntry; large?: boolean}) {
+    const intl = useIntl();
     const size = large ? 48 : 18;
     switch (entry.kind) {
     case 'channel':
@@ -82,8 +83,23 @@ export function EntryIcon({entry, large}: {entry: ExplorerEntry; large?: boolean
         return <MessageTextOutlineIcon size={size}/>;
     case 'trash':
         return <TrashCanOutlineIcon size={size}/>;
-    case 'folder':
-        return <FolderOutlineIcon size={size}/>;
+    case 'folder': {
+        const item = entry.driveItem;
+        const title = item?.mirror_of ? intl.formatMessage({id: 'file_explorer.mirror', defaultMessage: 'Shows another folder'}) : item?.read_only && intl.formatMessage({id: 'file_explorer.readOnly', defaultMessage: 'Read-only folder'});
+        if (!title) {
+            return <FolderOutlineIcon size={size}/>;
+        }
+        const Badge = item?.mirror_of ? SyncIcon : LockOutlineIcon;
+        return (
+            <span
+                className='ExplorerItems__ruleIcon'
+                title={title}
+            >
+                <FolderOutlineIcon size={size}/>
+                <Badge size={large ? 20 : 10}/>
+            </span>
+        );
+    }
     }
     const info = entry.fileInfo;
     if (large && info?.has_preview_image) {

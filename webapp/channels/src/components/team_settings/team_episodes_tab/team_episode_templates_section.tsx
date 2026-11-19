@@ -8,20 +8,24 @@ import {useIntl} from 'react-intl';
 import Input from 'components/widgets/inputs/input/input';
 import BaseSettingItem, {type BaseSettingItemProps} from 'components/widgets/modals/components/base_setting_item';
 
+import EpisodeFolderPanel from './episode_folder_panel';
+import type {EpisodeFolder} from './episode_folders';
+
 // Matches the server's TeamEpisodeTemplateMaxRunes.
 const MAX_TEMPLATE_LENGTH = 4000;
 
 type Props = {
-    folders: string;
+    teamId: string;
+    folders: EpisodeFolder[];
     tasks: string;
-    handleFoldersChange: (text: string) => void;
+    handleFoldersChange: (folders: EpisodeFolder[]) => void;
     handleTasksChange: (text: string) => void;
     foldersError?: BaseSettingItemProps['error'];
     tasksError?: BaseSettingItemProps['error'];
 };
 
-// TeamEpisodeTemplatesSection edits what every new episode channel starts with: drive folders and tasks, one per line.
-const TeamEpisodeTemplatesSection = ({folders, tasks, handleFoldersChange, handleTasksChange, foldersError, tasksError}: Props) => {
+// TeamEpisodeTemplatesSection edits what every new episode channel starts with: drive folders (with who sees and changes each) and tasks, one per line.
+const TeamEpisodeTemplatesSection = ({teamId, folders, tasks, handleFoldersChange, handleTasksChange, foldersError, tasksError}: Props) => {
     const {formatMessage} = useIntl();
 
     return (
@@ -30,18 +34,14 @@ const TeamEpisodeTemplatesSection = ({folders, tasks, handleFoldersChange, handl
                 className='episode-folders-setting-item'
                 title={formatMessage({id: 'general_tab.episodeFolders', defaultMessage: 'Default episode folders'})}
                 description={formatMessage({
-                    id: 'general_tab.episodeFoldersInfo',
-                    defaultMessage: 'One folder per line, created in every new episode channel\'s files. Use / for subfolders, like Layout/Ref.',
+                    id: 'team_settings.episodeFolders.info',
+                    defaultMessage: "Created in every new episode channel's files, with the rules below. Rules apply to new episodes only.",
                 })}
                 content={(
-                    <Input
-                        id='teamEpisodeFolders'
-                        data-testid='episodeFoldersInput'
-                        type='textarea'
-                        maxLength={MAX_TEMPLATE_LENGTH}
-                        value={folders}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) => handleFoldersChange(e.target.value)}
-                        label={formatMessage({id: 'general_tab.episodeFolders', defaultMessage: 'Default episode folders'})}
+                    <EpisodeFolderPanel
+                        teamId={teamId}
+                        folders={folders}
+                        onChange={handleFoldersChange}
                     />
                 )}
                 error={foldersError}

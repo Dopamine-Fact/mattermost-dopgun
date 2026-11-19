@@ -1320,6 +1320,8 @@ type DriveItemStore interface {
 	GetByFileId(fileID string) (*model.DriveItem, error)
 	// GetDangling lists file items whose FileInfo is missing or soft-deleted.
 	GetDangling(limit int) ([]*model.DriveItem, error)
+	// GetMirrors lists live mirrors in the channel whose MirrorOf is one of sourceIDs.
+	GetMirrors(channelID string, sourceIDs []string) ([]*model.DriveItem, error)
 	PermanentDelete(ids []string) error
 	PermanentDeleteByChannel(channelID string) error
 }

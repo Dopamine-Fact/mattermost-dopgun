@@ -24551,6 +24551,10 @@
     "defaultMessage": "No items match your search.",
     "description": "File explorer empty state when the 'Search this folder' filter matches nothing."
   },
+  "file_explorer.empty.sourceMissing": {
+    "defaultMessage": "The folder this one shows was deleted.",
+    "description": "File explorer empty state of a mirror folder whose source folder was deleted, trashed or moved out of the channel."
+  },
   "file_explorer.empty.trash": {
     "defaultMessage": "The Recycle Bin is empty.",
     "description": "File explorer empty state of a channel's Recycle Bin."
@@ -24578,6 +24582,10 @@
   "file_explorer.menu": {
     "defaultMessage": "Item actions",
     "description": "Accessible name of the file explorer right-click menu."
+  },
+  "file_explorer.mirror": {
+    "defaultMessage": "Shows another folder",
+    "description": "Tooltip on a folder icon in the file explorer: the folder is a mirror that lists the contents of another folder and cannot be changed."
   },
   "file_explorer.newFolder": {
     "defaultMessage": "New folder",
@@ -24626,6 +24634,10 @@
   "file_explorer.purge.title": {
     "defaultMessage": "Delete permanently?",
     "description": "Title of the file explorer dialog that confirms a permanent delete or emptying the Recycle Bin."
+  },
+  "file_explorer.readOnly": {
+    "defaultMessage": "Read-only folder",
+    "description": "Tooltip on a folder icon in the file explorer: an episode folder rule makes this folder read-only."
   },
   "file_explorer.recycleBin": {
     "defaultMessage": "Recycle Bin",
@@ -25107,13 +25119,9 @@
     "defaultMessage": "Default episode folders",
     "description": "Heading and label of the Team Settings text box listing the folders every new episode channel's files start with."
   },
-  "general_tab.episodeFoldersInfo": {
-    "defaultMessage": "One folder per line, created in every new episode channel's files. Use / for subfolders, like Layout/Ref.",
-    "description": "Hint under the Default episode folders heading in Team Settings. 'Layout/Ref' is an example path: a folder Ref inside a folder Layout."
-  },
   "general_tab.episodeFoldersInvalid": {
-    "defaultMessage": "Invalid default episode folders. Use at most 100 lines and 4000 characters, one folder path per line with valid folder names separated by /.",
-    "description": "Error under the Default episode folders box in Team Settings when the server rejects the list."
+    "defaultMessage": "Invalid default episode folders. Use at most 100 folders and 100000 characters in total, with valid names, make sure everyone who may change a folder can see it, and mirror only a plain folder that is not inside or around the mirror.",
+    "description": "Error under the Default episode folders panel in Team Settings when the server rejects the template."
   },
   "general_tab.episodeTasks": {
     "defaultMessage": "Default episode tasks",
@@ -33726,6 +33734,110 @@
   "team_settings.discoverability.title": {
     "defaultMessage": "Discoverability",
     "description": "Section title in team settings for choosing whether the team is public or private."
+  },
+  "team_settings.episodeFolders.addFolder": {
+    "defaultMessage": "Add folder",
+    "description": "Button below the folder tree in Team Settings › Episodes that adds a top-level folder to the episode template."
+  },
+  "team_settings.episodeFolders.addSubfolder": {
+    "defaultMessage": "Add subfolder to {path}",
+    "description": "Accessible label of the plus button on a folder row in the episode folder template; {path} is the folder, like BG/Layout."
+  },
+  "team_settings.episodeFolders.chosen": {
+    "defaultMessage": "Chosen departments",
+    "description": "Radio option in the episode folder template settings (Who sees it, Who may change it): only the departments ticked below it."
+  },
+  "team_settings.episodeFolders.contents": {
+    "defaultMessage": "Contents",
+    "description": "Heading of the settings group in the episode folder template that says whether a folder holds its own files or mirrors another folder."
+  },
+  "team_settings.episodeFolders.delete": {
+    "defaultMessage": "Delete {path}",
+    "description": "Accessible label of the trash button on a folder row in the episode folder template; {path} is the folder, like BG/Layout."
+  },
+  "team_settings.episodeFolders.deletedDepartment": {
+    "defaultMessage": "Deleted department",
+    "description": "Chip label in the episode folder template for a department id that no longer exists in the team; unticking it removes the id."
+  },
+  "team_settings.episodeFolders.empty": {
+    "defaultMessage": "No folders yet. New episodes start with an empty drive.",
+    "description": "Shown in Team Settings › Episodes when the episode folder template has no folders."
+  },
+  "team_settings.episodeFolders.everyone": {
+    "defaultMessage": "Everyone",
+    "description": "Radio option under Who sees it in the episode folder template: the folder is visible to every channel member."
+  },
+  "team_settings.episodeFolders.everyoneWhoSees": {
+    "defaultMessage": "Everyone who sees it",
+    "description": "Radio option under Who may change it in the episode folder template: everyone who can see the folder may change its contents."
+  },
+  "team_settings.episodeFolders.info": {
+    "defaultMessage": "Created in every new episode channel's files, with the rules below. Rules apply to new episodes only.",
+    "description": "Hint under the Default episode folders heading in Team Settings › Episodes."
+  },
+  "team_settings.episodeFolders.limit": {
+    "defaultMessage": "A template holds at most {max} folders.",
+    "description": "Shown in Team Settings › Episodes when the episode folder template is full; {max} is the folder limit."
+  },
+  "team_settings.episodeFolders.mirror": {
+    "defaultMessage": "Mirror",
+    "description": "Tooltip of the link icon on a folder row marking a mirror folder in the episode folder template."
+  },
+  "team_settings.episodeFolders.mirrorHint": {
+    "defaultMessage": "Shows the contents of another folder, read-only, to everyone who sees this one.",
+    "description": "Hint under the Mirror of picker in the episode folder template."
+  },
+  "team_settings.episodeFolders.mirrorOf": {
+    "defaultMessage": "Mirror of",
+    "description": "Radio option and accessible label of the folder picker in the episode folder template: this folder shows the contents of the picked folder."
+  },
+  "team_settings.episodeFolders.nameInvalid": {
+    "defaultMessage": "Folder names cannot be empty, \".\" or \"..\", or contain / \\ : * ? \" < > |.",
+    "description": "Error while renaming a folder in the episode folder template when the name is empty, . or .., or has a forbidden character."
+  },
+  "team_settings.episodeFolders.nameLabel": {
+    "defaultMessage": "Folder name",
+    "description": "Accessible label of the text box used to rename a folder in the episode folder template."
+  },
+  "team_settings.episodeFolders.nameTaken": {
+    "defaultMessage": "A folder with this name already exists here.",
+    "description": "Error while renaming a folder in the episode folder template when a sibling already has that name."
+  },
+  "team_settings.episodeFolders.nobody": {
+    "defaultMessage": "Nobody",
+    "description": "Radio option under Who may change it in the episode folder template: the folder is read-only."
+  },
+  "team_settings.episodeFolders.ownFiles": {
+    "defaultMessage": "Own files",
+    "description": "Radio option under Contents in the episode folder template: the folder holds its own files."
+  },
+  "team_settings.episodeFolders.pick": {
+    "defaultMessage": "Select a folder to set who sees and changes it.",
+    "description": "Shown beside the folder tree in Team Settings › Episodes until a folder is selected."
+  },
+  "team_settings.episodeFolders.readOnly": {
+    "defaultMessage": "Read-only",
+    "description": "Tooltip of the lock icon on a folder row marking a read-only folder in the episode folder template."
+  },
+  "team_settings.episodeFolders.rename": {
+    "defaultMessage": "Rename {path}",
+    "description": "Accessible label of the pencil button on a folder row in the episode folder template; {path} is the folder, like BG/Layout."
+  },
+  "team_settings.episodeFolders.tooLarge": {
+    "defaultMessage": "This template is too large to save. Remove folders or departments to make it smaller.",
+    "description": "Shown in Team Settings › Episodes when a change would make the episode folder template exceed the size the server accepts; the change is not applied."
+  },
+  "team_settings.episodeFolders.tree": {
+    "defaultMessage": "Episode folders",
+    "description": "Accessible label of the folder list in the episode folder template settings."
+  },
+  "team_settings.episodeFolders.whoChanges": {
+    "defaultMessage": "Who may change it",
+    "description": "Heading of the settings group in the episode folder template that says who may upload to, rename and delete in the folder."
+  },
+  "team_settings.episodeFolders.whoSees": {
+    "defaultMessage": "Who sees it",
+    "description": "Heading of the settings group in the episode folder template that says which departments see the folder."
   },
   "team_settings.membership_tab.advanced_rules_locked": {
     "defaultMessage": "These rules use advanced logic and can only be edited in the System Console. Contact a System Admin to change them.",

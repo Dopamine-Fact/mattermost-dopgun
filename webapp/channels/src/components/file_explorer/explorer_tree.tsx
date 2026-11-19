@@ -30,6 +30,9 @@ type Props = {
 
     /** Called when items or files are dropped on a channel or folder in the tree. */
     onDrop?: DropHandler;
+
+    /** The open folder takes no changes (mirror, read-only folder), so its own tree node takes no drops. */
+    locked?: boolean;
 };
 
 type RowProps = {
@@ -119,10 +122,13 @@ function useSubfolders(channelId: string, parentId: string, open: boolean, chang
     return folders;
 }
 
-type FolderNodeProps = {channel: Channel; item: DriveItem; ancestors: string[]; depth: number; channelUrl: string; folderId: string; changeCount: number};
+type FolderNodeProps = {channel: Channel; item: DriveItem; ancestors: string[]; depth: number; channelUrl: string; folderId: string; changeCount: number; locked: boolean; underMirror?: boolean};
 
-const FolderNode = ({channel, item, ancestors, depth, channelUrl, folderId, changeCount}: FolderNodeProps) => {
+const FolderNode = ({channel, item, ancestors, depth, channelUrl, folderId, changeCount, locked, underMirror}: FolderNodeProps) => {
     const [open, setOpen] = useState(false);
+
+    // The tree only knows the rules of the folders it lists; the server refuses the rest.
+    const fixed = Boolean(underMirror || item.mirror_of || item.read_only);
     const subfolders = useSubfolders(channel.id, item.id, open, changeCount);
     return (
         <TreeRow
@@ -133,8 +139,8 @@ const FolderNode = ({channel, item, ancestors, depth, channelUrl, folderId, chan
             active={folderId === item.id}
             expanded={open}
             onToggle={() => setOpen(!open)}
-            target={{channelId: channel.id, folderId: item.id, ancestors}}
-            drag={{channelId: channel.id, parentId: item.parent_id, itemIds: [item.id], chatFileIds: []}}
+            target={{channelId: channel.id, folderId: item.id, ancestors, locked: fixed || (locked && folderId === item.id)}}
+            drag={{channelId: channel.id, parentId: item.parent_id, itemIds: [item.id], chatFileIds: [], copyOnly: fixed}}
         >
             {subfolders.map((sub) => (
                 <FolderNode
@@ -146,15 +152,17 @@ const FolderNode = ({channel, item, ancestors, depth, channelUrl, folderId, chan
                     channelUrl={channelUrl}
                     folderId={folderId}
                     changeCount={changeCount}
+                    locked={locked}
+                    underMirror={Boolean(underMirror || item.mirror_of)}
                 />
             ))}
         </TreeRow>
     );
 };
 
-type ChannelNodeProps = {channel: Channel; baseUrl: string; current: boolean; folderId: string; changeCount: number};
+type ChannelNodeProps = {channel: Channel; baseUrl: string; current: boolean; folderId: string; changeCount: number; locked: boolean};
 
-const ChannelNode = ({channel, baseUrl, current, folderId, changeCount}: ChannelNodeProps) => {
+const ChannelNode = ({channel, baseUrl, current, folderId, changeCount, locked}: ChannelNodeProps) => {
     const intl = useIntl();
     const [open, setOpen] = useState(current);
     useEffect(() => {
@@ -173,7 +181,7 @@ const ChannelNode = ({channel, baseUrl, current, folderId, changeCount}: Channel
             active={current && !folderId}
             expanded={open}
             onToggle={() => setOpen(!open)}
-            target={{channelId: channel.id, folderId: '', ancestors: []}}
+            target={{channelId: channel.id, folderId: '', ancestors: [], locked: current && !folderId && locked}}
         >
             <TreeRow
                 depth={2}
@@ -192,6 +200,7 @@ const ChannelNode = ({channel, baseUrl, current, folderId, changeCount}: Channel
                     channelUrl={channelUrl}
                     folderId={current ? folderId : ''}
                     changeCount={current ? changeCount : 0}
+                    locked={current && locked}
                 />
             ))}
             <TreeRow
@@ -205,7 +214,7 @@ const ChannelNode = ({channel, baseUrl, current, folderId, changeCount}: Channel
     );
 };
 
-const ExplorerTree = ({baseUrl, channels, channelId, folderId, changeCount, onDrop}: Props) => {
+const ExplorerTree = ({baseUrl, channels, channelId, folderId, changeCount, onDrop, locked = false}: Props) => {
     const intl = useIntl();
     return (
         <DropContext.Provider value={onDrop}>
@@ -230,6 +239,7 @@ const ExplorerTree = ({baseUrl, channels, channelId, folderId, changeCount, onDr
                                 current={channel.id === channelId}
                                 folderId={folderId}
                                 changeCount={changeCount}
+                                locked={locked}
                             />
                         ))}
                     </TreeRow>

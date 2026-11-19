@@ -4,9 +4,11 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -20,10 +22,12 @@ const (
 	TeamDescriptionMaxLength    = 255
 	TeamEpisodeTemplateMaxRunes = 4000
 	TeamEpisodeTemplateMaxLines = 100
-	TeamDisplayNameMaxRunes     = 64
-	TeamEmailMaxLength          = 128
-	TeamNameMaxLength           = 64
-	TeamNameMinLength           = 2
+	// TeamEpisodeFoldersMaxRunes is the folder template limit: JSON with department ids; tasks keep TeamEpisodeTemplateMaxRunes.
+	TeamEpisodeFoldersMaxRunes = 100000
+	TeamDisplayNameMaxRunes    = 64
+	TeamEmailMaxLength         = 128
+	TeamNameMaxLength          = 64
+	TeamNameMinLength          = 2
 )
 
 type Team struct {
@@ -52,7 +56,7 @@ type Team struct {
 	DailyReportTime     string  `json:"daily_report_time"` // "HH:MM" in DailyReportTimezone
 	DailyReportTimezone string  `json:"daily_report_timezone"`
 	FilesEnabled        bool    `json:"files_enabled"`
-	EpisodeFolders      string  `json:"episode_folders"` // newline-separated drive paths seeded into each new episode
+	EpisodeFolders      string  `json:"episode_folders"` // JSON folder list (or newline-separated paths) seeded into each new episode
 	EpisodeTasks        string  `json:"episode_tasks"`   // newline-separated task titles seeded into each new episode
 
 	// Not persisted; derived by the store via EXISTS on AccessControlPolicies(Type='team').
@@ -106,7 +110,7 @@ func (o *Team) Auditable() map[string]any {
 		"daily_report_time":     o.DailyReportTime,
 		"daily_report_timezone": o.DailyReportTimezone,
 		"files_enabled":         o.FilesEnabled,
-		"episode_folders":       len(EpisodeTemplateLines(o.EpisodeFolders)),
+		"episode_folders":       episodeFolderCount(o.EpisodeFolders),
 		"episode_tasks":         len(EpisodeTemplateLines(o.EpisodeTasks)),
 	}
 }
@@ -146,16 +150,16 @@ func (o *TeamPatch) Auditable() map[string]any {
 		"daily_report_time":     o.DailyReportTime,
 		"daily_report_timezone": o.DailyReportTimezone,
 		"files_enabled":         o.FilesEnabled,
-		"episode_folders":       episodeTemplatePatchLines(o.EpisodeFolders),
-		"episode_tasks":         episodeTemplatePatchLines(o.EpisodeTasks),
+		"episode_folders":       episodeTemplatePatchLines(o.EpisodeFolders, episodeFolderCount),
+		"episode_tasks":         episodeTemplatePatchLines(o.EpisodeTasks, func(t string) int { return len(EpisodeTemplateLines(t)) }),
 	}
 }
 
-func episodeTemplatePatchLines(text *string) any {
+func episodeTemplatePatchLines(text *string, count func(string) int) any {
 	if text == nil {
 		return nil
 	}
-	return len(EpisodeTemplateLines(*text))
+	return count(*text)
 }
 
 // EpisodeTemplateLines returns the trimmed, non-empty lines of an episode template, in order.
@@ -169,21 +173,115 @@ func EpisodeTemplateLines(text string) []string {
 	return lines
 }
 
-// isValidEpisodeTemplate checks the size limits; with paths, each line's "/"-separated segments must be valid drive names.
-func isValidEpisodeTemplate(text string, paths bool) bool {
-	if utf8.RuneCountInString(text) > TeamEpisodeTemplateMaxRunes {
+// isValidEpisodeTemplate checks the size limits of a newline-separated template.
+func isValidEpisodeTemplate(text string) bool {
+	return utf8.RuneCountInString(text) <= TeamEpisodeTemplateMaxRunes && len(EpisodeTemplateLines(text)) <= TeamEpisodeTemplateMaxLines
+}
+
+// EpisodeFolder is one folder of the episode template. Empty ViewDepartments = everyone. Empty WriteDepartments
+// with ReadOnly false = the viewers may change it. MirrorOf is another entry's Path.
+type EpisodeFolder struct {
+	Path             string   `json:"path"`
+	ViewDepartments  []string `json:"view_departments,omitempty"`
+	WriteDepartments []string `json:"write_departments,omitempty"`
+	ReadOnly         bool     `json:"read_only,omitempty"`
+	MirrorOf         string   `json:"mirror_of,omitempty"`
+}
+
+// Rules returns the folder's drive rules. Write defaults to View when only View is restricted; MirrorOf is
+// not copied (it is a path here; the seeder fills in the source folder id).
+func (e *EpisodeFolder) Rules() DriveRules {
+	r := DriveRules{ViewDepartments: StringArray(e.ViewDepartments), WriteDepartments: StringArray(e.WriteDepartments), ReadOnly: e.ReadOnly}
+	if e.ReadOnly {
+		r.WriteDepartments = nil
+	} else if len(r.WriteDepartments) == 0 {
+		r.WriteDepartments = r.ViewDepartments
+	}
+	return r
+}
+
+// ParseEpisodeFolders reads the JSON list, or else the old one-path-per-line format (case-insensitive duplicate
+// lines dropped, the first kept). Malformed JSON read as lines still fails validation: `"` is not a valid name.
+func ParseEpisodeFolders(text string) ([]*EpisodeFolder, error) {
+	if strings.HasPrefix(strings.TrimSpace(text), "[") {
+		var folders []*EpisodeFolder
+		if err := json.Unmarshal([]byte(text), &folders); err == nil {
+			return folders, nil
+		}
+	}
+	var folders []*EpisodeFolder
+	seen := map[string]bool{}
+	for _, line := range EpisodeTemplateLines(text) {
+		if key := strings.ToLower(line); !seen[key] {
+			seen[key] = true
+			folders = append(folders, &EpisodeFolder{Path: line})
+		}
+	}
+	return folders, nil
+}
+
+func episodeFolderCount(text string) int {
+	folders, _ := ParseEpisodeFolders(text)
+	return len(folders)
+}
+
+// episodePathsNested reports whether two lowercased paths are equal or one contains the other.
+func episodePathsNested(a, b string) bool {
+	return a == b || strings.HasPrefix(a, b+"/") || strings.HasPrefix(b, a+"/")
+}
+
+// isValidEpisodeFolders checks the size limits, folder names, department ids, that writers are among the viewers,
+// and that a mirror points at a plain, unrelated folder and holds nothing of its own.
+func isValidEpisodeFolders(text string) bool {
+	if utf8.RuneCountInString(text) > TeamEpisodeFoldersMaxRunes {
 		return false
 	}
-	lines := EpisodeTemplateLines(text)
-	if len(lines) > TeamEpisodeTemplateMaxLines {
+	folders, err := ParseEpisodeFolders(text)
+	if err != nil || len(folders) > TeamEpisodeTemplateMaxLines {
 		return false
 	}
-	if paths {
-		for _, line := range lines {
-			for segment := range strings.SplitSeq(line, "/") {
-				if !IsValidDriveItemName(segment) {
+
+	byPath := make(map[string]*EpisodeFolder, len(folders))
+	for _, f := range folders {
+		if f == nil {
+			return false
+		}
+		for segment := range strings.SplitSeq(f.Path, "/") {
+			if !IsValidDriveItemName(segment) {
+				return false
+			}
+		}
+		key := strings.ToLower(f.Path)
+		if byPath[key] != nil {
+			return false
+		}
+		byPath[key] = f
+
+		for _, id := range slices.Concat(f.ViewDepartments, f.WriteDepartments) {
+			if !IsValidId(id) {
+				return false
+			}
+		}
+		if len(f.ViewDepartments) > 0 {
+			for _, id := range f.WriteDepartments {
+				if !slices.Contains(f.ViewDepartments, id) {
 					return false
 				}
+			}
+		}
+	}
+
+	for _, f := range folders {
+		if f.MirrorOf == "" {
+			continue
+		}
+		path, target := strings.ToLower(f.Path), strings.ToLower(f.MirrorOf)
+		if byPath[target] == nil || byPath[target].MirrorOf != "" || episodePathsNested(path, target) || len(f.WriteDepartments) > 0 {
+			return false
+		}
+		for other := range byPath {
+			if strings.HasPrefix(other, path+"/") {
+				return false
 			}
 		}
 	}
@@ -289,10 +387,10 @@ func (o *Team) IsValid() *AppError {
 		}
 	}
 
-	if !isValidEpisodeTemplate(o.EpisodeFolders, true) {
+	if !isValidEpisodeFolders(o.EpisodeFolders) {
 		return NewAppError("Team.IsValid", "model.team.is_valid.episode_folders.app_error", nil, "id="+o.Id, http.StatusBadRequest)
 	}
-	if !isValidEpisodeTemplate(o.EpisodeTasks, false) {
+	if !isValidEpisodeTemplate(o.EpisodeTasks) {
 		return NewAppError("Team.IsValid", "model.team.is_valid.episode_tasks.app_error", nil, "id="+o.Id, http.StatusBadRequest)
 	}
 
