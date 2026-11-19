@@ -255,7 +255,16 @@
         line-height: 14px;
         pointer-events: none;
         text-overflow: ellipsis;
+        transition: opacity 200ms ease;
         white-space: nowrap;
+
+        &--hidden {
+            opacity: 0;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            transition: none;
+        }
     }
 
     &__duration {

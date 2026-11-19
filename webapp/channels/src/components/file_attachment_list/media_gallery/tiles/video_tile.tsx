@@ -1,6 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import classNames from 'classnames';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import type {CSSProperties} from 'react';
 import {useIntl} from 'react-intl';
@@ -23,6 +24,7 @@ type Props = {
 };
 
 const POSTER_SEEK_SECONDS = 0.1;
+const NAME_IDLE_HIDE_MS = 1500;
 
 type CachedPoster = {poster: string | null; duration: number | null; failed: boolean};
 
@@ -160,8 +162,24 @@ const VideoTile = ({fileInfo, index, total, enablePublicLink}: Props) => {
     const tileRef = useRef<HTMLDivElement>(null);
     const inView = useInViewport(tileRef);
     const [playing, setPlaying] = useState(false);
+    const [nameVisible, setNameVisible] = useState(true);
+    const hideNameTimer = useRef<number | undefined>(undefined);
 
     const {poster, failed, duration} = useFirstFramePoster(fileInfo.id, fileUrl, inView && !playing);
+
+    // While playing, the name shows on mouse movement and hides after a short idle.
+    const showNameBriefly = useCallback(() => {
+        setNameVisible(true);
+        window.clearTimeout(hideNameTimer.current);
+        hideNameTimer.current = window.setTimeout(() => setNameVisible(false), NAME_IDLE_HIDE_MS);
+    }, []);
+
+    useEffect(() => {
+        if (playing) {
+            showNameBriefly();
+        }
+        return () => window.clearTimeout(hideNameTimer.current);
+    }, [playing, showNameBriefly]);
 
     // Play inline in the post; the native controls provide fullscreen.
     const handleActivate = useCallback(() => {
@@ -197,6 +215,7 @@ const VideoTile = ({fileInfo, index, total, enablePublicLink}: Props) => {
                 data-testid='media-gallery-tile'
                 data-file-name={fileInfo.name || ''}
                 style={tileSizeVars(fileInfo)}
+                onMouseMove={showNameBriefly}
             >
                 <video
                     src={fileUrl}
@@ -207,6 +226,12 @@ const VideoTile = ({fileInfo, index, total, enablePublicLink}: Props) => {
                     aria-label={fileInfo.name}
                     data-testid='media-gallery-video-player'
                 />
+                <span
+                    className={classNames('MediaGallery__tile__name', {'MediaGallery__tile__name--hidden': !nameVisible})}
+                    aria-hidden={true}
+                >
+                    {fileInfo.name}
+                </span>
             </div>
         );
     }

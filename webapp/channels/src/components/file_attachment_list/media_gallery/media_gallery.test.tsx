@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {act, screen, waitFor, within} from '@testing-library/react';
+import {act, fireEvent, screen, waitFor, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 
@@ -125,6 +125,36 @@ describe('MediaGallery', () => {
         expect(player).toHaveAttribute('src', expect.stringContaining('/files/v'));
         expect(player).toHaveAttribute('controls');
         expect(onClick).not.toHaveBeenCalled();
+    });
+
+    it('shows the file name while playing, hides it when the mouse is idle and shows it again on movement', async () => {
+        renderWithContext(
+            <MediaGallery
+                fileInfos={[fileInfo({id: 'v', name: 'clip.mp4', extension: 'mp4', mime_type: 'video/mp4'})]}
+                postId='p1'
+                onItemClick={jest.fn()}
+            />,
+            baseState,
+        );
+        await userEvent.click(screen.getByTestId('media-gallery-tile'));
+
+        jest.useFakeTimers();
+        try {
+            const tile = screen.getByTestId('media-gallery-tile');
+            const name = within(tile).getByText('clip.mp4');
+            fireEvent.mouseMove(tile);
+            expect(name).not.toHaveClass('MediaGallery__tile__name--hidden');
+
+            act(() => {
+                jest.advanceTimersByTime(1500);
+            });
+            expect(name).toHaveClass('MediaGallery__tile__name--hidden');
+
+            fireEvent.mouseMove(tile);
+            expect(name).not.toHaveClass('MediaGallery__tile__name--hidden');
+        } finally {
+            jest.useRealTimers();
+        }
     });
 
     it('renders a collapse toggle header for multi-image galleries when a toggle handler is provided', async () => {
