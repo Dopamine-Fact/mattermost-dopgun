@@ -24807,6 +24807,14 @@
     "defaultMessage": "{count} selected ({size})",
     "description": "File explorer status bar: number of selected items and their total size, e.g. 2.5MB."
   },
+  "file_explorer.taskFile.deleteMessage": {
+    "defaultMessage": "{count, plural, one {This file} other {These # files}} will be removed from the task message. It doesn't go to the Recycle Bin.",
+    "description": "File explorer confirmation when deleting files that belong to a task message, shown inside the task's folder. Says the file leaves the task message and is not kept in the Recycle Bin."
+  },
+  "file_explorer.taskFile.deleteTitle": {
+    "defaultMessage": "Delete from task?",
+    "description": "Title of the file explorer confirmation for deleting files that belong to a task message."
+  },
   "file_explorer.title": {
     "defaultMessage": "Files",
     "description": "Page title of the team file explorer."

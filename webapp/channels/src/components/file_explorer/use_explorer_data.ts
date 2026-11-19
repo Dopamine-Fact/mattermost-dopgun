@@ -6,7 +6,7 @@ import {useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 
 import type {Channel} from '@mattermost/types/channels';
-import type {DriveChatFileSort, DriveItem, DriveListing} from '@mattermost/types/drive';
+import type {DriveChatFileSort, DriveItem, DriveListing, DriveTaskFile} from '@mattermost/types/drive';
 import type {FileInfo} from '@mattermost/types/files';
 
 import {Client4} from 'mattermost-redux/client';
@@ -24,7 +24,7 @@ export const CHAT_FOLDER = 'chat';
 export const TRASH_FOLDER = 'trash';
 export const CHAT_PAGE_SIZE = 60;
 
-export type ExplorerEntryKind = 'channel' | 'folder' | 'file' | 'chat' | 'trash';
+export type ExplorerEntryKind = 'channel' | 'folder' | 'file' | 'chat' | 'trash' | 'task_file';
 
 export type ExplorerEntry = {
     key: string;
@@ -33,6 +33,9 @@ export type ExplorerEntry = {
     driveItem?: DriveItem;
     fileInfo?: FileInfo;
     channel?: Channel;
+
+    /** The task a task_file entry belongs to. */
+    taskId?: string;
     readOnly: boolean;
     canModify: boolean;
 };
@@ -42,7 +45,7 @@ type DriveChangedMessage = {event: string; data?: unknown; broadcast?: {channel_
 
 export type ChatSort = {by: DriveChatFileSort; desc: boolean};
 
-type Loaded = {key: string; items: DriveItem[]; files: FileInfo[]; path: DriveItem[]; page: number; hasMore: boolean; access: DriveListing['access']; sourceMissing: boolean};
+type Loaded = {key: string; items: DriveItem[]; files: FileInfo[]; taskFiles: DriveTaskFile[]; path: DriveItem[]; page: number; hasMore: boolean; access: DriveListing['access']; sourceMissing: boolean};
 
 const hasRules = (it: DriveItem) => Boolean(it.view_departments?.length || it.write_departments?.length || it.read_only || it.mirror_of);
 
@@ -92,13 +95,13 @@ export function useExplorerData(channelId?: string, folderId = '', chatSort: Cha
         const load = async (): Promise<Loaded> => {
             if (folderId === CHAT_FOLDER) {
                 const files = await Client4.getDriveChatFiles(channelId, 0, CHAT_PAGE_SIZE, chatSort.by, chatSort.desc);
-                return {key, items: [], files, path: [], page: 0, hasMore: files.length === CHAT_PAGE_SIZE, access: '', sourceMissing: false};
+                return {key, items: [], files, taskFiles: [], path: [], page: 0, hasMore: files.length === CHAT_PAGE_SIZE, access: '', sourceMissing: false};
             }
             if (folderId === TRASH_FOLDER) {
-                return {key, items: await Client4.getDriveTrash(channelId), files: [], path: [], page: 0, hasMore: false, access: '', sourceMissing: false};
+                return {key, items: await Client4.getDriveTrash(channelId), files: [], taskFiles: [], path: [], page: 0, hasMore: false, access: '', sourceMissing: false};
             }
             const listing = await Client4.getDriveFolder(channelId, folderId);
-            return {key, items: listing.items, files: [], path: listing.path, page: 0, hasMore: false, access: listing.access, sourceMissing: Boolean(listing.source_missing)};
+            return {key, items: listing.items, files: [], taskFiles: listing.task_files, path: listing.path, page: 0, hasMore: false, access: listing.access, sourceMissing: Boolean(listing.source_missing)};
         };
         load().then((data) => {
             if (!cancelled) {
@@ -181,7 +184,9 @@ export function useExplorerData(channelId?: string, folderId = '', chatSort: Cha
             readOnly: inTrash,
             canModify: inTrash ? it.creator_id === me || canManage : !inMirror && (canManage || (!hasRules(it) && (access === 'write' || (access === '' && it.creator_id === me)))),
         }));
-        return folderId ? drive : [{key: CHAT_FOLDER, kind: 'chat', name: chatName, readOnly: true, canModify: false}, ...drive];
+        const canChangeFile = (f: FileInfo) => !inMirror && (canManage || access === 'write' || (access === '' && f.user_id === me));
+        const tasks = current.taskFiles.map((f): ExplorerEntry => ({key: `task:${f.id}`, kind: 'task_file', name: f.name, fileInfo: f, taskId: f.task_id, readOnly: false, canModify: canChangeFile(f)}));
+        return folderId ? [...drive, ...tasks] : [{key: CHAT_FOLDER, kind: 'chat', name: chatName, readOnly: true, canModify: false}, ...drive, ...tasks];
     }, [canManage, channelId, channels, chatName, current, folderId, inMirror, me]);
 
     return {

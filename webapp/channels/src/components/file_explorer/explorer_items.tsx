@@ -7,8 +7,11 @@ import {useIntl} from 'react-intl';
 import type {IntlShape} from 'react-intl';
 
 import {FolderOutlineIcon, GlobeIcon, LockOutlineIcon, MessageTextOutlineIcon, SyncIcon, TrashCanOutlineIcon} from '@mattermost/compass-icons/components';
+import type {Post} from '@mattermost/types/posts';
 
 import {getFileThumbnailUrl} from 'mattermost-redux/utils/file_utils';
+
+import TaskPostLabel from 'components/tasks/task_post_label';
 
 import {fileSizeToString, getFileType, getIconClassName} from 'utils/utils';
 
@@ -49,6 +52,11 @@ type Props = {
     /** The entry a drag is hovering over, highlighted as the drop target. */
     dropKey?: string;
 };
+
+// The task a task file belongs to; the label links to it.
+const taskChip = (entry: ExplorerEntry) => entry.kind === 'task_file' && entry.fileInfo && (
+    <TaskPostLabel post={{channel_id: entry.fileInfo.channel_id, props: {task_id: entry.taskId}} as unknown as Post}/>
+);
 
 export function entryModified(entry: ExplorerEntry): number {
     return entry.driveItem?.update_at ?? entry.fileInfo?.create_at ?? 0;
@@ -195,7 +203,7 @@ const ExplorerItems = ({entries, view, selected, sort, sortable = () => true, on
     const renameInput = (entry: ExplorerEntry) => (
         <ExplorerRenameInput
             name={entry.name}
-            keepExtension={entry.kind === 'file'}
+            keepExtension={entry.kind === 'file' || entry.kind === 'task_file'}
             onDone={(name) => {
                 onRenameDone(entry, name);
 
@@ -234,6 +242,7 @@ const ExplorerItems = ({entries, view, selected, sort, sortable = () => true, on
                                 />
                             </span>
                             {renamingKey === entry.key ? renameInput(entry) : <span className='ExplorerItems__tileName'>{entry.name}</span>}
+                            {taskChip(entry)}
                         </div>
                     ))}
                 </div>
@@ -289,6 +298,7 @@ const ExplorerItems = ({entries, view, selected, sort, sortable = () => true, on
                     >
                         <EntryIcon entry={entry}/>
                         {renamingKey === entry.key ? renameInput(entry) : <span>{entry.name}</span>}
+                        {taskChip(entry)}
                     </div>
                     {allColumns.slice(1).map((col) => (
                         <div

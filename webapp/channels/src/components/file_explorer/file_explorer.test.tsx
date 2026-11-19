@@ -328,6 +328,27 @@ describe('FileExplorer', () => {
             expect(button('Delete')).toBeDisabled();
         });
 
+        test('a task file is deleted from its message after a confirmation, never moved to the Recycle Bin', async () => {
+            const board = {...fileInfo('f9', 'board.png', 10), task_id: 't1'};
+            list([], '', {task_files: [board]});
+            const taskDelete = jest.spyOn(Client4, 'deleteDriveTaskFile').mockResolvedValue({status: 'OK'});
+            const driveDelete = jest.spyOn(Client4, 'deleteDriveItems').mockResolvedValue({status: 'OK'});
+            renderAt('/team/files/town/d1');
+            fireEvent.click(await screen.findByRole('gridcell', {name: 'board.png'}));
+            expect(button('Cut')).toBeDisabled();
+            expect(button('Copy')).toBeEnabled();
+            fireEvent.click(button('Delete'));
+            expect(taskDelete).not.toHaveBeenCalled();
+            const props = (openModal as jest.Mock).mock.calls[0][0].dialogProps;
+            expect(props.message).toContain('removed from the task message');
+            expect(props.message).toContain('Recycle Bin');
+            await act(async () => {
+                await props.onConfirm();
+            });
+            expect(taskDelete).toHaveBeenCalledWith('c1', 'f9');
+            expect(driveDelete).not.toHaveBeenCalled();
+        });
+
         test('an empty mirror whose source is gone says so', async () => {
             list([], 'read', {path: [{...folder('m1', 'Mirror'), mirror_of: 'gone'}], source_missing: true});
             renderAt('/team/files/town/m1');

@@ -81,3 +81,53 @@ describe('ExplorerItems', () => {
         expect(screen.getAllByTitle(/folder/i)).toHaveLength(2);
     });
 });
+
+describe('ExplorerItems task files', () => {
+    const state = {
+        entities: {
+            teams: {currentTeamId: 'team1', teams: {team1: TestHelper.getTeamMock({id: 'team1', name: 'team'})}},
+            channels: {channels: {c1: TestHelper.getChannelMock({id: 'c1', team_id: 'team1', name: 'town'})}},
+            tasks: {byId: {t1: {id: 't1', title: 'Storyboard', video_file_id: ''}}, sectionsById: {}},
+        },
+    };
+    const taskEntry: ExplorerEntry = {key: 'task:f3', kind: 'task_file', name: 'board.png', fileInfo: TestHelper.getFileInfoMock({id: 'f3', name: 'board.png', extension: 'png', channel_id: 'c1'}), taskId: 't1', readOnly: false, canModify: true};
+
+    test('a task file row carries a chip with the task title that opens the task', () => {
+        renderWithContext(
+            <ExplorerItems
+                entries={[taskEntry]}
+                view='details'
+                selected={new Set()}
+                sort={{by: 'name', desc: false}}
+                onSort={jest.fn()}
+                onSelect={jest.fn()}
+                onOpen={jest.fn()}
+                onContextMenu={jest.fn()}
+                onRenameDone={jest.fn()}
+                getUserName={() => 'me'}
+            />,
+            state as never,
+        );
+        expect(screen.getByRole('link', {name: 'Storyboard'})).toHaveAttribute('href', '/team/channels/town?task=t1');
+    });
+
+    test('a task file cannot be dragged', () => {
+        renderWithContext(
+            <ExplorerItems
+                entries={[taskEntry]}
+                view='icons'
+                selected={new Set()}
+                sort={{by: 'name', desc: false}}
+                onSort={jest.fn()}
+                onSelect={jest.fn()}
+                onOpen={jest.fn()}
+                onContextMenu={jest.fn()}
+                onRenameDone={jest.fn()}
+                onDragStart={jest.fn()}
+                getUserName={() => 'me'}
+            />,
+            state as never,
+        );
+        expect(screen.getByRole('gridcell', {name: 'board.png'})).toHaveAttribute('draggable', 'false');
+    });
+});

@@ -64,6 +64,21 @@ function clickLink(href: string, filename = '') {
     a.remove();
 }
 
+/** Task files are message files, not drive items: they have their own rename and delete calls. */
+export const renameEntry = (channelId: string, entry: ExplorerEntry, name: string) => (
+    entry.kind === 'task_file' ? Client4.renameDriveTaskFile(channelId, entry.fileInfo!.id, name) : Client4.renameDriveItem(channelId, entry.driveItem!.id, name)
+);
+
+/** Removes the files from their task messages; they do not go to the Recycle Bin. */
+export const deleteTaskFiles = (channelId: string, entries: ExplorerEntry[]) => Promise.all(entries.map((e) => Client4.deleteDriveTaskFile(channelId, e.fileInfo!.id)));
+
+/** What a drag carries: drive items and chat files only (task files stay put); copyOnly when a drive item cannot be changed. */
+export const dragParts = (entries: ExplorerEntry[]) => ({
+    itemIds: entries.flatMap((e) => (e.driveItem ? [e.driveItem.id] : [])),
+    chatFileIds: entries.flatMap((e) => (!e.driveItem && e.fileInfo && e.kind !== 'task_file' ? [e.fileInfo.id] : [])),
+    copyOnly: entries.some((e) => e.driveItem && !e.canModify),
+});
+
 /** One file downloads directly; anything else in the drive goes as a zip. */
 export async function download(channelId: string, entries: ExplorerEntry[]) {
     if (entries.length === 1 && entries[0].fileInfo) {

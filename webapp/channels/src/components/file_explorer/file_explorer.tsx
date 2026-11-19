@@ -32,7 +32,7 @@ import {ModalIdentifiers} from 'utils/constants';
 
 import {LhsItemType, LhsPage} from 'types/store/lhs';
 
-import {copy, cut, download, paste, uniqueName, useClipboard} from './explorer_actions';
+import {copy, cut, deleteTaskFiles, download, dragParts, paste, renameEntry, uniqueName, useClipboard} from './explorer_actions';
 import ExplorerAddressBar from './explorer_address_bar';
 import type {Crumb} from './explorer_address_bar';
 import ExplorerContextMenu from './explorer_context_menu';
@@ -88,8 +88,9 @@ function useWideEnough() {
     return wide;
 }
 
-const KIND_RANK: Record<ExplorerEntry['kind'], number> = {chat: 0, channel: 1, folder: 1, file: 2, trash: 3};
-const isDriveObject = (e: ExplorerEntry) => e.kind === 'file' || e.kind === 'folder';
+const KIND_RANK: Record<ExplorerEntry['kind'], number> = {chat: 0, channel: 1, folder: 1, file: 2, task_file: 2, trash: 3};
+const isDriveObject = (e: ExplorerEntry) => e.kind === 'file' || e.kind === 'folder' || e.kind === 'task_file';
+const isTaskFile = (e: ExplorerEntry) => e.kind === 'task_file';
 const driveIds = (entries: ExplorerEntry[]) => entries.flatMap((e) => (e.driveItem ? [e.driveItem.id] : []));
 
 type Params = {team: string; channelName?: string; folderId?: string};
@@ -269,14 +270,17 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
     }
 
     const selected = visible.filter((e) => selection.selected.has(e.key));
-    const canChange = selected.length > 0 && selected.every((e) => e.driveItem && e.canModify);
+    const canChange = selected.length > 0 && selected.every((e) => (e.driveItem || isTaskFile(e)) && e.canModify);
+
+    // Task files cannot be moved, and one delete does not mix them with drive items (those go to the Recycle Bin, these do not).
+    const hasTask = selected.some(isTaskFile);
     const can = {
         open: selected.length === 1,
-        cut: inDrive && canChange,
+        cut: inDrive && canChange && !hasTask,
         copy: !inTrash && selected.length > 0 && selected.every(isDriveObject),
         paste: writable && Boolean(clipboard),
         rename: inDrive && selected.length === 1 && canChange,
-        remove: inDrive && canChange,
+        remove: inDrive && canChange && (!hasTask || selected.every(isTaskFile)),
         download: !inTrash && selected.length > 0 && selected.every(isDriveObject),
         newFolder: writable,
         restore: inTrash && canChange,
@@ -305,17 +309,25 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
         }
     };
 
-    const confirmPermanentDelete = (onConfirm: () => Promise<unknown>, count?: number) => dispatch(openModal({
-        modalId: ModalIdentifiers.CONFIRM,
-        dialogType: ConfirmModalRedux,
-        dialogProps: {
-            title: intl.formatMessage({id: 'file_explorer.purge.title', defaultMessage: 'Delete permanently?'}),
-            message: count === undefined ? intl.formatMessage({id: 'file_explorer.empty.confirm', defaultMessage: 'Everything in the Recycle Bin that you can delete will be gone for good. This can\'t be undone.'}) : intl.formatMessage({id: 'file_explorer.purge.message', defaultMessage: '{count, plural, one {This item} other {These # items}} will be gone for good. This can\'t be undone.'}, {count}),
-            confirmButtonText: intl.formatMessage({id: 'file_explorer.purge.confirm', defaultMessage: 'Delete'}),
-            destructive: true,
-            onConfirm,
-        },
-    }));
+    const confirmPermanentDelete = (onConfirm: () => Promise<unknown>, count?: number, taskFiles = false) => {
+        let message = intl.formatMessage({id: 'file_explorer.empty.confirm', defaultMessage: 'Everything in the Recycle Bin that you can delete will be gone for good. This can\'t be undone.'});
+        if (taskFiles) {
+            message = intl.formatMessage({id: 'file_explorer.taskFile.deleteMessage', defaultMessage: '{count, plural, one {This file} other {These # files}} will be removed from the task message. It doesn\'t go to the Recycle Bin.'}, {count});
+        } else if (count !== undefined) {
+            message = intl.formatMessage({id: 'file_explorer.purge.message', defaultMessage: '{count, plural, one {This item} other {These # items}} will be gone for good. This can\'t be undone.'}, {count});
+        }
+        return dispatch(openModal({
+            modalId: ModalIdentifiers.CONFIRM,
+            dialogType: ConfirmModalRedux,
+            dialogProps: {
+                title: taskFiles ? intl.formatMessage({id: 'file_explorer.taskFile.deleteTitle', defaultMessage: 'Delete from task?'}) : intl.formatMessage({id: 'file_explorer.purge.title', defaultMessage: 'Delete permanently?'}),
+                message,
+                confirmButtonText: intl.formatMessage({id: 'file_explorer.purge.confirm', defaultMessage: 'Delete'}),
+                destructive: true,
+                onConfirm,
+            },
+        }));
+    };
 
     const channelId = channel?.id ?? '';
     const actions = {
@@ -332,6 +344,10 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
             setRenamingKey(item.id);
         }),
         remove: (permanent: boolean) => {
+            if (hasTask) {
+                confirmPermanentDelete(() => run(() => deleteTaskFiles(channelId, selected)), selected.length, true);
+                return;
+            }
             const ids = driveIds(selected);
             if (permanent || inTrash) {
                 confirmPermanentDelete(() => run(() => Client4.deleteDriveItems(channelId, ids, true)), ids.length);
@@ -400,7 +416,7 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
         if (!selection.selected.has(entry.key)) {
             selection.click(entry.key);
         }
-        startDrag(e, {channelId, parentId: folderId, itemIds: driveIds(dragged), chatFileIds: dragged.flatMap((d) => (!d.driveItem && d.fileInfo ? [d.fileInfo.id] : [])), copyOnly: !writable || dragged.some((d) => d.driveItem && !d.canModify)});
+        startDrag(e, {channelId, parentId: folderId, ...dragParts(dragged), copyOnly: !writable || dragParts(dragged).copyOnly});
     } : undefined;
 
     const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -413,8 +429,8 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
 
     const onRenameDone = (entry: ExplorerEntry, name?: string) => {
         setRenamingKey(undefined);
-        if (name && name !== entry.name && entry.driveItem) {
-            run(() => Client4.renameDriveItem(channelId, entry.driveItem!.id, name));
+        if (name && name !== entry.name && (entry.driveItem || isTaskFile(entry))) {
+            run(() => renameEntry(channelId, entry, name));
         }
     };
 
