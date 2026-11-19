@@ -1264,6 +1264,18 @@ type DailyReportStore interface {
 	GetForTeam(teamID, fromDate, toDate, userID string) ([]*model.DailyReport, error)
 	// GetPendingBefore lists pending reports last submitted before the given time, across all teams.
 	GetPendingBefore(updatedBefore int64) ([]*model.DailyReport, error)
+	// GetBeforeDate lists the team's reports in status with Date < beforeDate.
+	GetBeforeDate(teamID, status, beforeDate string) ([]*model.DailyReport, error)
+	// Excuse turns a draft into an excused day; ErrConflict when the report is no longer a draft.
+	Excuse(id, reviewerID string, excusedAt int64) error
+	// Delete removes a report and its file links (not the files); *store.ErrNotFound when missing.
+	Delete(id string) error
+	// AddFile links a file to a report; linking the same pair twice is an error.
+	AddFile(reportID, fileID string, createAt int64) error
+	// RemoveFile unlinks a file; *store.ErrNotFound when that link does not exist.
+	RemoveFile(reportID, fileID string) error
+	// GetFileIds maps each report id to its linked file ids, oldest link first; reports without files are absent.
+	GetFileIds(reportIDs []string) (map[string][]string, error)
 }
 
 type CustomRoleStore interface {

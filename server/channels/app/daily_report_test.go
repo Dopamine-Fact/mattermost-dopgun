@@ -4,7 +4,11 @@
 package app
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"image"
+	"image/png"
 	"strings"
 	"testing"
 	"time"
@@ -424,16 +428,20 @@ func TestExportDailyReportsCSV(t *testing.T) {
 		Status: model.DailyReportStatusApproved, ApprovedBy: th.BasicUser2.Id, ApprovedAt: 1000, CreateAt: 2000,
 	}, {Date: "2026-11-17", UserId: th.BasicUser.Id, Message: "=cmd|' /c calc", Status: model.DailyReportStatusPending, CreateAt: 3000},
 		{Date: "2026-11-18", UserId: th.BasicUser.Id, Message: "m", Status: model.DailyReportStatusRejected, Edited: true,
-			RejectedBy: th.BasicUser2.Id, RejectReason: "=bad", CreateAt: 4000}}
+			RejectedBy: th.BasicUser2.Id, RejectReason: "=bad", CreateAt: 4000,
+			Files: []*model.FileInfo{{Name: "a.png"}, {Name: "b.mp4"}}},
+		{Date: "2026-11-19", UserId: th.BasicUser.Id, Message: "unsent", Status: model.DailyReportStatusDraft, CreateAt: 5000}}
 	var sb strings.Builder
 	require.Nil(t, th.App.ExportDailyReportsCSV(&sb, reports))
 
 	assert.True(t, strings.HasPrefix(sb.String(),
-		"date,user,message,finished_tasks,status,rejected_by,reject_reason,edited,auto_approved,approved_by,approved_at,submitted_at\n"))
+		"date,user,message,finished_tasks,status,rejected_by,reject_reason,edited,auto_approved,approved_by,approved_at,submitted_at,attachments\n"))
 	assert.Contains(t, sb.String(), `2026-11-16,`+th.BasicUser.Username+`,"line one, ""quoted""`)
 	assert.Contains(t, sb.String(), `'=cmd|' /c calc`)
 	assert.Contains(t, sb.String(), `A; B,approved,,,false,false,`+th.BasicUser2.Username+`,1970-01-01T00:00:01Z,1970-01-01T00:00:02Z`)
 	assert.Contains(t, sb.String(), `,rejected,`+th.BasicUser2.Username+`,'=bad,true,false,`)
+	assert.Contains(t, sb.String(), `,"a.png, b.mp4"`)
+	assert.NotContains(t, sb.String(), "unsent", "drafts are not exported")
 }
 
 func TestDailyReportEventHasNoContent(t *testing.T) {
@@ -463,4 +471,319 @@ func TestSubmitDailyReportConcurrentFirstSubmit(t *testing.T) {
 	reports, appErr := th.App.GetDailyReports(team.Id, date, date, th.BasicUser.Id)
 	require.Nil(t, appErr)
 	assert.Len(t, reports, 1)
+}
+
+func dailyReportPNG(t *testing.T) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	require.NoError(t, png.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 2, 2))))
+	return buf.Bytes()
+}
+
+func TestDailyReportFiles(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	team := enableDailyReports(t, th)
+	pngData := dailyReportPNG(t)
+
+	newAuthor := func(t *testing.T) *model.User {
+		u := th.CreateUser(t)
+		_, _, appErr := th.App.AddUserToTeam(th.Context, team.Id, u.Id, "")
+		require.Nil(t, appErr)
+		return u
+	}
+	linked := func(t *testing.T, reportID string) []string {
+		ids, err := th.App.Srv().Store().DailyReport().GetFileIds([]string{reportID})
+		require.NoError(t, err)
+		return ids[reportID]
+	}
+	today, err := DailyReportDate(team, time.Now())
+	require.NoError(t, err)
+
+	t.Run("first upload creates the day's draft, second joins it", func(t *testing.T) {
+		u := newAuthor(t)
+		first, appErr := th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, "a.png", pngData)
+		require.Nil(t, appErr)
+		second, appErr := th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, "b.png", pngData)
+		require.Nil(t, appErr)
+
+		reports, appErr := th.App.GetDailyReports(team.Id, today, today, u.Id)
+		require.Nil(t, appErr)
+		require.Len(t, reports, 1)
+		assert.Equal(t, model.DailyReportStatusDraft, reports[0].Status)
+		require.Len(t, reports[0].Files, 2)
+		assert.Equal(t, []string{first.Id, second.Id}, []string{reports[0].Files[0].Id, reports[0].Files[1].Id})
+	})
+
+	t.Run("concurrent first uploads share one draft", func(t *testing.T) {
+		u := newAuthor(t)
+		done := make(chan *model.AppError, 2)
+		for _, name := range []string{"a.png", "b.png"} {
+			go func() {
+				_, e := th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, name, pngData)
+				done <- e
+			}()
+		}
+		require.Nil(t, <-done)
+		require.Nil(t, <-done)
+		reports, appErr := th.App.GetDailyReports(team.Id, today, today, u.Id)
+		require.Nil(t, appErr)
+		require.Len(t, reports, 1)
+		assert.Len(t, reports[0].Files, 2)
+	})
+
+	t.Run("refused files", func(t *testing.T) {
+		u := newAuthor(t)
+		_, appErr := th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, "x.png", []byte("<html><body>hi</body></html>"))
+		require.NotNil(t, appErr)
+		assert.Equal(t, "app.daily_report.file_type.app_error", appErr.Id)
+		assert.Equal(t, 400, appErr.StatusCode)
+		_, appErr = th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, "x.exe", []byte("MZ"))
+		require.NotNil(t, appErr)
+		assert.Equal(t, 400, appErr.StatusCode)
+
+		for i := range model.DailyReportMaxFiles {
+			_, appErr = th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, fmt.Sprintf("%d.png", i), pngData)
+			require.Nil(t, appErr)
+		}
+		before, err := th.App.Srv().Store().FileInfo().GetForUser(u.Id)
+		require.NoError(t, err)
+		_, appErr = th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, "eleventh.png", pngData)
+		require.NotNil(t, appErr)
+		assert.Equal(t, "app.daily_report.too_many_files.app_error", appErr.Id)
+		assert.Equal(t, 400, appErr.StatusCode)
+		after, err := th.App.Srv().Store().FileInfo().GetForUser(u.Id)
+		require.NoError(t, err)
+		assert.Len(t, after, len(before), "a refused 11th file leaves nothing stored")
+	})
+
+	t.Run("file changes on a sent report are an edit, on a draft they are not", func(t *testing.T) {
+		u := newAuthor(t)
+		draftFile, appErr := th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, "a.png", pngData)
+		require.Nil(t, appErr)
+		extra, appErr := th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, "b.png", pngData)
+		require.Nil(t, appErr)
+		reports, appErr := th.App.GetDailyReports(team.Id, today, today, u.Id)
+		require.Nil(t, appErr)
+		reportID := reports[0].Id
+		require.Nil(t, th.App.RemoveDailyReportFile(th.Context, reportID, extra.Id, u.Id))
+		report, appErr := th.App.GetDailyReport(reportID)
+		require.Nil(t, appErr)
+		assert.Equal(t, model.DailyReportStatusDraft, report.Status)
+
+		_, appErr = th.App.SubmitDailyReport(th.Context, team.Id, u.Id, "done")
+		require.Nil(t, appErr)
+		_, appErr = th.App.ApproveDailyReport(th.Context, reportID, th.BasicUser.Id, 0)
+		require.Nil(t, appErr)
+		_, appErr = th.App.AddDailyReportFile(th.Context, reportID, u.Id, "c.png", pngData)
+		require.Nil(t, appErr)
+		report, appErr = th.App.GetDailyReport(reportID)
+		require.Nil(t, appErr)
+		assert.Equal(t, model.DailyReportStatusPending, report.Status)
+		assert.True(t, report.Edited)
+		assert.Empty(t, report.ApprovedBy)
+
+		_, appErr = th.App.ApproveDailyReport(th.Context, reportID, th.BasicUser.Id, 0)
+		require.Nil(t, appErr)
+		require.Nil(t, th.App.RemoveDailyReportFile(th.Context, reportID, draftFile.Id, u.Id))
+		report, appErr = th.App.GetDailyReport(reportID)
+		require.Nil(t, appErr)
+		assert.Equal(t, model.DailyReportStatusPending, report.Status)
+		assert.True(t, report.Edited)
+	})
+
+	t.Run("only the author attaches", func(t *testing.T) {
+		u := newAuthor(t)
+		report, appErr := th.App.SubmitDailyReport(th.Context, team.Id, u.Id, "mine")
+		require.Nil(t, appErr)
+		_, appErr = th.App.AddDailyReportFile(th.Context, report.Id, th.BasicUser.Id, "a.png", pngData)
+		require.NotNil(t, appErr)
+		assert.Equal(t, 403, appErr.StatusCode)
+		info, appErr := th.App.AddDailyReportFile(th.Context, report.Id, u.Id, "a.png", pngData)
+		require.Nil(t, appErr)
+		appErr = th.App.RemoveDailyReportFile(th.Context, report.Id, info.Id, th.BasicUser.Id)
+		require.NotNil(t, appErr)
+		assert.Equal(t, 403, appErr.StatusCode)
+	})
+
+	t.Run("remove deletes the file and the link", func(t *testing.T) {
+		u := newAuthor(t)
+		info, appErr := th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, "a.png", pngData)
+		require.Nil(t, appErr)
+		reports, appErr := th.App.GetDailyReports(team.Id, today, today, u.Id)
+		require.Nil(t, appErr)
+		require.Nil(t, th.App.RemoveDailyReportFile(th.Context, reports[0].Id, info.Id, u.Id))
+		_, appErr = th.App.GetFileInfo(th.Context, info.Id)
+		require.NotNil(t, appErr)
+		assert.Equal(t, 404, appErr.StatusCode)
+		assert.Empty(t, linked(t, reports[0].Id))
+	})
+
+	t.Run("a file is read only through its own report", func(t *testing.T) {
+		u, other := newAuthor(t), newAuthor(t)
+		info, appErr := th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, "a.png", pngData)
+		require.Nil(t, appErr)
+		otherReport, appErr := th.App.SubmitDailyReport(th.Context, team.Id, other.Id, "other")
+		require.Nil(t, appErr)
+		_, appErr = th.App.GetDailyReportFile(th.Context, otherReport.Id, info.Id)
+		require.NotNil(t, appErr)
+		assert.Equal(t, 404, appErr.StatusCode)
+
+		reports, appErr := th.App.GetDailyReports(team.Id, today, today, u.Id)
+		require.Nil(t, appErr)
+		got, appErr := th.App.GetDailyReportFile(th.Context, reports[0].Id, info.Id)
+		require.Nil(t, appErr)
+		assert.Equal(t, info.Id, got.Id)
+	})
+
+	t.Run("sending a draft is a first submission and may carry no text", func(t *testing.T) {
+		u := newAuthor(t)
+		_, appErr := th.App.SubmitDailyReport(th.Context, team.Id, u.Id, "  ")
+		require.NotNil(t, appErr)
+		assert.Equal(t, "app.daily_report.empty.app_error", appErr.Id)
+		assert.Equal(t, 400, appErr.StatusCode)
+
+		_, appErr = th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, "a.png", pngData)
+		require.Nil(t, appErr)
+		report, appErr := th.App.SubmitDailyReport(th.Context, team.Id, u.Id, "")
+		require.Nil(t, appErr)
+		assert.Equal(t, model.DailyReportStatusPending, report.Status)
+		assert.False(t, report.Edited)
+		assert.Empty(t, report.PreviousMessage)
+		assert.Len(t, report.Files, 1)
+	})
+
+	t.Run("sending over an excused day", func(t *testing.T) {
+		u := newAuthor(t)
+		_, err := th.App.Srv().Store().DailyReport().Save(&model.DailyReport{TeamId: team.Id, UserId: u.Id, Date: today,
+			Status: model.DailyReportStatusExcused, ApprovedBy: th.BasicUser.Id, ApprovedAt: model.GetMillis(), Tasks: []model.DailyReportTask{}})
+		require.NoError(t, err)
+		report, appErr := th.App.SubmitDailyReport(th.Context, team.Id, u.Id, "came in after all")
+		require.Nil(t, appErr)
+		assert.Equal(t, model.DailyReportStatusPending, report.Status)
+		assert.Empty(t, report.ApprovedBy)
+		assert.Zero(t, report.ApprovedAt)
+		assert.False(t, report.Edited)
+	})
+}
+
+func TestExcuseDailyReport(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	team := enableDailyReports(t, th)
+	reviewer := th.BasicUser.Id
+	today, err := DailyReportDate(team, time.Now())
+	require.NoError(t, err)
+	newAuthor := func(t *testing.T) *model.User {
+		u := th.CreateUser(t)
+		_, _, appErr := th.App.AddUserToTeam(th.Context, team.Id, u.Id, "")
+		require.Nil(t, appErr)
+		return u
+	}
+
+	t.Run("no report", func(t *testing.T) {
+		u := newAuthor(t)
+		report, appErr := th.App.ExcuseDailyReport(th.Context, team.Id, u.Id, today, reviewer)
+		require.Nil(t, appErr)
+		assert.Equal(t, model.DailyReportStatusExcused, report.Status)
+		assert.Equal(t, reviewer, report.ApprovedBy)
+		assert.NotZero(t, report.ApprovedAt)
+		assert.Empty(t, report.Message)
+	})
+
+	t.Run("a draft keeps its files", func(t *testing.T) {
+		u := newAuthor(t)
+		info, appErr := th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, "a.png", dailyReportPNG(t))
+		require.Nil(t, appErr)
+		report, appErr := th.App.ExcuseDailyReport(th.Context, team.Id, u.Id, today, reviewer)
+		require.Nil(t, appErr)
+		assert.Equal(t, model.DailyReportStatusExcused, report.Status)
+		assert.Equal(t, reviewer, report.ApprovedBy)
+		require.Len(t, report.Files, 1)
+		assert.Equal(t, info.Id, report.Files[0].Id)
+	})
+
+	t.Run("a sent report cannot be excused", func(t *testing.T) {
+		u := newAuthor(t)
+		_, appErr := th.App.SubmitDailyReport(th.Context, team.Id, u.Id, "here")
+		require.Nil(t, appErr)
+		_, appErr = th.App.ExcuseDailyReport(th.Context, team.Id, u.Id, today, reviewer)
+		require.NotNil(t, appErr)
+		assert.Equal(t, "app.daily_report.already_sent.app_error", appErr.Id)
+		assert.Equal(t, 409, appErr.StatusCode)
+	})
+
+	t.Run("future days cannot be excused", func(t *testing.T) {
+		u := newAuthor(t)
+		day, err := time.Parse(time.DateOnly, today)
+		require.NoError(t, err)
+		_, appErr := th.App.ExcuseDailyReport(th.Context, team.Id, u.Id, day.AddDate(0, 0, 1).Format(time.DateOnly), reviewer)
+		require.NotNil(t, appErr)
+		assert.Equal(t, 400, appErr.StatusCode)
+		_, appErr = th.App.ExcuseDailyReport(th.Context, team.Id, u.Id, "not-a-date", reviewer)
+		require.NotNil(t, appErr)
+		assert.Equal(t, 400, appErr.StatusCode)
+	})
+}
+
+func TestDailyReportRemindersIgnoreDrafts(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	team := enableDailyReports(t, th)
+	loc, err := time.LoadLocation("Europe/Istanbul")
+	require.NoError(t, err)
+
+	// 2026-11-16 is a Monday: BasicUser only has a draft, BasicUser2 was excused.
+	for _, r := range []*model.DailyReport{
+		{TeamId: team.Id, UserId: th.BasicUser.Id, Date: "2026-11-16", Status: model.DailyReportStatusDraft},
+		{TeamId: team.Id, UserId: th.BasicUser2.Id, Date: "2026-11-16", Status: model.DailyReportStatusExcused, ApprovedBy: th.SystemAdminUser.Id, ApprovedAt: 1},
+	} {
+		_, err = th.App.Srv().Store().DailyReport().Save(r)
+		require.NoError(t, err)
+	}
+	th.App.RunDailyReportTick(th.Context, time.Date(2026, 11, 16, 17, 50, 0, 0, loc))
+	assert.Contains(t, strings.Join(systemBotDMTexts(t, th, th.BasicUser), "\n"), "18:00", "a draft is not a report")
+	assert.NotContains(t, strings.Join(systemBotDMTexts(t, th, th.BasicUser2), "\n"), "18:00", "an excused day needs no report")
+}
+
+func TestDailyReportTickCleansUp(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	team := enableDailyReports(t, th)
+	loc, err := time.LoadLocation("Europe/Istanbul")
+	require.NoError(t, err)
+	pngData := dailyReportPNG(t)
+
+	// A row with one file, linked the way an upload links it.
+	withFile := func(userID, date, status string) (*model.DailyReport, *model.FileInfo) {
+		r, err := th.App.Srv().Store().DailyReport().Save(&model.DailyReport{TeamId: team.Id, UserId: userID, Date: date, Status: status})
+		require.NoError(t, err)
+		info, appErr := th.App.UploadFileForUserAndTeam(th.Context, pngData, "", "a.png", userID, team.Id)
+		require.Nil(t, appErr)
+		require.NoError(t, th.App.Srv().Store().DailyReport().AddFile(r.Id, info.Id, info.CreateAt))
+		return r, info
+	}
+	oldDraft, oldDraftFile := withFile(th.BasicUser.Id, "2026-11-17", model.DailyReportStatusDraft)
+	todayDraft, todayDraftFile := withFile(th.BasicUser.Id, "2026-11-18", model.DailyReportStatusDraft)
+	oldExcused, oldExcusedFile := withFile(th.BasicUser2.Id, "2026-11-17", model.DailyReportStatusExcused)
+
+	th.App.RunDailyReportTick(th.Context, time.Date(2026, 11, 18, 9, 0, 0, 0, loc))
+
+	_, appErr := th.App.GetDailyReport(oldDraft.Id)
+	require.NotNil(t, appErr)
+	assert.Equal(t, 404, appErr.StatusCode, "yesterday's unsent draft is gone")
+	_, appErr = th.App.GetFileInfo(th.Context, oldDraftFile.Id)
+	require.NotNil(t, appErr, "with its file")
+
+	got, appErr := th.App.GetDailyReport(todayDraft.Id)
+	require.Nil(t, appErr)
+	require.Len(t, got.Files, 1)
+	assert.Equal(t, todayDraftFile.Id, got.Files[0].Id)
+
+	got, appErr = th.App.GetDailyReport(oldExcused.Id)
+	require.Nil(t, appErr)
+	assert.Equal(t, model.DailyReportStatusExcused, got.Status)
+	assert.Empty(t, got.Files)
+	_, appErr = th.App.GetFileInfo(th.Context, oldExcusedFile.Id)
+	require.NotNil(t, appErr)
 }

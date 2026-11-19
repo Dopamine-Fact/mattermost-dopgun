@@ -5,8 +5,10 @@ package model
 
 import (
 	"net/http"
+	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 	"unicode/utf8"
 )
@@ -15,6 +17,12 @@ const (
 	DailyReportStatusPending  = "pending"
 	DailyReportStatusApproved = "approved"
 	DailyReportStatusRejected = "rejected"
+	// DailyReportStatusDraft is a day the author attached files to but has not sent; only the author sees it.
+	DailyReportStatusDraft = "draft"
+	// DailyReportStatusExcused is a day a reviewer excused; no report is expected.
+	DailyReportStatusExcused = "excused"
+
+	DailyReportMaxFiles = 10
 
 	DailyReportMessageMaxRunes      = 16000
 	DailyReportRejectReasonMaxRunes = 1000
@@ -63,6 +71,46 @@ type DailyReport struct {
 	RejectReason    string `json:"reject_reason"`
 	CreateAt        int64  `json:"create_at"`
 	UpdateAt        int64  `json:"update_at"`
+	// Files is filled on read from DailyReportFiles; it is never stored on the row.
+	Files []*FileInfo `json:"files"`
+}
+
+// IsSent reports whether the author sent the report, i.e. it is up for review.
+func (r *DailyReport) IsSent() bool {
+	return r.Status == DailyReportStatusPending || r.Status == DailyReportStatusApproved || r.Status == DailyReportStatusRejected
+}
+
+var dailyReportFileTypes = map[string]string{
+	".png":  "image/png",
+	".jpg":  "image/jpeg",
+	".jpeg": "image/jpeg",
+	".gif":  "image/gif",
+	".webp": "image/webp",
+	".mp4":  "video/mp4",
+	".mov":  "video/quicktime",
+	".webm": "video/webm",
+	".pdf":  "application/pdf",
+}
+
+// DailyReportFileContentType returns the type a report attachment is served as, or "" when the name is not allowed.
+func DailyReportFileContentType(name string) string {
+	return dailyReportFileTypes[strings.ToLower(filepath.Ext(name))]
+}
+
+// DailyReportFileMatches reports whether sniffed (http.DetectContentType of the content) fits the name's kind of file.
+// QuickTime is not sniffed by the standard library, so videos may also sniff as application/octet-stream.
+func DailyReportFileMatches(name, sniffed string) bool {
+	want := DailyReportFileContentType(name)
+	switch {
+	case want == "":
+		return false
+	case strings.HasPrefix(want, "image/"):
+		return strings.HasPrefix(sniffed, "image/")
+	case strings.HasPrefix(want, "video/"):
+		return strings.HasPrefix(sniffed, "video/") || sniffed == "application/octet-stream"
+	default:
+		return sniffed == want
+	}
 }
 
 func (r *DailyReport) Auditable() map[string]any {
@@ -112,7 +160,7 @@ func (r *DailyReport) IsValid() *AppError {
 	if utf8.RuneCountInString(r.Message) > DailyReportMessageMaxRunes || utf8.RuneCountInString(r.PreviousMessage) > DailyReportMessageMaxRunes {
 		return NewAppError("DailyReport.IsValid", "model.daily_report.is_valid.message.app_error", nil, "id="+r.Id, http.StatusBadRequest)
 	}
-	if r.Status != DailyReportStatusPending && r.Status != DailyReportStatusApproved && r.Status != DailyReportStatusRejected {
+	if !r.IsSent() && r.Status != DailyReportStatusDraft && r.Status != DailyReportStatusExcused {
 		return NewAppError("DailyReport.IsValid", "model.daily_report.is_valid.status.app_error", nil, "id="+r.Id, http.StatusBadRequest)
 	}
 	if utf8.RuneCountInString(r.RejectReason) > DailyReportRejectReasonMaxRunes {

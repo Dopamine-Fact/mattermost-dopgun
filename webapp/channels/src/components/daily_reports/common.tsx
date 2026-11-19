@@ -3,9 +3,16 @@
 
 import classNames from 'classnames';
 import React from 'react';
-import {defineMessages, FormattedMessage, useIntl} from 'react-intl';
+import {defineMessages, FormattedDate, FormattedMessage, useIntl} from 'react-intl';
+import {useSelector} from 'react-redux';
 
 import type {DailyReport, DailyReportTask} from '@mattermost/types/daily_reports';
+
+import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
+import {getUser} from 'mattermost-redux/selectors/entities/users';
+import {displayUsername} from 'mattermost-redux/utils/user_utils';
+
+import type {GlobalState} from 'types/store';
 
 export const DAILY_REPORT_UPDATED = 'daily_report_updated';
 
@@ -13,19 +20,25 @@ export const DAILY_REPORT_UPDATED = 'daily_report_updated';
 export const MESSAGE_MAX_LENGTH = 16000;
 export const REASON_MAX_LENGTH = 1000;
 
-type Status = 'missing' | 'pending' | 'approved' | 'auto_approved' | 'rejected';
+export type Status = 'missing' | 'draft' | 'pending' | 'sent' | 'approved' | 'auto_approved' | 'rejected' | 'excused';
 
-const statusLabels = defineMessages<Status>({
+export const statusLabels = defineMessages<Status>({
     missing: {id: 'daily_reports.status.missing', defaultMessage: 'Missing'},
+    draft: {id: 'daily_reports.status.draft', defaultMessage: 'Draft'},
     pending: {id: 'daily_reports.status.pending', defaultMessage: 'Pending'},
+    sent: {id: 'daily_reports.status.sent', defaultMessage: 'Sent'},
     approved: {id: 'daily_reports.status.approved', defaultMessage: 'Approved'},
     auto_approved: {id: 'daily_reports.status.autoApproved', defaultMessage: 'Auto-approved'},
     rejected: {id: 'daily_reports.status.rejected', defaultMessage: 'Sent back'},
+    excused: {id: 'daily_reports.status.excused', defaultMessage: 'Excused'},
 });
 
-function statusOf(report?: DailyReport): Status {
+export function statusOf(report?: DailyReport, own?: boolean): Status {
     if (!report) {
         return 'missing';
+    }
+    if (report.status === 'pending' && own) {
+        return 'sent'; // the author waits on no one; "pending" reads as their own to-do
     }
     if (report.status === 'approved') {
         return report.auto_approved ? 'auto_approved' : 'approved';
@@ -33,13 +46,46 @@ function statusOf(report?: DailyReport): Status {
     return report.status;
 }
 
-export function StatusChip({report}: {report?: DailyReport}) {
+// own: shown to the report's author, who sees pending as Sent.
+export function StatusChip({report, own}: {report?: DailyReport; own?: boolean}) {
     const {formatMessage} = useIntl();
-    const status = statusOf(report);
+    const status = statusOf(report, own);
     return (
         <span className={classNames('DailyReportsPage__chip', `DailyReportsPage__chip--${status}`)}>
             {formatMessage(statusLabels[status])}
         </span>
+    );
+}
+
+// A report's day (YYYY-MM-DD), e.g. "Thursday, Nov 19, 2026"; noon UTC keeps the day the same in every zone.
+export function ReportDate({date}: {date: string}) {
+    return (
+        <FormattedDate
+            value={Date.parse(`${date}T12:00:00Z`)}
+            timeZone='UTC'
+            weekday='long'
+            day='numeric'
+            month='short'
+            year='numeric'
+        />
+    );
+}
+
+export function RejectedBanner({report}: {report: DailyReport}) {
+    const reviewer = useSelector((state: GlobalState) => getUser(state, report.rejected_by));
+    const nameDisplay = useSelector(getTeammateNameDisplaySetting);
+    return (
+        <div
+            className='DailyReportsPage__banner'
+            role='status'
+        >
+            <i className='icon icon-alert-outline'/>
+            <FormattedMessage
+                id='daily_reports.rejectedBanner'
+                defaultMessage='Sent back by {name}: {reason}'
+                values={{name: reviewer ? displayUsername(reviewer, nameDisplay) : '', reason: report.reject_reason}}
+            />
+        </div>
     );
 }
 

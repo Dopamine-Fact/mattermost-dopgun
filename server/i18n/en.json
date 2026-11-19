@@ -7955,6 +7955,11 @@
     "description": "Server error when the database fails while reading or writing custom roles."
   },
   {
+    "id": "app.daily_report.already_sent.app_error",
+    "translation": "This person already sent a report for that day.",
+    "description": "Error returned when a reviewer tries to excuse a day for which the person already sent a daily report."
+  },
+  {
     "id": "app.daily_report.approve_rejected.app_error",
     "translation": "This report was sent back. Its author must fix it before it can be approved.",
     "description": "Error returned when a reviewer tries to approve a daily report that was rejected (sent back to its author) and not yet edited."
@@ -7975,9 +7980,19 @@
     "description": "Error returned when a daily report action is attempted on a team that has daily reports turned off or is archived."
   },
   {
+    "id": "app.daily_report.empty.app_error",
+    "translation": "Write something or attach a file before sending the report.",
+    "description": "Error returned when someone sends a daily report with a blank message and no attachments."
+  },
+  {
     "id": "app.daily_report.export.app_error",
     "translation": "Unable to export the daily reports.",
     "description": "Error returned when writing the daily reports CSV export fails."
+  },
+  {
+    "id": "app.daily_report.file_type.app_error",
+    "translation": "This kind of file can't be attached to a daily report. Use PNG, JPG, GIF, WEBP, MP4, MOV, WEBM or PDF.",
+    "description": "Error returned when a daily report attachment is not an allowed image, video or PDF file, or its content does not match its extension."
   },
   {
     "id": "app.daily_report.invalid_date.app_error",
@@ -8018,6 +8033,11 @@
     "id": "app.daily_report.store.app_error",
     "translation": "Unable to access the daily reports.",
     "description": "Error returned when the database fails while reading or writing daily reports."
+  },
+  {
+    "id": "app.daily_report.too_many_files.app_error",
+    "translation": "A daily report can have at most {{.Max}} attachments.",
+    "description": "Error returned when someone attaches more files to a daily report than allowed. Max is the limit."
   },
   {
     "id": "app.data_spillage.assign_reviewer.no_reviewer_field.app_error",

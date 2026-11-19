@@ -8,7 +8,7 @@ import (
 	"io"
 	"net/http"
 	"slices"
-	"strings"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -16,6 +16,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 	"github.com/mattermost/mattermost/server/v8/channels/app"
+	"github.com/mattermost/mattermost/server/v8/platform/shared/web"
 )
 
 const dailyReportMaxRangeDays = 366
@@ -29,6 +30,15 @@ func (api *API) InitDailyReports() {
 	api.BaseRoutes.APIRoot.Handle("/daily_reports/{report_id:[A-Za-z0-9]+}", api.APISessionRequired(updateDailyReport)).Methods(http.MethodPut)
 	api.BaseRoutes.APIRoot.Handle("/daily_reports/{report_id:[A-Za-z0-9]+}/approve", api.APISessionRequired(approveDailyReport)).Methods(http.MethodPost)
 	api.BaseRoutes.APIRoot.Handle("/daily_reports/{report_id:[A-Za-z0-9]+}/reject", api.APISessionRequired(rejectDailyReport)).Methods(http.MethodPost)
+
+	api.BaseRoutes.Team.Handle("/daily_reports/mine/files", api.APISessionRequired(addMyDailyReportFile)).Methods(http.MethodPost)
+	api.BaseRoutes.Team.Handle("/daily_reports/excuse", api.APISessionRequired(excuseDailyReport)).Methods(http.MethodPost)
+	api.BaseRoutes.APIRoot.Handle("/daily_reports/{report_id:[A-Za-z0-9]+}/files", api.APISessionRequired(addDailyReportFile)).Methods(http.MethodPost)
+	file := "/daily_reports/{report_id:[A-Za-z0-9]+}/files/{file_id:[A-Za-z0-9]+}"
+	api.BaseRoutes.APIRoot.Handle(file, api.APISessionRequired(removeDailyReportFile)).Methods(http.MethodDelete)
+	api.BaseRoutes.APIRoot.Handle(file, api.APISessionRequiredTrustRequester(serveDailyReportFile(""))).Methods(http.MethodGet)
+	api.BaseRoutes.APIRoot.Handle(file+"/thumbnail", api.APISessionRequiredTrustRequester(serveDailyReportFile("thumbnail"))).Methods(http.MethodGet)
+	api.BaseRoutes.APIRoot.Handle(file+"/preview", api.APISessionRequiredTrustRequester(serveDailyReportFile("preview"))).Methods(http.MethodGet)
 }
 
 // requireDailyReportTeam checks the caller is a team member and the team has daily reports on.
@@ -87,12 +97,22 @@ func dailyReportFilter(c *Context, r *http.Request, team *model.Team) (from, to,
 }
 
 // getVisibleDailyReports lists reports for the filter; an unfiltered list keeps only the caller's own reports and
-// those of people the caller outranks.
+// those of people the caller outranks. Other people's drafts are dropped, and their excused days lose the files
+// nobody but the author was meant to see.
 func getVisibleDailyReports(c *Context, teamID, from, to, userID string) []*model.DailyReport {
 	reports, appErr := c.App.GetDailyReports(teamID, from, to, userID)
 	if appErr != nil {
 		c.Err = appErr
 		return nil
+	}
+	sessionUserID := c.AppContext.Session().UserId
+	reports = slices.DeleteFunc(reports, func(r *model.DailyReport) bool {
+		return r.UserId != sessionUserID && r.Status == model.DailyReportStatusDraft
+	})
+	for _, r := range reports {
+		if r.UserId != sessionUserID && r.Status == model.DailyReportStatusExcused {
+			r.Files = []*model.FileInfo{}
+		}
 	}
 	if userID != "" {
 		return reports
@@ -103,7 +123,7 @@ func getVisibleDailyReports(c *Context, teamID, from, to, userID string) []*mode
 			authors = append(authors, r.UserId)
 		}
 	}
-	allowed := c.App.ActionableUserIDs(c.AppContext, c.AppContext.Session().UserId, teamID, authors, model.PermissionManageDailyReports)
+	allowed := c.App.ActionableUserIDs(c.AppContext, sessionUserID, teamID, authors, model.PermissionManageDailyReports)
 	return slices.DeleteFunc(reports, func(r *model.DailyReport) bool { return !slices.Contains(allowed, r.UserId) })
 }
 
@@ -136,7 +156,8 @@ func submitDailyReport(c *Context, w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Message *string `json:"message"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Message == nil || strings.TrimSpace(*body.Message) == "" {
+	// A blank message is the app's call: a report with files may have none.
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Message == nil {
 		c.SetInvalidParam("message")
 		return
 	}
@@ -168,23 +189,28 @@ func loadReviewableReport(c *Context, r *http.Request) (*model.DailyReport, revi
 		c.Err = appErr
 		return nil, body
 	}
-	if requireDailyReportTeam(c, report.TeamId); c.Err != nil {
-		return nil, body
-	}
-	if requireTeamPermission(c, report.TeamId, model.PermissionManageDailyReports); c.Err != nil {
-		return nil, body
-	}
-	// Reviewing your own report needs an admin; CanActOnUser lets everyone act on themself.
-	ownReport := report.UserId == c.AppContext.Session().UserId
-	if ownReport && !c.App.SessionHasPermissionToTeam(*c.AppContext.Session(), report.TeamId, model.PermissionManageTeam) {
-		c.SetPermissionError(model.PermissionManageTeam)
-		return nil, body
-	}
-	if !c.App.CanActOnUser(c.AppContext, c.AppContext.Session().UserId, report.UserId, report.TeamId, model.PermissionManageDailyReports) {
-		c.SetPermissionError(model.PermissionManageDailyReports)
+	if requireDailyReportReviewer(c, report.TeamId, report.UserId); c.Err != nil {
 		return nil, body
 	}
 	return report, body
+}
+
+// requireDailyReportReviewer checks the caller may review userID's reports in the team.
+func requireDailyReportReviewer(c *Context, teamID, userID string) {
+	if requireDailyReportTeam(c, teamID); c.Err != nil {
+		return
+	}
+	if requireTeamPermission(c, teamID, model.PermissionManageDailyReports); c.Err != nil {
+		return
+	}
+	// Reviewing your own report needs an admin; CanActOnUser lets everyone act on themself.
+	if userID == c.AppContext.Session().UserId && !c.App.SessionHasPermissionToTeam(*c.AppContext.Session(), teamID, model.PermissionManageTeam) {
+		c.SetPermissionError(model.PermissionManageTeam)
+		return
+	}
+	if !c.App.CanActOnUser(c.AppContext, c.AppContext.Session().UserId, userID, teamID, model.PermissionManageDailyReports) {
+		c.SetPermissionError(model.PermissionManageDailyReports)
+	}
 }
 
 func approveDailyReport(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -233,7 +259,8 @@ func updateDailyReport(c *Context, w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Message *string `json:"message"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Message == nil || strings.TrimSpace(*body.Message) == "" {
+	// A blank message is the app's call: a report with files may have none.
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Message == nil {
 		c.SetInvalidParam("message")
 		return
 	}
@@ -336,4 +363,155 @@ func exportDailyReports(c *Context, w http.ResponseWriter, r *http.Request) {
 	if appErr := c.App.ExportDailyReportsCSV(w, reports); appErr != nil {
 		c.Logger.Error("failed to write daily reports CSV", mlog.Err(appErr))
 	}
+}
+
+// canViewDailyReport: the author always; a reviewer who may act on the author once the report is sent.
+func canViewDailyReport(c *Context, report *model.DailyReport) bool {
+	sessionUserID := c.AppContext.Session().UserId
+	if report.UserId == sessionUserID {
+		return true
+	}
+	return report.IsSent() &&
+		c.App.SessionHasPermissionToTeam(*c.AppContext.Session(), report.TeamId, model.PermissionManageDailyReports) &&
+		c.App.CanActOnUser(c.AppContext, sessionUserID, report.UserId, report.TeamId, model.PermissionManageDailyReports)
+}
+
+// serveDailyReportFile streams a report attachment, or its stored thumbnail or preview when variant names one.
+func serveDailyReportFile(variant string) func(*Context, http.ResponseWriter, *http.Request) {
+	return func(c *Context, w http.ResponseWriter, r *http.Request) {
+		report, appErr := c.App.GetDailyReport(mux.Vars(r)["report_id"])
+		if appErr != nil {
+			c.Err = appErr
+			return
+		}
+		if requireDailyReportTeam(c, report.TeamId); c.Err != nil {
+			return
+		}
+		notFound := model.NewAppError("serveDailyReportFile", "app.daily_report.not_found.app_error", nil, "id="+report.Id, http.StatusNotFound)
+		if !canViewDailyReport(c, report) {
+			if !report.IsSent() {
+				c.Err = notFound // someone else's draft does not exist as far as the caller can tell
+				return
+			}
+			c.SetPermissionError(model.PermissionManageDailyReports)
+			return
+		}
+		info, appErr := c.App.GetDailyReportFile(c.AppContext, report.Id, mux.Vars(r)["file_id"])
+		if appErr != nil {
+			c.Err = appErr
+			return
+		}
+		path, contentType, size := info.Path, model.DailyReportFileContentType(info.Name), info.Size
+		switch variant {
+		case "thumbnail":
+			path, contentType, size = info.ThumbnailPath, ThumbnailImageType, 0
+		case "preview":
+			path, contentType, size = info.PreviewPath, PreviewImageType, 0
+		}
+		if path == "" {
+			c.Err = notFound
+			return
+		}
+		fileReader, appErr := c.App.FileReader(path)
+		if appErr != nil {
+			c.Err = appErr
+			return
+		}
+		defer fileReader.Close()
+		forceDownload, _ := strconv.ParseBool(r.URL.Query().Get("download"))
+		web.WriteFileResponse(info.Name, contentType, size, time.UnixMilli(info.UpdateAt), *c.App.Config().ServiceSettings.WebserverMode, fileReader, forceDownload, w, r)
+	}
+}
+
+func addMyDailyReportFile(c *Context, w http.ResponseWriter, r *http.Request) {
+	if c.RequireTeamId(); c.Err != nil {
+		return
+	}
+	if requireDailyReportTeam(c, c.Params.TeamId); c.Err != nil {
+		return
+	}
+	name, data := readUploadedFile(c, r, "file")
+	if c.Err != nil {
+		return
+	}
+	info, appErr := c.App.AddMyDailyReportFile(c.AppContext, c.Params.TeamId, c.AppContext.Session().UserId, name, data)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	writeTaskJSON(w, http.StatusOK, info)
+}
+
+func addDailyReportFile(c *Context, w http.ResponseWriter, r *http.Request) {
+	report, appErr := c.App.GetDailyReport(mux.Vars(r)["report_id"])
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	if requireDailyReportTeam(c, report.TeamId); c.Err != nil {
+		return
+	}
+	name, data := readUploadedFile(c, r, "file")
+	if c.Err != nil {
+		return
+	}
+	info, appErr := c.App.AddDailyReportFile(c.AppContext, report.Id, c.AppContext.Session().UserId, name, data)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	writeTaskJSON(w, http.StatusOK, info)
+}
+
+func removeDailyReportFile(c *Context, w http.ResponseWriter, r *http.Request) {
+	report, appErr := c.App.GetDailyReport(mux.Vars(r)["report_id"])
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	if requireDailyReportTeam(c, report.TeamId); c.Err != nil {
+		return
+	}
+	if appErr := c.App.RemoveDailyReportFile(c.AppContext, report.Id, mux.Vars(r)["file_id"], c.AppContext.Session().UserId); appErr != nil {
+		c.Err = appErr
+		return
+	}
+	ReturnStatusOK(w)
+}
+
+func excuseDailyReport(c *Context, w http.ResponseWriter, r *http.Request) {
+	if c.RequireTeamId(); c.Err != nil {
+		return
+	}
+	var body struct {
+		UserID string `json:"user_id"`
+		Date   string `json:"date"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || !model.IsValidId(body.UserID) {
+		c.SetInvalidParam("user_id")
+		return
+	}
+	if requireDailyReportReviewer(c, c.Params.TeamId, body.UserID); c.Err != nil {
+		return
+	}
+	if member, appErr := c.App.GetTeamMember(c.AppContext, c.Params.TeamId, body.UserID); appErr != nil || member.DeleteAt != 0 {
+		c.SetInvalidParam("user_id") // only someone on the team has days to excuse
+		return
+	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventExcuseDailyReport, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	model.AddEventParameterToAuditRec(auditRec, "team_id", c.Params.TeamId)
+	model.AddEventParameterToAuditRec(auditRec, "user_id", body.UserID)
+	model.AddEventParameterToAuditRec(auditRec, "date", body.Date)
+
+	report, appErr := c.App.ExcuseDailyReport(c.AppContext, c.Params.TeamId, body.UserID, body.Date, c.AppContext.Session().UserId)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	auditRec.Success()
+	auditRec.AddEventResultState(report)
+	auditRec.AddEventObjectType("daily_report")
+	writeTaskJSON(w, http.StatusOK, report)
 }

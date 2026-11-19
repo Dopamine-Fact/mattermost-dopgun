@@ -115,6 +115,35 @@ func resubmit(r *model.DailyReport, message string, tasks []model.DailyReportTas
 	r.AutoApproved, r.ApprovedBy, r.ApprovedAt = false, "", 0
 }
 
+// sendDailyReport makes r a sent report carrying message: a draft or excused day goes out as a first submission,
+// a report already sent is resubmitted.
+func sendDailyReport(r *model.DailyReport, message string, tasks []model.DailyReportTask) {
+	if r.IsSent() {
+		resubmit(r, message, tasks)
+		return
+	}
+	r.Message, r.Tasks, r.Status = message, tasks, model.DailyReportStatusPending
+	r.Edited, r.PreviousMessage = false, ""
+	r.AutoApproved, r.ApprovedBy, r.ApprovedAt = false, "", 0
+}
+
+// requireDailyReportContent refuses a blank message unless the report (nil when there is none yet) has files.
+func (a *App) requireDailyReportContent(where string, r *model.DailyReport, message string) *model.AppError {
+	if strings.TrimSpace(message) != "" {
+		return nil
+	}
+	if r != nil {
+		ids, err := a.Srv().Store().DailyReport().GetFileIds([]string{r.Id})
+		if err != nil {
+			return dailyReportStoreError(where, r.Id, err)
+		}
+		if len(ids[r.Id]) > 0 {
+			return nil
+		}
+	}
+	return model.NewAppError(where, "app.daily_report.empty.app_error", nil, "", http.StatusBadRequest)
+}
+
 func teamLocation(where string, team *model.Team) (*time.Location, *model.AppError) {
 	loc, err := time.LoadLocation(team.DailyReportTimezone)
 	if err != nil {
@@ -158,19 +187,28 @@ func (a *App) SubmitDailyReport(rctx request.CTX, teamID, userID, message string
 	var nfErr *store.ErrNotFound
 	var conflictErr *store.ErrConflict
 	if errors.As(err, &nfErr) {
+		if appErr = a.requireDailyReportContent("SubmitDailyReport", nil, message); appErr != nil {
+			return nil, appErr
+		}
 		saved, err = a.Srv().Store().DailyReport().Save(&model.DailyReport{TeamId: teamID, UserId: userID, Date: date, Message: message, Tasks: tasks})
 		if errors.As(err, &conflictErr) { // a concurrent submit created it first: rewrite that one
 			existing, err = a.Srv().Store().DailyReport().GetForUserDate(teamID, userID, date)
 		}
 	}
 	if err == nil && saved == nil {
-		resubmit(existing, message, tasks)
+		if appErr = a.requireDailyReportContent("SubmitDailyReport", existing, message); appErr != nil {
+			return nil, appErr
+		}
+		sendDailyReport(existing, message, tasks)
 		saved, err = a.Srv().Store().DailyReport().Update(existing)
 	}
 	if err != nil {
 		return nil, dailyReportStoreError("SubmitDailyReport", teamID, err)
 	}
 	a.publishDailyReport(rctx, saved)
+	if appErr = a.fillDailyReportFiles([]*model.DailyReport{saved}); appErr != nil {
+		return nil, appErr
+	}
 	return saved, nil
 }
 
@@ -198,12 +236,18 @@ func (a *App) UpdateDailyReport(rctx request.CTX, reportID, userID, message stri
 	if appErr != nil {
 		return nil, appErr
 	}
-	resubmit(report, message, tasks)
+	if appErr = a.requireDailyReportContent("UpdateDailyReport", report, message); appErr != nil {
+		return nil, appErr
+	}
+	sendDailyReport(report, message, tasks)
 	saved, err := a.Srv().Store().DailyReport().Update(report)
 	if err != nil {
 		return nil, dailyReportStoreError("UpdateDailyReport", reportID, err)
 	}
 	a.publishDailyReport(rctx, saved)
+	if appErr = a.fillDailyReportFiles([]*model.DailyReport{saved}); appErr != nil {
+		return nil, appErr
+	}
 	return saved, nil
 }
 
@@ -211,6 +255,9 @@ func (a *App) GetDailyReport(reportID string) (*model.DailyReport, *model.AppErr
 	report, err := a.Srv().Store().DailyReport().Get(reportID)
 	if err != nil {
 		return nil, dailyReportStoreError("GetDailyReport", reportID, err)
+	}
+	if appErr := a.fillDailyReportFiles([]*model.DailyReport{report}); appErr != nil {
+		return nil, appErr
 	}
 	return report, nil
 }
@@ -222,6 +269,9 @@ func (a *App) GetDailyReports(teamID, fromDate, toDate, userID string) ([]*model
 	reports, err := a.Srv().Store().DailyReport().GetForTeam(teamID, fromDate, toDate, userID)
 	if err != nil {
 		return nil, dailyReportStoreError("GetDailyReports", teamID, err)
+	}
+	if appErr := a.fillDailyReportFiles(reports); appErr != nil {
+		return nil, appErr
 	}
 	return reports, nil
 }
@@ -405,8 +455,15 @@ func (a *App) ExportDailyReportsCSV(w io.Writer, reports []*model.DailyReport) *
 
 	cw := csv.NewWriter(w)
 	_ = cw.Write([]string{"date", "user", "message", "finished_tasks", "status", "rejected_by", "reject_reason", "edited",
-		"auto_approved", "approved_by", "approved_at", "submitted_at"})
+		"auto_approved", "approved_by", "approved_at", "submitted_at", "attachments"})
 	for _, r := range reports {
+		if r.Status == model.DailyReportStatusDraft {
+			continue
+		}
+		files := make([]string, len(r.Files))
+		for i, f := range r.Files {
+			files[i] = f.Name
+		}
 		titles := make([]string, len(r.Tasks))
 		for i, t := range r.Tasks {
 			titles[i] = t.Title
@@ -419,7 +476,7 @@ func (a *App) ExportDailyReportsCSV(w io.Writer, reports []*model.DailyReport) *
 			r.Date, csvSafe(name(r.UserId)), csvSafe(r.Message), csvSafe(strings.Join(titles, "; ")), r.Status,
 			csvSafe(name(r.RejectedBy)), csvSafe(r.RejectReason), strconv.FormatBool(r.Edited),
 			strconv.FormatBool(r.AutoApproved), name(r.ApprovedBy), approvedAt,
-			time.UnixMilli(r.CreateAt).UTC().Format(time.RFC3339),
+			time.UnixMilli(r.CreateAt).UTC().Format(time.RFC3339), csvSafe(strings.Join(files, ", ")),
 		})
 	}
 	cw.Flush()
@@ -437,7 +494,8 @@ func csvSafe(s string) string {
 	return s
 }
 
-// RunDailyReportTick sends the 10 and 5 minute reminders and auto-approves reports left pending for 30 minutes.
+// RunDailyReportTick sends the 10 and 5 minute reminders, removes what past days left unsent, and auto-approves
+// reports left pending for 30 minutes.
 // It runs every minute on the leader; each step logs its failures and carries on.
 func (a *App) RunDailyReportTick(rctx request.CTX, now time.Time) {
 	teams, err := a.Srv().Store().Team().GetAll()
@@ -447,6 +505,7 @@ func (a *App) RunDailyReportTick(rctx request.CTX, now time.Time) {
 	for _, team := range teams {
 		if team.DailyReportsEnabled && team.DeleteAt == 0 {
 			a.sendDailyReportReminders(rctx, team, now)
+			a.cleanUpDailyReportFiles(rctx, team, now)
 		}
 	}
 
@@ -513,7 +572,7 @@ func (a *App) sendDailyReportReminders(rctx request.CTX, team *model.Team, now t
 	}
 	reported := make(map[string]bool, len(reports))
 	for _, r := range reports {
-		reported[r.UserId] = true
+		reported[r.UserId] = r.Status != model.DailyReportStatusDraft
 	}
 	for _, user := range users {
 		if user.IsBot || reported[user.Id] || (len(assignees) > 0 && !slices.Contains(assignees, user.Id)) {
@@ -546,4 +605,271 @@ func (a *App) postDailyReportDM(rctx request.CTX, user *model.User, message stri
 	}
 	_, _, appErr = a.CreatePost(rctx, &model.Post{UserId: bot.UserId, ChannelId: channel.Id, Message: message}, channel, model.CreatePostFlags{})
 	return appErr
+}
+
+// fillDailyReportFiles sets Files on each report, in upload order; files whose info is gone are left out.
+func (a *App) fillDailyReportFiles(reports []*model.DailyReport) *model.AppError {
+	if len(reports) == 0 {
+		return nil
+	}
+	reportIDs := make([]string, 0, len(reports))
+	for _, r := range reports {
+		reportIDs = append(reportIDs, r.Id)
+	}
+	links, err := a.Srv().Store().DailyReport().GetFileIds(reportIDs)
+	if err != nil {
+		return dailyReportStoreError("fillDailyReportFiles", "", err)
+	}
+	var fileIDs []string
+	for _, ids := range links {
+		fileIDs = append(fileIDs, ids...)
+	}
+	infos := map[string]*model.FileInfo{}
+	if len(fileIDs) > 0 {
+		list, err := a.Srv().Store().FileInfo().GetByIds(fileIDs, false, false, true)
+		if err != nil {
+			return dailyReportStoreError("fillDailyReportFiles", "", err)
+		}
+		for _, info := range list {
+			infos[info.Id] = info
+		}
+	}
+	for _, r := range reports {
+		r.Files = []*model.FileInfo{}
+		for _, id := range links[r.Id] {
+			if info, ok := infos[id]; ok {
+				r.Files = append(r.Files, info)
+			}
+		}
+	}
+	return nil
+}
+
+// AddMyDailyReportFile attaches to today's report, creating today's draft row first when there is none.
+func (a *App) AddMyDailyReportFile(rctx request.CTX, teamID, userID, name string, data []byte) (*model.FileInfo, *model.AppError) {
+	if appErr := checkDailyReportFile("AddMyDailyReportFile", name, data); appErr != nil {
+		return nil, appErr
+	}
+	team, appErr := a.RequireDailyReportsEnabled(teamID)
+	if appErr != nil {
+		return nil, appErr
+	}
+	if appErr = a.requireDailyReportAssignee(rctx, "AddMyDailyReportFile", teamID, userID); appErr != nil {
+		return nil, appErr
+	}
+	loc, appErr := teamLocation("AddMyDailyReportFile", team)
+	if appErr != nil {
+		return nil, appErr
+	}
+	date := time.Now().In(loc).Format(time.DateOnly)
+
+	report, err := a.Srv().Store().DailyReport().GetForUserDate(teamID, userID, date)
+	var nfErr *store.ErrNotFound
+	var conflictErr *store.ErrConflict
+	if errors.As(err, &nfErr) {
+		report, err = a.Srv().Store().DailyReport().Save(&model.DailyReport{TeamId: teamID, UserId: userID, Date: date,
+			Status: model.DailyReportStatusDraft, Tasks: []model.DailyReportTask{}})
+		if errors.As(err, &conflictErr) { // a concurrent upload or submit created the day's row first: use that one
+			report, err = a.Srv().Store().DailyReport().GetForUserDate(teamID, userID, date)
+		}
+	}
+	if err != nil {
+		return nil, dailyReportStoreError("AddMyDailyReportFile", teamID, err)
+	}
+	return a.attachDailyReportFile(rctx, report, userID, name, data)
+}
+
+// AddDailyReportFile attaches to one of the author's existing reports (same rule as UpdateDailyReport).
+func (a *App) AddDailyReportFile(rctx request.CTX, reportID, userID, name string, data []byte) (*model.FileInfo, *model.AppError) {
+	if appErr := checkDailyReportFile("AddDailyReportFile", name, data); appErr != nil {
+		return nil, appErr
+	}
+	report, appErr := a.authorDailyReport(rctx, "AddDailyReportFile", reportID, userID)
+	if appErr != nil {
+		return nil, appErr
+	}
+	return a.attachDailyReportFile(rctx, report, userID, name, data)
+}
+
+func (a *App) RemoveDailyReportFile(rctx request.CTX, reportID, fileID, userID string) *model.AppError {
+	report, appErr := a.authorDailyReport(rctx, "RemoveDailyReportFile", reportID, userID)
+	if appErr != nil {
+		return appErr
+	}
+	if err := a.Srv().Store().DailyReport().RemoveFile(reportID, fileID); err != nil {
+		return dailyReportStoreError("RemoveDailyReportFile", reportID, err)
+	}
+	a.removeTaskFiles(rctx, []string{fileID})
+	return a.dailyReportFilesChanged(rctx, "RemoveDailyReportFile", report)
+}
+
+// GetDailyReportFile returns the file only when it is linked to that report (404 otherwise); no permission check.
+func (a *App) GetDailyReportFile(rctx request.CTX, reportID, fileID string) (*model.FileInfo, *model.AppError) {
+	links, err := a.Srv().Store().DailyReport().GetFileIds([]string{reportID})
+	if err != nil {
+		return nil, dailyReportStoreError("GetDailyReportFile", reportID, err)
+	}
+	if !slices.Contains(links[reportID], fileID) {
+		return nil, model.NewAppError("GetDailyReportFile", "app.daily_report.not_found.app_error", nil, "id="+reportID+" file_id="+fileID, http.StatusNotFound)
+	}
+	return a.GetFileInfo(rctx, fileID)
+}
+
+func checkDailyReportFile(where, name string, data []byte) *model.AppError {
+	if !model.DailyReportFileMatches(name, http.DetectContentType(data)) {
+		return model.NewAppError(where, "app.daily_report.file_type.app_error", nil, "name="+name, http.StatusBadRequest)
+	}
+	return nil
+}
+
+// authorDailyReport loads a report its author may change, under the rule UpdateDailyReport applies.
+func (a *App) authorDailyReport(rctx request.CTX, where, reportID, userID string) (*model.DailyReport, *model.AppError) {
+	report, err := a.Srv().Store().DailyReport().Get(reportID)
+	if err != nil {
+		return nil, dailyReportStoreError(where, reportID, err)
+	}
+	if report.UserId != userID {
+		return nil, model.NewAppError(where, "app.daily_report.not_author.app_error", nil, "id="+reportID, http.StatusForbidden)
+	}
+	if _, appErr := a.RequireDailyReportsEnabled(report.TeamId); appErr != nil {
+		return nil, appErr
+	}
+	if appErr := a.requireDailyReportAssignee(rctx, where, report.TeamId, userID); appErr != nil {
+		return nil, appErr
+	}
+	return report, nil
+}
+
+func (a *App) attachDailyReportFile(rctx request.CTX, report *model.DailyReport, userID, name string, data []byte) (*model.FileInfo, *model.AppError) {
+	links, err := a.Srv().Store().DailyReport().GetFileIds([]string{report.Id})
+	if err != nil {
+		return nil, dailyReportStoreError("attachDailyReportFile", report.Id, err)
+	}
+	if len(links[report.Id]) >= model.DailyReportMaxFiles {
+		return nil, model.NewAppError("attachDailyReportFile", "app.daily_report.too_many_files.app_error",
+			map[string]any{"Max": model.DailyReportMaxFiles}, "id="+report.Id, http.StatusBadRequest)
+	}
+	info, appErr := a.UploadFileForUserAndTeam(rctx, data, "", name, userID, report.TeamId)
+	if appErr != nil {
+		return nil, appErr
+	}
+	if err := a.Srv().Store().DailyReport().AddFile(report.Id, info.Id, info.CreateAt); err != nil {
+		a.removeTaskFiles(rctx, []string{info.Id})
+		return nil, dailyReportStoreError("attachDailyReportFile", report.Id, err)
+	}
+	if appErr := a.dailyReportFilesChanged(rctx, "attachDailyReportFile", report); appErr != nil {
+		// A reviewer must not approve a report whose files changed silently: undo the attachment.
+		if err := a.Srv().Store().DailyReport().RemoveFile(report.Id, info.Id); err != nil {
+			rctx.Logger().Warn("attachDailyReportFile: failed to unlink file", mlog.String("file_id", info.Id), mlog.Err(err))
+		}
+		a.removeTaskFiles(rctx, []string{info.Id})
+		return nil, appErr
+	}
+	return info, nil
+}
+
+// dailyReportFilesChanged sends a sent report back for review, as an edit, and tells clients to refetch.
+func (a *App) dailyReportFilesChanged(rctx request.CTX, where string, report *model.DailyReport) *model.AppError {
+	if report.IsSent() {
+		resubmit(report, report.Message, report.Tasks)
+		updated, err := a.Srv().Store().DailyReport().Update(report)
+		if err != nil {
+			return dailyReportStoreError(where, report.Id, err)
+		}
+		report = updated
+	}
+	a.publishDailyReport(rctx, report)
+	return nil
+}
+
+// ExcuseDailyReport marks userID's day as excused by reviewerID. date must be today or earlier (team-local);
+// a sent report that day is a 409, and a draft is turned into an excused day with its files kept.
+func (a *App) ExcuseDailyReport(rctx request.CTX, teamID, userID, date, reviewerID string) (*model.DailyReport, *model.AppError) {
+	team, appErr := a.RequireDailyReportsEnabled(teamID)
+	if appErr != nil {
+		return nil, appErr
+	}
+	loc, appErr := teamLocation("ExcuseDailyReport", team)
+	if appErr != nil {
+		return nil, appErr
+	}
+	if _, err := time.Parse(time.DateOnly, date); err != nil || date > time.Now().In(loc).Format(time.DateOnly) {
+		return nil, model.NewAppError("ExcuseDailyReport", "app.daily_report.invalid_date.app_error", nil, "date="+date, http.StatusBadRequest)
+	}
+
+	ds := a.Srv().Store().DailyReport()
+	now := model.GetMillis()
+	report, err := ds.GetForUserDate(teamID, userID, date)
+	var nfErr *store.ErrNotFound
+	var conflictErr *store.ErrConflict
+	if errors.As(err, &nfErr) {
+		report, err = ds.Save(&model.DailyReport{TeamId: teamID, UserId: userID, Date: date, Status: model.DailyReportStatusExcused,
+			ApprovedBy: reviewerID, ApprovedAt: now, Tasks: []model.DailyReportTask{}})
+		if errors.As(err, &conflictErr) { // the author uploaded or sent meanwhile: judge that row below
+			report, err = ds.GetForUserDate(teamID, userID, date)
+		}
+	}
+	if err == nil && report.Status == model.DailyReportStatusDraft {
+		// Guarded on the draft status: a send landing in between wins and comes back as a conflict.
+		if err = ds.Excuse(report.Id, reviewerID, now); err == nil || errors.As(err, &conflictErr) {
+			report, err = ds.Get(report.Id)
+		}
+	}
+	if err != nil {
+		return nil, dailyReportStoreError("ExcuseDailyReport", teamID, err)
+	}
+	if report.IsSent() {
+		return nil, model.NewAppError("ExcuseDailyReport", "app.daily_report.already_sent.app_error", nil, "id="+report.Id, http.StatusConflict)
+	}
+	a.publishDailyReport(rctx, report)
+	if appErr := a.fillDailyReportFiles([]*model.DailyReport{report}); appErr != nil {
+		return nil, appErr
+	}
+	return report, nil
+}
+
+// cleanUpDailyReportFiles removes what past days left unsent: drafts go with their files, excused days keep the row
+// and lose their files, which nobody but the author ever saw.
+func (a *App) cleanUpDailyReportFiles(rctx request.CTX, team *model.Team, now time.Time) {
+	logger := rctx.Logger().With(mlog.String("team_id", team.Id))
+	today, err := DailyReportDate(team, now)
+	if err != nil {
+		return // sendDailyReportReminders already warned about the schedule
+	}
+	ds := a.Srv().Store().DailyReport()
+	for _, status := range []string{model.DailyReportStatusDraft, model.DailyReportStatusExcused} {
+		reports, err := ds.GetBeforeDate(team.Id, status, today)
+		if err != nil {
+			logger.Error("Daily report cleanup: failed to load the reports", mlog.String("status", status), mlog.Err(err))
+			continue
+		}
+		if len(reports) == 0 {
+			continue
+		}
+		ids := make([]string, len(reports))
+		for i, r := range reports {
+			ids[i] = r.Id
+		}
+		links, err := ds.GetFileIds(ids)
+		if err != nil {
+			logger.Error("Daily report cleanup: failed to load the files", mlog.Err(err))
+			continue
+		}
+		for _, r := range reports {
+			if status == model.DailyReportStatusDraft {
+				err = ds.Delete(r.Id)
+			} else {
+				for _, fileID := range links[r.Id] {
+					if err = ds.RemoveFile(r.Id, fileID); err != nil {
+						break
+					}
+				}
+			}
+			if err != nil {
+				logger.Error("Daily report cleanup: failed to remove the report's files", mlog.String("report_id", r.Id), mlog.Err(err))
+				continue
+			}
+			a.removeTaskFiles(rctx, links[r.Id])
+		}
+	}
 }

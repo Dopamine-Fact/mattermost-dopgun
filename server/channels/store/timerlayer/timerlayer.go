@@ -4625,6 +4625,22 @@ func (s *TimerLayerCustomRoleStore) Update(r *model.CustomRole) (*model.CustomRo
 	return result, err
 }
 
+func (s *TimerLayerDailyReportStore) AddFile(reportID string, fileID string, createAt int64) error {
+	start := time.Now()
+
+	err := s.DailyReportStore.AddFile(reportID, fileID, createAt)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.AddFile", success, elapsed)
+	}
+	return err
+}
+
 func (s *TimerLayerDailyReportStore) Approve(id string, approverID string, auto bool, approvedAt int64, seenUpdateAt int64) error {
 	start := time.Now()
 
@@ -4637,6 +4653,38 @@ func (s *TimerLayerDailyReportStore) Approve(id string, approverID string, auto 
 			success = "true"
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.Approve", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerDailyReportStore) Delete(id string) error {
+	start := time.Now()
+
+	err := s.DailyReportStore.Delete(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.Delete", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerDailyReportStore) Excuse(id string, reviewerID string, excusedAt int64) error {
+	start := time.Now()
+
+	err := s.DailyReportStore.Excuse(id, reviewerID, excusedAt)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.Excuse", success, elapsed)
 	}
 	return err
 }
@@ -4669,6 +4717,38 @@ func (s *TimerLayerDailyReportStore) GetAssignees(teamID string) ([]string, erro
 			success = "true"
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.GetAssignees", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDailyReportStore) GetBeforeDate(teamID string, status string, beforeDate string) ([]*model.DailyReport, error) {
+	start := time.Now()
+
+	result, err := s.DailyReportStore.GetBeforeDate(teamID, status, beforeDate)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.GetBeforeDate", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDailyReportStore) GetFileIds(reportIDs []string) (map[string][]string, error) {
+	start := time.Now()
+
+	result, err := s.DailyReportStore.GetFileIds(reportIDs)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.GetFileIds", success, elapsed)
 	}
 	return result, err
 }
@@ -4733,6 +4813,22 @@ func (s *TimerLayerDailyReportStore) Reject(id string, rejecterID string, reason
 			success = "true"
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.Reject", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerDailyReportStore) RemoveFile(reportID string, fileID string) error {
+	start := time.Now()
+
+	err := s.DailyReportStore.RemoveFile(reportID, fileID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DailyReportStore.RemoveFile", success, elapsed)
 	}
 	return err
 }

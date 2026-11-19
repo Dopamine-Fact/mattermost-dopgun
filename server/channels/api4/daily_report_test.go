@@ -4,14 +4,19 @@
 package api4
 
 import (
+	"bytes"
 	"context"
+	"image"
+	"image/png"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/v8/channels/app"
 )
 
 func TestDailyReportsAPI(t *testing.T) {
@@ -209,5 +214,110 @@ func TestDailyReportsAPI(t *testing.T) {
 			require.Error(t, err)
 			CheckBadRequestStatus(t, resp)
 		}
+	})
+}
+
+func TestDailyReportFilesAPI(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	ctx := context.Background()
+	teamID := th.BasicTeam.Id
+	team, _, err := th.SystemAdminClient.PatchTeam(ctx, teamID, &model.TeamPatch{
+		TasksEnabled: new(true), DailyReportsEnabled: new(true),
+		DailyReportTime: new("18:00"), DailyReportTimezone: new("Europe/Istanbul"),
+	})
+	require.NoError(t, err)
+	// BasicUser reviews: a rank that outranks BasicUser2 and carries manage_daily_reports.
+	rank := giveRankingRole(t, th, th.BasicUser)
+	th.AddPermissionToRole(t, model.PermissionManageDailyReports.Id, rank.RoleName)
+	reviewer := th.Client
+	author := th.CreateClient()
+	th.LoginBasic2WithClient(t, author)
+	member := th.CreateClient()
+	memberUser := th.CreateUser(t)
+	th.LinkUserToTeam(t, memberUser, th.BasicTeam)
+	_, _, err = member.Login(ctx, memberUser.Email, memberUser.Password)
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	require.NoError(t, png.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 2, 2))))
+	pngData := buf.Bytes()
+
+	info, _, err := author.AddMyDailyReportFile(ctx, teamID, "progress.png", pngData)
+	require.NoError(t, err)
+	mine, _, err := author.GetDailyReports(ctx, teamID, "", "", "")
+	require.NoError(t, err)
+	require.Len(t, mine, 1)
+	draft := mine[0]
+	require.Equal(t, model.DailyReportStatusDraft, draft.Status)
+	require.Len(t, draft.Files, 1)
+
+	t.Run("a draft stays hidden from the reviewer", func(t *testing.T) {
+		_, resp, err := reviewer.GetDailyReportFile(ctx, draft.Id, info.Id)
+		require.Error(t, err)
+		CheckNotFoundStatus(t, resp)
+		for _, userID := range []string{"", th.BasicUser2.Id} {
+			list, _, err := reviewer.GetDailyReports(ctx, teamID, "", "", userID)
+			require.NoError(t, err)
+			for _, r := range list {
+				require.NotEqual(t, draft.Id, r.Id)
+			}
+		}
+	})
+
+	t.Run("only the author removes", func(t *testing.T) {
+		resp, err := reviewer.RemoveDailyReportFile(ctx, draft.Id, info.Id)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+	})
+
+	sent, _, err := author.SubmitDailyReport(ctx, teamID, "")
+	require.NoError(t, err, "files alone make a report")
+	require.Equal(t, model.DailyReportStatusPending, sent.Status)
+
+	t.Run("after sending the reviewer reads the file", func(t *testing.T) {
+		data, resp, err := reviewer.GetDailyReportFile(ctx, sent.Id, info.Id)
+		require.NoError(t, err)
+		require.Equal(t, pngData, data)
+		require.Equal(t, "image/png", resp.Header.Get("Content-Type"))
+
+		r, err := reviewer.DoAPIRequestWithHeaders(ctx, http.MethodGet, "/daily_reports/"+sent.Id+"/files/"+info.Id, "", map[string]string{"Range": "bytes=0-3"})
+		require.NoError(t, err)
+		defer r.Body.Close()
+		require.Equal(t, http.StatusPartialContent, r.StatusCode)
+
+		r2, err := reviewer.DoAPIRequestWithHeaders(ctx, http.MethodGet, "/daily_reports/"+sent.Id+"/files/"+info.Id+"/thumbnail", "", nil)
+		require.NoError(t, err)
+		defer r2.Body.Close()
+		require.Equal(t, http.StatusOK, r2.StatusCode)
+		require.Equal(t, "image/jpeg", r2.Header.Get("Content-Type"))
+	})
+
+	t.Run("a member who cannot review gets 403", func(t *testing.T) {
+		_, resp, err := member.GetDailyReportFile(ctx, sent.Id, info.Id)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+	})
+
+	t.Run("excuse", func(t *testing.T) {
+		today, err := app.DailyReportDate(team, time.Now())
+		require.NoError(t, err)
+		absent := th.CreateUser(t)
+		th.LinkUserToTeam(t, absent, th.BasicTeam)
+		excused, _, err := reviewer.ExcuseDailyReport(ctx, teamID, absent.Id, today)
+		require.NoError(t, err)
+		require.Equal(t, model.DailyReportStatusExcused, excused.Status)
+		require.Equal(t, th.BasicUser.Id, excused.ApprovedBy)
+
+		_, resp, err := reviewer.ExcuseDailyReport(ctx, teamID, th.BasicUser.Id, today)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		_, resp, err = member.ExcuseDailyReport(ctx, teamID, absent.Id, today)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+		outsider := th.CreateUser(t)
+		_, resp, err = reviewer.ExcuseDailyReport(ctx, teamID, outsider.Id, today)
+		require.Error(t, err)
+		CheckBadRequestStatus(t, resp)
 	})
 }

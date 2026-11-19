@@ -104,3 +104,46 @@ func TestTeamIsValidDailyReport(t *testing.T) {
 	o.DailyReportTimezone = ""
 	require.Nil(t, o.IsValid())
 }
+
+func TestDailyReportIsValidStatuses(t *testing.T) {
+	for _, status := range []string{DailyReportStatusDraft, DailyReportStatusExcused} {
+		r := validDailyReport()
+		r.Status = status
+		require.Nil(t, r.IsValid(), status)
+	}
+}
+
+func TestDailyReportIsSent(t *testing.T) {
+	for status, sent := range map[string]bool{
+		DailyReportStatusPending:  true,
+		DailyReportStatusApproved: true,
+		DailyReportStatusRejected: true,
+		DailyReportStatusDraft:    false,
+		DailyReportStatusExcused:  false,
+	} {
+		require.Equal(t, sent, (&DailyReport{Status: status}).IsSent(), status)
+	}
+}
+
+func TestDailyReportFileContentType(t *testing.T) {
+	for name, want := range map[string]string{
+		"a.PNG":  "image/png",
+		"a.jpeg": "image/jpeg",
+		"a.mov":  "video/quicktime",
+		"a.webm": "video/webm",
+		"a.pdf":  "application/pdf",
+		"a.exe":  "",
+		"noext":  "",
+	} {
+		require.Equal(t, want, DailyReportFileContentType(name), name)
+	}
+}
+
+func TestDailyReportFileMatches(t *testing.T) {
+	require.True(t, DailyReportFileMatches("x.png", "image/png"))
+	require.False(t, DailyReportFileMatches("x.png", "text/html; charset=utf-8"))
+	require.True(t, DailyReportFileMatches("x.mov", "application/octet-stream"))
+	require.True(t, DailyReportFileMatches("x.pdf", "application/pdf"))
+	require.False(t, DailyReportFileMatches("x.pdf", "image/png"))
+	require.False(t, DailyReportFileMatches("x.exe", "application/octet-stream"))
+}
