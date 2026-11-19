@@ -1,0 +1,87 @@
+.EpisodeTasks {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr);
+
+    &__list ul {
+        padding: 0;
+        margin: 0 0 8px;
+        list-style: none;
+    }
+
+    &__row {
+        display: flex;
+        align-items: center;
+        border-radius: 4px;
+        gap: 4px;
+
+        &:hover,
+        &--selected {
+            background: rgba(var(--center-channel-color-rgb), 0.08);
+        }
+    }
+
+    &__select-btn {
+        min-width: 0;
+        flex: 1;
+        padding: 6px 8px;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        text-align: left;
+
+        span {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+
+    &__detail {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    &__field {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        padding: 0;
+        border: 0;
+        margin: 0;
+        font-weight: 600;
+        gap: 4px;
+
+        legend {
+            padding: 0;
+            margin: 0 0 4px;
+            font-size: inherit;
+            font-weight: 600;
+        }
+
+        input:not([type='checkbox']),
+        select {
+            padding: 6px 8px;
+            border: 1px solid rgba(var(--center-channel-color-rgb), 0.24);
+            border-radius: 4px;
+            background: var(--center-channel-bg);
+            color: var(--center-channel-color);
+            font-weight: 400;
+        }
+    }
+
+    &__check {
+        display: flex;
+        align-items: center;
+        font-weight: 400;
+        gap: 8px;
+    }
+
+    &__hint {
+        color: rgba(var(--center-channel-color-rgb), 0.72);
+        font-size: 12px;
+        font-weight: 400;
+    }
+}

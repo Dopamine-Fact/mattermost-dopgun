@@ -36,9 +36,18 @@ export type Task = {
     creator_id: string;
     create_at: number;
     update_at: number;
+
+    /** '' when the task belongs to no department */
+    department_id: string;
+
+    /** ids of the tasks that must be done before this one can be taken; never null */
+    waits_for: string[];
+
+    /** the drive folder seeded for this task; '' for tasks without one */
+    folder_id: string;
 };
 
-export type TaskPatch = Partial<Pick<Task, 'section_id' | 'title' | 'description' | 'assignee_id' | 'start_at' | 'due_at' | 'status' | 'sort_order' | 'video_time'>>;
+export type TaskPatch = Partial<Pick<Task, 'section_id' | 'title' | 'description' | 'assignee_id' | 'start_at' | 'due_at' | 'status' | 'sort_order' | 'video_time' | 'department_id' | 'waits_for'>>;
 
 // TaskCreate is what a new task is made from; video_file_id (which pins a revision to a video version) can only be set here.
 export type TaskCreate = Pick<Task, 'team_id' | 'title'> & TaskPatch & Partial<Pick<Task, 'video_file_id'>>;

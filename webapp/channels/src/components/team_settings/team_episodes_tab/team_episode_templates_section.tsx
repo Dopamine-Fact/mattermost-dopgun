@@ -2,29 +2,26 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import type {ChangeEvent} from 'react';
 import {useIntl} from 'react-intl';
 
-import Input from 'components/widgets/inputs/input/input';
 import BaseSettingItem, {type BaseSettingItemProps} from 'components/widgets/modals/components/base_setting_item';
 
 import EpisodeFolderPanel from './episode_folder_panel';
 import type {EpisodeFolder} from './episode_folders';
-
-// Matches the server's TeamEpisodeTemplateMaxRunes.
-const MAX_TEMPLATE_LENGTH = 4000;
+import EpisodeTaskPanel from './episode_task_panel';
+import type {EpisodeTask} from './episode_tasks';
 
 type Props = {
     teamId: string;
     folders: EpisodeFolder[];
-    tasks: string;
+    tasks: EpisodeTask[];
     handleFoldersChange: (folders: EpisodeFolder[]) => void;
-    handleTasksChange: (text: string) => void;
+    handleTasksChange: (tasks: EpisodeTask[]) => void;
     foldersError?: BaseSettingItemProps['error'];
     tasksError?: BaseSettingItemProps['error'];
 };
 
-// TeamEpisodeTemplatesSection edits what every new episode channel starts with: drive folders (with who sees and changes each) and tasks, one per line.
+// TeamEpisodeTemplatesSection edits what every new episode channel starts with: drive folders (with who sees and changes each) and tasks (with who may take them, deadlines and what they wait for).
 const TeamEpisodeTemplatesSection = ({teamId, folders, tasks, handleFoldersChange, handleTasksChange, foldersError, tasksError}: Props) => {
     const {formatMessage} = useIntl();
 
@@ -51,17 +48,14 @@ const TeamEpisodeTemplatesSection = ({teamId, folders, tasks, handleFoldersChang
                 title={formatMessage({id: 'general_tab.episodeTasks', defaultMessage: 'Default episode tasks'})}
                 description={formatMessage({
                     id: 'general_tab.episodeTasksInfo',
-                    defaultMessage: 'One task per line, added unassigned to every new episode channel\'s task list.',
+                    defaultMessage: 'Added to every new episode channel\'s task list.',
                 })}
                 content={(
-                    <Input
-                        id='teamEpisodeTasks'
-                        data-testid='episodeTasksInput'
-                        type='textarea'
-                        maxLength={MAX_TEMPLATE_LENGTH}
-                        value={tasks}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) => handleTasksChange(e.target.value)}
-                        label={formatMessage({id: 'general_tab.episodeTasks', defaultMessage: 'Default episode tasks'})}
+                    <EpisodeTaskPanel
+                        teamId={teamId}
+                        tasks={tasks}
+                        folders={folders}
+                        onChange={handleTasksChange}
                     />
                 )}
                 error={tasksError}

@@ -84,9 +84,9 @@ describe('components/TeamSettings/EpisodesTab', () => {
             const {unmount} = renderWithContext(<EpisodesTab {...defaultProps}/>);
             expect(screen.queryByTestId('episodeFoldersPanel')).not.toBeInTheDocument();
             await userEvent.click(screen.getByTestId('tasksEnabledCheckbox'));
-            expect(screen.queryByTestId('episodeTasksInput')).not.toBeInTheDocument();
+            expect(screen.queryByTestId('episodeTasksPanel')).not.toBeInTheDocument();
             await userEvent.click(screen.getByTestId('revisionsEnabledCheckbox'));
-            expect(screen.getByTestId('episodeTasksInput')).toBeInTheDocument();
+            expect(screen.getByTestId('episodeTasksPanel')).toBeInTheDocument();
             unmount();
 
             renderWithContext(<EpisodesTab {...{...defaultProps, team}}/>);
@@ -100,11 +100,11 @@ describe('components/TeamSettings/EpisodesTab', () => {
             const setAreThereUnsavedChanges = jest.fn();
             renderWithContext(<EpisodesTab {...{...defaultProps, team, setAreThereUnsavedChanges}}/>);
 
-            await userEvent.type(screen.getByTestId('episodeTasksInput'), 'Storyboard');
+            await userEvent.click(screen.getByRole('button', {name: 'Add task'}));
             expect(setAreThereUnsavedChanges).toHaveBeenCalledWith(true);
             await userEvent.click(screen.getByTestId('SaveChangesPanel__save-btn'));
 
-            expect(patchTeam).toHaveBeenLastCalledWith(expect.objectContaining({episode_tasks: 'Storyboard'}));
+            expect(patchTeam).toHaveBeenLastCalledWith(expect.objectContaining({episode_tasks: expect.stringContaining('"title":"New task"')}));
             expect(patchTeam.mock.lastCall[0]).not.toHaveProperty('episode_folders');
         });
 

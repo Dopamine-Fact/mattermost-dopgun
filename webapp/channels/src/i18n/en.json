@@ -25257,14 +25257,14 @@
   },
   "general_tab.episodeTasks": {
     "defaultMessage": "Default episode tasks",
-    "description": "Heading and label of the Team Settings text box listing the tasks every new episode channel's task list starts with."
+    "description": "Heading of the Team Settings section listing the tasks every new episode channel's task list starts with."
   },
   "general_tab.episodeTasksInfo": {
-    "defaultMessage": "One task per line, added unassigned to every new episode channel's task list.",
+    "defaultMessage": "Added to every new episode channel's task list.",
     "description": "Hint under the Default episode tasks heading in Team Settings."
   },
   "general_tab.episodeTasksInvalid": {
-    "defaultMessage": "Invalid default episode tasks. Use at most 100 lines and 4000 characters.",
+    "defaultMessage": "Invalid default episode tasks. Use at most 100 tasks and 100000 characters in total, give every task a title and 0 to 365 days, avoid tasks that wait for each other in a loop, and pick only folders that hold their own files.",
     "description": "Error under the Default episode tasks box in Team Settings when the server rejects the list."
   },
   "general_tab.filesEnabled": {
@@ -33970,6 +33970,82 @@
   "team_settings.episodeFolders.whoSees": {
     "defaultMessage": "Who sees it",
     "description": "Heading of the settings group in the episode folder template that says which departments see the folder."
+  },
+  "team_settings.episodeTasks.add": {
+    "defaultMessage": "Add task",
+    "description": "Button under the episode task list in Team Settings; adds a task named New task to the template."
+  },
+  "team_settings.episodeTasks.anyDepartment": {
+    "defaultMessage": "Any department",
+    "description": "Option in the department select of an episode task template; the task is not limited to one department."
+  },
+  "team_settings.episodeTasks.delete": {
+    "defaultMessage": "Delete {title}",
+    "description": "Screen-reader label of the trash button on a row of the episode task template list; {title} is the task title."
+  },
+  "team_settings.episodeTasks.deletedDepartment": {
+    "defaultMessage": "Deleted department",
+    "description": "Option label in the episode task template for a department id that no longer exists in the team."
+  },
+  "team_settings.episodeTasks.department": {
+    "defaultMessage": "Department",
+    "description": "Label of the select in the episode task template that picks the department whose members may take the task."
+  },
+  "team_settings.episodeTasks.dueDays": {
+    "defaultMessage": "Days after opening",
+    "description": "Label of the number field in the episode task template: the task is due this many days after the episode channel is created."
+  },
+  "team_settings.episodeTasks.dueDaysHint": {
+    "defaultMessage": "0 to {max}. Leave empty for no deadline.",
+    "description": "Hint under the Days after opening field of the episode task template; {max} is the largest allowed number of days."
+  },
+  "team_settings.episodeTasks.empty": {
+    "defaultMessage": "No tasks yet. New episodes start with an empty task list.",
+    "description": "Shown in the episode task template list in Team Settings when no task is defined."
+  },
+  "team_settings.episodeTasks.folder": {
+    "defaultMessage": "Folder",
+    "description": "Label of the select in the episode task template that picks the drive folder created for the task."
+  },
+  "team_settings.episodeTasks.limit": {
+    "defaultMessage": "At most {max} tasks.",
+    "description": "Hint under the episode task template list when it is full; {max} is the largest allowed number of tasks."
+  },
+  "team_settings.episodeTasks.list": {
+    "defaultMessage": "Episode tasks",
+    "description": "Accessible name of the episode task template list in Team Settings."
+  },
+  "team_settings.episodeTasks.noFolder": {
+    "defaultMessage": "No folder",
+    "description": "Option in the folder select of an episode task template; the task gets no drive folder."
+  },
+  "team_settings.episodeTasks.person": {
+    "defaultMessage": "Person",
+    "description": "Label of the select in the episode task template that picks who the task is assigned to."
+  },
+  "team_settings.episodeTasks.pick": {
+    "defaultMessage": "Select a task to edit its rules.",
+    "description": "Shown beside the episode task template list in Team Settings when no task is selected."
+  },
+  "team_settings.episodeTasks.title": {
+    "defaultMessage": "Task title",
+    "description": "Label of the title field of an episode task template."
+  },
+  "team_settings.episodeTasks.unassigned": {
+    "defaultMessage": "Unassigned",
+    "description": "Option in the person select of an episode task template; the task is assigned to nobody."
+  },
+  "team_settings.episodeTasks.unknownUser": {
+    "defaultMessage": "Unknown user",
+    "description": "Option label in the episode task template for an assigned person who is no longer a team member."
+  },
+  "team_settings.episodeTasks.waitsFor": {
+    "defaultMessage": "Waits for",
+    "description": "Legend of the checkbox group in the episode task template that lists the tasks this one waits for."
+  },
+  "team_settings.episodeTasks.waitsForHint": {
+    "defaultMessage": "Cannot be taken until these are done. Tasks that would make a loop are disabled.",
+    "description": "Hint under the Waits for legend of the episode task template."
   },
   "team_settings.membership_tab.advanced_rules_locked": {
     "defaultMessage": "These rules use advanced logic and can only be edited in the System Console. Contact a System Admin to change them.",

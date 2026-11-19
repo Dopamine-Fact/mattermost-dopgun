@@ -21,9 +21,8 @@ const (
 	TeamAllowedDomainsMaxLength = 500
 	TeamCompanyNameMaxLength    = 64
 	TeamDescriptionMaxLength    = 255
-	TeamEpisodeTemplateMaxRunes = 4000
 	TeamEpisodeTemplateMaxLines = 100
-	// TeamEpisodeFoldersMaxRunes is the folder template limit: JSON with department ids; tasks keep TeamEpisodeTemplateMaxRunes.
+	// TeamEpisodeFoldersMaxRunes is the size limit of the folder and task templates: JSON with department ids and rules.
 	TeamEpisodeFoldersMaxRunes = 100000
 	TeamDisplayNameMaxRunes    = 64
 	TeamEmailMaxLength         = 128

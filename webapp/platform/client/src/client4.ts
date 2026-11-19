@@ -5230,6 +5230,14 @@ export default class Client4 {
         return this.doFetch<DriveItem>(`${this.getDriveRoute(channelId)}/items/${itemId}`, {method: 'PATCH', body: JSON.stringify({name})});
     };
 
+    renameDriveTaskFile = (channelId: string, fileId: string, name: string) => {
+        return this.doFetch<FileInfo>(`${this.getDriveRoute(channelId)}/task_files/${fileId}`, {method: 'PATCH', body: JSON.stringify({name})});
+    };
+
+    deleteDriveTaskFile = (channelId: string, fileId: string) => {
+        return this.doFetch<StatusOK>(`${this.getDriveRoute(channelId)}/task_files/${fileId}`, {method: 'delete'});
+    };
+
     moveDriveItems = (channelId: string, itemIds: string[], targetChannelId: string, targetParentId: string) => {
         return this.doFetch<StatusOK>(`${this.getDriveRoute(channelId)}/move`, {method: 'post', body: JSON.stringify({item_ids: itemIds, target_channel_id: targetChannelId, target_parent_id: targetParentId})});
     };

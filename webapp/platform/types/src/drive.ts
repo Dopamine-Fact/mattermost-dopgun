@@ -29,10 +29,16 @@ export type DriveItem = {
     mirror_of?: string;
 };
 
+/** A file attached to a task whose folder is the listed one. */
+export type DriveTaskFile = FileInfo & {task_id: string};
+
 /** A drive folder's children and its path from the channel root (root excluded). */
 export type DriveListing = {
     items: DriveItem[];
     path: DriveItem[];
+
+    /** Message files of the task owning this folder; empty for other folders. */
+    task_files: DriveTaskFile[];
 
     /** How the viewer may change this folder: '' means no write rule applies. */
     access: '' | 'write' | 'read';

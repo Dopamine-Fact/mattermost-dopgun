@@ -1,13 +1,15 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useMemo, useState} from 'react';
 import {defineMessages} from 'react-intl';
 
 import SaveChangesPanel, {type SaveChangesPanelState} from 'components/widgets/modals/components/save_changes_panel';
 
 import {parseEpisodeFolders, serializeEpisodeFolders} from './episode_folders';
 import type {EpisodeFolder} from './episode_folders';
+import {parseEpisodeTasks, serializeEpisodeTasks} from './episode_tasks';
+import type {EpisodeTask} from './episode_tasks';
 import TeamEpisodeTemplatesSection from './team_episode_templates_section';
 import TeamTasksSection from './team_tasks_section';
 
@@ -22,7 +24,7 @@ const translations = defineMessages({
     },
     EpisodeTasksInvalid: {
         id: 'general_tab.episodeTasksInvalid',
-        defaultMessage: 'Invalid default episode tasks. Use at most 100 lines and 4000 characters.',
+        defaultMessage: 'Invalid default episode tasks. Use at most 100 tasks and 100000 characters in total, give every task a title and 0 to 365 days, avoid tasks that wait for each other in a loop, and pick only folders that hold their own files.',
     },
 });
 
@@ -33,7 +35,10 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
     const [revisionsEnabled, setRevisionsEnabled] = useState<boolean>(Boolean(team.revisions_enabled));
     const [canvasEnabled, setCanvasEnabled] = useState<boolean>(Boolean(team.canvas_enabled));
     const [episodeFolders, setEpisodeFolders] = useState<EpisodeFolder[]>(() => parseEpisodeFolders(team.episode_folders));
+
+    // Kept as the stored text, so a template nobody edits is never re-serialized into a change.
     const [episodeTasks, setEpisodeTasks] = useState<string>(team.episode_tasks ?? '');
+    const parsedTasks = useMemo(() => parseEpisodeTasks(episodeTasks), [episodeTasks]);
 
     // Which template the server rejected on the last save.
     const [templateError, setTemplateError] = useState<'folders' | 'tasks'>();
@@ -112,9 +117,9 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
                 <TeamEpisodeTemplatesSection
                     teamId={team.id}
                     folders={episodeFolders}
-                    tasks={episodeTasks}
+                    tasks={parsedTasks}
                     handleFoldersChange={edited(setEpisodeFolders)}
-                    handleTasksChange={edited(setEpisodeTasks)}
+                    handleTasksChange={(next: EpisodeTask[]) => edited(setEpisodeTasks)(serializeEpisodeTasks(next))}
                     foldersError={templateError === 'folders' ? translations.EpisodeFoldersInvalid : undefined}
                     tasksError={templateError === 'tasks' ? translations.EpisodeTasksInvalid : undefined}
                 />
