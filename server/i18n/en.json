@@ -12607,6 +12607,11 @@
     "description": "API validation error when a revision task is created with a video that is not a version of its section's video, or when a revision is moved to another section."
   },
   {
+    "id": "app.task.locked.app_error",
+    "translation": "This task is locked until the tasks it waits for are done.",
+    "description": "API error when someone who cannot manage tasks starts, finishes or claims a to-do task whose waits-for tasks are not all done yet."
+  },
+  {
     "id": "app.task.not_found.app_error",
     "translation": "The task or section was not found.",
     "description": "API error when the requested task or task list section does not exist."
@@ -12622,6 +12627,11 @@
     "description": "Fallback text of the card posted in a revision channel's chat when someone adds a revision (shown where the card cannot be drawn, e.g. notifications). Time is the m:ss.cc moment in the video, Title the revision and Link opens it on the Revisions tab."
   },
   {
+    "id": "app.task.revision_rules.app_error",
+    "translation": "Revisions cannot have a department or waits-for tasks.",
+    "description": "API error when a task patch sets a department or waits-for tasks on a revision (a task with a video)."
+  },
+  {
     "id": "app.task.revisions_disabled.app_error",
     "translation": "Revision channels are turned off for this team.",
     "description": "API error when uploading a revision video or creating a revision channel while the team's revision channels setting is off."
@@ -12630,6 +12640,11 @@
     "id": "app.task.store.app_error",
     "translation": "Unable to save or load the task.",
     "description": "Internal server error when the database fails to read or write a task or task list section."
+  },
+  {
+    "id": "app.task.waits_for.app_error",
+    "translation": "A task can only wait for other tasks in its own section, once each, without a loop.",
+    "description": "API error when a task patch sets waits-for tasks that are missing, in another section, repeated, the task itself, or that would make a loop."
   },
   {
     "id": "app.team.access_policies.channel_not_found.app_error",

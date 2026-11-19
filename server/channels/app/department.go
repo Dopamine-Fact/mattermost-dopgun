@@ -55,6 +55,33 @@ func (a *App) ensureStudioDepartment(teamID string) ([]*model.Department, *model
 	return deps, nil
 }
 
+// UserDepartments returns the ids of the departments whose ranks the user holds in the team; a user who is not a
+// live member of the team has none.
+func (a *App) UserDepartments(rctx request.CTX, teamID, userID string) (map[string]bool, *model.AppError) {
+	depts := map[string]bool{}
+	member, appErr := a.GetTeamMember(rctx, teamID, userID)
+	if appErr != nil {
+		if appErr.StatusCode != http.StatusNotFound {
+			return nil, appErr
+		}
+		return depts, nil
+	}
+	if member.DeleteAt != 0 {
+		return depts, nil
+	}
+	ranks, err := a.Srv().Store().CustomRole().GetForTeam(teamID)
+	if err != nil {
+		return nil, customRoleStoreError("UserDepartments", err)
+	}
+	held := model.RankIdsFromRoles(member.ExplicitRoles)
+	for _, r := range ranks {
+		if slices.Contains(held, r.Id) {
+			depts[r.DepartmentId] = true
+		}
+	}
+	return depts, nil
+}
+
 func isConflict(err error) bool {
 	_, ok := errors.AsType[*store.ErrConflict](err)
 	return ok

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"slices"
 
@@ -157,9 +158,39 @@ func (a *App) PatchTask(rctx request.CTX, task *model.Task, patch *model.TaskPat
 	if appErr := a.validateTaskRefs(rctx, &patched); appErr != nil {
 		return nil, appErr
 	}
+	if task.VideoFileId != "" && (patch.DepartmentId != nil || patch.WaitsFor != nil) {
+		return nil, model.NewAppError("PatchTask", "app.task.revision_rules.app_error", nil, "id="+task.Id, http.StatusBadRequest)
+	}
+	var teamTasks []*model.Task
+	if task.VideoFileId == "" {
+		var appErr *model.AppError
+		if teamTasks, appErr = a.GetTasksForTeam(task.TeamId); appErr != nil {
+			return nil, appErr
+		}
+		byID := make(map[string]*model.Task, len(teamTasks))
+		for _, t := range teamTasks {
+			byID[t.Id] = t
+		}
+		if patched.SectionId != task.SectionId || patched.WaitsFor == nil {
+			patched.WaitsFor = model.StringArray{} // links never cross sections; nil would store JSON null
+		}
+		if patch.WaitsFor != nil {
+			if appErr := validateTaskWaitsFor(&patched, byID); appErr != nil {
+				return nil, appErr
+			}
+		}
+		if appErr := a.checkTaskLock(rctx, task, &patched, byID); appErr != nil {
+			return nil, appErr
+		}
+	}
 	updated, err := a.Srv().Store().Task().Update(&patched)
 	if err != nil {
 		return nil, taskStoreError("PatchTask", task.Id, err)
+	}
+	if patched.SectionId != task.SectionId {
+		if appErr := a.removeFromWaitsFor(rctx, task.Id, teamTasks, connectionID); appErr != nil {
+			return nil, appErr
+		}
 	}
 	a.publishTaskEvent(rctx, model.WebsocketTaskUpserted, updated.TeamId, "task", updated, connectionID)
 	actorID := ""
@@ -168,6 +199,82 @@ func (a *App) PatchTask(rctx request.CTX, task *model.Task, patch *model.TaskPat
 	}
 	a.notifyTaskAssignee(rctx, updated, task.AssigneeId, actorID)
 	return updated, nil
+}
+
+func taskWaitsForError(id string) *model.AppError {
+	return model.NewAppError("PatchTask", "app.task.waits_for.app_error", nil, "id="+id, http.StatusBadRequest)
+}
+
+// validateTaskWaitsFor keeps a task's waits-for to other tasks of its own section, once each, without a cycle.
+func validateTaskWaitsFor(task *model.Task, byID map[string]*model.Task) *model.AppError {
+	byID = maps.Clone(byID)
+	byID[task.Id] = task
+	seen := map[string]bool{}
+	for _, id := range task.WaitsFor {
+		other := byID[id]
+		if id == task.Id || other == nil || other.SectionId != task.SectionId || other.VideoFileId != "" || seen[id] {
+			return taskWaitsForError(task.Id)
+		}
+		seen[id] = true
+	}
+	visited := map[string]bool{}
+	var reaches func(id string) bool // whether the waits-for chain from id comes back to task
+	reaches = func(id string) bool {
+		if id == task.Id {
+			return true
+		}
+		if visited[id] || byID[id] == nil {
+			return false
+		}
+		visited[id] = true
+		return slices.ContainsFunc(byID[id].WaitsFor, reaches)
+	}
+	if slices.ContainsFunc(task.WaitsFor, reaches) {
+		return taskWaitsForError(task.Id)
+	}
+	return nil
+}
+
+// taskLocked lists the tasks task waits for that are not done yet.
+func (a *App) taskLocked(task *model.Task, byID map[string]*model.Task) []*model.Task {
+	var open []*model.Task
+	for _, id := range task.WaitsFor {
+		if other := byID[id]; other != nil && other.Status != model.TaskStatusDone {
+			open = append(open, other)
+		}
+	}
+	return open
+}
+
+// checkTaskLock refuses to start or claim a to-do task that is still locked, unless the session manages tasks.
+func (a *App) checkTaskLock(rctx request.CTX, task, patched *model.Task, byID map[string]*model.Task) *model.AppError {
+	if task.Status != model.TaskStatusTodo || (patched.Status == task.Status && patched.AssigneeId == task.AssigneeId) {
+		return nil
+	}
+	if len(a.taskLocked(task, byID)) == 0 {
+		return nil
+	}
+	if session := rctx.Session(); session == nil || a.SessionHasPermissionToTeam(*session, task.TeamId, model.PermissionManageTasks) {
+		return nil
+	}
+	return model.NewAppError("PatchTask", "app.task.locked.app_error", nil, "id="+task.Id, http.StatusBadRequest)
+}
+
+// removeFromWaitsFor drops id from the waits-for of every task in tasks that has it, saving and publishing each.
+func (a *App) removeFromWaitsFor(rctx request.CTX, id string, tasks []*model.Task, connectionID string) *model.AppError {
+	for _, other := range tasks {
+		if other.Id == id || !slices.Contains(other.WaitsFor, id) {
+			continue
+		}
+		c := *other
+		c.WaitsFor = slices.DeleteFunc(slices.Clone(other.WaitsFor), func(w string) bool { return w == id })
+		saved, err := a.Srv().Store().Task().Update(&c)
+		if err != nil {
+			return taskStoreError("removeFromWaitsFor", other.Id, err)
+		}
+		a.publishTaskEvent(rctx, model.WebsocketTaskUpserted, saved.TeamId, "task", saved, connectionID)
+	}
+	return nil
 }
 
 // notifyTaskAssignee DMs a newly assigned user from the system bot; failures are only logged because the task is already saved.
@@ -278,7 +385,11 @@ func (a *App) DeleteTask(rctx request.CTX, task *model.Task, connectionID string
 		a.removeTaskFiles(rctx, comment.FileIds)
 	}
 	a.publishTaskEvent(rctx, model.WebsocketTaskDeleted, task.TeamId, "task_id", task.Id, connectionID)
-	return nil
+	teamTasks, appErr := a.GetTasksForTeam(task.TeamId)
+	if appErr != nil {
+		return appErr
+	}
+	return a.removeFromWaitsFor(rctx, task.Id, teamTasks, connectionID)
 }
 
 func (a *App) GetTaskSection(sectionID string) (*model.TaskSection, *model.AppError) {

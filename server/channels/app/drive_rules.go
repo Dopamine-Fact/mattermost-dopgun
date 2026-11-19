@@ -61,27 +61,12 @@ type driveViewer struct {
 
 func (a *App) driveViewerFor(rctx request.CTX, session model.Session, channel *model.Channel) (*driveViewer, *model.AppError) {
 	ok, _ := a.SessionHasPermissionToChannel(rctx, session, channel.Id, model.PermissionManageChannelRoles)
-	v := &driveViewer{manager: ok, depts: map[string]bool{}} // a manager's departments only pick the access icon
-	member, appErr := a.GetTeamMember(rctx, channel.TeamId, session.UserId)
+	depts, appErr := a.UserDepartments(rctx, channel.TeamId, session.UserId) // a manager's departments only pick the access icon
 	if appErr != nil {
-		if appErr.StatusCode != http.StatusNotFound {
-			return nil, appErr
-		}
-		return v, nil // not in the team: no departments, so every restricted folder stays hidden
+		return nil, appErr
 	}
-	if member.DeleteAt != 0 {
-		return v, nil
-	}
-	ranks, err := a.Srv().Store().CustomRole().GetForTeam(channel.TeamId)
-	if err != nil {
-		return nil, customRoleStoreError("driveViewerFor", err)
-	}
-	held := model.RankIdsFromRoles(member.ExplicitRoles)
-	for _, r := range ranks {
-		if slices.Contains(held, r.Id) {
-			v.depts[r.DepartmentId] = true
-		}
-	}
+	// Not in the team: no departments, so every restricted folder stays hidden.
+	v := &driveViewer{manager: ok, depts: depts}
 	return v, nil
 }
 
