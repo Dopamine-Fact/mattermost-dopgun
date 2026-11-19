@@ -1,12 +1,13 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {act, createEvent, fireEvent, screen} from '@testing-library/react';
+import {act, createEvent, fireEvent, screen, within} from '@testing-library/react';
 import React from 'react';
 import type * as Y from 'yjs';
 
 import type {FileInfo} from '@mattermost/types/files';
 
+import {Client4} from 'mattermost-redux/client';
 import {getFileUrl} from 'mattermost-redux/utils/file_utils';
 
 import {openModal} from 'actions/views/modals';
@@ -57,6 +58,10 @@ jest.mock('./sync', () => {
 jest.mock('client/web_websocket_client', () => ({}));
 
 jest.mock('actions/views/modals', () => ({openModal: jest.fn((arg) => ({type: 'MOCK_OPEN_MODAL', arg}))}));
+jest.mock('mattermost-redux/actions/users', () => ({
+    ...jest.requireActual('mattermost-redux/actions/users'),
+    getProfilesInChannel: jest.fn(() => () => Promise.resolve({data: []})),
+}));
 jest.mock('components/file_preview_modal', () => () => null);
 
 jest.mock('./canvas_uploads', () => ({
@@ -81,7 +86,7 @@ window.PointerEvent ??= FakePointerEvent as unknown as typeof PointerEvent;
 // ownerId must look like a server id (26 lowercase alphanumerics) to survive parsing.
 const BOB = 'b'.repeat(26);
 const GHOST = 'c'.repeat(26);
-const state = {entities: {users: {currentUserId: 'user1', profiles: {user1: {id: 'user1', username: 'alice'}, [BOB]: {id: BOB, username: 'bob'}}}}};
+const state = {entities: {users: {currentUserId: 'user1', profiles: {user1: {id: 'user1', username: 'alice'}, [BOB]: {id: BOB, username: 'bob'}}, profilesInChannel: {channel1: new Set(['user1', BOB])}}}};
 
 async function renderBoard(readOnly = false) {
     renderWithContext(
@@ -589,6 +594,57 @@ describe('CanvasBoard', () => {
             fireEvent.pointerDown(surface, {button: 0, clientX: at[0], clientY: at[1]});
             fireEvent.pointerUp(surface, {clientX: at[0], clientY: at[1]});
         };
+
+        test('the panel shows the selected card owner picker and changes it in one undo step', async () => {
+            const {root, surface, byId} = await seed(false, card('A', 0, 1, {createdBy: 'user1', createdAt: 1700000000000}), image('i', 'A', 16, 2));
+            click(surface, [100, 20]);
+            const select = screen.getByRole('combobox', {name: 'Owner'});
+            expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual(['None', 'alice', 'bob']);
+            expect(screen.getByText(/Created by alice/)).toBeInTheDocument();
+
+            fireEvent.change(select, {target: {value: BOB}});
+            expect(byId('A').ownerId).toBe(BOB);
+            expect(byId('i').ownerId).toBeUndefined();
+            expect(screen.getByRole('combobox', {name: 'Owner'})).toHaveValue(BOB);
+
+            fireEvent.click(screen.getByRole('checkbox', {name: 'Done'}));
+            expect(byId('A').done).toBe(true);
+
+            fireEvent.change(screen.getByRole('combobox', {name: 'Owner'}), {target: {value: ''}});
+            expect(byId('A').ownerId).toBeUndefined();
+            fireEvent.keyDown(root, {key: 'z', ctrlKey: true});
+            expect(byId('A').ownerId).toBe(BOB);
+        });
+
+        test('an owner who is not in the channel still shows, by id when not loaded', async () => {
+            const {surface} = await seed(false, card('A', 0, 1, {ownerId: GHOST}));
+            click(surface, [100, 20]);
+            expect(screen.getByRole('combobox', {name: 'Owner'})).toHaveValue(GHOST);
+            expect(screen.getByRole('option', {name: GHOST})).toBeInTheDocument();
+        });
+
+        test('read-only users see the info panel for a selected card', async () => {
+            const {surface} = await seed(true, card('A', 0, 1, {ownerId: BOB, done: true}));
+            expect(screen.queryByRole('region', {name: 'Properties'})).not.toBeInTheDocument();
+            click(surface, [100, 20]);
+            const panel = screen.getByRole('region', {name: 'Properties'});
+            expect(within(panel).getByText('bob')).toBeInTheDocument();
+            expect(within(panel).getByText('Done')).toBeInTheDocument();
+            expect(within(panel).queryByRole('combobox')).not.toBeInTheDocument();
+            expect(within(panel).queryByRole('button')).not.toBeInTheDocument();
+        });
+
+        test('info shows the image uploader from its file info, fetched once', async () => {
+            const spy = jest.spyOn(Client4, 'getFileInfo').mockResolvedValue({user_id: BOB} as FileInfo);
+            const {surface} = await seed(false, card('A', 0, 1), image('i', 'A', 16, 2));
+            click(surface, [50, 100]);
+            expect(await screen.findByText(/Uploaded by bob/)).toBeInTheDocument();
+            click(surface, [100, 20]);
+            click(surface, [50, 100]);
+            expect(screen.getByText(/Uploaded by bob/)).toBeInTheDocument();
+            expect(spy).toHaveBeenCalledTimes(1);
+            expect(spy).toHaveBeenCalledWith(FILE);
+        });
 
         test('dragging a card moves its images with it, as one undo step', async () => {
             const {root, surface, byId} = await seed(false, card('A', 0, 1), image('i', 'A', 16, 2));

@@ -5,6 +5,10 @@ import React from 'react';
 import type {MessageDescriptor} from 'react-intl';
 import {defineMessages, useIntl} from 'react-intl';
 
+import type {UserProfile} from '@mattermost/types/users';
+
+import Timestamp from 'components/timestamp';
+
 import {keepFocus} from './canvas_toolbar';
 import type {AlignMode} from './geometry';
 import {DEFAULT_STYLE} from './model';
@@ -76,6 +80,13 @@ const messages = defineMessages({
     alignBottom: {id: 'canvas.props.alignBottom', defaultMessage: 'Align bottom', description: 'Line up the bottom edges of the selected elements'},
     actions: {id: 'canvas.props.actions', defaultMessage: 'Actions', description: 'Canvas properties: group of buttons that act on the selected elements'},
     duplicate: {id: 'canvas.props.duplicate', defaultMessage: 'Duplicate', description: 'Copy the selected elements'},
+    owner: {id: 'canvas.properties.owner', defaultMessage: 'Owner', description: 'Canvas properties: the person responsible for the selected storyboard card'},
+    noOwner: {id: 'canvas.properties.noOwner', defaultMessage: 'None', description: 'Canvas properties: owner option meaning the storyboard card has no owner'},
+    done: {id: 'canvas.properties.done', defaultMessage: 'Done', description: 'Canvas properties: marks the selected storyboard card as finished'},
+    frame: {id: 'canvas.properties.frame', defaultMessage: 'Frame colour', description: 'Canvas properties: colour of a storyboard card frame, used when the card has no owner'},
+    created: {id: 'canvas.properties.created', defaultMessage: 'Created by {name} · {date}', description: 'Canvas properties: who created the selected element and when; {name} is a username, {date} a date and time'},
+    edited: {id: 'canvas.properties.edited', defaultMessage: 'Last edited by {name} · {date}', description: 'Canvas properties: who last changed the selected element and when; {name} is a username, {date} a date and time'},
+    uploaded: {id: 'canvas.properties.uploaded', defaultMessage: 'Uploaded by {name}', description: 'Canvas properties: the username of the person who uploaded the selected image'},
     delete: {id: 'canvas.props.delete', defaultMessage: 'Delete', description: 'Remove the selected elements'},
 });
 
@@ -106,7 +117,84 @@ type Props = {
     onCommit?: () => void;
     onAction: (a: PanelAction) => void;
     selectionCount: number;
+
+    /** Read-only users get the info, owner name and done state as text, with no controls. */
+    readOnly?: boolean;
+
+    /** Names are already resolved; shown only when one element is selected. */
+    info?: {createdBy?: string; createdAt?: number; updatedBy?: string; updatedAt?: number; uploadedBy?: string};
+    scene?: {ownerId?: string; done: boolean; members: UserProfile[]};
+
+    /** ownerId undefined means "none" */
+    onSceneChange?: (patch: {ownerId?: string; done?: boolean}) => void;
 };
+
+function Info({info}: {info: NonNullable<Props['info']>}) {
+    const {formatMessage} = useIntl();
+    const date = (t: number) => (
+        <Timestamp
+            value={t}
+            useRelative={false}
+        />
+    );
+    return (
+        <div className='CanvasBoard__propsSection CanvasBoard__propsInfo'>
+            {info.createdBy && info.createdAt !== undefined && <div>{formatMessage(messages.created, {name: info.createdBy, date: date(info.createdAt)})}</div>}
+            {info.updatedBy && info.updatedAt !== undefined && <div>{formatMessage(messages.edited, {name: info.updatedBy, date: date(info.updatedAt)})}</div>}
+            {info.uploadedBy && <div>{formatMessage(messages.uploaded, {name: info.uploadedBy})}</div>}
+        </div>
+    );
+}
+
+function SceneFields({scene, readOnly, onSceneChange}: {scene: NonNullable<Props['scene']>; readOnly?: boolean; onSceneChange?: Props['onSceneChange']}) {
+    const {formatMessage} = useIntl();
+    const {ownerId, done, members} = scene;
+    const name = (id: string) => members.find((m) => m.id === id)?.username ?? id;
+    if (readOnly) {
+        return (
+            <div className='CanvasBoard__propsSection CanvasBoard__propsInfo'>
+                {ownerId && (
+                    <>
+                        <div className='CanvasBoard__propsLabel'>{formatMessage(messages.owner)}</div>
+                        <div>{name(ownerId)}</div>
+                    </>
+                )}
+                {done && <div>{formatMessage(messages.done)}</div>}
+            </div>
+        );
+    }
+    return (
+        <div className='CanvasBoard__propsSection'>
+            <label className='CanvasBoard__propsLabel'>
+                {formatMessage(messages.owner)}
+                <select
+                    className='form-control'
+                    value={ownerId ?? ''}
+                    onChange={(e) => onSceneChange?.({ownerId: e.target.value || undefined})}
+                >
+                    <option value=''>{formatMessage(messages.noOwner)}</option>
+                    {ownerId && !members.some((m) => m.id === ownerId) && <option value={ownerId}>{ownerId}</option>}
+                    {members.map((m) => (
+                        <option
+                            key={m.id}
+                            value={m.id}
+                        >
+                            {m.username}
+                        </option>
+                    ))}
+                </select>
+            </label>
+            <label className='CanvasBoard__propsLabel'>
+                <input
+                    type='checkbox'
+                    checked={done}
+                    onChange={(e) => onSceneChange?.({done: e.target.checked})}
+                />
+                <span className='CanvasBoard__propsCheck'>{formatMessage(messages.done)}</span>
+            </label>
+        </div>
+    );
+}
 
 function Section({label, children}: {label: MessageDescriptor; children: React.ReactNode}) {
     const {formatMessage} = useIntl();
@@ -200,7 +288,7 @@ function Buttons({label, options, onPick}: {label: MessageDescriptor; options: A
 // Keys typed in the panel must not reach the board's shortcuts.
 const stopKeys = (e: React.KeyboardEvent) => e.stopPropagation();
 
-export default function CanvasProperties({types, values, onChange, onCommit, onAction, selectionCount}: Props) {
+export default function CanvasProperties({types, values, onChange, onCommit, onAction, selectionCount, readOnly, info, scene, onSceneChange}: Props) {
     const {formatMessage} = useIntl();
 
     // A section shows only if every type in play supports it.
@@ -214,6 +302,33 @@ export default function CanvasProperties({types, values, onChange, onCommit, onA
         />
     );
 
+    const summary = (
+        <>
+            {info && <Info info={info}/>}
+            {scene && (
+                <SceneFields
+                    scene={scene}
+                    readOnly={readOnly}
+                    onSceneChange={onSceneChange}
+                />
+            )}
+        </>
+    );
+    const onlyScenes = types.every((t) => t === 'scene');
+    const onlyImages = types.every((t) => t === 'image');
+
+    if (readOnly) {
+        return (
+            <div
+                className='CanvasBoard__props'
+                role='region'
+                aria-label={formatMessage(messages.panel)}
+            >
+                {summary}
+            </div>
+        );
+    }
+
     return (
         // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- only stops key events from reaching the board
         <div
@@ -222,14 +337,17 @@ export default function CanvasProperties({types, values, onChange, onCommit, onA
             aria-label={formatMessage(messages.panel)}
             onKeyDown={stopKeys}
         >
-            <Colors
-                label={messages.stroke}
-                colors={STROKE_COLORS}
-                current={values.stroke}
-                onPick={(stroke) => onChange({stroke})}
-                onPickLive={(stroke) => onChange({stroke}, true)}
-                onCommit={onCommit}
-            />
+            {summary}
+            {!onlyImages && (
+                <Colors
+                    label={onlyScenes ? messages.frame : messages.stroke}
+                    colors={STROKE_COLORS}
+                    current={values.stroke}
+                    onPick={(stroke) => onChange({stroke})}
+                    onPickLive={(stroke) => onChange({stroke}, true)}
+                    onCommit={onCommit}
+                />
+            )}
             {has(...SHAPES) && (
                 <Colors
                     label={messages.background}
@@ -250,23 +368,25 @@ export default function CanvasProperties({types, values, onChange, onCommit, onA
             {has('text') && choices('fontSize', messages.fontSize, FONT_SIZES)}
             {has('text') && choices('fontFamily', messages.fontFamily, FONTS)}
             {has('text') && choices('textAlign', messages.textAlign, TEXT_ALIGNS)}
-            <div className='CanvasBoard__propsSection'>
-                <label className='CanvasBoard__propsLabel'>
-                    {formatMessage(messages.opacity)}
-                    <input
-                        type='range'
-                        className='CanvasBoard__opacity'
-                        min={0}
-                        max={100}
-                        step={1}
-                        value={values.opacity ?? 100}
-                        onChange={(e) => onChange({opacity: Number(e.target.value)}, true)}
-                        onPointerUp={onCommit}
-                        onKeyUp={onCommit}
-                        onBlur={onCommit}
-                    />
-                </label>
-            </div>
+            {!onlyScenes && (
+                <div className='CanvasBoard__propsSection'>
+                    <label className='CanvasBoard__propsLabel'>
+                        {formatMessage(messages.opacity)}
+                        <input
+                            type='range'
+                            className='CanvasBoard__opacity'
+                            min={0}
+                            max={100}
+                            step={1}
+                            value={values.opacity ?? 100}
+                            onChange={(e) => onChange({opacity: Number(e.target.value)}, true)}
+                            onPointerUp={onCommit}
+                            onKeyUp={onCommit}
+                            onBlur={onCommit}
+                        />
+                    </label>
+                </div>
+            )}
             {selectionCount > 0 && (
                 <Buttons
                     label={messages.layers}

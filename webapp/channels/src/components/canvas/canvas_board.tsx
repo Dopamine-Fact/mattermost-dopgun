@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useEffect, useLayoutEffect, useRef, useState} from 'react';
+import React, {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {defineMessages, useIntl} from 'react-intl';
 import {useDispatch, useSelector, useStore} from 'react-redux';
 
@@ -11,8 +11,9 @@ import {IconButton} from '@mattermost/compass-ui/components/icon-button';
 import {WithTooltip} from '@mattermost/shared/components/tooltip';
 import type {UserProfile} from '@mattermost/types/users';
 
+import {getProfilesInChannel} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
-import {getCurrentUser, getCurrentUserId, getUsers} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUser, getCurrentUserId, getUsers, makeGetProfilesInChannel} from 'mattermost-redux/selectors/entities/users';
 import {getFileUrl} from 'mattermost-redux/utils/file_utils';
 
 import {openModal} from 'actions/views/modals';
@@ -168,6 +169,7 @@ function Board({channelId, readOnly}: Props) {
     const users = useSelector(getUsers);
     const store = useStore<GlobalState>();
     const dispatch = useDispatch();
+    const getChannelProfiles = useMemo(() => makeGetProfilesInChannel(), []);
 
     const [{doc, elements, undo}] = useState(createCanvasDoc);
     const [ready, setReady] = useState(false);
@@ -189,6 +191,12 @@ function Board({channelId, readOnly}: Props) {
     const [canRedo, setCanRedo] = useState(false);
     const [progress, setProgress] = useState<{done: number; total: number}>();
     const [notice, setNotice] = useState<{skipped: string[]; failed: string[]}>();
+
+    // Uploader user id by file id, from the file's info; a fetch that fails just leaves the line out.
+    const [uploaders, setUploaders] = useState<Record<string, string>>({});
+    const fetchedRef = useRef(new Set<string>());
+    const aliveRef = useRef(true);
+    const channelMembers = useSelector((s: GlobalState) => getChannelProfiles(s, channelId));
 
     const rootRef = useRef<HTMLDivElement>(null);
     const surfaceRef = useRef<HTMLDivElement>(null);
@@ -991,8 +999,48 @@ function Board({channelId, readOnly}: Props) {
         );
     }
 
+    useEffect(() => {
+        aliveRef.current = true;
+        if (!readOnly) {
+            dispatch(getProfilesInChannel(channelId, 0, 200));
+        }
+        return () => {
+            aliveRef.current = false;
+        };
+
+        // Members load once per mount.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     // What the panel edits: the selection if there is one, else the style of the next element drawn.
     const picked = els.filter((el) => selected.includes(el.id));
+    const single = picked.length === 1 ? picked[0] : undefined;
+    const fileId = single?.type === 'image' ? single.fileId : undefined;
+    useEffect(() => {
+        if (!fileId || fetchedRef.current.has(fileId)) {
+            return;
+        }
+        fetchedRef.current.add(fileId);
+        Client4.getFileInfo(fileId).then((info) => {
+            if (aliveRef.current) {
+                setUploaders((u) => ({...u, [fileId]: info.user_id}));
+            }
+        }).catch(() => {});
+    }, [fileId]);
+
+    const nameOf = (id?: string) => (id ? (users[id]?.username ?? id) : undefined);
+    const owner = single?.type === 'scene' && single.ownerId ? users[single.ownerId] : undefined;
+    const panelInfo = single && {
+        createdBy: nameOf(single.createdBy),
+        createdAt: single.createdAt,
+        updatedBy: nameOf(single.updatedBy),
+        updatedAt: single.updatedAt,
+        uploadedBy: fileId ? nameOf(uploaders[fileId]) : undefined,
+    };
+
+    // The owner is listed even when not a member of this channel (and, read-only, members are not loaded at all).
+    const panelScene = single?.type === 'scene' ? {ownerId: single.ownerId, done: single.done ?? false, members: [...channelMembers, ...(owner && !channelMembers.some((m) => m.id === owner.id) ? [owner] : [])].sort((a, b) => a.username.localeCompare(b.username))} : undefined;
+    const onSceneChange = (patch: {ownerId?: string; done?: boolean}) => discrete(() => updateElements(doc, [single!.id], patch));
     let panelTypes: ElementType[] = [...new Set(picked.map((el) => el.type))];
     if (!picked.length && activeTool in DRAW_TOOLS) {
         panelTypes = [DRAW_TOOLS[activeTool]!];
@@ -1036,8 +1084,12 @@ function Board({channelId, readOnly}: Props) {
                 onDoubleClick={onDoubleClick}
             />
             {textarea}
-            {panelTypes.length > 0 && !readOnly && (
+            {(readOnly ? Boolean(single && (single.type === 'scene' || single.type === 'image')) : panelTypes.length > 0) && (
                 <CanvasProperties
+                    readOnly={readOnly}
+                    info={panelInfo}
+                    scene={panelScene}
+                    onSceneChange={onSceneChange}
                     types={panelTypes}
                     values={panelValues}
                     selectionCount={picked.length}

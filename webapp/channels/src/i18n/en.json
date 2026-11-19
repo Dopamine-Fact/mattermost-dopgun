@@ -19479,6 +19479,34 @@
     "defaultMessage": "Card label",
     "description": "Accessible name of the text box in which a storyboard card's label is edited on the canvas."
   },
+  "canvas.properties.created": {
+    "defaultMessage": "Created by {name} · {date}",
+    "description": "Canvas properties: who created the selected element and when; {name} is a username, {date} a date and time"
+  },
+  "canvas.properties.done": {
+    "defaultMessage": "Done",
+    "description": "Canvas properties: marks the selected storyboard card as finished"
+  },
+  "canvas.properties.edited": {
+    "defaultMessage": "Last edited by {name} · {date}",
+    "description": "Canvas properties: who last changed the selected element and when; {name} is a username, {date} a date and time"
+  },
+  "canvas.properties.frame": {
+    "defaultMessage": "Frame colour",
+    "description": "Canvas properties: colour of a storyboard card frame, used when the card has no owner"
+  },
+  "canvas.properties.noOwner": {
+    "defaultMessage": "None",
+    "description": "Canvas properties: owner option meaning the storyboard card has no owner"
+  },
+  "canvas.properties.owner": {
+    "defaultMessage": "Owner",
+    "description": "Canvas properties: the person responsible for the selected storyboard card"
+  },
+  "canvas.properties.uploaded": {
+    "defaultMessage": "Uploaded by {name}",
+    "description": "Canvas properties: the username of the person who uploaded the selected image"
+  },
   "canvas.props.actions": {
     "defaultMessage": "Actions",
     "description": "Canvas properties: group of buttons that act on the selected elements"
