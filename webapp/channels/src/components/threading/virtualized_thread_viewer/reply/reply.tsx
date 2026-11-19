@@ -16,6 +16,7 @@ type Props = {
     onCardClick: (post: Post) => void;
     post: Post;
     previousPostId: string;
+    nextPostId?: string;
     timestampProps?: Partial<TimestampProps>;
     isChannelAutotranslated: boolean;
 };
@@ -26,6 +27,7 @@ function Reply({
     onCardClick,
     post,
     previousPostId,
+    nextPostId,
     timestampProps,
     isChannelAutotranslated,
 }: Props) {
@@ -36,6 +38,7 @@ function Reply({
             isLastPost={isLastPost}
             post={post}
             previousPostId={previousPostId}
+            nextPostId={nextPostId}
             timestampProps={timestampProps}
             location={Locations.RHS_COMMENT}
             isChannelAutotranslated={isChannelAutotranslated}

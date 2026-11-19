@@ -346,6 +346,7 @@ export default class PostList extends React.PureComponent<Props, State> {
                 <PostListRow
                     listId={itemId}
                     previousListId={getPreviousPostId(data, index)}
+                    nextListId={data[index - 1]}
                     shouldHighlight={itemId === this.props.focusedPostId}
                     loadOlderPosts={this.props.actions.loadOlderPosts}
                     loadNewerPosts={this.props.actions.loadNewerPosts}

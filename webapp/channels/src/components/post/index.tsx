@@ -51,6 +51,9 @@ import PostComponent from './post_component';
 type OwnProps = {
     post?: Post | UserActivityPost;
     previousPostId?: string;
+
+    // The post rendered right after this one, used to keep one read receipt per group.
+    nextPostId?: string;
     postId?: string;
     shouldHighlight?: boolean;
     location: keyof typeof Locations;
@@ -211,6 +214,7 @@ function makeMapStateToProps() {
             channel,
             channelIsArchived: isArchivedChannel(channel),
             isConsecutivePost: isConsecutivePost(state, ownProps, locale),
+            isFollowedByConsecutivePost: Boolean(ownProps.nextPostId) && isConsecutivePost(state, {location: ownProps.location, postId: ownProps.nextPostId, previousPostId: post.id}, locale),
             previousPostIsComment,
             isFlagged: isPostFlagged(state, post.id),
             compactDisplay: get(state, Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.MESSAGE_DISPLAY, Preferences.MESSAGE_DISPLAY_DEFAULT) === Preferences.MESSAGE_DISPLAY_COMPACT,

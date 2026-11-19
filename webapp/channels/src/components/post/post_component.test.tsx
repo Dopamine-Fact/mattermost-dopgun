@@ -778,6 +778,31 @@ describe('PostComponent', () => {
         });
     });
 
+    describe('read receipt', () => {
+        const ownPost = TestHelper.getPostMock({id: 'p1', pending_post_id: 'p1', type: '' as PostType, user_id: 'currentUserId', channel_id: channel.id});
+
+        test('shows on the last message of a run', () => {
+            renderWithContext(
+                <PostComponent
+                    {...baseProps}
+                    post={ownPost}
+                />,
+            );
+            expect(screen.queryByTestId('postReadReceipt')).not.toBeNull();
+        });
+
+        test('leaves it to the next message when that one continues the run', () => {
+            renderWithContext(
+                <PostComponent
+                    {...baseProps}
+                    post={ownPost}
+                    isFollowedByConsecutivePost={true}
+                />,
+            );
+            expect(screen.queryByTestId('postReadReceipt')).toBeNull();
+        });
+    });
+
     describe('AI-generated indicator', () => {
         const aiGeneratedPost = TestHelper.getPostMock({
             channel_id: channel.id,

@@ -28,6 +28,7 @@ type Props = {
     listId: string;
     onCardClick: (post: Post) => void;
     previousPostId: string;
+    nextPostId?: string;
     timestampProps?: Partial<TimestampProps>;
     threadId: string;
     newMessagesSeparatorActions: NewMessagesSeparatorActionComponent[];
@@ -43,6 +44,7 @@ function ThreadViewerRow({
     listId,
     onCardClick,
     previousPostId,
+    nextPostId,
     timestampProps,
     threadId,
     newMessagesSeparatorActions,
@@ -103,6 +105,7 @@ function ThreadViewerRow({
                 isLastPost={isLastPost}
                 onCardClick={onCardClick}
                 previousPostId={previousPostId}
+                nextPostId={nextPostId}
                 timestampProps={timestampProps}
                 isChannelAutotranslated={isChannelAutotranslated}
             />

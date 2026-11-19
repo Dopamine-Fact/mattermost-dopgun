@@ -28,6 +28,7 @@ import type {NewMessagesSeparatorActionComponent} from 'types/store/plugins';
 export type PostListRowProps = {
     listId: string;
     previousListId?: string;
+    nextListId?: string;
     fullWidth?: boolean;
     shouldHighlight?: boolean;
     loadOlderPosts: () => void;
@@ -165,6 +166,7 @@ export default class PostListRow extends React.PureComponent<PostListRowProps> {
 
         const postProps = {
             previousPostId: previousListId,
+            nextPostId: this.props.nextListId,
             shouldHighlight: Boolean(this.props.shouldHighlight),
             togglePostMenu: this.props.togglePostMenu,
             isLastPost: this.props.isLastPost,

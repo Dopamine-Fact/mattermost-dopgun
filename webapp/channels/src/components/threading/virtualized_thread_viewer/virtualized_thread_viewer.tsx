@@ -368,6 +368,7 @@ class ThreadViewerVirtualized extends PureComponent<Props, State> {
                     listId={itemId}
                     onCardClick={this.props.onCardClick}
                     previousPostId={getPreviousPostId(data, index)}
+                    nextPostId={data[index - 1]}
                     timestampProps={this.props.useRelativeTimestamp ? THREADING_TIME : undefined}
                     threadId={this.props.selected.id}
                     newMessagesSeparatorActions={this.props.newMessagesSeparatorActions}

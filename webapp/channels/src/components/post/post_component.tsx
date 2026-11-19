@@ -83,6 +83,7 @@ export type Props = {
     pluginPostTypes?: {[postType: string]: PostPluginComponent};
     channelIsArchived?: boolean;
     isConsecutivePost?: boolean;
+    isFollowedByConsecutivePost?: boolean;
     isLastPost?: boolean;
     recentEmojis: Emoji[];
     center: boolean;
@@ -600,7 +601,9 @@ function PostComponent(props: Props) {
     // `badges-wrapper`.
     const showPostHeaderBadge = showTimestamp && (!props.isConsecutivePost || props.compactDisplay);
 
+    // A run of own messages shares one receipt on its last message.
     const showReadReceipt =
+        !props.isFollowedByConsecutivePost &&
         post.user_id === props.currentUserId &&
         !isSystemMessage &&
         !post.failed &&
