@@ -298,7 +298,11 @@ function shapeKey(el: DrawElement) {
     return JSON.stringify(rest) + pts + (finalFileId ? ':final' : '');
 }
 
-type Item = {key: string; obj: Container; texts: Text[]; sprite?: Sprite};
+// shown: the sprite's last real texture, kept on screen (and retained) while a texture of another size loads.
+type Item = {key: string; obj: Container; texts: Text[]; sprite?: Sprite; shown?: {fileId: string; key: string; texture: Texture}};
+
+// Graphics only free their context when asked; texture stays false, as cached textures are shared.
+const DESTROY_ITEM = {children: true, context: true};
 type CursorItem = {root: Container; label: Text; badge: Graphics; name: string; color: string};
 
 /** Draws the board with Pixi inside a pan/zoom viewport. Coordinates from toScreen are relative to the host element. */
@@ -370,7 +374,7 @@ export class CanvasRenderer {
             const key = shapeKey(el);
             let item = this.items.get(el.id);
             if (!item || item.key !== key) {
-                item?.obj.destroy({children: true}); // without texture: true, cached textures are shared
+                item?.obj.destroy(DESTROY_ITEM);
                 let obj: Container;
                 try {
                     obj = build(el);
@@ -391,7 +395,7 @@ export class CanvasRenderer {
         });
         for (const [id, item] of this.items) {
             if (!seen.has(id)) {
-                item.obj.destroy({children: true});
+                item.obj.destroy(DESTROY_ITEM);
                 this.items.delete(id);
             }
         }
@@ -521,8 +525,8 @@ export class CanvasRenderer {
         const zoom = this.getZoom();
         const used = new Set<string>();
         for (const el of this.els) {
-            const sprite = this.items.get(el.id)?.sprite;
-            if (!sprite) {
+            const item = this.items.get(el.id);
+            if (!item?.sprite) {
                 continue;
             }
             const fileId = el.type === 'image' ? el.fileId : el.finalFileId;
@@ -532,10 +536,21 @@ export class CanvasRenderer {
             let texture: Texture | undefined;
             if (fileId && x < view.x + view.w && view.x < x + slot.w && y < view.y + view.h && view.y < y + slot.h) {
                 const size = textureSize(slot.h * zoom);
+                const key = textureKey(fileId, size);
                 texture = this.textures.get(fileId, size);
-                used.add(textureKey(fileId, size));
+                used.add(key);
+                const shown = item.shown;
+                if (texture) {
+                    item.shown = {fileId, key, texture};
+                } else if (shown?.fileId === fileId && !shown.texture.destroyed) {
+                    texture = shown.texture; // the other size, until the wanted one loads
+                    used.add(shown.key);
+                }
             }
-            fitSprite(sprite, texture, slot, el.type === 'scene');
+            if (!texture) {
+                item.shown = undefined;
+            }
+            fitSprite(item.sprite, texture, slot, el.type === 'scene');
         }
         this.textures.retain(used);
     }
