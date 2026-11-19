@@ -2263,6 +2263,10 @@
     "translation": "Bu gün için zaten bir rapor var."
   },
   {
+    "id": "app.daily_report.day_closed.app_error",
+    "translation": "Bu gün geçti ve bu gün için rapor gönderilmedi."
+  },
+  {
     "id": "app.daily_report.disabled.app_error",
     "translation": "Bu takım için günlük raporlar etkin değil."
   },

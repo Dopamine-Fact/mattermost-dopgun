@@ -1268,7 +1268,7 @@ type DailyReportStore interface {
 	GetBeforeDate(teamID, status, beforeDate string) ([]*model.DailyReport, error)
 	// Excuse turns a draft into an excused day; ErrConflict when the report is no longer a draft.
 	Excuse(id, reviewerID string, excusedAt int64) error
-	// Delete removes a report and its file links (not the files); *store.ErrNotFound when missing.
+	// Delete removes a draft and its file links (not the files); *store.ErrNotFound when no draft has that id.
 	Delete(id string) error
 	// AddFile links a file to a report; linking the same pair twice is an error.
 	AddFile(reportID, fileID string, createAt int64) error
