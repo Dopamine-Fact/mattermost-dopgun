@@ -270,7 +270,7 @@ describe('storyboard elements', () => {
         expect(both[0]).not.toHaveProperty('createdBy');
         expect(both[0]).not.toHaveProperty('updatedAt');
 
-        expect(copyElements([i1], 0, 0, 0)[0].sceneId).toBe(S);
+        expect(copyElements([i1], 0, 0, 0)[0].sceneId).toBeUndefined(); // its card is not copied with it
     });
 
     test('duplicateElements copies a scene with its images', () => {

@@ -644,11 +644,15 @@ function Board({channelId, readOnly}: Props) {
         if (!g || e.pointerId !== g.pointerId) {
             return;
         }
+        if (g.kind === 'move' && e.type !== 'pointerup') {
+            cancelGesture(); // the drop point is unknown, so undo the move rather than leave positions and membership disagreeing
+            return;
+        }
         if (g.kind === 'pen') {
             flushPen(g);
         } else if (g.kind === 'resize') {
             flushResize(g);
-        } else if (g.kind === 'move' && renderer && e.type === 'pointerup') {
+        } else if (g.kind === 'move' && renderer) {
             // Dropping an image on a card (or on the empty board) re-parents it, in the same undo step as the move.
             const p = renderer.toWorld(e.clientX, e.clientY);
             if (p.x !== g.start.x || p.y !== g.start.y) {

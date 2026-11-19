@@ -230,6 +230,7 @@ export function copyElements(els: CanvasElement[], dx: number, dy: number, top: 
     return els.map((el, i) => {
         const copy = {...el};
         STAMPS.forEach((k) => delete copy[k]);
+        delete copy.sceneId; // a copy keeps a card only when that card is copied with it
         return {
             ...copy,
             id: newIds.get(el.id)!,

@@ -633,6 +633,30 @@ describe('CanvasBoard', () => {
             expect(byId('i')).toMatchObject({sceneId: 'A', x: 16});
         });
 
+        test('a cancelled image drag leaves position and card as they were', async () => {
+            const {root, surface, byId} = await seed(false, card('A', 0, 1), card('B', 500, 2), image('i', 'A', 16, 3));
+            fireEvent.pointerDown(surface, {button: 0, clientX: 50, clientY: 100});
+            fireEvent.pointerMove(surface, {clientX: 550, clientY: 100});
+            expect(byId('i').x).toBe(516);
+            fireEvent.pointerCancel(surface, {clientX: 550, clientY: 100});
+            expect(byId('i')).toMatchObject({sceneId: 'A', x: 16});
+            expect(screen.getByRole('button', {name: 'Redo'})).toBeDisabled();
+            expect(root).toBeInTheDocument();
+        });
+
+        test('pasting a lone image does not keep it attached to the original card', async () => {
+            const {root, surface, els} = await seed(false, card('A', 0, 1), image('i', 'A', 16, 2));
+            click(surface, [50, 100]);
+            fireEvent.keyDown(root, {key: 'c', ctrlKey: true});
+            fireEvent.paste(root, {clipboardData: {files: [], types: ['text/plain']}});
+            fireEvent.keyDown(root, {key: 'd', ctrlKey: true});
+
+            const copies = els().filter((e) => e.type === 'image' && e.id !== 'i');
+            expect(copies).toHaveLength(2);
+            expect(copies.every((e) => e.sceneId === undefined)).toBe(true);
+            expect(els().find((e) => e.id === 'i')!.sceneId).toBe('A');
+        });
+
         test('clicking an image does not re-parent it', async () => {
             const {surface, byId} = await seed(false, card('A', 0, 1), card('B', 50, 5), image('i', 'A', 16, 3));
             click(surface, [60, 100]);
