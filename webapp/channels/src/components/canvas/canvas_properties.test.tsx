@@ -5,6 +5,8 @@ import {act, fireEvent, screen, within} from '@testing-library/react';
 import React from 'react';
 import type * as Y from 'yjs';
 
+import type {UserProfile} from '@mattermost/types/users';
+
 import {renderWithContext} from 'tests/react_testing_utils';
 
 import CanvasBoard from './canvas_board';
@@ -294,5 +296,96 @@ describe('CanvasBoard properties panel', () => {
 
         fireEvent.keyDown(screen.getByRole('button', {name: 'Thin'}), {key: 'e'});
         expect(screen.getByRole('button', {name: 'Eraser'})).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    describe('storyboard cards', () => {
+        const members = [{id: 'user1', username: 'alice'}, {id: 'user2', username: 'bob'}] as UserProfile[];
+        const renderScene = (props: Partial<React.ComponentProps<typeof CanvasProperties>> = {}) => {
+            const onSceneChange = jest.fn();
+            renderWithContext(
+                <CanvasProperties
+                    types={['scene']}
+                    values={{}}
+                    selectionCount={1}
+                    onChange={jest.fn()}
+                    onAction={jest.fn()}
+                    scene={{done: false, members}}
+                    onSceneChange={onSceneChange}
+                    {...props}
+                />,
+            );
+            return {onSceneChange};
+        };
+
+        test('shows created and edited lines', () => {
+            renderScene({info: {createdBy: 'alice', createdAt: 1700000000000, updatedBy: 'bob', updatedAt: 1700000100000}});
+            expect(screen.getByText(/Created by alice/)).toBeInTheDocument();
+            expect(screen.getByText(/Last edited by bob/)).toBeInTheDocument();
+        });
+
+        test('shows Uploaded by for an image', () => {
+            renderWithContext(
+                <CanvasProperties
+                    types={['image']}
+                    values={{}}
+                    selectionCount={1}
+                    onChange={jest.fn()}
+                    onAction={jest.fn()}
+                    info={{uploadedBy: 'carol'}}
+                />,
+            );
+            expect(screen.getByText(/Uploaded by carol/)).toBeInTheDocument();
+        });
+
+        test('a scene shows the frame colour and no opacity; an image shows opacity and no stroke', () => {
+            const {unmount} = renderPanel(['scene'], {}, 1);
+            expect(has('Frame colour')).toBe(true);
+            expect(screen.queryByRole('slider', {name: 'Opacity'})).not.toBeInTheDocument();
+            unmount();
+            renderPanel(['image'], {}, 1);
+            expect(has('Stroke')).toBe(false);
+            expect(screen.getByRole('slider', {name: 'Opacity'})).toBeInTheDocument();
+        });
+
+        test('an owned card hides the frame colour, which the owner colour replaces', () => {
+            renderScene({scene: {ownerId: 'user1', done: false, members}});
+            expect(has('Frame colour')).toBe(false);
+        });
+
+        test('picks an owner from members, with None', () => {
+            const {onSceneChange} = renderScene({scene: {ownerId: 'user1', done: false, members}});
+            const select = screen.getByRole('combobox', {name: 'Owner'});
+            expect(select).toHaveValue('user1');
+            expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual(['None', 'alice', 'bob']);
+
+            fireEvent.change(select, {target: {value: 'user2'}});
+            expect(onSceneChange).toHaveBeenLastCalledWith({ownerId: 'user2'});
+            fireEvent.change(select, {target: {value: ''}});
+            expect(onSceneChange).toHaveBeenLastCalledWith({ownerId: undefined});
+        });
+
+        test('an owner who is not a member stays in the picker, by id when unknown', () => {
+            renderScene({scene: {ownerId: 'gone', done: false, members}});
+            const select = screen.getByRole('combobox', {name: 'Owner'});
+            expect(select).toHaveValue('gone');
+            expect(within(select).getByRole('option', {name: 'gone'})).toBeInTheDocument();
+        });
+
+        test('toggles done', () => {
+            const {onSceneChange} = renderScene();
+            fireEvent.click(screen.getByRole('checkbox', {name: 'Done'}));
+            expect(onSceneChange).toHaveBeenCalledWith({done: true});
+        });
+
+        test('read-only shows info, owner and done without controls', () => {
+            renderScene({readOnly: true, scene: {ownerId: 'user2', ownerName: 'bob', done: true, members}, info: {createdBy: 'alice', createdAt: 1700000000000}});
+            expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+            expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+            expect(screen.queryByRole('button')).not.toBeInTheDocument();
+            expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
+            expect(screen.getByText(/Created by alice/)).toBeInTheDocument();
+            expect(screen.getByText(/bob/)).toBeInTheDocument();
+            expect(screen.getByText('Done')).toBeInTheDocument();
+        });
     });
 });

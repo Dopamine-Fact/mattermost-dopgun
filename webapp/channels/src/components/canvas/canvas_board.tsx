@@ -3,14 +3,25 @@
 
 import React, {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import {defineMessages, useIntl} from 'react-intl';
-import {useSelector, useStore} from 'react-redux';
+import {useDispatch, useSelector, useStore} from 'react-redux';
+
+import {CloseIcon} from '@mattermost/compass-icons/components';
+import {Icon} from '@mattermost/compass-ui/components/icon';
+import {IconButton} from '@mattermost/compass-ui/components/icon-button';
+import {WithTooltip} from '@mattermost/shared/components/tooltip';
+import type {UserProfile} from '@mattermost/types/users';
 
 import {Client4} from 'mattermost-redux/client';
 import {getCurrentUser, getCurrentUserId, getUsers} from 'mattermost-redux/selectors/entities/users';
+import {getFileUrl} from 'mattermost-redux/utils/file_utils';
 
+import {openModal} from 'actions/views/modals';
 import {getConnectionId} from 'selectors/general';
 
+import FilePreviewModal from 'components/file_preview_modal';
+
 import WebClient from 'client/web_websocket_client';
+import {ModalIdentifiers} from 'utils/constants';
 import {generateId} from 'utils/utils';
 
 import type {GlobalState} from 'types/store';
@@ -18,31 +29,38 @@ import type {GlobalState} from 'types/store';
 import CanvasFooter from './canvas_footer';
 import CanvasProperties from './canvas_properties';
 import type {PanelAction} from './canvas_properties';
-import CanvasToolbar, {TOOLS} from './canvas_toolbar';
+import CanvasToolbar, {TOOLS, keepFocus} from './canvas_toolbar';
 import type {Tool} from './canvas_toolbar';
-import {align, bounds, hitTest, inRect, resizeAll, unionBounds} from './geometry';
+import {isImageFile, uploadImages} from './canvas_uploads';
+import {bounds, hitTest, inRect, resizeAll, unionBounds} from './geometry';
 import type {Bounds, Handle, Point, ResizePatch} from './geometry';
 import {
     DEFAULT_STYLE,
     FONT_FAMILIES,
     LOCAL,
+    MAX_LABEL_LENGTH,
     MAX_TEXT_LENGTH,
     addElement,
+    copyElements,
     createCanvasDoc,
     deleteElements,
     duplicateElements,
     randomSeed,
     readElements,
     reorder,
+    setLocalAuthor,
     updateElements,
     updateInBatches,
+    withChildren,
     writeInBatches,
 } from './model';
 import type {CanvasElement, ElementStyle, ElementType} from './model';
 import {CanvasRenderer} from './renderer';
-import type {RemoteCursor, RemoteSelection} from './renderer';
+import type {DrawElement, RemoteCursor, RemoteSelection} from './renderer';
+import {SCENE_HEADER, alignWithImages, joinCards, labelFor, layoutScenes, membershipPatches, sceneAt, sceneParts, sortByName, stackInScene} from './storyboard';
 import {CanvasSync} from './sync';
 import type {SyncStatus} from './sync';
+import {useCanvasPeople} from './use_canvas_people';
 
 import './canvas.scss';
 
@@ -51,6 +69,9 @@ const MAX_PEN_POINTS = 1000;
 const FLUSH_MS = 200; // how often a pen stroke or resize in progress reaches the doc
 const HIT_PX = 6;
 const MAX_SELECTION = 50;
+const CLICK_PX = 4; // a press that moves less than this (screen pixels) is a click: it neither selects nor drags
+const MIN_CARD = 2 * SCENE_HEADER;
+const LABEL_FONT = 20;
 const PEER_COLORS = ['#e03131', '#2f9e44', '#1971c2', '#f08c00', '#9c36b5', '#0c8599', '#e8590c', '#5c940d'];
 const HANDLES: Array<[Handle, number, number]> = [['nw', 0, 0], ['ne', 1, 0], ['sw', 0, 1], ['se', 1, 1]];
 const DRAW_TOOLS: Partial<Record<Tool, ElementType>> = {pen: 'pen', rect: 'rect', ellipse: 'ellipse', line: 'line', arrow: 'arrow', text: 'text'};
@@ -63,7 +84,22 @@ const messages = defineMessages({
     offline: {id: 'canvas.status.offline', defaultMessage: 'Offline'},
     error: {id: 'canvas.status.error', defaultMessage: 'Changes not saved — retrying'},
     unsupported: {id: 'canvas.unsupported', defaultMessage: 'This browser can’t display the canvas.'},
+    uploading: {id: 'canvas.import.uploading', defaultMessage: 'Uploading images {done}/{total}…'},
+    skipped: {id: 'canvas.import.skipped', defaultMessage: 'Only PNG and JPEG images can be added. Skipped: {names}'},
+    uploadFailed: {id: 'canvas.import.failed', defaultMessage: 'Could not upload: {names}'},
+    oneFinal: {id: 'canvas.import.oneFinal', defaultMessage: 'A card holds one final image. Skipped: {names}'},
+    leftOut: {id: 'canvas.paste.leftOut', defaultMessage: 'Images copied from another channel were left out, as they can only be viewed there.'},
+    dismiss: {id: 'canvas.import.dismiss', defaultMessage: 'Dismiss'},
+    labelInput: {id: 'canvas.labelInput', defaultMessage: 'Card label'},
 });
+
+const MAX_NAMES = 5;
+const nameList = (names: string[]) => names.slice(0, MAX_NAMES).join(', ') + (names.length > MAX_NAMES ? ' …' : '');
+const isTextTarget = (t: EventTarget | null) => {
+    const el = t as HTMLElement | null;
+    return Boolean(el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)));
+};
+const contains = (b: Bounds, p: Point) => p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h;
 
 /** A stable colour per user, so everyone sees the same colour for a peer. */
 export function colorFor(userId: string) {
@@ -74,8 +110,20 @@ export function colorFor(userId: string) {
     return PEER_COLORS[h % PEER_COLORS.length];
 }
 
+/** Scene cards drawn in their owner's colour, with the owner's name when that user is loaded. */
+export function forDrawing(els: CanvasElement[], users: Record<string, UserProfile>): DrawElement[] {
+    return els.map((el) => (el.type === 'scene' && el.ownerId ? {...el, stroke: colorFor(el.ownerId), ownerName: users[el.ownerId]?.username} : el));
+}
+
+// A card never shrinks below MIN_CARD or flips: the side opposite the dragged handle stays where it was.
+function clampCard(pt: ResizePatch, handle: Handle): ResizePatch {
+    const w = Math.max(pt.w!, MIN_CARD);
+    const h = Math.max(pt.h!, MIN_CARD);
+    return {...pt, w, h, x: handle.includes('w') ? (pt.x! + pt.w!) - w : pt.x, y: handle.includes('n') ? (pt.y! + pt.h!) - h : pt.y};
+}
+
 // In memory and shared by every board on the page, so elements can be copied between canvases.
-let clipboard: CanvasElement[] = [];
+let clipboard: {channelId: string; els: CanvasElement[]} = {channelId: '', els: []};
 
 const handleAt = (b: Bounds, p: Point, tol: number) =>
     HANDLES.find(([, fx, fy]) => Math.abs(p.x - (b.x + (fx * b.w))) <= tol && Math.abs(p.y - (b.y + (fy * b.h))) <= tol)?.[0];
@@ -87,7 +135,7 @@ type PenGesture = {kind: 'pen'; el: CanvasElement; abs: number[]; flushed: numbe
 type ResizeGesture = {kind: 'resize'; start: Point; orig: CanvasElement[]; handle: Handle; pending?: ResizePatch[]; flushedAt: number};
 
 type Gesture = (
-    {kind: 'move'; start: Point; orig: CanvasElement[]} |
+    {kind: 'move'; start: Point; screen: Point; orig: CanvasElement[]; moved?: boolean} |
     ResizeGesture |
     {kind: 'marquee'; start: Point; base: string[]} |
     {kind: 'draw'; start: Point; type: ElementType; id?: string} |
@@ -108,7 +156,8 @@ function penElement(g: PenGesture): CanvasElement {
     return {...g.el, x: minX, y: minY, w: maxX - minX, h: maxY - minY, points: g.abs.map((v, i) => v - (i % 2 ? minY : minX))};
 }
 
-type Editing = {id: string; x: number; y: number; isNew: boolean; style: ElementStyle; text: string};
+// field is set while a scene card's label is edited; otherwise it is a text element.
+type Editing = {id: string; x: number; y: number; isNew: boolean; style: ElementStyle; text: string; field?: 'label'};
 
 type Props = {
     channelId: string;
@@ -121,6 +170,7 @@ function Board({channelId, readOnly}: Props) {
     const me = useSelector(getCurrentUser);
     const users = useSelector(getUsers);
     const store = useStore<GlobalState>();
+    const dispatch = useDispatch();
 
     const [{doc, elements, undo}] = useState(createCanvasDoc);
     const [ready, setReady] = useState(false);
@@ -140,6 +190,8 @@ function Board({channelId, readOnly}: Props) {
     const [status, setStatus] = useState<SyncStatus>('loading');
     const [canUndo, setCanUndo] = useState(false);
     const [canRedo, setCanRedo] = useState(false);
+    const [progress, setProgress] = useState<{done: number; total: number}>();
+    const [notice, setNotice] = useState<{skipped: string[]; failed: string[]; extra?: string[]; leftOut?: boolean}>();
 
     const rootRef = useRef<HTMLDivElement>(null);
     const surfaceRef = useRef<HTMLDivElement>(null);
@@ -150,6 +202,10 @@ function Board({channelId, readOnly}: Props) {
     const gestureStackRef = useRef(0);
     const pointersRef = useRef(new Set<number>());
     const pointerRef = useRef<Point | undefined>(undefined);
+    const readDownRef = useRef<Point | undefined>(undefined);
+
+    // Writes held back until the gesture ends, so they neither join its undo step nor are undone with it.
+    const deferredRef = useRef<Array<() => void>>([]);
 
     // Handlers read these rather than state, which can lag behind the doc within one event.
     const elsRef = useRef<CanvasElement[]>([]);
@@ -203,6 +259,12 @@ function Board({channelId, readOnly}: Props) {
             setMarquee(undefined);
             select(g.base);
         }
+        runDeferred();
+    };
+    const runDeferred = () => {
+        const fns = deferredRef.current;
+        deferredRef.current = [];
+        fns.forEach((fn) => fn());
     };
     const discrete = (fn: () => void) => {
         undo.stopCapturing();
@@ -210,10 +272,16 @@ function Board({channelId, readOnly}: Props) {
         undo.stopCapturing();
     };
 
+    useEffect(() => {
+        setLocalAuthor(doc, userId);
+    }, [doc, userId]);
+
     const duplicateSelection = () => {
         let ids: string[] = [];
         discrete(() => {
+            const before = new Set(elsRef.current.map((el) => el.id));
             ids = duplicateElements(doc, selRef.current);
+            updateInBatches(doc, joinCards(elsRef.current.filter((el) => !before.has(el.id)), elsRef.current));
         });
         select(ids);
     };
@@ -391,10 +459,10 @@ function Board({channelId, readOnly}: Props) {
 
     useEffect(() => {
         // A stroke being drawn or a resize in progress shows from local state; the doc only gets it every FLUSH_MS.
-        const hidden = new Set([editing?.id, ...preview.map((el) => el.id)]);
-        renderer?.draw([...els.filter((el) => !hidden.has(el.id)), ...preview], selected, marquee);
+        const hidden = new Set([editing?.field ? undefined : editing?.id, ...preview.map((el) => el.id)]);
+        renderer?.draw(forDrawing([...els.filter((el) => !hidden.has(el.id)), ...preview], users), selected, marquee);
         drawPeersRef.current();
-    }, [renderer, els, selected, marquee, editing, preview]);
+    }, [renderer, els, selected, marquee, editing, preview, users]);
 
     useEffect(() => {
         renderer?.setPanMode(pan);
@@ -430,6 +498,10 @@ function Board({channelId, readOnly}: Props) {
         }
         edit(undefined);
         const text = textRef.current?.value ?? ed.text;
+        if (ed.field) {
+            discrete(() => updateElements(doc, [ed.id], {label: text.replace(/[\r\n]/g, '').slice(0, MAX_LABEL_LENGTH)}));
+            return;
+        }
         const zoom = renderer?.getZoom() ?? 1;
         const lines = text.split('\n');
         const w = ((textRef.current?.scrollWidth ?? 0) / zoom) || (Math.max(...lines.map((l) => l.length)) * ed.style.fontSize * 0.6);
@@ -451,6 +523,9 @@ function Board({channelId, readOnly}: Props) {
     };
 
     const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (readOnly && e.button === 0) {
+            readDownRef.current = {x: e.clientX, y: e.clientY};
+        }
         if (!renderer || e.button !== 0 || pan || editingRef.current) {
             return;
         }
@@ -477,12 +552,16 @@ function Board({channelId, readOnly}: Props) {
                 return;
             }
             const id = hitTest(all, p, tol);
-            if (id && e.shiftKey) {
+            const hit = all.find((el) => el.id === id);
+            if (hit?.type === 'scene' && contains(sceneParts(bounds(hit)).tick, p)) {
+                discrete(() => updateElements(doc, [hit.id], {done: !hit.done}));
+                select([hit.id]);
+            } else if (id && e.shiftKey) {
                 select(sel.includes(id) ? sel.filter((s) => s !== id) : [...sel, id]);
             } else if (id) {
                 const ids = sel.includes(id) ? sel : [id];
                 select(ids);
-                beginGesture({kind: 'move', pointerId, start: p, orig: pick(ids)});
+                beginGesture({kind: 'move', pointerId, start: p, screen: {x: e.clientX, y: e.clientY}, orig: pick(withChildren(all, ids))});
             } else {
                 const base = e.shiftKey ? sel : [];
                 select(base);
@@ -545,9 +624,12 @@ function Board({channelId, readOnly}: Props) {
         const dx = p.x - g.start.x;
         const dy = p.y - g.start.y;
         if (g.kind === 'move') {
-            moveBy(g.orig, dx, dy);
+            g.moved ||= Math.hypot(e.clientX - g.screen.x, e.clientY - g.screen.y) > CLICK_PX;
+            if (g.moved) {
+                moveBy(g.orig, dx, dy);
+            }
         } else if (g.kind === 'resize') {
-            g.pending = resizeAll(g.orig, g.handle, dx, dy);
+            g.pending = resizeAll(g.orig, g.handle, dx, dy).map((pt, i) => (g.orig[i].type === 'scene' ? clampCard(pt, g.handle) : pt));
             setPreview(g.orig.map((el, i) => ({...el, ...g.pending?.[i]})));
             if (Date.now() - g.flushedAt >= FLUSH_MS) {
                 flushResize(g);
@@ -566,14 +648,30 @@ function Board({channelId, readOnly}: Props) {
     // Also handles pointercancel and lostpointercapture, so a gesture whose pointerup never arrives still ends.
     const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
         pointersRef.current.delete(e.pointerId);
+        if (readOnly) {
+            const down = readDownRef.current;
+            readDownRef.current = undefined;
+            if (down && renderer && e.type === 'pointerup' && Math.hypot(e.clientX - down.x, e.clientY - down.y) <= CLICK_PX) {
+                const id = hitTest(elsRef.current, renderer.toWorld(e.clientX, e.clientY), HIT_PX / renderer.getZoom());
+                select(id ? [id] : []);
+            }
+            return;
+        }
         const g = gestureRef.current;
         if (!g || e.pointerId !== g.pointerId) {
+            return;
+        }
+        if (g.kind === 'move' && e.type !== 'pointerup') {
+            cancelGesture(); // the drop point is unknown, so undo the move rather than leave positions and membership disagreeing
             return;
         }
         if (g.kind === 'pen') {
             flushPen(g);
         } else if (g.kind === 'resize') {
             flushResize(g);
+        } else if (g.kind === 'move' && g.moved && renderer) {
+            // Dropping an image on a card (or on the empty board) re-parents it, in the same undo step as the move.
+            updateInBatches(doc, membershipPatches(elsRef.current, selRef.current, renderer.toWorld(e.clientX, e.clientY), topZ()));
         }
         endGesture();
         if (g.kind === 'marquee') {
@@ -584,21 +682,45 @@ function Board({channelId, readOnly}: Props) {
         } else if (g.kind === 'text') {
             edit({id: generateId(), x: g.start.x, y: g.start.y, isNew: true, style, text: ''});
         }
+        runDeferred();
     };
 
     const onPointerLeave = () => {
         syncRef.current?.awareness.setLocalStateField('cursor', null);
     };
 
+    const previewFile = (fileId: string, name = '') => {
+        dispatch(openModal({
+            modalId: ModalIdentifiers.FILE_PREVIEW_MODAL,
+            dialogType: FilePreviewModal,
+            dialogProps: {
+                startIndex: 0,
+                postId: '',
+                fileInfos: [{has_preview_image: false, link: getFileUrl(fileId), extension: name.includes('.') ? name.split('.').pop()!.toLowerCase() : '', name}],
+            },
+        }));
+    };
+
     const onDoubleClick = (e: React.MouseEvent) => {
-        if (!renderer || activeTool !== 'select') {
+        if (!renderer || (activeTool !== 'select' && !readOnly)) {
             return;
         }
-        const id = hitTest(elsRef.current, renderer.toWorld(e.clientX, e.clientY), HIT_PX / renderer.getZoom());
+        const p = renderer.toWorld(e.clientX, e.clientY);
+        const id = hitTest(elsRef.current, p, HIT_PX / renderer.getZoom());
         const el = elsRef.current.find((x) => x.id === id);
-        if (el?.type === 'text') {
+        if (el?.type === 'text' && !readOnly) {
             select([]);
             edit({id: el.id, x: el.x, y: el.y, isNew: false, style: el, text: el.text ?? ''});
+        } else if (el?.type === 'image' && el.fileId) {
+            previewFile(el.fileId, el.name);
+        } else if (el?.type === 'scene') {
+            const parts = sceneParts(bounds(el));
+            if (contains(parts.final, p) && el.finalFileId) {
+                previewFile(el.finalFileId, el.finalName);
+            } else if (!readOnly && contains(parts.header, p) && !contains(parts.tick, p)) {
+                select([]);
+                edit({id: el.id, x: parts.header.x, y: parts.header.y, isNew: false, style: {...el, fontSize: LABEL_FONT, textAlign: 'left'}, text: el.label ?? '', field: 'label'});
+            }
         }
     };
 
@@ -609,22 +731,156 @@ function Board({channelId, readOnly}: Props) {
     };
 
     const copy = () => {
-        clipboard = pick(selRef.current);
+        clipboard = {channelId, els: pick(withChildren(elsRef.current, selRef.current))};
     };
 
     const paste = () => {
-        if (!clipboard.length) {
+        // A file can only be viewed in its own channel, so images and finals stay behind on another channel's canvas.
+        let list = clipboard.els;
+        if (clipboard.channelId !== channelId) {
+            list = list.filter((el) => el.type !== 'image').map((el) => ({...el, finalFileId: undefined, finalName: undefined}));
+            if (list.length < clipboard.els.length || clipboard.els.some((el) => el.finalFileId)) {
+                setNotice({skipped: [], failed: [], leftOut: true});
+            }
+        }
+        if (!list.length) {
             return;
         }
-        const u = unionBounds(clipboard);
+        const u = unionBounds(list);
         const at = pointerRef.current ?? {x: u.x + (u.w / 2) + 10, y: u.y + (u.h / 2) + 10};
         const dx = at.x - (u.x + (u.w / 2));
         const dy = at.y - (u.y + (u.h / 2));
-        const top = topZ();
-        const copies = clipboard.map((el, i) => ({...el, id: generateId(), seed: randomSeed(), x: el.x + dx, y: el.y + dy, z: top + 1 + i}));
+        const copies = copyElements(list, dx, dy, topZ());
+        const joined = new Map(joinCards(copies, [...elsRef.current, ...copies]).map((j) => [j.id, j.sceneId]));
+        copies.forEach((el) => {
+            el.sceneId = joined.get(el.id) ?? el.sceneId;
+        });
+        const ids = new Set(copies.map((el) => el.id));
         discrete(() => writeInBatches(doc, copies));
-        select(copies.map((el) => el.id));
+        select(copies.filter((el) => !(el.type === 'image' && el.sceneId && ids.has(el.sceneId))).map((el) => el.id));
     };
+
+    // Image files become scene cards: one per image from `at`, or stacked into the card under it, or a card's final.
+    const importFiles = async (files: File[], at: Point) => {
+        const skipped = files.filter((f) => !isImageFile(f)).map((f) => f.name);
+        let picked = sortByName(files.filter(isImageFile));
+        const before = elsRef.current;
+        const finalCard = [...before].reverse().find((el) => el.type === 'scene' && contains(sceneParts(bounds(el)).final, at));
+        const target = finalCard ?? sceneAt(before, at);
+        const extra = finalCard ? picked.slice(1).map((f) => f.name) : [];
+        if (finalCard) {
+            picked = picked.slice(0, 1);
+        }
+        if (!picked.length) {
+            setNotice(skipped.length ? {skipped, failed: []} : undefined);
+            return;
+        }
+
+        setNotice(undefined);
+        setProgress({done: 0, total: picked.length});
+        const {uploaded, failed} = await uploadImages(channelId, picked, (done, total) => setProgress({done, total}));
+        setProgress(undefined);
+        setNotice(skipped.length || failed.length || extra.length ? {skipped, failed: failed.map((f) => f.name), extra} : undefined);
+        if (!uploaded.length) {
+            return;
+        }
+
+        const items = uploaded.map(({file, info}) => ({
+            fileId: info.id,
+            name: file.name,
+            aspect: Number.isFinite(info.width) && Number.isFinite(info.height) && info.width > 0 && info.height > 0 ? info.width / info.height : 1,
+        }));
+        const aspects = items.map((i) => i.aspect);
+        const imageAt = (i: number, b: Bounds, sceneId: string, z: number) => newElement('image', b, {...items[i], w: b.w, h: b.h, sceneId, z});
+        const place = () => {
+            const now = elsRef.current;
+            const card = target && now.find((el) => el.id === target.id); // it may have been deleted during the upload
+            const top = topZ();
+            if (finalCard && !card) {
+                return;
+            }
+            if (card && finalCard) {
+                discrete(() => updateElements(doc, [card.id], {finalFileId: items[0].fileId, finalName: items[0].name}));
+            } else if (card) {
+                const existing = now.filter((el) => el.type === 'image' && el.sceneId === card.id).length;
+                const added = stackInScene(bounds(card), existing, aspects).map((b, i) => imageAt(i, b, card.id, top + 1 + i));
+                discrete(() => writeInBatches(doc, added));
+                select(added.map((el) => el.id));
+            } else {
+                const layout = layoutScenes(aspects, at);
+                const cards = layout.map(({scene}, i) => newElement('scene', scene, {
+                    w: scene.w,
+                    h: scene.h,
+                    z: top + 1 + i,
+                    stroke: style.stroke,
+                    fill: '#ffffff',
+                    label: labelFor(items[i].name),
+                    done: false,
+                }));
+                const added = layout.map(({image}, i) => imageAt(i, image, cards[i].id, top + 1 + cards.length + i));
+                discrete(() => writeInBatches(doc, [...cards, ...added]));
+                select(cards.map((el) => el.id));
+            }
+        };
+        if (gestureRef.current) {
+            deferredRef.current.push(place);
+        } else {
+            place();
+        }
+    };
+    const importRef = useRef(importFiles);
+    importRef.current = importFiles;
+    const pasteRef = useRef(paste);
+    pasteRef.current = paste;
+
+    // Native listeners: a file drop must stop here, or the channel's own file upload would take it too.
+    useEffect(() => {
+        const surface = surfaceRef.current!;
+        const root = rootRef.current!;
+        const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes('Files');
+        const onDrag = (e: DragEvent) => {
+            if (readOnly || !hasFiles(e)) {
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.dataTransfer) {
+                e.dataTransfer.dropEffect = 'copy';
+            }
+        };
+        const onDrop = (e: DragEvent) => {
+            onDrag(e);
+            const r = rendererRef.current;
+            if (readOnly || !r || !hasFiles(e)) {
+                return;
+            }
+            importRef.current(Array.from(e.dataTransfer?.files ?? []), r.toWorld(e.clientX, e.clientY));
+        };
+        const onPaste = (e: ClipboardEvent) => {
+            const r = rendererRef.current;
+            if (readOnly || !r || gestureRef.current || isTextTarget(e.target)) {
+                return;
+            }
+            const files = Array.from(e.clipboardData?.files ?? []);
+            if (!files.length) {
+                pasteRef.current();
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            const rect = surface.getBoundingClientRect();
+            importRef.current(files, pointerRef.current ?? r.toWorld(rect.left + (rect.width / 2), rect.top + (rect.height / 2)));
+        };
+        const drags = ['dragenter', 'dragover', 'dragleave'] as const;
+        drags.forEach((t) => surface.addEventListener(t, onDrag));
+        surface.addEventListener('drop', onDrop);
+        root.addEventListener('paste', onPaste);
+        return () => {
+            drags.forEach((t) => surface.removeEventListener(t, onDrag));
+            surface.removeEventListener('drop', onDrop);
+            root.removeEventListener('paste', onPaste);
+        };
+    }, [readOnly]);
 
     // A live edit (a slider drag, a colour pick) is one undo step until onStyleCommit.
     const liveRef = useRef(false);
@@ -668,10 +924,10 @@ function Board({channelId, readOnly}: Props) {
         } else if (a === 'delete') {
             deleteSelection();
         } else if (a === 'back' || a === 'backward' || a === 'forward' || a === 'front') {
-            discrete(() => reorder(doc, sel, a));
+            discrete(() => reorder(doc, withChildren(elsRef.current, sel), a));
         } else {
-            const moved = align(pick(sel), a);
-            discrete(() => doc.transact(() => Object.entries(moved).forEach(([id, p]) => updateElements(doc, [id], p)), LOCAL));
+            const moved = alignWithImages(elsRef.current, sel, a);
+            discrete(() => doc.transact(() => moved.forEach(({id, x, y}) => updateElements(doc, [id], {x, y})), LOCAL));
         }
     };
 
@@ -705,8 +961,6 @@ function Board({channelId, readOnly}: Props) {
             duplicateSelection();
         } else if (mod && canEdit && key === 'c') {
             copy();
-        } else if (mod && canEdit && key === 'v') {
-            paste();
         } else if (mod || e.altKey) {
             return;
         } else if (e.shiftKey && e.code === 'Digit1') {
@@ -723,7 +977,7 @@ function Board({channelId, readOnly}: Props) {
             deleteSelection();
         } else if (arrow) {
             const step = e.shiftKey ? 10 : 1;
-            discrete(() => moveBy(pick(selRef.current), arrow[0] * step, arrow[1] * step));
+            discrete(() => moveBy(pick(withChildren(elsRef.current, selRef.current)), arrow[0] * step, arrow[1] * step));
         } else if (toolIndex >= 0 || (digit >= 1 && digit <= 9)) {
             setTool(TOOLS[toolIndex >= 0 ? toolIndex : digit - 1].tool);
         } else {
@@ -740,8 +994,8 @@ function Board({channelId, readOnly}: Props) {
     };
 
     const onTextKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Escape') {
-            e.preventDefault();
+        if (e.key === 'Escape' || (e.key === 'Enter' && !e.shiftKey && editingRef.current?.field)) {
+            e.preventDefault(); // a card label is one line
             commitText();
             rootRef.current?.focus({preventScroll: true});
         }
@@ -754,9 +1008,9 @@ function Board({channelId, readOnly}: Props) {
             <textarea
                 ref={textRef}
                 className='CanvasBoard__text'
-                aria-label={formatMessage(messages.textInput)}
+                aria-label={formatMessage(editing.field ? messages.labelInput : messages.textInput)}
                 value={editing.text}
-                maxLength={MAX_TEXT_LENGTH}
+                maxLength={editing.field ? MAX_LABEL_LENGTH : MAX_TEXT_LENGTH}
                 wrap='off'
                 spellCheck={false}
                 style={{
@@ -776,6 +1030,23 @@ function Board({channelId, readOnly}: Props) {
 
     // What the panel edits: the selection if there is one, else the style of the next element drawn.
     const picked = els.filter((el) => selected.includes(el.id));
+    const single = picked.length === 1 ? picked[0] : undefined;
+    const fileId = single?.type === 'image' ? single.fileId : undefined;
+    const {members: channelMembers, uploaderId} = useCanvasPeople(channelId, els, fileId);
+
+    const nameOf = (id?: string) => (id ? (users[id]?.username ?? id) : undefined);
+    const owner = single?.type === 'scene' && single.ownerId ? users[single.ownerId] : undefined;
+    const panelInfo = single && {
+        createdBy: nameOf(single.createdBy),
+        createdAt: single.createdAt,
+        updatedBy: nameOf(single.updatedBy),
+        updatedAt: single.updatedAt,
+        uploadedBy: nameOf(uploaderId),
+    };
+
+    // The owner is listed even when not a member of this channel.
+    const panelScene = single?.type === 'scene' ? {ownerId: single.ownerId, ownerName: nameOf(single.ownerId), done: single.done ?? false, members: [...channelMembers, ...(owner && !channelMembers.some((m) => m.id === owner.id) ? [owner] : [])].sort((a, b) => a.username.localeCompare(b.username))} : undefined;
+    const onSceneChange = (patch: {ownerId?: string; done?: boolean}) => discrete(() => updateElements(doc, [single!.id], patch));
     let panelTypes: ElementType[] = [...new Set(picked.map((el) => el.type))];
     if (!picked.length && activeTool in DRAW_TOOLS) {
         panelTypes = [DRAW_TOOLS[activeTool]!];
@@ -819,8 +1090,12 @@ function Board({channelId, readOnly}: Props) {
                 onDoubleClick={onDoubleClick}
             />
             {textarea}
-            {panelTypes.length > 0 && !readOnly && (
+            {(readOnly ? Boolean(single && (single.type === 'scene' || single.type === 'image')) : panelTypes.length > 0) && (
                 <CanvasProperties
+                    readOnly={readOnly}
+                    info={panelInfo}
+                    scene={panelScene}
+                    onSceneChange={onSceneChange}
                     types={panelTypes}
                     values={panelValues}
                     selectionCount={picked.length}
@@ -851,6 +1126,34 @@ function Board({channelId, readOnly}: Props) {
                     role='status'
                 >
                     {chip}
+                </div>
+            )}
+            {(progress || notice) && (
+                <div
+                    className='CanvasBoard__status CanvasBoard__status--import'
+                    role='status'
+                >
+                    {progress ? formatMessage(messages.uploading, progress) : (
+                        <>
+                            <span>
+                                {[
+                                    notice!.skipped.length ? formatMessage(messages.skipped, {names: nameList(notice!.skipped)}) : '',
+                                    notice!.failed.length ? formatMessage(messages.uploadFailed, {names: nameList(notice!.failed)}) : '',
+                                    notice!.extra?.length ? formatMessage(messages.oneFinal, {names: nameList(notice!.extra)}) : '',
+                                    notice!.leftOut ? formatMessage(messages.leftOut) : '',
+                                ].filter(Boolean).join(' ')}
+                            </span>
+                            <WithTooltip title={formatMessage(messages.dismiss)}>
+                                <IconButton
+                                    size='small'
+                                    aria-label={formatMessage(messages.dismiss)}
+                                    icon={<Icon glyph={<CloseIcon/>}/>}
+                                    onMouseDown={keepFocus}
+                                    onClick={() => setNotice(undefined)}
+                                />
+                            </WithTooltip>
+                        </>
+                    )}
                 </div>
             )}
         </div>

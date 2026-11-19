@@ -110,6 +110,14 @@
         background: rgba(var(--error-text-color-rgb), 0.12);
         color: var(--error-text);
     }
+
+    &--import {
+        top: 44px;
+        display: flex;
+        max-width: 360px;
+        align-items: center;
+        gap: 4px;
+    }
 }
 
 .CanvasBoard__text {
@@ -152,6 +160,15 @@
     color: rgba(var(--center-channel-color-rgb), 0.72);
     font-size: 11px;
     font-weight: 600;
+}
+
+.CanvasBoard__propsInfo {
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    font-size: 12px;
+}
+
+.CanvasBoard__propsCheck {
+    margin-left: 6px;
 }
 
 .CanvasBoard__propsRow {

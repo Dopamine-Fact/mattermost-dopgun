@@ -1,23 +1,32 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {getStroke} from 'perfect-freehand';
+import {getStrokePoints} from 'perfect-freehand';
 import {Viewport} from 'pixi-viewport';
-import {Application, Container, Graphics, Text} from 'pixi.js';
+import {Application, Container, Graphics, Sprite, Text, Texture} from 'pixi.js';
 import 'pixi.js/unsafe-eval'; // the server's CSP (script-src 'self') forbids eval; this swaps Pixi's generated code for static versions
 import rough from 'roughjs';
 import type {Drawable, Op, Options} from 'roughjs/bin/core';
 
-import {dashPolyline, fitViewport, MAX_ZOOM, MIN_ZOOM, unionBounds} from './geometry';
+import {bounds, dashPolyline, fitViewport, MAX_ZOOM, MIN_ZOOM, unionBounds} from './geometry';
 import type {Bounds} from './geometry';
-import {FONT_FAMILIES, MAX_TEXT_LENGTH} from './model';
+import {ImageTextures, loadTexture, textureKey, textureSize} from './image_textures';
+import {FONT_FAMILIES, MAX_LABEL_LENGTH, MAX_TEXT_LENGTH} from './model';
 import type {Arrowhead, CanvasElement} from './model';
+import {SCENE_FRAME, SCENE_HEADER, sceneParts} from './storyboard';
+
+/** The board adds the scene owner's display name; the owner's colour arrives in stroke. */
+export type DrawElement = CanvasElement & {ownerName?: string};
 
 export type RemoteCursor = {userId: string; name: string; color: string; x: number; y: number};
 export type RemoteSelection = {color: string; box: Bounds};
 
 const SELECTION_COLOR = '#1c58d9';
 const HANDLE_PX = 8;
+const PLACEHOLDER_TINT = 0xe5e5e5;
+const HAIRLINE = '#d9d9d9';
+const SCENE_FONT = 20;
+const FINAL_INSET = SCENE_FRAME + 4;
 const generator = rough.generator();
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
@@ -124,9 +133,103 @@ function arrowhead(g: Graphics, kind: Arrowhead, pts: number[], atEnd: boolean, 
     }
 }
 
+/** Shortens a Text with an ellipsis until it is at most maxW wide. */
+function fitText(t: Text, maxW: number) {
+    let s = t.text;
+    while (t.width > maxW && s) {
+        s = s.slice(0, Math.max(0, Math.floor((s.length * maxW) / t.width) - 1));
+        t.text = s ? `${s}…` : '';
+    }
+}
+
+/** The local box an element's sprite fills: the whole image, or a scene's final strip. */
+function spriteSlot(el: CanvasElement): Bounds {
+    const local = bounds({x: 0, y: 0, w: num(el.w), h: num(el.h)});
+    if (el.type === 'image') {
+        return local;
+    }
+    const f = sceneParts(local).final;
+    return {x: f.x + FINAL_INSET, y: f.y + FINAL_INSET, w: Math.max(0, f.w - (2 * FINAL_INSET)), h: Math.max(0, f.h - (2 * FINAL_INSET))};
+}
+
+/** Shows the texture in the slot (contain when asked), or a grey placeholder filling the slot while there is none. */
+function fitSprite(sprite: Sprite, texture: Texture | undefined, slot: Bounds, contain: boolean) {
+    sprite.texture = texture ?? Texture.WHITE;
+    sprite.tint = texture ? 0xffffff : PLACEHOLDER_TINT;
+    let {x, y, w, h} = slot;
+    if (texture && contain && texture.width > 0 && texture.height > 0) {
+        const s = Math.min(w / texture.width, h / texture.height);
+        x += (w - (texture.width * s)) / 2;
+        y += (h - (texture.height * s)) / 2;
+        w = texture.width * s;
+        h = texture.height * s;
+    }
+    sprite.position.set(x, y);
+    sprite.setSize(w, h);
+}
+
+function buildScene(el: DrawElement, stroke: string): Container {
+    const b = bounds({x: 0, y: 0, w: num(el.w), h: num(el.h)});
+    const parts = sceneParts(b);
+    const g = new Graphics();
+    const half = SCENE_FRAME / 2;
+    g.rect(b.x, b.y, b.w, b.h).fill('#ffffff');
+    g.rect(b.x + half, b.y + half, Math.max(0, b.w - SCENE_FRAME), Math.max(0, b.h - SCENE_FRAME)).stroke({width: SCENE_FRAME, color: stroke});
+    g.moveTo(b.x + SCENE_FRAME, b.y + SCENE_HEADER).lineTo((b.x + b.w) - SCENE_FRAME, b.y + SCENE_HEADER);
+    g.moveTo(b.x + SCENE_FRAME, parts.final.y).lineTo((b.x + b.w) - SCENE_FRAME, parts.final.y);
+    g.stroke({width: 1, color: HAIRLINE});
+
+    const midY = b.y + ((SCENE_HEADER + SCENE_FRAME) / 2); // the header's middle, below the top frame
+    const tx = parts.tick.x + ((parts.tick.w - SCENE_FRAME) / 2);
+    if (el.done) {
+        g.circle(tx, midY, 12).fill('#3db887');
+        g.moveTo(tx - 6, midY).lineTo(tx - 2, midY + 4).lineTo(tx + 6, midY - 5).stroke({width: 3, color: '#ffffff', cap: 'round', join: 'round'});
+    } else {
+        g.circle(tx, midY, 11).stroke({width: 2, color: '#b3b3b3'});
+    }
+
+    const slot = spriteSlot(el);
+    let sprite: Sprite | undefined;
+    if (el.finalFileId) {
+        sprite = new Sprite(Texture.WHITE); // the texture pass fills in the final
+        fitSprite(sprite, undefined, slot, true);
+    } else {
+        const corners = [slot.x, slot.y, slot.x + slot.w, slot.y, slot.x + slot.w, slot.y + slot.h, slot.x, slot.y + slot.h, slot.x, slot.y];
+        dashPolyline(corners, [8, 6]).forEach((piece) => polyline(g, piece));
+        g.stroke({width: 1.5, color: '#c4c4c4'});
+    }
+
+    const textX = b.x + SCENE_FRAME + 8;
+    const textEnd = parts.tick.x - 4; // keeps the label and owner clear of the tick
+    const label = new Text({text: String(el.label ?? '').slice(0, MAX_LABEL_LENGTH), style: {fontFamily: FONT_FAMILIES.normal, fontSize: SCENE_FONT, fill: '#3f4350'}});
+    label.anchor.set(0, 0.5);
+    label.position.set(textX, midY);
+    fitText(label, Math.max(0, textEnd - textX));
+    const ownerX = textX + label.width + (label.text ? 12 : 0);
+    const owner = new Text({text: String(el.ownerName ?? '').slice(0, MAX_LABEL_LENGTH), style: {fontFamily: FONT_FAMILIES.normal, fontSize: SCENE_FONT, fill: stroke}});
+    owner.anchor.set(0, 0.5);
+    owner.position.set(ownerX, midY);
+    fitText(owner, Math.max(0, textEnd - ownerX));
+
+    const root = new Container();
+    root.addChild(g, label, owner);
+    if (sprite) {
+        root.addChild(sprite);
+    }
+    return root;
+}
+
 /** Builds the display object for one element, in coordinates relative to (el.x, el.y). */
-function build(el: CanvasElement): Graphics | Text {
+function build(el: DrawElement): Container {
     const stroke = safeColor(el.stroke) ?? '#000000';
+    if (el.type === 'scene') {
+        return buildScene(el, stroke);
+    }
+    if (el.type === 'image') {
+        const sprite = new Sprite(Texture.WHITE); // the texture pass fills in the image
+        fitSprite(sprite, undefined, spriteSlot(el), false);
+        return sprite;
+    }
     if (el.type === 'text') {
         const fontSize = num(el.fontSize, 20);
         return new Text({
@@ -138,9 +241,13 @@ function build(el: CanvasElement): Graphics | Text {
     const g = new Graphics();
     const width = clamp(num(el.strokeWidth, 2), 0.5, 16);
     if (el.type === 'pen') {
-        const outline = getStroke(pairs(el.points), {size: width * 4.25, thinning: 0.6, smoothing: 0.5, streamline: 0.5, last: true});
-        if (outline.length > 2) {
-            g.poly(outline.flat()).fill(stroke);
+        // Stroke the smoothed centre line: filling perfect-freehand's outline lets earcut fill the inside of a loop that crosses itself.
+        const pts = getStrokePoints(pairs(el.points), {size: width * 4.25, streamline: 0.5, last: true}).flatMap((p) => p.point);
+        if (pts.length >= 4) {
+            polyline(g, pts);
+            g.stroke({width: width * 2.5, color: stroke, cap: 'round', join: 'round'});
+        } else if (pts.length === 2) {
+            g.circle(pts[0], pts[1], width * 1.25).fill(stroke); // a click without a drag leaves a dot
         }
         return g;
     }
@@ -183,14 +290,19 @@ function build(el: CanvasElement): Graphics | Text {
     return g;
 }
 
-// Everything but position and stacking; a points checksum stands in for the (possibly long) points array.
-function shapeKey(el: CanvasElement) {
-    const {x, y, z, points, ...rest} = el; // eslint-disable-line @typescript-eslint/no-unused-vars
+// Everything but position, stacking and the author stamps (never drawn, and a move restamps every frame); a points checksum
+// stands in for the (possibly long) points array. Only whether a final is set counts: the texture pass re-targets the sprite.
+export function shapeKey(el: DrawElement) {
+    const {x, y, z, points, finalFileId, createdBy, createdAt, updatedBy, updatedAt, ...rest} = el; // eslint-disable-line @typescript-eslint/no-unused-vars
     const pts = Array.isArray(points) ? `${points.length}:${points.reduce((s: number, v) => s + num(v), 0)}` : '';
-    return JSON.stringify(rest) + pts;
+    return JSON.stringify(rest) + pts + (finalFileId ? ':final' : '');
 }
 
-type Item = {key: string; obj: Graphics | Text};
+// shown: the sprite's last real texture, kept on screen (and retained) while a texture of another size loads.
+type Item = {key: string; obj: Container; texts: Text[]; sprite?: Sprite; shown?: {fileId: string; key: string; texture: Texture}};
+
+// Graphics only free their context when asked; texture stays false, as cached textures are shared.
+const DESTROY_ITEM = {children: true, context: true};
 type CursorItem = {root: Container; label: Text; badge: Graphics; name: string; color: string};
 
 /** Draws the board with Pixi inside a pan/zoom viewport. Coordinates from toScreen are relative to the host element. */
@@ -208,6 +320,15 @@ export class CanvasRenderer {
     private marquee?: Bounds;
     private textResolution = 0;
     private dragPaused = false;
+    private els: DrawElement[] = [];
+    private textureFrame = 0;
+    private textures = new ImageTextures<Texture>(loadTexture, () => {
+        // Deferred to a frame: the cache calls this mid-queue, and a throw here would stall its loads.
+        this.textureFrame ||= requestAnimationFrame(() => {
+            this.textureFrame = 0;
+            this.placeTextures();
+        });
+    });
 
     static async create(host: HTMLElement): Promise<CanvasRenderer> {
         const app = new Application();
@@ -239,30 +360,33 @@ export class CanvasRenderer {
     }
 
     destroy() {
+        cancelAnimationFrame(this.textureFrame);
         this.app.renderer.off('resize', this.handleResize);
         this.viewport.destroy({children: true}); // first, while the ticker and event system it unhooks from still exist
         this.app.destroy({removeView: true}, {children: true});
+        this.textures.destroy(); // last: destroying sprites never destroys their (shared) textures
     }
 
-    draw(els: CanvasElement[], selected: string[], marquee?: Bounds) {
+    draw(els: DrawElement[], selected: string[], marquee?: Bounds) {
         const seen = new Set<string>();
         els.forEach((el, i) => {
             seen.add(el.id);
             const key = shapeKey(el);
             let item = this.items.get(el.id);
             if (!item || item.key !== key) {
-                item?.obj.destroy();
-                let obj: Graphics | Text;
+                item?.obj.destroy(DESTROY_ITEM);
+                let obj: Container;
                 try {
                     obj = build(el);
                 } catch {
                     obj = new Graphics(); // a malformed element draws nothing rather than breaking the board
                 }
-                if (obj instanceof Text) {
-                    obj.resolution = this.textResolution;
-                }
+                const texts = obj instanceof Text ? [obj] : obj.children.filter((c): c is Text => c instanceof Text);
+                texts.forEach((t) => {
+                    t.resolution = this.textResolution;
+                });
                 this.viewport.addChild(obj);
-                item = {key, obj};
+                item = {key, obj, texts, sprite: obj instanceof Sprite ? obj : obj.children.find((c): c is Sprite => c instanceof Sprite)};
                 this.items.set(el.id, item);
             }
             item.obj.position.set(num(el.x), num(el.y));
@@ -271,10 +395,12 @@ export class CanvasRenderer {
         });
         for (const [id, item] of this.items) {
             if (!seen.has(id)) {
-                item.obj.destroy();
+                item.obj.destroy(DESTROY_ITEM);
                 this.items.delete(id);
             }
         }
+        this.els = els;
+        this.placeTextures();
         const sel = new Set(selected);
         this.selected = els.filter((el) => sel.has(el.id));
         this.marquee = marquee;
@@ -371,6 +497,7 @@ export class CanvasRenderer {
     };
 
     private changed = () => {
+        this.placeTextures();
         this.drawOverlay();
         this.placeCursors();
         this.onViewportChange?.();
@@ -383,12 +510,51 @@ export class CanvasRenderer {
             return;
         }
         this.textResolution = res;
-        for (const {obj} of this.items.values()) {
-            if (obj instanceof Text) {
-                obj.resolution = res;
-            }
+        for (const {texts} of this.items.values()) {
+            texts.forEach((t) => {
+                t.resolution = res;
+            });
         }
     };
+
+    // Gives sprites near the view their texture and the rest the placeholder, then frees what no sprite uses.
+    // Every sprite is re-assigned before retain(), so none keeps a texture that retain() destroys.
+    private placeTextures() {
+        const v = this.viewport.getVisibleBounds();
+        const view = {x: v.x - (v.width / 2), y: v.y - (v.height / 2), w: v.width * 2, h: v.height * 2}; // half a view on each side
+        const zoom = this.getZoom();
+        const used = new Set<string>();
+        for (const el of this.els) {
+            const item = this.items.get(el.id);
+            if (!item?.sprite) {
+                continue;
+            }
+            const fileId = el.type === 'image' ? el.fileId : el.finalFileId;
+            const slot = spriteSlot(el);
+            const x = num(el.x) + slot.x;
+            const y = num(el.y) + slot.y;
+            let texture: Texture | undefined;
+            if (fileId && x < view.x + view.w && view.x < x + slot.w && y < view.y + view.h && view.y < y + slot.h) {
+                // An image's sprite fills its box; a final is contained in its strip, so the strip's shape stands in for the file's.
+                const size = textureSize(slot.h * zoom, el.type === 'image' ? num(el.aspect, slot.w / slot.h) : slot.w / slot.h);
+                const key = textureKey(fileId, size);
+                texture = this.textures.get(fileId, size);
+                used.add(key);
+                const shown = item.shown;
+                if (texture) {
+                    item.shown = {fileId, key, texture};
+                } else if (shown?.fileId === fileId && !shown.texture.destroyed) {
+                    texture = shown.texture; // the other size, until the wanted one loads
+                    used.add(shown.key);
+                }
+            }
+            if (!texture) {
+                item.shown = undefined;
+            }
+            fitSprite(item.sprite, texture, slot, el.type === 'scene');
+        }
+        this.textures.retain(used);
+    }
 
     private placeCursors() {
         this.cursors.forEach((c, i) => {
