@@ -18432,6 +18432,11 @@
     "description": "Config validation error shown to system admins for the WebSocket URL setting; 'ws://' and 'wss://' are literal URL scheme prefixes."
   },
   {
+    "id": "model.config.is_valid.workday_hours.app_error",
+    "translation": "Invalid workday hours. Start and end must be HH:MM times and start must be earlier than end.",
+    "description": "Config validation error shown to system admins for the workday start/end settings that decide when breaks and overtime are counted; HH:MM is a literal time format."
+  },
+  {
     "id": "model.config.is_valid.write_timeout.app_error",
     "translation": "Invalid value for write timeout.",
     "description": "Config validation error shown to system admins for the web server write timeout setting."

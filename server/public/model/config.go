@@ -2710,6 +2710,9 @@ type TeamSettings struct {
 	EnableLastActiveTime            *bool   `access:"site_users_and_teams"`
 	// In seconds.
 	UserStatusAwayTimeout               *int64   `access:"site_users_and_teams"`
+	// Workday hours as "HH:MM" wall-clock times; breaks count inside them, overtime after WorkdayEnd.
+	WorkdayStart                        *string  `access:"site_users_and_teams"`
+	WorkdayEnd                          *string  `access:"site_users_and_teams"`
 	MaxChannelsPerTeam                  *int64   `access:"site_users_and_teams"` // 0 means no limit
 	EnableChannelCategorySorting        *bool    `access:"site_users_and_teams"`
 	MaxNotificationsPerChannel          *int64   `access:"environment_push_notification_server"`
@@ -2777,6 +2780,14 @@ func (s *TeamSettings) SetDefaults() {
 
 	if s.UserStatusAwayTimeout == nil {
 		s.UserStatusAwayTimeout = new(int64(TeamSettingsDefaultUserStatusAwayTimeout))
+	}
+
+	if s.WorkdayStart == nil {
+		s.WorkdayStart = new("09:00")
+	}
+
+	if s.WorkdayEnd == nil {
+		s.WorkdayEnd = new("18:00")
 	}
 
 	if s.MaxChannelsPerTeam == nil {
@@ -4802,6 +4813,8 @@ func (o *Config) IsValid() *AppError {
 	return nil
 }
 
+var workdayTimePattern = regexp.MustCompile(`^([01]\d|2[0-3]):[0-5]\d$`)
+
 func (s *TeamSettings) isValid() *AppError {
 	if *s.MaxUsersPerTeam < 0 {
 		return NewAppError("Config.IsValid", "model.config.is_valid.max_users.app_error", nil, "", http.StatusBadRequest)
@@ -4813,6 +4826,11 @@ func (s *TeamSettings) isValid() *AppError {
 
 	if *s.UserStatusAwayTimeout <= 0 {
 		return NewAppError("Config.IsValid", "model.config.is_valid.user_status_away_timeout.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	// "HH:MM" strings compare correctly as text once both match the pattern.
+	if !workdayTimePattern.MatchString(*s.WorkdayStart) || !workdayTimePattern.MatchString(*s.WorkdayEnd) || *s.WorkdayStart >= *s.WorkdayEnd {
+		return NewAppError("Config.IsValid", "model.config.is_valid.workday_hours.app_error", nil, "", http.StatusBadRequest)
 	}
 
 	if *s.MaxNotificationsPerChannel <= 0 {

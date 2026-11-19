@@ -2799,6 +2799,22 @@ const AdminDefinition: AdminDefinitionType = {
                             isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.SITE.USERS_AND_TEAMS)),
                         },
                         {
+                            type: 'text',
+                            key: 'TeamSettings.WorkdayStart',
+                            label: defineMessage({id: 'admin.team.workdayStartTitle', defaultMessage: 'Workday start (HH:MM):'}),
+                            help_text: defineMessage({id: 'admin.team.workdayStartDescription', defaultMessage: 'Breaks are counted only between the workday start and end.'}),
+                            placeholder: defineMessage({id: 'admin.team.workdayStartExample', defaultMessage: 'E.g.: "09:00"'}),
+                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.SITE.USERS_AND_TEAMS)),
+                        },
+                        {
+                            type: 'text',
+                            key: 'TeamSettings.WorkdayEnd',
+                            label: defineMessage({id: 'admin.team.workdayEndTitle', defaultMessage: 'Workday end (HH:MM):'}),
+                            help_text: defineMessage({id: 'admin.team.workdayEndDescription', defaultMessage: 'Time spent active in the desktop app after the workday end is counted as overtime.'}),
+                            placeholder: defineMessage({id: 'admin.team.workdayEndExample', defaultMessage: 'E.g.: "18:00"'}),
+                            isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.SITE.USERS_AND_TEAMS)),
+                        },
+                        {
                             type: 'bool',
                             key: 'ServiceSettings.EnableCustomGroups',
                             label: defineMessage({id: 'admin.team.customUserGroupsTitle', defaultMessage: 'Enable Custom User Groups: '}),

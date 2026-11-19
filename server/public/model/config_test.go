@@ -5563,3 +5563,37 @@ func TestBackupSettingsIsValid(t *testing.T) {
 		})
 	}
 }
+
+func TestTeamSettingsWorkdayDefaultsAndValidation(t *testing.T) {
+	config := Config{}
+	config.SetDefaults()
+	require.Equal(t, "09:00", *config.TeamSettings.WorkdayStart)
+	require.Equal(t, "18:00", *config.TeamSettings.WorkdayEnd)
+	require.Nil(t, config.TeamSettings.isValid())
+
+	for name, tc := range map[string]struct {
+		start, end string
+		valid      bool
+	}{
+		"half hours":       {start: "08:30", end: "17:30", valid: true},
+		"end before start": {start: "18:00", end: "09:00"},
+		"equal":            {start: "09:00", end: "09:00"},
+		"no leading zero":  {start: "9:00", end: "18:00"},
+		"bad hour":         {start: "09:00", end: "24:00"},
+		"empty":            {start: "", end: "18:00"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := Config{}
+			c.SetDefaults()
+			c.TeamSettings.WorkdayStart = new(tc.start)
+			c.TeamSettings.WorkdayEnd = new(tc.end)
+			appErr := c.TeamSettings.isValid()
+			if tc.valid {
+				require.Nil(t, appErr)
+			} else {
+				require.NotNil(t, appErr)
+				assert.Equal(t, "model.config.is_valid.workday_hours.app_error", appErr.Id)
+			}
+		})
+	}
+}

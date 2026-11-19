@@ -62,6 +62,8 @@ export type ClientConfig = {
     EnableCustomUserStatuses: string;
     EnableUserStatuses: string;
     EnableLastActiveTime: string;
+    WorkdayStart: string;
+    WorkdayEnd: string;
     EnableChannelCategorySorting: string;
     EnableTimedDND: string;
     EnableCrossTeamSearch: 'true' | 'false';
@@ -458,6 +460,8 @@ export type TeamSettings = {
     CustomDescriptionText: string;
     RestrictDirectMessage: string;
     UserStatusAwayTimeout: number;
+    WorkdayStart: string;
+    WorkdayEnd: string;
     MaxChannelsPerTeam: number;
     MaxNotificationsPerChannel: number;
     EnableConfirmNotificationsToChannel: boolean;
