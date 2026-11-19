@@ -5,7 +5,7 @@ import React from 'react';
 
 import FilePreviewModal, {computeZoomAtCursor} from 'components/file_preview_modal/file_preview_modal';
 
-import {act, render} from 'tests/react_testing_utils';
+import {act, render, screen} from 'tests/react_testing_utils';
 import Constants from 'utils/constants';
 import {TestHelper} from 'utils/test_helper';
 import * as Utils from 'utils/utils';
@@ -100,6 +100,20 @@ describe('components/FilePreviewModal', () => {
             ref.current?.handleKeyPress(evt);
         });
         expect(ref.current?.state.imageIndex).toBe(0);
+    });
+
+    test.each([
+        ['mp4', true],
+        ['mov', false],
+        ['MOV', false],
+    ])('plays .%s files: %s', (extension, plays) => {
+        const props = {...baseProps, fileInfos: [TestHelper.getFileInfoMock({id: 'file_id_1', extension})]};
+        const {ref} = renderModal(props);
+        act(() => {
+            ref.current?.setState({loaded: [true] as any});
+        });
+
+        expect(Boolean(screen.queryByText('Audio Video Preview'))).toBe(plays);
     });
 
     test('should handle onMouseEnter and onMouseLeave', () => {

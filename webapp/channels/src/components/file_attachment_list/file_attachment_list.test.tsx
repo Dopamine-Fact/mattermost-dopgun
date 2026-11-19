@@ -82,6 +82,43 @@ describe('FileAttachmentList', () => {
         expect(tiles[2]?.getAttribute('data-file-name')).toBe('image_3.png');
     });
 
+    const renderWithFiles = (files: typeof fileInfos) => {
+        const filePost = {...post, file_ids: files.map((f) => f.id)};
+        const state = {
+            entities: {
+                ...defaultState.entities,
+                posts: {posts: {post_id: filePost}},
+                files: {
+                    files: Object.fromEntries(files.map((f) => [f.id, f])),
+                    fileIdsByPostId: {post_id: filePost.file_ids},
+                },
+            },
+        } as unknown as GlobalState;
+        renderWithContext(<FileAttachmentList {...{...baseProps, post: filePost}}/>, state);
+    };
+
+    test('should keep the gallery for images and show .mov files as file cards below it', () => {
+        renderWithFiles([
+            ...fileInfos,
+            TestHelper.getFileInfoMock({id: 'file_id_4', name: 'clip.mov', extension: 'mov', create_at: 4, delete_at: 0, post_id: post.id}),
+        ]);
+
+        const [gallery, cards] = screen.getAllByTestId('fileAttachmentList');
+        expect(gallery.querySelectorAll('[data-testid="media-gallery-tile"]').length).toBe(3);
+        expect(gallery).not.toHaveTextContent('clip.mov');
+        expect(cards).toHaveTextContent('clip.mov');
+    });
+
+    test('should show only file cards when every file is a .mov', () => {
+        renderWithFiles([
+            TestHelper.getFileInfoMock({id: 'm1', name: 'a.mov', extension: 'mov', delete_at: 0, post_id: post.id}),
+            TestHelper.getFileInfoMock({id: 'm2', name: 'b.mov', extension: 'mov', delete_at: 0, post_id: post.id}),
+        ]);
+
+        expect(screen.queryByTestId('media-gallery-tile')).toBeNull();
+        expect(screen.getByTestId('fileAttachmentList')).toHaveTextContent('a.mov');
+    });
+
     test('should render a SingleImageView for a single image', () => {
         const props = {
             ...baseProps,

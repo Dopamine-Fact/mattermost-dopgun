@@ -3,6 +3,8 @@
 
 import React, {useCallback, useMemo} from 'react';
 
+import type {FileInfo} from '@mattermost/types/files';
+
 import {sortFileInfos} from 'mattermost-redux/utils/file_utils';
 
 import FileAttachment from 'components/file_attachment';
@@ -10,9 +12,10 @@ import FilePreviewModal from 'components/file_preview_modal';
 import SingleImageView from 'components/single_image_view';
 
 import {FileTypes, ModalIdentifiers} from 'utils/constants';
+import {isUnpreviewableVideo} from 'utils/file_utils';
 import {getFileType} from 'utils/utils';
 
-import MediaGallery from './media_gallery';
+import MediaGallery, {tileKindFor} from './media_gallery';
 
 import type {OwnProps, PropsFromRedux} from './index';
 
@@ -53,26 +56,54 @@ export default function FileAttachmentList(props: Props) {
     const hasDeletedFile = sortedFileInfos.some((f) => f.delete_at > 0);
     const isEditHistory = Boolean(props.isEditHistory);
 
+    const renderCard = (fileInfo: FileInfo, index: number) => {
+        const isDeleted = fileInfo.delete_at > 0;
+        return (
+            <FileAttachment
+                key={fileInfo.id}
+                fileInfo={fileInfo}
+                index={index}
+                handleImageClick={handleImageClick}
+                compactDisplay={compactDisplay}
+                handleFileDropdownOpened={props.handleFileDropdownOpened}
+                preventDownload={props.disableDownload}
+                disableActions={props.disableActions}
+                disableThumbnail={isDeleted}
+                disablePreview={isDeleted}
+                overrideGenerateFileDownloadUrl={props.overrideGenerateFileDownloadUrl}
+            />
+        );
+    };
+
     if (!isInPermalink && !props.firstFileRejected && !hasDeletedFile && !isEditHistory) {
         const isMulti = fileInfos.length > 1;
-        const isSingleVideo = fileInfos.length === 1 &&
-            getFileType(fileInfos[0].extension) === FileTypes.VIDEO;
+        const isSingleVideo = fileInfos.length === 1 && tileKindFor(fileInfos[0]) === 'video';
 
-        const allMedia = sortedFileInfos.length > 0 && sortedFileInfos.every((f) => {
-            const t = getFileType(f.extension);
-            return t === FileTypes.IMAGE || t === FileTypes.VIDEO;
-        });
+        // .mov files can't be previewed, so they sit under the gallery as plain file cards.
+        const hasGalleryTile = sortedFileInfos.some((f) => tileKindFor(f) !== null);
+        const allMedia = hasGalleryTile && sortedFileInfos.every((f) => tileKindFor(f) !== null || isUnpreviewableVideo(f.extension));
 
         if ((isMulti || isSingleVideo) && allMedia) {
+            const movCards = sortedFileInfos.flatMap((f, i) => (isUnpreviewableVideo(f.extension) ? [renderCard(f, i)] : []));
             return (
-                <MediaGallery
-                    fileInfos={sortedFileInfos}
-                    postId={props.post.id}
-                    compactDisplay={compactDisplay}
-                    isEmbedVisible={props.isEmbedVisible}
-                    onItemClick={handleImageClick}
-                    onToggleCollapse={handleToggleCollapse}
-                />
+                <>
+                    <MediaGallery
+                        fileInfos={sortedFileInfos}
+                        postId={props.post.id}
+                        compactDisplay={compactDisplay}
+                        isEmbedVisible={props.isEmbedVisible}
+                        onItemClick={handleImageClick}
+                        onToggleCollapse={handleToggleCollapse}
+                    />
+                    {movCards.length > 0 && (
+                        <div
+                            data-testid='fileAttachmentList'
+                            className='post-image__columns clearfix'
+                        >
+                            {movCards}
+                        </div>
+                    )}
+                </>
             );
         }
     }
@@ -103,23 +134,7 @@ export default function FileAttachmentList(props: Props) {
     const postFiles = [];
     if (sortedFileInfos && sortedFileInfos.length > 0) {
         for (let i = 0; i < sortedFileInfos.length; i++) {
-            const fileInfo = sortedFileInfos[i];
-            const isDeleted = fileInfo.delete_at > 0;
-            postFiles.push(
-                <FileAttachment
-                    key={fileInfo.id}
-                    fileInfo={sortedFileInfos[i]}
-                    index={i}
-                    handleImageClick={handleImageClick}
-                    compactDisplay={compactDisplay}
-                    handleFileDropdownOpened={props.handleFileDropdownOpened}
-                    preventDownload={props.disableDownload}
-                    disableActions={props.disableActions}
-                    disableThumbnail={isDeleted}
-                    disablePreview={isDeleted}
-                    overrideGenerateFileDownloadUrl={props.overrideGenerateFileDownloadUrl}
-                />,
-            );
+            postFiles.push(renderCard(sortedFileInfos[i], i));
         }
     } else if (fileCount > 0) {
         for (let i = 0; i < fileCount; i++) {

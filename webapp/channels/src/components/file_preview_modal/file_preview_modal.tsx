@@ -18,6 +18,7 @@ import LoadingImagePreview from 'components/loading_image_preview';
 import type {Props as PDFPreviewComponentProps} from 'components/pdf_preview';
 
 import Constants, {FileTypes, ZoomSettings} from 'utils/constants';
+import {isUnpreviewableVideo} from 'utils/file_utils';
 import * as Keyboard from 'utils/keyboard';
 import * as Utils from 'utils/utils';
 
@@ -596,7 +597,7 @@ export default class FilePreviewModal extends React.PureComponent<Props, State> 
                         handleZoomReset={this.handleZoomReset}
                     />
                 );
-            } else if (fileType === FileTypes.VIDEO || fileType === FileTypes.AUDIO) {
+            } else if ((fileType === FileTypes.VIDEO && !isUnpreviewableVideo(fileInfo.extension)) || fileType === FileTypes.AUDIO) {
                 content = (
                     <AudioVideoPreview
                         fileInfo={fileInfo as FileInfo}

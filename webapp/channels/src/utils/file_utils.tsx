@@ -59,6 +59,11 @@ export function canDownloadFiles(config: Partial<ClientConfig>): boolean {
     return true;
 }
 
+// .mov is usually ProRes/HEVC, which browsers can't decode, so it is never previewed.
+export function isUnpreviewableVideo(extension?: string): boolean {
+    return extension?.toLowerCase() === 'mov';
+}
+
 export function trimFilename(filename: string) {
     let trimmedFilename = filename;
     if (filename.length > Constants.MAX_FILENAME_LENGTH) {

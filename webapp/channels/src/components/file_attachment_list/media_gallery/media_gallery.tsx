@@ -16,6 +16,7 @@ import {getPost} from 'mattermost-redux/selectors/entities/posts';
 import LoadingSpinner from 'components/widgets/loading/loading_spinner';
 
 import {FileTypes} from 'utils/constants';
+import {isUnpreviewableVideo} from 'utils/file_utils';
 import {getFileType} from 'utils/utils';
 
 import type {GlobalState} from 'types/store';
@@ -36,12 +37,12 @@ type Props = {
     onToggleCollapse?: (postId: string) => void;
 };
 
-function tileKindFor(fileInfo: FileInfo): TileKind | null {
+export function tileKindFor(fileInfo: FileInfo): TileKind | null {
     const type = getFileType(fileInfo.extension);
     if (type === FileTypes.IMAGE) {
         return 'image';
     }
-    if (type === FileTypes.VIDEO) {
+    if (type === FileTypes.VIDEO && !isUnpreviewableVideo(fileInfo.extension)) {
         return 'video';
     }
     return null;

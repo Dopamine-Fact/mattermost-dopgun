@@ -94,7 +94,19 @@ describe('MediaGallery', () => {
             />,
             baseState,
         );
-        expect(screen.getByTestId('media-gallery-tile')).toBeInTheDocument();
+        expect(screen.getByTestId('media-gallery-tile')).toHaveTextContent('clip.mp4');
+    });
+
+    it('does not preview mov files', () => {
+        const {container} = renderWithContext(
+            <MediaGallery
+                fileInfos={[fileInfo({id: 'v', name: 'clip.MOV', extension: 'MOV', mime_type: 'video/quicktime'})]}
+                postId='p1'
+                onItemClick={jest.fn()}
+            />,
+            baseState,
+        );
+        expect(container.firstChild).toBeNull();
     });
 
     it('plays a video inline instead of opening the preview modal', async () => {

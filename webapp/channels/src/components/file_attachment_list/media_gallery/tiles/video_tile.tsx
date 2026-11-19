@@ -239,6 +239,14 @@ const VideoTile = ({fileInfo, index, total, enablePublicLink}: Props) => {
             )}
 
             <span
+                className='MediaGallery__tile__name'
+                aria-hidden={true}
+                title={fileInfo.name}
+            >
+                {fileInfo.name}
+            </span>
+
+            <span
                 className='MediaGallery__tile__play_indicator'
                 aria-hidden={true}
             >
