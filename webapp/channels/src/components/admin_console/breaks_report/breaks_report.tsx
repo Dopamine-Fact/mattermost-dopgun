@@ -29,6 +29,7 @@ const msg = defineMessages({
     empty: {id: 'admin.breaks_report.empty', defaultMessage: 'No activity recorded for this day.'},
 });
 
+const NO_VALUE = '—';
 const pad = (n: number) => String(n).padStart(2, '0');
 const hourMin = (ms: number) => `${pad(Math.floor(ms / 3600000))}:${pad(Math.floor(ms / 60000) % 60)}`;
 const clock = (t: number) => `${pad(new Date(t).getHours())}:${pad(new Date(t).getMinutes())}`;
@@ -103,7 +104,7 @@ export default function BreaksReport() {
                             {rows.map((r) => (
                                 <tr key={r.userId}>
                                     <td>{users[r.userId] ? displayUsername(users[r.userId], nameDisplay) : r.userId}</td>
-                                    <td>{r.firstOpenAt ? clock(r.firstOpenAt) : '2014'}</td>
+                                    <td>{r.firstOpenAt ? clock(r.firstOpenAt) : NO_VALUE}</td>
                                     <td>{hourMin(r.breakMs)}</td>
                                     <td>{r.breakCount}</td>
                                     <td>{hourMin(r.overtimeMs)}</td>

@@ -31,6 +31,7 @@ import {
 import {close, switchToLhsStaticPage} from 'actions/views/lhs';
 import {openModal} from 'actions/views/modals';
 import {getCurrentStaticPageId, getVisibleStaticPages} from 'selectors/lhs';
+import {getIsMobileView} from 'selectors/views/browser';
 import {
     getDisplayedChannels,
     getDraggingState,
@@ -44,12 +45,13 @@ import type {GlobalState} from 'types/store';
 
 import SidebarList from './sidebar_list';
 
-// With the DM panel on, direct messages live in the right panel instead of the sidebar.
+// With the DM panel on, direct messages live in the right panel instead of the sidebar; mobile view has no panel.
 export const getVisibleSidebarCategories = createSelector(
     'getVisibleSidebarCategories',
     getCategoriesForCurrentTeam,
     shouldShowDmPanel,
-    (categories, showDmPanel) => (showDmPanel ? categories.filter((c) => c.type !== CategoryTypes.DIRECT_MESSAGES) : categories),
+    getIsMobileView,
+    (categories, showDmPanel, isMobileView) => (showDmPanel && !isMobileView ? categories.filter((c) => c.type !== CategoryTypes.DIRECT_MESSAGES) : categories),
 );
 
 function mapStateToProps(state: GlobalState) {

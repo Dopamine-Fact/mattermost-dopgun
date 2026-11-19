@@ -112,15 +112,16 @@ export default function DmPanel() {
             }).
             sort(alpha);
 
-        // Open DMs with people outside this team stay reachable, since the sidebar no longer lists them.
-        const teammates = new Set(profiles.map((u) => u.id));
-        const outsiders = (dmCategory?.channel_ids ?? []).
+        const teammates = profiles.filter((u) => u.id !== currentUserId && !u.is_bot && !u.delete_at);
+
+        // Every other open DM (outside the team, bots, deactivated users, self) stays reachable, since the sidebar no longer lists them.
+        const listed = new Set(teammates.map((u) => u.id));
+        const others = (dmCategory?.channel_ids ?? []).
             map((id) => byId.get(id)).
-            filter((c): c is Channel => c?.type === 'D' && Boolean(c.teammate_id) && !teammates.has(c.teammate_id!)).
+            filter((c): c is Channel => c?.type === 'D' && Boolean(c.teammate_id) && !listed.has(c.teammate_id!)).
             map((c) => users[c.teammate_id!]).
             filter(Boolean);
-        const people: Row[] = [...profiles, ...outsiders].
-            filter((u) => u.id !== currentUserId && !u.is_bot && !u.delete_at).
+        const people: Row[] = [...teammates, ...others].
             map((u) => {
                 const unread = unreadOf(byName.get(getDirectChannelName(currentUserId, u.id)));
                 return {

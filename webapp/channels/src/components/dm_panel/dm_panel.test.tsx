@@ -3,6 +3,8 @@
 
 import React from 'react';
 
+import type {Channel} from '@mattermost/types/channels';
+
 import {Client4} from 'mattermost-redux/client';
 import {CategoryTypes} from 'mattermost-redux/constants/channel_categories';
 
@@ -10,6 +12,7 @@ import {getVisibleSidebarCategories} from 'components/sidebar/sidebar_list';
 
 import {fireEvent, renderWithContext, screen} from 'tests/react_testing_utils';
 import {getHistory} from 'utils/browser_history';
+import {WindowSizes} from 'utils/constants';
 import {TestHelper} from 'utils/test_helper';
 
 import type {GlobalState} from 'types/store';
@@ -35,6 +38,7 @@ const profiles = {
 
 function state(showPanel?: string) {
     return {
+        views: {browser: {windowSize: WindowSizes.DESKTOP_VIEW}},
         entities: {
             general: {config: {}},
             teams: {currentTeamId: 't1', teams: {t1: TestHelper.getTeamMock({id: 't1', name: 'team'})}},
@@ -115,5 +119,24 @@ describe('DmPanel', () => {
         expect(container).toBeEmptyDOMElement();
         expect(getVisibleSidebarCategories(state('false') as unknown as GlobalState).map((c) => c.id)).toEqual(['chcat', 'dmcat']);
         expect(getVisibleSidebarCategories(state() as unknown as GlobalState).map((c) => c.id)).toEqual(['chcat']);
+    });
+
+    test('in mobile view, where the panel is not shown, the sidebar keeps the DM category', () => {
+        const mobile = {...state(), views: {browser: {windowSize: WindowSizes.MOBILE_VIEW}}};
+        expect(getVisibleSidebarCategories(mobile as unknown as GlobalState).map((c) => c.id)).toEqual(['chcat', 'dmcat']);
+    });
+
+    test('keeps open DMs with bots and deactivated users', () => {
+        const s = state();
+        (s.entities.channels as {channels: Record<string, Channel>}).channels = {
+            ...s.entities.channels.channels,
+            dmr: TestHelper.getChannelMock({id: 'dmr', name: 'me__robot', type: 'D', teammate_id: 'robot'}),
+            dmg: TestHelper.getChannelMock({id: 'dmg', name: 'gone__me', type: 'D', teammate_id: 'gone'}),
+        };
+        s.entities.channels.channelsInTeam[''] = new Set(['dmc', 'g1', 'dme', 'dmr', 'dmg']);
+        s.entities.channelCategories.byId.dmcat.channel_ids = ['g1', 'dmc', 'dme', 'dmr', 'dmg'];
+        renderWithContext(<DmPanel/>, s);
+        expect(rowNames()).toEqual(expect.arrayContaining(['robot', 'gone']));
+        expect(rowNames().filter((n) => n === 'robot' || n === 'gone')).toHaveLength(2);
     });
 });

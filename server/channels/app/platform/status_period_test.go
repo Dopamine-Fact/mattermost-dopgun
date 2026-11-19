@@ -171,3 +171,26 @@ func TestStatusPeriodSecondDesktopConnKeepsActive(t *testing.T) {
 	th.Service.HubUnregister(d2)
 	requirePeriods(t, th, periodRow{model.StatusPeriodActive, false})
 }
+
+func TestStatusPeriodDesktopDisconnectKeepsAutoAway(t *testing.T) {
+	th := Setup(t).InitBasic(t)
+	s := httptest.NewServer(dummyWebsocketHandler(t))
+	defer s.Close()
+	uid := th.BasicUser.Id
+
+	desktop := registerOriginConn(t, th, s, "desktop")
+	defer desktop.Close()
+	th.Service.SetStatusOnline(uid, false)
+	requirePeriods(t, th, periodRow{model.StatusPeriodActive, true})
+	th.Service.SaveAndBroadcastStatus(&model.Status{UserId: uid, Status: model.StatusOnline, LastActivityAt: 1})
+	th.Service.SetStatusAwayIfNeeded(uid, false)
+	require.Equal(t, model.StatusAway, th.Service.GetStatusFromCache(uid).Status)
+	requirePeriods(t, th, periodRow{model.StatusPeriodActive, false}, periodRow{model.StatusPeriodAway, true})
+
+	// The laptop sleeps: the desktop conn drops while the status is still an auto-Away.
+	th.Service.HubUnregister(desktop)
+	require.Never(t, func() bool {
+		rows := periodRows(t, th)
+		return len(rows) != 2 || !rows[1].Open
+	}, 300*time.Millisecond, 20*time.Millisecond)
+}

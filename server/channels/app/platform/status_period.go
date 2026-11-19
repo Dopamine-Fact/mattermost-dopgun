@@ -43,10 +43,12 @@ func (ps *PlatformService) updateStatusPeriod(userID string) {
 			kind = model.StatusPeriodActive
 		}
 	case model.StatusAway:
-		// Only the desktop app sees system-wide idle; a manual Away counts from any client.
-		if status.Manual || desktop {
-			kind = model.StatusPeriodAway
+		// Only the desktop app sees system-wide idle, so an auto-Away without it neither starts a break nor
+		// ends one (the app may just have dropped as the machine slept). A manual Away counts from any client.
+		if !status.Manual && !desktop {
+			return
 		}
+		kind = model.StatusPeriodAway
 	case model.StatusOffline:
 		// A break keeps running while the machine sleeps; only an active period ends.
 		if known && (cached == model.StatusPeriodAway || cached == "") {

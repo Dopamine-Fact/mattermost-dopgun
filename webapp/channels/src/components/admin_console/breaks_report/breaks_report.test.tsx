@@ -54,6 +54,18 @@ describe('BreaksReport', () => {
         expect(within(second).getAllByRole('cell').map((c) => c.textContent)).toEqual(['ali', '09:05', '00:30', '1', '01:00']);
     });
 
+    test('shows a dash as the first open of a user with no active time', async () => {
+        jest.spyOn(Date, 'now').mockReturnValue(at(20, 20));
+        jest.spyOn(Client4, 'getStatusPeriods').mockResolvedValue([
+            period({user_id: 'u1', kind: 'away', start_at: at(20, 10), end_at: at(20, 10, 30)}),
+        ]);
+
+        renderWithContext(<BreaksReport/>, state);
+
+        await waitFor(() => expect(screen.getAllByRole('row')).toHaveLength(2));
+        expect(within(screen.getAllByRole('row')[1]).getAllByRole('cell')[1].textContent).toBe('—');
+    });
+
     test('changing the date refetches that local day', async () => {
         jest.spyOn(Date, 'now').mockReturnValue(at(20, 20));
         const spy = jest.spyOn(Client4, 'getStatusPeriods').mockResolvedValue([]);
