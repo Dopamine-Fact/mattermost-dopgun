@@ -69,6 +69,9 @@ const task = (id: string, title: string, sectionId: string, videoFileId: string)
     creator_id: 'me',
     create_at: 1,
     update_at: 1,
+    department_id: '',
+    waits_for: [],
+    folder_id: '',
 });
 const tasks = {
     t1: task('t1', 'Logo too small', 'sec1', 'file1'),

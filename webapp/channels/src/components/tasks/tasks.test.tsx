@@ -38,6 +38,9 @@ const task = (id: string, videoFileId: string): Task => ({
     creator_id: 'me',
     create_at: 1,
     update_at: 1,
+    department_id: '',
+    waits_for: [],
+    folder_id: '',
 });
 
 const renderBoard = (taskId: string, permissions: string[]) => renderWithContext(

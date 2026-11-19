@@ -27,6 +27,9 @@ const task: Task = {
     creator_id: 'user1',
     create_at: 1,
     update_at: 1,
+    department_id: '',
+    waits_for: [],
+    folder_id: '',
 };
 const post = {id: 'post1', channel_id: 'chan1', message: 'New revision at 0:02.33: [Logo bigger](http://x)', props: {task_id: 'rev1'}} as unknown as Post;
 

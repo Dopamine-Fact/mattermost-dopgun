@@ -23,6 +23,9 @@ const task = (id: string, overrides: Partial<Task> = {}): Task => ({
     creator_id: 'user1',
     create_at: 1,
     update_at: 1,
+    department_id: '',
+    waits_for: [],
+    folder_id: '',
     ...overrides,
 });
 
