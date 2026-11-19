@@ -63,7 +63,8 @@ type PlatformService struct {
 
 	// statusPeriodKinds caches each user's open period kind (userID -> string) so ordinary status refreshes skip the DB.
 	statusPeriodKinds sync.Map
-	statusPeriodMut   sync.Mutex
+	// statusPeriodLocks serializes each user's period updates (userID -> *sync.Mutex) without blocking other users.
+	statusPeriodLocks sync.Map
 
 	asymmetricSigningKey atomic.Pointer[ecdsa.PrivateKey]
 	clientConfig         atomic.Value
@@ -497,6 +498,14 @@ func (ps *PlatformService) Start(broadcastHooks map[string]BroadcastHook) error 
 	// Start the status update processor.
 	// Must be done before hub start.
 	go ps.processStatusUpdates()
+
+	// A crash leaves active periods open, and no status change will close them now the cache is empty. On a cluster
+	// the other nodes still own their users' periods, so only a lone server may close them.
+	if !*ps.Config().ClusterSettings.Enable {
+		if err := ps.Store.StatusPeriod().EndOpenActive(model.GetMillis()); err != nil {
+			ps.Log().Warn("Failed to end status periods left open", mlog.Err(err))
+		}
+	}
 
 	ps.hubStart(broadcastHooks)
 

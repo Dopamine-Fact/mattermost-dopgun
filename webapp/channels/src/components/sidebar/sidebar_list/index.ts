@@ -37,6 +37,7 @@ import {
     getDraggingState,
     getCategoriesForCurrentTeam,
     getCategoryIdsHiddenByProductRail,
+    getUnreadChannels,
     isUnreadFilterEnabled,
 } from 'selectors/views/channel_sidebar';
 import {getFirstBoardInCurrentTeam, getProductRailFilter, isProductRailShown} from 'selectors/views/product_rail';
@@ -52,6 +53,28 @@ export const getVisibleSidebarCategories = createSelector(
     shouldShowDmPanel,
     getIsMobileView,
     (categories, showDmPanel, isMobileView) => (showDmPanel && !isMobileView ? categories.filter((c) => c.type !== CategoryTypes.DIRECT_MESSAGES) : categories),
+);
+
+// The DMs the panel hides stay out of the sidebar's keyboard navigation and unread indicators; unread ones listed
+// under Unreads (or the unread filter) are still in the sidebar, so they stay.
+export const getSidebarDisplayedChannels = createSelector(
+    'getSidebarDisplayedChannels',
+    getDisplayedChannels,
+    getCategoriesForCurrentTeam,
+    getVisibleSidebarCategories,
+    getUnreadChannels,
+    isUnreadFilterEnabled,
+    shouldShowUnreadsCategory,
+    (channels, categories, visibleCategories, unreadChannels, unreadFilter, unreadsCategory) => {
+        if (visibleCategories.length === categories.length) {
+            return channels;
+        }
+        const hidden = new Set(categories.find((c) => c.type === CategoryTypes.DIRECT_MESSAGES)?.channel_ids);
+        if (unreadFilter || unreadsCategory) {
+            unreadChannels.forEach((c) => hidden.delete(c.id));
+        }
+        return channels.filter((c) => !hidden.has(c.id));
+    },
 );
 
 function mapStateToProps(state: GlobalState) {
@@ -72,7 +95,7 @@ function mapStateToProps(state: GlobalState) {
         categories: getVisibleSidebarCategories(state),
         isUnreadFilterEnabled: isUnreadFilterEnabled(state),
         unreadChannelIds: getUnreadChannelIds(state),
-        displayedChannels: getDisplayedChannels(state),
+        displayedChannels: getSidebarDisplayedChannels(state),
         draggingState: getDraggingState(state),
         newCategoryIds: state.views.channelSidebar.newCategoryIds,
         multiSelectedChannelIds: state.views.channelSidebar.multiSelectedChannelIds,

@@ -61,6 +61,13 @@ func (s *SqlStatusPeriodStore) End(userID, kind string, at int64) error {
 	return errors.Wrapf(err, "failed to end StatusPeriod for user_id=%s", userID)
 }
 
+func (s *SqlStatusPeriodStore) EndOpenActive(now int64) error {
+	_, err := s.GetMaster().Exec(`UPDATE StatusPeriods AS p
+		SET EndAt = GREATEST(p.StartAt, LEAST(?, COALESCE((SELECT st.LastActivityAt FROM Status st WHERE st.UserId = p.UserId), 0)))
+		WHERE p.Kind = ? AND p.EndAt = 0`, now, model.StatusPeriodActive)
+	return errors.Wrap(err, "failed to end open active StatusPeriods")
+}
+
 func (s *SqlStatusPeriodStore) GetRange(userID string, from, to int64) ([]*model.StatusPeriod, error) {
 	query := s.getQueryBuilder().
 		Select("Id", "UserId", "Kind", "StartAt", "EndAt").

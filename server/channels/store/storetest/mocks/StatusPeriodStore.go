@@ -32,6 +32,24 @@ func (_m *StatusPeriodStore) End(userID string, kind string, at int64) error {
 	return r0
 }
 
+// EndOpenActive provides a mock function with given fields: now
+func (_m *StatusPeriodStore) EndOpenActive(now int64) error {
+	ret := _m.Called(now)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EndOpenActive")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(int64) error); ok {
+		r0 = rf(now)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // GetRange provides a mock function with given fields: userID, from, to
 func (_m *StatusPeriodStore) GetRange(userID string, from int64, to int64) ([]*model.StatusPeriod, error) {
 	ret := _m.Called(userID, from, to)

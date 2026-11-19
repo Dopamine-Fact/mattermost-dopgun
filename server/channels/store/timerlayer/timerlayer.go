@@ -13397,6 +13397,22 @@ func (s *TimerLayerStatusPeriodStore) End(userID string, kind string, at int64) 
 	return err
 }
 
+func (s *TimerLayerStatusPeriodStore) EndOpenActive(now int64) error {
+	start := time.Now()
+
+	err := s.StatusPeriodStore.EndOpenActive(now)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("StatusPeriodStore.EndOpenActive", success, elapsed)
+	}
+	return err
+}
+
 func (s *TimerLayerStatusPeriodStore) GetRange(userID string, from int64, to int64) ([]*model.StatusPeriod, error) {
 	start := time.Now()
 

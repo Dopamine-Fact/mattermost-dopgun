@@ -4,6 +4,8 @@
 package platform
 
 import (
+	"sync"
+
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 )
@@ -22,8 +24,9 @@ func (ps *PlatformService) updateStatusPeriod(userID string) {
 	if !*ps.Config().ServiceSettings.EnableUserStatuses {
 		return
 	}
-	ps.statusPeriodMut.Lock()
-	defer ps.statusPeriodMut.Unlock()
+	lock, _ := ps.statusPeriodLocks.LoadOrStore(userID, &sync.Mutex{})
+	lock.(*sync.Mutex).Lock()
+	defer lock.(*sync.Mutex).Unlock()
 
 	status, appErr := ps.GetStatus(userID)
 	if appErr != nil {

@@ -8,16 +8,31 @@ import type {Channel} from '@mattermost/types/channels';
 import {Client4} from 'mattermost-redux/client';
 import {CategoryTypes} from 'mattermost-redux/constants/channel_categories';
 
-import {getVisibleSidebarCategories} from 'components/sidebar/sidebar_list';
+import {openModal} from 'actions/views/modals';
+import {getDisplayedChannels} from 'selectors/views/channel_sidebar';
+
+import MoreDirectChannels from 'components/more_direct_channels';
+import {getSidebarDisplayedChannels, getVisibleSidebarCategories} from 'components/sidebar/sidebar_list';
 
 import {fireEvent, renderWithContext, screen} from 'tests/react_testing_utils';
 import {getHistory} from 'utils/browser_history';
-import {WindowSizes} from 'utils/constants';
+import {ModalIdentifiers, WindowSizes} from 'utils/constants';
 import {TestHelper} from 'utils/test_helper';
 
 import type {GlobalState} from 'types/store';
 
 import DmPanel from './dm_panel';
+
+jest.mock('actions/views/modals', () => ({openModal: jest.fn(() => ({type: 'MOCK_OPEN_MODAL'}))}));
+
+const mockPictureRenders = jest.fn();
+jest.mock('components/profile_picture', () => ({
+    __esModule: true,
+    default: ({src}: {src: string}) => {
+        mockPictureRenders(src);
+        return null;
+    },
+}));
 
 jest.mock('utils/browser_history', () => {
     const history = {push: jest.fn()};
@@ -38,7 +53,7 @@ const profiles = {
 
 function state(showPanel?: string) {
     return {
-        views: {browser: {windowSize: WindowSizes.DESKTOP_VIEW}},
+        views: {browser: {windowSize: WindowSizes.DESKTOP_VIEW}, channelSidebar: {unreadFilterEnabled: false}, channel: {lastUnreadChannel: null}},
         entities: {
             general: {config: {}},
             teams: {currentTeamId: 't1', teams: {t1: TestHelper.getTeamMock({id: 't1', name: 'team'})}},
@@ -122,7 +137,7 @@ describe('DmPanel', () => {
     });
 
     test('in mobile view, where the panel is not shown, the sidebar keeps the DM category', () => {
-        const mobile = {...state(), views: {browser: {windowSize: WindowSizes.MOBILE_VIEW}}};
+        const mobile = {...state(), views: {...state().views, browser: {windowSize: WindowSizes.MOBILE_VIEW}}};
         expect(getVisibleSidebarCategories(mobile as unknown as GlobalState).map((c) => c.id)).toEqual(['chcat', 'dmcat']);
     });
 
@@ -138,5 +153,43 @@ describe('DmPanel', () => {
         renderWithContext(<DmPanel/>, s);
         expect(rowNames()).toEqual(expect.arrayContaining(['robot', 'gone']));
         expect(rowNames().filter((n) => n === 'robot' || n === 'gone')).toHaveLength(2);
+    });
+
+    test('the sidebar leaves the DMs it hides out of keyboard navigation, but not unread ones shown under Unreads', () => {
+        const withChannel = (showPanel?: string, unreadsSection = false) => {
+            const s = state(showPanel);
+            (s.entities.channels as {channels: Record<string, Channel>}).channels.pub = TestHelper.getChannelMock({id: 'pub', name: 'pub', type: 'O', team_id: 't1'});
+            (s.entities.channels.channelsInTeam as Record<string, Set<string>>).t1 = new Set(['pub']);
+            (s.entities.channels.myMembers as Record<string, unknown>).pub = TestHelper.getChannelMembershipMock({channel_id: 'pub', msg_count: 1});
+            (s.entities.channels.messageCounts as Record<string, unknown>).pub = {total: 1, root: 1};
+            (s.entities.channelCategories.byId.chcat.channel_ids as string[]) = ['pub'];
+            if (unreadsSection) {
+                (s.entities.preferences.myPreferences as Record<string, unknown>)['sidebar_settings--show_unread_section'] = {category: 'sidebar_settings', name: 'show_unread_section', user_id: 'me', value: 'true'};
+            }
+            return s as unknown as GlobalState;
+        };
+        const ids = (s: GlobalState) => getSidebarDisplayedChannels(s).map((c) => c.id);
+
+        const off = withChannel('false');
+        expect(getSidebarDisplayedChannels(off)).toBe(getDisplayedChannels(off));
+        expect(ids(off)).toEqual(expect.arrayContaining(['pub', 'dmc']));
+        expect(ids(withChannel())).toEqual(['pub']);
+        expect(ids(withChannel(undefined, true)).sort()).toEqual(['dmc', 'pub']);
+    });
+    test('the + button opens the new direct or group message dialog', () => {
+        renderWithContext(<DmPanel/>, state());
+        fireEvent.click(screen.getByRole('button', {name: 'Write a direct message'}));
+        expect(openModal).toHaveBeenCalledWith(expect.objectContaining({
+            modalId: ModalIdentifiers.CREATE_DM_CHANNEL,
+            dialogType: MoreDirectChannels,
+            dialogProps: expect.objectContaining({isExistingChannel: false}),
+        }));
+    });
+
+    test('a status change re-renders only the row of the person whose status changed', () => {
+        const {updateStoreState} = renderWithContext(<DmPanel/>, state());
+        mockPictureRenders.mockClear();
+        updateStoreState({entities: {users: {statuses: {alice: 'dnd'}}}});
+        expect(mockPictureRenders.mock.calls.map(([src]) => src.split('/')[4])).toEqual(['alice']);
     });
 });

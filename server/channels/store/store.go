@@ -1305,6 +1305,9 @@ type StatusPeriodStore interface {
 	Switch(userID, kind string, at int64) error
 	// End closes the user's open row at `at` only if it has `kind`.
 	End(userID, kind string, at int64) error
+	// EndOpenActive closes every user's open active row at their last recorded activity, clamped to [StartAt, now],
+	// for rows a crash left open.
+	EndOpenActive(now int64) error
 	// GetRange returns rows overlapping [from, to), all users when userID is "", ordered by UserId then StartAt.
 	GetRange(userID string, from, to int64) ([]*model.StatusPeriod, error)
 }

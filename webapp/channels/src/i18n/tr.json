@@ -5630,6 +5630,7 @@
   "dm_panel.collapse": "Doğrudan mesajları daralt",
   "dm_panel.expand": "Doğrudan mesajları genişlet",
   "dm_panel.label": "Doğrudan mesajlar",
+  "dm_panel.new": "Doğrudan mesaj yaz",
   "dm_panel.title": "Doğrudan Mesajlar",
   "dnd_custom_time_picker_modal.defaultMsg": "Bildirimler şu zamana kadar kapatılsın",
   "dnd_custom_time_picker_modal.submitButton": "Bildirimleri kapat",

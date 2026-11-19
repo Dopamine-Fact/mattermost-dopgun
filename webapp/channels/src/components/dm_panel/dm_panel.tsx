@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import classNames from 'classnames';
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {memo, useEffect, useMemo, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 
@@ -18,13 +18,15 @@ import {getCurrentUserId, getProfilesInCurrentTeam, getUserStatuses, getUsers} f
 import {calculateUnreadCount, getDirectChannelName} from 'mattermost-redux/utils/channel_utils';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 
+import {openModal} from 'actions/views/modals';
 import {getCategoriesForCurrentTeam} from 'selectors/views/channel_sidebar';
 
+import MoreDirectChannels from 'components/more_direct_channels';
 import ProfilePicture from 'components/profile_picture';
 import {ranksHeldBy, useTeamDepartments} from 'components/profile_popover/use_custom_roles';
 
 import {getHistory} from 'utils/browser_history';
-import {UserStatuses} from 'utils/constants';
+import {ModalIdentifiers, UserStatuses} from 'utils/constants';
 import {imageURLForUser} from 'utils/utils';
 
 import type {GlobalState} from 'types/store';
@@ -60,6 +62,36 @@ type Row = {
     status?: string;
     color?: string;
 };
+
+// Memoized so a status or unread change re-renders only the rows it touches.
+const DmRow = memo(({name, path, unread, mentions, user, status, color}: Omit<Row, 'key'>) => (
+    <li>
+        <button
+            className={classNames('DmPanel__row', {'DmPanel__row--unread': unread, 'DmPanel__row--offline': status === UserStatuses.OFFLINE})}
+            onClick={() => getHistory().push(path)}
+        >
+            {user ? (
+                <ProfilePicture
+                    src={imageURLForUser(user.id, user.last_picture_update)}
+                    status={status}
+                    size='sm'
+                />
+            ) : (
+                <span className='DmPanel__groupIcon'>
+                    <i className='icon icon-account-multiple-outline'/>
+                </span>
+            )}
+            <span
+                className='DmPanel__name'
+                style={color ? {color} : undefined}
+            >
+                {name}
+            </span>
+            {mentions > 0 && <span className='DmPanel__badge badge'>{mentions}</span>}
+        </button>
+    </li>
+));
+DmRow.displayName = 'DmRow';
 
 /** Right-hand panel listing group DMs and every teammate, replacing the sidebar's direct messages category. */
 export default function DmPanel() {
@@ -162,12 +194,26 @@ export default function DmPanel() {
         >
             <div className='DmPanel__header'>
                 {!collapsed && (
-                    <span className='DmPanel__title'>
-                        <FormattedMessage
-                            id='dm_panel.title'
-                            defaultMessage='Direct Messages'
-                        />
-                    </span>
+                    <>
+                        <span className='DmPanel__title'>
+                            <FormattedMessage
+                                id='dm_panel.title'
+                                defaultMessage='Direct Messages'
+                            />
+                        </span>
+                        <button
+                            id='dmPanelNewButton'
+                            className='DmPanel__toggle btn btn-icon btn-sm'
+                            onClick={() => dispatch(openModal({
+                                modalId: ModalIdentifiers.CREATE_DM_CHANNEL,
+                                dialogType: MoreDirectChannels,
+                                dialogProps: {isExistingChannel: false, focusOriginElement: 'dmPanelNewButton'},
+                            }))}
+                            aria-label={intl.formatMessage({id: 'dm_panel.new', defaultMessage: 'Write a direct message'})}
+                        >
+                            <i className='icon icon-plus'/>
+                        </button>
+                    </>
                 )}
                 <button
                     className='DmPanel__toggle btn btn-icon btn-sm'
@@ -180,32 +226,11 @@ export default function DmPanel() {
             </div>
             {!collapsed && (
                 <ul className='DmPanel__list'>
-                    {rows.map((r) => (
-                        <li key={r.key}>
-                            <button
-                                className={classNames('DmPanel__row', {'DmPanel__row--unread': r.unread, 'DmPanel__row--offline': r.status === UserStatuses.OFFLINE})}
-                                onClick={() => getHistory().push(r.path)}
-                            >
-                                {r.user ? (
-                                    <ProfilePicture
-                                        src={imageURLForUser(r.user.id, r.user.last_picture_update)}
-                                        status={r.status}
-                                        size='sm'
-                                    />
-                                ) : (
-                                    <span className='DmPanel__groupIcon'>
-                                        <i className='icon icon-account-multiple-outline'/>
-                                    </span>
-                                )}
-                                <span
-                                    className='DmPanel__name'
-                                    style={r.color ? {color: r.color} : undefined}
-                                >
-                                    {r.name}
-                                </span>
-                                {r.mentions > 0 && <span className='DmPanel__badge badge'>{r.mentions}</span>}
-                            </button>
-                        </li>
+                    {rows.map(({key, ...row}) => (
+                        <DmRow
+                            key={key}
+                            {...row}
+                        />
                     ))}
                 </ul>
             )}

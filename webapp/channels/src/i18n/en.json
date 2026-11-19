@@ -23967,6 +23967,10 @@
     "defaultMessage": "Direct messages",
     "description": "Accessible name of the right-hand panel listing direct messages and teammates."
   },
+  "dm_panel.new": {
+    "defaultMessage": "Write a direct message",
+    "description": "Accessible label of the + button in the right-hand direct messages panel header that opens the dialog to start a direct or group message."
+  },
   "dm_panel.title": {
     "defaultMessage": "Direct Messages",
     "description": "Heading of the right-hand panel listing direct messages and teammates."

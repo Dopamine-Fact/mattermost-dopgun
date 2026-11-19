@@ -19,6 +19,7 @@ func TestStatusPeriodStore(t *testing.T, rctx request.CTX, ss store.Store) {
 	t.Run("SwitchEmptyClosesOnly", func(t *testing.T) { testStatusPeriodSwitchEmptyClosesOnly(t, ss) })
 	t.Run("EndOnlyMatchingKind", func(t *testing.T) { testStatusPeriodEndOnlyMatchingKind(t, ss) })
 	t.Run("GetRangeOverlap", func(t *testing.T) { testStatusPeriodGetRangeOverlap(t, ss) })
+	t.Run("EndOpenActive", func(t *testing.T) { testStatusPeriodEndOpenActive(t, ss) })
 }
 
 type periodShape struct {
@@ -92,4 +93,22 @@ func testStatusPeriodGetRangeOverlap(t *testing.T, ss store.Store) {
 		users[r.UserId] = true
 	}
 	require.True(t, users[u] && users[other], "empty user id returns every user's rows")
+}
+
+// After a crash the open active rows end at each user's last recorded activity, never past now nor before the start.
+func testStatusPeriodEndOpenActive(t *testing.T, ss store.Store) {
+	seen, unseen, stale, away := model.NewId(), model.NewId(), model.NewId(), model.NewId()
+	require.NoError(t, ss.Status().SaveOrUpdate(&model.Status{UserId: seen, Status: model.StatusOnline, LastActivityAt: 1500}))
+	require.NoError(t, ss.Status().SaveOrUpdate(&model.Status{UserId: stale, Status: model.StatusOnline, LastActivityAt: 50}))
+	require.NoError(t, ss.StatusPeriod().Switch(seen, model.StatusPeriodActive, 1000))
+	require.NoError(t, ss.StatusPeriod().Switch(unseen, model.StatusPeriodActive, 1000))
+	require.NoError(t, ss.StatusPeriod().Switch(stale, model.StatusPeriodActive, 1000))
+	require.NoError(t, ss.StatusPeriod().Switch(away, model.StatusPeriodAway, 1000))
+
+	require.NoError(t, ss.StatusPeriod().EndOpenActive(1200))
+
+	require.Equal(t, []periodShape{{model.StatusPeriodActive, 1000, 1200}}, userPeriods(t, ss, seen))
+	require.Equal(t, []periodShape{{model.StatusPeriodActive, 1000, 1000}}, userPeriods(t, ss, unseen))
+	require.Equal(t, []periodShape{{model.StatusPeriodActive, 1000, 1000}}, userPeriods(t, ss, stale))
+	require.Equal(t, []periodShape{{model.StatusPeriodAway, 1000, 0}}, userPeriods(t, ss, away))
 }
