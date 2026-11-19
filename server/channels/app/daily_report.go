@@ -5,9 +5,11 @@ package app
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"slices"
 	"strconv"
@@ -99,7 +101,16 @@ func dailyReportEvent(r *model.DailyReport) map[string]string {
 }
 
 func (a *App) publishDailyReport(rctx request.CTX, report *model.DailyReport) {
-	a.publishTaskEvent(rctx, model.WebsocketDailyReportUpdated, report.TeamId, "report", dailyReportEvent(report), "")
+	if report.Status != model.DailyReportStatusDraft {
+		a.publishTaskEvent(rctx, model.WebsocketDailyReportUpdated, report.TeamId, "report", dailyReportEvent(report), "")
+		return
+	}
+	// A draft is its author's alone: nobody else has anything to refetch.
+	data, _ := json.Marshal(dailyReportEvent(report)) // a map of strings always encodes
+	message := model.NewWebSocketEvent(model.WebsocketDailyReportUpdated, "", "", report.UserId, nil, "")
+	message.Add("report", string(data))
+	message.Add("team_id", report.TeamId)
+	a.Publish(message)
 }
 
 // resubmit rewrites a report the author changed: back to pending and marked edited. PreviousMessage keeps the text the
@@ -125,6 +136,7 @@ func sendDailyReport(r *model.DailyReport, message string, tasks []model.DailyRe
 	r.Message, r.Tasks, r.Status = message, tasks, model.DailyReportStatusPending
 	r.Edited, r.PreviousMessage = false, ""
 	r.AutoApproved, r.ApprovedBy, r.ApprovedAt = false, "", 0
+	r.CreateAt = model.GetMillis() // a sent report's CreateAt is when it was sent, not when its draft began
 }
 
 // requireDailyReportContent refuses a blank message unless the report (nil when there is none yet) has files.
@@ -699,11 +711,29 @@ func (a *App) RemoveDailyReportFile(rctx request.CTX, reportID, fileID, userID s
 	if appErr != nil {
 		return appErr
 	}
-	if err := a.Srv().Store().DailyReport().RemoveFile(reportID, fileID); err != nil {
+	ds := a.Srv().Store().DailyReport()
+	if report.IsSent() && strings.TrimSpace(report.Message) == "" {
+		links, err := ds.GetFileIds([]string{reportID})
+		if err != nil {
+			return dailyReportStoreError("RemoveDailyReportFile", reportID, err)
+		}
+		if slices.Equal(links[reportID], []string{fileID}) {
+			return model.NewAppError("RemoveDailyReportFile", "app.daily_report.empty.app_error", nil, "id="+reportID, http.StatusBadRequest)
+		}
+	}
+	if err := ds.RemoveFile(reportID, fileID); err != nil {
 		return dailyReportStoreError("RemoveDailyReportFile", reportID, err)
 	}
+	if appErr := a.dailyReportFilesChanged(rctx, "RemoveDailyReportFile", report); appErr != nil {
+		// A reviewer must not approve a report whose files changed silently: put the file back.
+		// shortcut: the restored file sorts last, fine for this rare failure path.
+		if err := ds.AddFile(reportID, fileID, model.GetMillis(), math.MaxInt); err != nil {
+			rctx.Logger().Warn("RemoveDailyReportFile: failed to relink file", mlog.String("file_id", fileID), mlog.Err(err))
+		}
+		return appErr
+	}
 	a.removeTaskFiles(rctx, []string{fileID})
-	return a.dailyReportFilesChanged(rctx, "RemoveDailyReportFile", report)
+	return nil
 }
 
 // GetDailyReportFile returns the file only when it is linked to that report (404 otherwise); no permission check.
@@ -767,16 +797,23 @@ func (a *App) attachDailyReportFile(rctx request.CTX, report *model.DailyReport,
 	if err != nil {
 		return nil, dailyReportStoreError("attachDailyReportFile", report.Id, err)
 	}
-	if len(links[report.Id]) >= model.DailyReportMaxFiles {
-		return nil, model.NewAppError("attachDailyReportFile", "app.daily_report.too_many_files.app_error",
+	tooMany := func() *model.AppError {
+		return model.NewAppError("attachDailyReportFile", "app.daily_report.too_many_files.app_error",
 			map[string]any{"Max": model.DailyReportMaxFiles}, "id="+report.Id, http.StatusBadRequest)
+	}
+	if len(links[report.Id]) >= model.DailyReportMaxFiles {
+		return nil, tooMany() // spares the upload; AddFile enforces the limit under concurrency
 	}
 	info, appErr := a.UploadFileForUserAndTeam(rctx, data, "", name, userID, report.TeamId)
 	if appErr != nil {
 		return nil, appErr
 	}
-	if err := a.Srv().Store().DailyReport().AddFile(report.Id, info.Id, info.CreateAt); err != nil {
+	if err := a.Srv().Store().DailyReport().AddFile(report.Id, info.Id, info.CreateAt, model.DailyReportMaxFiles); err != nil {
 		a.removeTaskFiles(rctx, []string{info.Id})
+		var limitErr *store.ErrLimitExceeded
+		if errors.As(err, &limitErr) {
+			return nil, tooMany()
+		}
 		return nil, dailyReportStoreError("attachDailyReportFile", report.Id, err)
 	}
 	if appErr := a.dailyReportFilesChanged(rctx, "attachDailyReportFile", report); appErr != nil {
@@ -864,7 +901,7 @@ func (a *App) cleanUpDailyReportFiles(rctx request.CTX, team *model.Team, now ti
 	}
 	ds := a.Srv().Store().DailyReport()
 	for _, status := range []string{model.DailyReportStatusDraft, model.DailyReportStatusExcused} {
-		reports, err := ds.GetBeforeDate(team.Id, status, today)
+		reports, err := ds.GetBeforeDate(team.Id, status, today, status == model.DailyReportStatusExcused)
 		if err != nil {
 			logger.Error("Daily report cleanup: failed to load the reports", mlog.String("status", status), mlog.Err(err))
 			continue

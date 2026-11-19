@@ -590,6 +590,64 @@ func TestDailyReportFiles(t *testing.T) {
 		assert.Len(t, after, len(before), "a refused 11th file leaves nothing stored")
 	})
 
+	t.Run("concurrent uploads stop at the limit", func(t *testing.T) {
+		u := newAuthor(t)
+		for i := range model.DailyReportMaxFiles - 1 {
+			_, appErr := th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, fmt.Sprintf("%d.png", i), pngData)
+			require.Nil(t, appErr)
+		}
+		const racers = 3
+		done := make(chan *model.AppError, racers)
+		for i := range racers {
+			go func() {
+				_, e := th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, fmt.Sprintf("race%d.png", i), pngData)
+				done <- e
+			}()
+		}
+		refused := 0
+		for range racers {
+			if e := <-done; e != nil {
+				assert.Equal(t, "app.daily_report.too_many_files.app_error", e.Id)
+				refused++
+			}
+		}
+		assert.Equal(t, racers-1, refused)
+		reports, appErr := th.App.GetDailyReports(team.Id, today, today, u.Id)
+		require.Nil(t, appErr)
+		assert.Len(t, linked(t, reports[0].Id), model.DailyReportMaxFiles)
+	})
+
+	t.Run("the last file of a sent report without text stays", func(t *testing.T) {
+		u := newAuthor(t)
+		info, appErr := th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, "a.png", pngData)
+		require.Nil(t, appErr)
+		sent, appErr := th.App.SubmitDailyReport(th.Context, team.Id, u.Id, "")
+		require.Nil(t, appErr)
+		appErr = th.App.RemoveDailyReportFile(th.Context, sent.Id, info.Id, u.Id)
+		require.NotNil(t, appErr)
+		assert.Equal(t, "app.daily_report.empty.app_error", appErr.Id)
+		assert.Equal(t, 400, appErr.StatusCode)
+		assert.Equal(t, []string{info.Id}, linked(t, sent.Id))
+		_, appErr = th.App.GetFileInfo(th.Context, info.Id)
+		require.Nil(t, appErr, "the file itself is kept")
+	})
+
+	t.Run("sending a draft stamps the send time", func(t *testing.T) {
+		u := newAuthor(t)
+		_, appErr := th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, "a.png", pngData)
+		require.Nil(t, appErr)
+		reports, appErr := th.App.GetDailyReports(team.Id, today, today, u.Id)
+		require.Nil(t, appErr)
+		draftAt := reports[0].CreateAt
+		time.Sleep(5 * time.Millisecond)
+		sent, appErr := th.App.SubmitDailyReport(th.Context, team.Id, u.Id, "done")
+		require.Nil(t, appErr)
+		assert.Greater(t, sent.CreateAt, draftAt)
+		stored, appErr := th.App.GetDailyReport(sent.Id)
+		require.Nil(t, appErr)
+		assert.Equal(t, sent.CreateAt, stored.CreateAt)
+	})
+
 	t.Run("file changes on a sent report are an edit, on a draft they are not", func(t *testing.T) {
 		u := newAuthor(t)
 		draftFile, appErr := th.App.AddMyDailyReportFile(th.Context, team.Id, u.Id, "a.png", pngData)
@@ -795,7 +853,7 @@ func TestDailyReportTickCleansUp(t *testing.T) {
 		require.NoError(t, err)
 		info, appErr := th.App.UploadFileForUserAndTeam(th.Context, pngData, "", "a.png", userID, team.Id)
 		require.Nil(t, appErr)
-		require.NoError(t, th.App.Srv().Store().DailyReport().AddFile(r.Id, info.Id, info.CreateAt))
+		require.NoError(t, th.App.Srv().Store().DailyReport().AddFile(r.Id, info.Id, info.CreateAt, model.DailyReportMaxFiles))
 		return r, info
 	}
 	oldDraft, oldDraftFile := withFile(th.BasicUser.Id, "2026-11-17", model.DailyReportStatusDraft)

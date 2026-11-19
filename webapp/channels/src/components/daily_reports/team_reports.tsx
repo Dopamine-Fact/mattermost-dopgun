@@ -125,6 +125,9 @@ function ExcuseModal({teamId, user, date, name, onDone, onExited}: ExcuseProps) 
             onDone();
         } catch (e) {
             setError((e as Error).message);
+            if ((e as {status_code?: number}).status_code === 409) {
+                onDone(); // the day was sent meanwhile: show it
+            }
         }
         setBusy(false);
     };

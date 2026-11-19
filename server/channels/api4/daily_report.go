@@ -36,9 +36,10 @@ func (api *API) InitDailyReports() {
 	api.BaseRoutes.APIRoot.Handle("/daily_reports/{report_id:[A-Za-z0-9]+}/files", api.APISessionRequired(addDailyReportFile, handlerParamFileAPI)).Methods(http.MethodPost)
 	file := "/daily_reports/{report_id:[A-Za-z0-9]+}/files/{file_id:[A-Za-z0-9]+}"
 	api.BaseRoutes.APIRoot.Handle(file, api.APISessionRequired(removeDailyReportFile)).Methods(http.MethodDelete)
-	api.BaseRoutes.APIRoot.Handle(file, api.APISessionRequiredTrustRequester(serveDailyReportFile(""))).Methods(http.MethodGet)
-	api.BaseRoutes.APIRoot.Handle(file+"/thumbnail", api.APISessionRequiredTrustRequester(serveDailyReportFile("thumbnail"))).Methods(http.MethodGet)
-	api.BaseRoutes.APIRoot.Handle(file+"/preview", api.APISessionRequiredTrustRequester(serveDailyReportFile("preview"))).Methods(http.MethodGet)
+	// Served like post files: gzip rather than brotli, and HEAD for media players.
+	api.BaseRoutes.APIRoot.Handle(file, api.APISessionRequiredTrustRequesterGzip(serveDailyReportFile(""))).Methods(http.MethodGet, http.MethodHead)
+	api.BaseRoutes.APIRoot.Handle(file+"/thumbnail", api.APISessionRequiredTrustRequesterGzip(serveDailyReportFile("thumbnail"))).Methods(http.MethodGet, http.MethodHead)
+	api.BaseRoutes.APIRoot.Handle(file+"/preview", api.APISessionRequiredTrustRequesterGzip(serveDailyReportFile("preview"))).Methods(http.MethodGet, http.MethodHead)
 }
 
 // requireDailyReportTeam checks the caller is a team member and the team has daily reports on.

@@ -294,9 +294,11 @@ func testDailyReportFiles(t *testing.T, ss store.Store) {
 	other, err := ss.DailyReport().Save(newDailyReport(model.NewId(), model.NewId(), "2026-11-18"))
 	require.NoError(t, err)
 	first, second := model.NewId(), model.NewId()
-	require.NoError(t, ss.DailyReport().AddFile(report.Id, first, 1))
-	require.NoError(t, ss.DailyReport().AddFile(report.Id, second, 2))
-	require.Error(t, ss.DailyReport().AddFile(report.Id, first, 3))
+	require.NoError(t, ss.DailyReport().AddFile(report.Id, first, 1, 10))
+	require.NoError(t, ss.DailyReport().AddFile(report.Id, second, 2, 10))
+	require.Error(t, ss.DailyReport().AddFile(report.Id, first, 3, 10))
+	var limitErr *store.ErrLimitExceeded
+	require.ErrorAs(t, ss.DailyReport().AddFile(report.Id, model.NewId(), 3, 2), &limitErr, "a full report takes no more")
 
 	ids, err := ss.DailyReport().GetFileIds([]string{report.Id, other.Id})
 	require.NoError(t, err)
@@ -310,7 +312,7 @@ func testDailyReportFiles(t *testing.T, ss store.Store) {
 	require.Equal(t, []string{second}, ids[report.Id])
 
 	// Only a draft is deleted: a report sent meanwhile keeps its row and its files.
-	require.NoError(t, ss.DailyReport().AddFile(other.Id, first, 4))
+	require.NoError(t, ss.DailyReport().AddFile(other.Id, first, 4, 10))
 	require.ErrorAs(t, ss.DailyReport().Delete(other.Id), &nfErr)
 	ids, err = ss.DailyReport().GetFileIds([]string{other.Id})
 	require.NoError(t, err)
@@ -342,10 +344,22 @@ func testDailyReportGetBeforeDate(t *testing.T, ss store.Store) {
 	_, err := ss.DailyReport().Save(r) // another team
 	require.NoError(t, err)
 
-	got, err := ss.DailyReport().GetBeforeDate(teamID, model.DailyReportStatusDraft, "2026-11-19")
+	got, err := ss.DailyReport().GetBeforeDate(teamID, model.DailyReportStatusDraft, "2026-11-19", false)
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	require.Equal(t, oldDraft.Id, got[0].Id)
+
+	bare := save("2026-11-17", model.DailyReportStatusExcused)
+	withFiles := save("2026-11-18", model.DailyReportStatusExcused)
+	require.NoError(t, ss.DailyReport().AddFile(withFiles.Id, model.NewId(), 1, 10))
+	got, err = ss.DailyReport().GetBeforeDate(teamID, model.DailyReportStatusExcused, "2026-11-19", false)
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	require.Equal(t, bare.Id, got[0].Id)
+	got, err = ss.DailyReport().GetBeforeDate(teamID, model.DailyReportStatusExcused, "2026-11-19", true)
+	require.NoError(t, err)
+	require.Len(t, got, 1, "only the rows that still hold files")
+	require.Equal(t, withFiles.Id, got[0].Id)
 }
 
 func testDailyReportExcuse(t *testing.T, ss store.Store) {
