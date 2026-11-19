@@ -9,10 +9,25 @@ import type {UploadRequest} from './use_explorer_uploads';
 const MIME = 'application/x-mattermost-drive';
 
 /** What is being dragged out of the explorer. parentId is the folder it comes from. */
-export type DragPayload = {channelId: string; parentId: string; itemIds: string[]; chatFileIds: string[]};
+export type DragPayload = {
+    channelId: string;
+    parentId: string;
+    itemIds: string[];
+    chatFileIds: string[];
+
+    /** Set when some dragged item cannot be changed (it sits in a mirror or read-only folder, or the viewer may not touch it): it can still be copied. */
+    copyOnly?: boolean;
+};
 
 /** A folder that accepts drops; ancestors are its parent folders, used to stop dropping a folder into itself. */
-export type DropTarget = {channelId: string; folderId: string; ancestors: string[]};
+export type DropTarget = {
+    channelId: string;
+    folderId: string;
+    ancestors: string[];
+
+    /** A mirror, read-only folder, or anything below a mirror: takes no drops. The server stays the final gate. */
+    locked?: boolean;
+};
 
 export type DropEffect = 'move' | 'copy';
 
@@ -40,7 +55,7 @@ export function resolveDropEffect({sameChannel, ctrl = false, shift = false, fro
     return sameChannel ? 'move' : 'copy';
 }
 
-const isWritable = (target: DropTarget) => target.folderId !== CHAT_FOLDER && target.folderId !== TRASH_FOLDER;
+const isWritable = (target: DropTarget) => !target.locked && target.folderId !== CHAT_FOLDER && target.folderId !== TRASH_FOLDER;
 
 /** The effect a drop of payload on target would have, or undefined when the drop is not allowed. */
 export function dropEffectFor(payload: DragPayload, target: DropTarget, keys: {ctrl: boolean; shift: boolean}): DropEffect | undefined {
@@ -49,6 +64,9 @@ export function dropEffectFor(payload: DragPayload, target: DropTarget, keys: {c
     }
     const sameChannel = payload.channelId === target.channelId;
     const effect = resolveDropEffect({sameChannel, ...keys, fromChat: payload.chatFileIds.length > 0});
+    if (effect === 'move' && payload.copyOnly) {
+        return undefined;
+    }
     if (effect === 'move' && sameChannel && payload.parentId === target.folderId) {
         return undefined; // already there
     }

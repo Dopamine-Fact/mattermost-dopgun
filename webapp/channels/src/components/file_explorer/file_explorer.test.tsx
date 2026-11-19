@@ -15,7 +15,7 @@ import {selectLhsItem} from 'actions/views/lhs';
 import {openModal} from 'actions/views/modals';
 
 import WebSocketClient from 'client/web_websocket_client';
-import {act, fireEvent, renderWithContext, screen, waitFor, within} from 'tests/react_testing_utils';
+import {act, createEvent, fireEvent, renderWithContext, screen, waitFor, within} from 'tests/react_testing_utils';
 import {TestHelper} from 'utils/test_helper';
 
 import {clearClipboard} from './explorer_actions';
@@ -304,6 +304,80 @@ describe('FileExplorer', () => {
             fireEvent.click(await screen.findByRole('gridcell', {name: 'a.txt'}));
             expect(button('New folder')).toBeDisabled();
             expect(button('Delete')).toBeDisabled();
+        });
+    });
+
+    describe('tree drag and drop with folder rules', () => {
+        const mine = fileItem('i1', fileInfo('f1', 'a.txt', 10));
+        const docs = folder('d1', 'Docs');
+        const mirror = {...folder('m1', 'Mirror'), mirror_of: 's1'};
+        const locked = {...folder('r1', 'Locked'), read_only: true};
+        const dataTransfer = (types: string[], files: File[] = []) => ({types, files, items: [], effectAllowed: '', dropEffect: '', setData: jest.fn()});
+
+        // jsdom's DragEvent drops ctrlKey from the init, so set it on the event itself.
+        const ctrlDrop = (el: HTMLElement, dt: unknown) => {
+            const event = createEvent.drop(el, {dataTransfer: dt});
+            Object.defineProperty(event, 'ctrlKey', {value: true});
+            fireEvent(el, event);
+        };
+        const row = (name: string) => screen.getByRole('link', {name}).closest('.ExplorerTree__row') as HTMLElement;
+
+        // Tree lists the root's folders; the open folder is a mirror holding one file.
+        const open = async () => {
+            jest.spyOn(Client4, 'getDriveFolder').mockImplementation(async (_c, parentId = '') => (
+                parentId ? {items: [mine], path: [mirror], access: 'read'} : {items: [docs, mirror, locked], path: [], access: ''}
+            ));
+            renderAt('/team/files/town/m1');
+            await screen.findByRole('gridcell', {name: 'a.txt'});
+            await screen.findByRole('link', {name: 'Locked'});
+        };
+
+        test('OS files dropped on a mirror or read-only tree folder are not uploaded', async () => {
+            await open();
+            for (const name of ['Mirror', 'Locked']) {
+                fireEvent.drop(row(name), {dataTransfer: dataTransfer(['Files'], [new File(['x'], 'x.txt')])});
+            }
+            await act(async () => {
+                await Promise.resolve();
+            });
+            expect(uploadFile).not.toHaveBeenCalled();
+        });
+
+        test('items dragged out of a mirror are not moved, but can be copied', async () => {
+            const move = jest.spyOn(Client4, 'moveDriveItems').mockResolvedValue({status: 'OK'});
+            const copy = jest.spyOn(Client4, 'copyDriveItems').mockResolvedValue({status: 'OK'});
+            await open();
+            const cell = screen.getByRole('gridcell', {name: 'a.txt'});
+            const drag = () => {
+                const dt = dataTransfer(['application/x-mattermost-drive']);
+                fireEvent.dragStart(cell, {dataTransfer: dt});
+                return dt;
+            };
+            fireEvent.drop(row('Docs'), {dataTransfer: drag()});
+            expect(move).not.toHaveBeenCalled();
+
+            ctrlDrop(row('Docs'), drag());
+            await waitFor(() => expect(copy).toHaveBeenCalledWith('c1', ['i1'], [], 'c1', 'd1'));
+            expect(move).not.toHaveBeenCalled();
+        });
+
+        test('items cannot be dropped on a mirror or read-only tree folder', async () => {
+            jest.spyOn(Client4, 'getDriveFolder').mockImplementation(async (_c, parentId = '') => (
+                parentId ? {items: [], path: [docs], access: ''} : {items: [docs, mirror, locked, mine], path: [], access: ''}
+            ));
+            const move = jest.spyOn(Client4, 'moveDriveItems').mockResolvedValue({status: 'OK'});
+            const copy = jest.spyOn(Client4, 'copyDriveItems').mockResolvedValue({status: 'OK'});
+            renderAt('/team/files/town');
+            const cell = await screen.findByRole('gridcell', {name: 'a.txt'});
+            await screen.findByRole('link', {name: 'Locked'});
+            for (const name of ['Mirror', 'Locked']) {
+                const dt = dataTransfer(['application/x-mattermost-drive']);
+                fireEvent.dragStart(cell, {dataTransfer: dt});
+                fireEvent.drop(row(name), {dataTransfer: dt});
+                ctrlDrop(row(name), dt);
+            }
+            expect(move).not.toHaveBeenCalled();
+            expect(copy).not.toHaveBeenCalled();
         });
     });
 

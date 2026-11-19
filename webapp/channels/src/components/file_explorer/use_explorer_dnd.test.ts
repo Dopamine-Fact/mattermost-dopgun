@@ -46,3 +46,23 @@ describe('dropEffectFor', () => {
         expect(dropEffectFor({channelId: 'c1', parentId: 'chat', itemIds: [], chatFileIds: ['f']}, {channelId: 'c1', folderId: '', ancestors: []}, {ctrl: false, shift: true})).toBe('copy');
     });
 });
+
+describe('dropEffectFor with folder rules', () => {
+    const keys = {ctrl: false, shift: false};
+    const drag = {channelId: 'c1', parentId: 'p', itemIds: ['a'], chatFileIds: []};
+
+    test('nothing can be dropped on a locked folder, a copy included', () => {
+        const locked = {channelId: 'c1', folderId: 'b', ancestors: [], locked: true};
+        expect(dropEffectFor(drag, locked, keys)).toBeUndefined();
+        expect(dropEffectFor(drag, locked, {ctrl: true, shift: false})).toBeUndefined();
+    });
+
+    test('items that cannot be changed are not moved, but can be copied', () => {
+        const fixed = {...drag, copyOnly: true};
+        const target = {channelId: 'c1', folderId: 'b', ancestors: []};
+        expect(dropEffectFor(fixed, target, keys)).toBeUndefined();
+        expect(dropEffectFor(fixed, target, {ctrl: false, shift: true})).toBeUndefined();
+        expect(dropEffectFor(fixed, target, {ctrl: true, shift: false})).toBe('copy');
+        expect(dropEffectFor(fixed, {...target, channelId: 'c2'}, keys)).toBe('copy');
+    });
+});

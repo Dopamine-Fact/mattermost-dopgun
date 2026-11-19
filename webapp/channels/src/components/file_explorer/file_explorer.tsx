@@ -360,7 +360,7 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
             return {key: entry.key, target: {channelId: entry.channel!.id, folderId: '', ancestors: []}, location: [entry.name]};
         }
         if (entry?.kind === 'folder' && writable) {
-            return {key: entry.key, target: {channelId, folderId: entry.key, ancestors: pathIds}, location: [...here, entry.name]};
+            return {key: entry.key, target: {channelId, folderId: entry.key, ancestors: pathIds, locked: Boolean(entry.driveItem?.mirror_of || entry.driveItem?.read_only)}, location: [...here, entry.name]};
         }
         return writable ? {key: '', target: {channelId, folderId, ancestors: pathIds}, location: here} : undefined;
     };
@@ -394,7 +394,7 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
         if (!selection.selected.has(entry.key)) {
             selection.click(entry.key);
         }
-        startDrag(e, {channelId, parentId: folderId, itemIds: driveIds(dragged), chatFileIds: dragged.flatMap((d) => (!d.driveItem && d.fileInfo ? [d.fileInfo.id] : []))});
+        startDrag(e, {channelId, parentId: folderId, itemIds: driveIds(dragged), chatFileIds: dragged.flatMap((d) => (!d.driveItem && d.fileInfo ? [d.fileInfo.id] : [])), copyOnly: !writable || dragged.some((d) => d.driveItem && !d.canModify)});
     } : undefined;
 
     const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -689,6 +689,7 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
                         folderId={folderId}
                         changeCount={data.changeCount}
                         onDrop={dropOn}
+                        locked={!writable}
                     />
                 )}
                 <main
