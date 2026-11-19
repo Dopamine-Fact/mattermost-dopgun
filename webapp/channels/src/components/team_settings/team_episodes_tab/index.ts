@@ -8,7 +8,7 @@ import type {Dispatch} from 'redux';
 
 import type {Team} from '@mattermost/types/teams';
 
-import {patchTeam} from 'mattermost-redux/actions/teams';
+import {getTeam, patchTeam} from 'mattermost-redux/actions/teams';
 
 import TeamEpisodesTab from './team_episodes_tab';
 
@@ -22,7 +22,7 @@ export type OwnProps = {
 
 function mapDispatchToProps(dispatch: Dispatch) {
     return {
-        actions: bindActionCreators({patchTeam}, dispatch),
+        actions: bindActionCreators({getTeam, patchTeam}, dispatch),
     };
 }
 

@@ -2275,10 +2275,12 @@ func (a *App) SanitizeTeam(session model.Session, team *model.Team) *model.Team 
 	}
 	email := team.Email
 	inviteId := team.InviteId
+	folders, tasks := team.EpisodeFolders, team.EpisodeTasks
 	team.Sanitize()
 
 	if manageTeamPermission {
 		team.Email = email
+		team.EpisodeFolders, team.EpisodeTasks = folders, tasks
 	}
 	if inviteUserPermission {
 		team.InviteId = inviteId

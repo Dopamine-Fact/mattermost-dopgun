@@ -964,6 +964,26 @@ func TestSanitizeTeam(t *testing.T) {
 	})
 }
 
+func TestSanitizeTeamEpisodeTemplates(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t)
+
+	team := &model.Team{Id: model.NewId(), EpisodeFolders: `[{"path":"Secret","view_departments":["` + model.NewId() + `"]}]`, EpisodeTasks: "Storyboard"}
+	session := func(roles string) model.Session {
+		return model.Session{Roles: model.SystemUserRoleId, TeamMembers: []*model.TeamMember{{UserId: model.NewId(), TeamId: team.Id, Roles: roles}}}
+	}
+
+	member := *team
+	th.App.SanitizeTeam(session(model.TeamUserRoleId), &member)
+	require.Empty(t, member.EpisodeFolders, "folder names, some of them hidden, are for team managers only")
+	require.Empty(t, member.EpisodeTasks)
+
+	admin := *team
+	th.App.SanitizeTeam(session(model.TeamUserRoleId+" "+model.TeamAdminRoleId), &admin)
+	require.Equal(t, team.EpisodeFolders, admin.EpisodeFolders)
+	require.Equal(t, team.EpisodeTasks, admin.EpisodeTasks)
+}
+
 func TestSanitizeTeams(t *testing.T) {
 	mainHelper.Parallel(t)
 	th := Setup(t)

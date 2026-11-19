@@ -16,14 +16,18 @@ jest.mock('components/profile_popover/use_custom_roles', () => ({
 
 describe('components/TeamSettings/EpisodesTab', () => {
     const patchTeam = jest.fn().mockReturnValue({data: true});
+    const getTeam = jest.fn();
     const defaultProps: ComponentProps<typeof EpisodesTab> = {
         team: TestHelper.getTeamMock({id: 'team_id', name: 'team_name', display_name: 'team_display_name', description: 'team_description'}),
-        actions: {patchTeam},
+        actions: {patchTeam, getTeam},
         areThereUnsavedChanges: true,
         showTabSwitchError: false,
         setAreThereUnsavedChanges: jest.fn(),
         setShowTabSwitchError: jest.fn(),
     };
+
+    // The tab reads the templates from a fresh copy of the team.
+    beforeEach(() => getTeam.mockResolvedValue({data: defaultProps.team}));
 
     test('revision channels can be turned on only together with tasks', async () => {
         renderWithContext(<EpisodesTab {...defaultProps}/>);
@@ -79,6 +83,29 @@ describe('components/TeamSettings/EpisodesTab', () => {
 
     describe('episode templates', () => {
         const team = TestHelper.getTeamMock({id: 'team_id', display_name: 'team_display_name', tasks_enabled: true, revisions_enabled: true, episode_folders: 'Layout', episode_tasks: ''});
+        beforeEach(() => getTeam.mockResolvedValue({data: team}));
+
+        test('the templates come from a fresh copy of the team, not the stripped one in the store', async () => {
+            // A team websocket event strips the templates for every member, managers included.
+            const stripped = {...team, episode_folders: '', episode_tasks: ''};
+            renderWithContext(<EpisodesTab {...{...defaultProps, team: stripped}}/>);
+
+            expect(getTeam).toHaveBeenCalledWith('team_id');
+            expect(await screen.findByRole('button', {name: 'Layout'})).toBeInTheDocument();
+
+            await userEvent.type(screen.getByTestId('episodeTasksInput'), 'Storyboard');
+            await userEvent.click(screen.getByTestId('SaveChangesPanel__save-btn'));
+            expect(patchTeam).toHaveBeenLastCalledWith(expect.objectContaining({episode_tasks: 'Storyboard'}));
+            expect(patchTeam.mock.lastCall[0]).not.toHaveProperty('episode_folders');
+        });
+
+        test('the templates cannot be edited until the fresh team has loaded', () => {
+            getTeam.mockReturnValue(new Promise(() => {}));
+            renderWithContext(<EpisodesTab {...{...defaultProps, team}}/>);
+
+            expect(screen.queryByTestId('episodeFoldersPanel')).not.toBeInTheDocument();
+            expect(screen.queryByTestId('episodeTasksInput')).not.toBeInTheDocument();
+        });
 
         test('template fields show only with tasks and revisions on', async () => {
             const {unmount} = renderWithContext(<EpisodesTab {...defaultProps}/>);
@@ -90,7 +117,7 @@ describe('components/TeamSettings/EpisodesTab', () => {
             unmount();
 
             renderWithContext(<EpisodesTab {...{...defaultProps, team}}/>);
-            expect(screen.getByTestId('episodeFoldersPanel')).toBeInTheDocument();
+            expect(await screen.findByTestId('episodeFoldersPanel')).toBeInTheDocument();
             expect(screen.getByRole('button', {name: 'Layout'})).toBeInTheDocument();
             expect(screen.getByRole('heading', {name: 'Default episode folders'})).toBeInTheDocument();
             expect(screen.getByRole('heading', {name: 'Default episode tasks'})).toBeInTheDocument();
@@ -100,7 +127,7 @@ describe('components/TeamSettings/EpisodesTab', () => {
             const setAreThereUnsavedChanges = jest.fn();
             renderWithContext(<EpisodesTab {...{...defaultProps, team, setAreThereUnsavedChanges}}/>);
 
-            await userEvent.type(screen.getByTestId('episodeTasksInput'), 'Storyboard');
+            await userEvent.type(await screen.findByTestId('episodeTasksInput'), 'Storyboard');
             expect(setAreThereUnsavedChanges).toHaveBeenCalledWith(true);
             await userEvent.click(screen.getByTestId('SaveChangesPanel__save-btn'));
 
@@ -108,8 +135,9 @@ describe('components/TeamSettings/EpisodesTab', () => {
             expect(patchTeam.mock.lastCall[0]).not.toHaveProperty('episode_folders');
         });
 
-        test('an old text template opened and not touched shows no save panel', () => {
+        test('an old text template opened and not touched shows no save panel', async () => {
             renderWithContext(<EpisodesTab {...{...defaultProps, team, areThereUnsavedChanges: false}}/>);
+            await screen.findByTestId('episodeFoldersPanel');
 
             expect(screen.queryByTestId('SaveChangesPanel__save-btn')).not.toBeInTheDocument();
         });
@@ -117,7 +145,7 @@ describe('components/TeamSettings/EpisodesTab', () => {
         test('saving a changed folder list sends the serialized JSON', async () => {
             renderWithContext(<EpisodesTab {...{...defaultProps, team}}/>);
 
-            await userEvent.click(screen.getByRole('button', {name: 'Add folder'}));
+            await userEvent.click(await screen.findByRole('button', {name: 'Add folder'}));
             await userEvent.click(screen.getByTestId('SaveChangesPanel__save-btn'));
 
             expect(patchTeam).toHaveBeenLastCalledWith(expect.objectContaining({
@@ -129,7 +157,7 @@ describe('components/TeamSettings/EpisodesTab', () => {
             patchTeam.mockReturnValueOnce({error: {server_error_id: 'model.team.is_valid.episode_folders.app_error', message: 'Invalid default episode folders.'}});
             renderWithContext(<EpisodesTab {...{...defaultProps, team}}/>);
 
-            await userEvent.click(screen.getByRole('button', {name: 'Add folder'}));
+            await userEvent.click(await screen.findByRole('button', {name: 'Add folder'}));
             await userEvent.click(screen.getByTestId('SaveChangesPanel__save-btn'));
 
             const error = await screen.findByTestId('mm-modal-generic-section-item__error');

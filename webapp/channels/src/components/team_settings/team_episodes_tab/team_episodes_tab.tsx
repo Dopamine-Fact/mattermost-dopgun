@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {defineMessages} from 'react-intl';
 
 import SaveChangesPanel, {type SaveChangesPanelState} from 'components/widgets/modals/components/save_changes_panel';
@@ -32,8 +32,22 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
     const [tasksEnabled, setTasksEnabled] = useState<boolean>(Boolean(team.tasks_enabled));
     const [revisionsEnabled, setRevisionsEnabled] = useState<boolean>(Boolean(team.revisions_enabled));
     const [canvasEnabled, setCanvasEnabled] = useState<boolean>(Boolean(team.canvas_enabled));
-    const [episodeFolders, setEpisodeFolders] = useState<EpisodeFolder[]>(() => parseEpisodeFolders(team.episode_folders));
-    const [episodeTasks, setEpisodeTasks] = useState<string>(team.episode_tasks ?? '');
+    const [episodeFolders, setEpisodeFolders] = useState<EpisodeFolder[]>([]);
+    const [episodeTasks, setEpisodeTasks] = useState<string>('');
+
+    // The templates as saved. Team websocket events reach every member with them stripped, so the store's team
+    // may have lost them: they come from a fresh copy, and stay uneditable until it loads, so a save never
+    // replaces the real template with an empty one.
+    const [saved, setSaved] = useState<{folders: string; tasks: string}>();
+    useEffect(() => {
+        actions.getTeam(team.id).then(({data}) => {
+            if (data) {
+                setSaved({folders: data.episode_folders ?? '', tasks: data.episode_tasks ?? ''});
+                setEpisodeFolders(parseEpisodeFolders(data.episode_folders));
+                setEpisodeTasks(data.episode_tasks ?? '');
+            }
+        });
+    }, [actions, team.id]);
 
     // Which template the server rejected on the last save.
     const [templateError, setTemplateError] = useState<'folders' | 'tasks'>();
@@ -41,8 +55,8 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
 
     const handleSaveChanges = useCallback(async () => {
         const serializedFolders = serializeEpisodeFolders(episodeFolders);
-        const foldersChanged = serializedFolders !== serializeEpisodeFolders(parseEpisodeFolders(team.episode_folders));
-        const tasksChanged = episodeTasks !== (team.episode_tasks ?? '');
+        const foldersChanged = saved !== undefined && serializedFolders !== serializeEpisodeFolders(parseEpisodeFolders(saved.folders));
+        const tasksChanged = saved !== undefined && episodeTasks !== saved.tasks;
         const changed = foldersChanged || tasksChanged || tasksEnabled !== Boolean(team.tasks_enabled) || revisionsEnabled !== Boolean(team.revisions_enabled) || canvasEnabled !== Boolean(team.canvas_enabled);
         if (changed) {
             const {error} = await actions.patchTeam({
@@ -64,11 +78,14 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
                 return;
             }
         }
+        if (saved) {
+            setSaved({folders: serializedFolders, tasks: episodeTasks});
+        }
         setTemplateError(undefined);
         setSaveChangesPanelState('saved');
         setShowTabSwitchError(false);
         setAreThereUnsavedChanges(false);
-    }, [actions, tasksEnabled, revisionsEnabled, canvasEnabled, episodeFolders, episodeTasks, team.id, team.tasks_enabled, team.revisions_enabled, team.canvas_enabled, team.episode_folders, team.episode_tasks, setShowTabSwitchError, setAreThereUnsavedChanges]);
+    }, [actions, tasksEnabled, revisionsEnabled, canvasEnabled, episodeFolders, episodeTasks, saved, team.id, team.tasks_enabled, team.revisions_enabled, team.canvas_enabled, setShowTabSwitchError, setAreThereUnsavedChanges]);
 
     const handleClose = useCallback(() => {
         setSaveChangesPanelState('editing');
@@ -80,11 +97,11 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
         setTasksEnabled(Boolean(team.tasks_enabled));
         setRevisionsEnabled(Boolean(team.revisions_enabled));
         setCanvasEnabled(Boolean(team.canvas_enabled));
-        setEpisodeFolders(parseEpisodeFolders(team.episode_folders));
-        setEpisodeTasks(team.episode_tasks ?? '');
+        setEpisodeFolders(parseEpisodeFolders(saved?.folders));
+        setEpisodeTasks(saved?.tasks ?? '');
         setTemplateError(undefined);
         handleClose();
-    }, [handleClose, team.tasks_enabled, team.revisions_enabled, team.canvas_enabled, team.episode_folders, team.episode_tasks]);
+    }, [handleClose, saved, team.tasks_enabled, team.revisions_enabled, team.canvas_enabled]);
 
     // Every field marks the tab as edited before taking its new value.
     const edited = useCallback(<T, >(set: (value: T) => void) => (value: T) => {
@@ -108,7 +125,7 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
                 canvasEnabled={canvasEnabled}
                 handleCanvasEnabledChange={edited(setCanvasEnabled)}
             />
-            {tasksEnabled && revisionsEnabled && (
+            {tasksEnabled && revisionsEnabled && saved && (
                 <TeamEpisodeTemplatesSection
                     teamId={team.id}
                     folders={episodeFolders}

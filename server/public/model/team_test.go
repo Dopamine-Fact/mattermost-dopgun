@@ -210,6 +210,13 @@ func TestTeamSanitizePreservesPolicyEnforced(t *testing.T) {
 		require.Empty(t, team.Email, "Email must be cleared by Sanitize")
 		require.Empty(t, team.InviteId, "InviteId must be cleared by Sanitize")
 	})
+
+	t.Run("episode templates are stripped by Sanitize", func(t *testing.T) {
+		team := &Team{Id: NewId(), EpisodeFolders: `[{"path":"A"}]`, EpisodeTasks: "T"}
+		team.Sanitize()
+		require.Empty(t, team.EpisodeFolders)
+		require.Empty(t, team.EpisodeTasks)
+	})
 }
 
 func TestEpisodeTemplateLines(t *testing.T) {
