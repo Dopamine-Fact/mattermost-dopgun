@@ -1,16 +1,20 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {act, fireEvent, screen} from '@testing-library/react';
+import {act, createEvent, fireEvent, screen} from '@testing-library/react';
 import React from 'react';
 import type * as Y from 'yjs';
+
+import type {FileInfo} from '@mattermost/types/files';
 
 import {renderWithContext} from 'tests/react_testing_utils';
 
 import CanvasBoard, {colorFor} from './canvas_board';
+import {uploadImages} from './canvas_uploads';
 import {unionBounds} from './geometry';
 import {DEFAULT_STYLE, MAX_TEXT_LENGTH, REMOTE, readElements} from './model';
 import type {CanvasElement} from './model';
+import {sceneParts} from './storyboard';
 import {CanvasSync} from './sync';
 
 const mockRenderer = {
@@ -46,6 +50,11 @@ jest.mock('./sync', () => {
 });
 
 jest.mock('client/web_websocket_client', () => ({}));
+
+jest.mock('./canvas_uploads', () => ({
+    ...jest.requireActual('./canvas_uploads'),
+    uploadImages: jest.fn(),
+}));
 
 // jsdom has no PointerEvent: a MouseEvent carrying the pointer fields React reads. Defaults to the primary mouse pointer.
 class FakePointerEvent extends MouseEvent {
@@ -406,5 +415,151 @@ describe('CanvasBoard', () => {
         expect(screen.queryByRole('button', {name: 'Undo'})).not.toBeInTheDocument();
         expect(screen.queryByRole('button', {name: 'Redo'})).not.toBeInTheDocument();
         expect(mockRenderer.setPanMode).toHaveBeenCalledWith(true);
+    });
+
+    describe('importing images', () => {
+        const png = (name: string, type = 'image/png') => new File(['x'], name, {type});
+        const drop = async (target: HTMLElement, files: File[], at: [number, number] = [100, 100]) => {
+            await act(async () => {
+                // jsdom has no DragEvent, so the point is set on the event by hand
+                const ev = createEvent.drop(target, {dataTransfer: {files, types: ['Files']}});
+                Object.defineProperties(ev, {clientX: {value: at[0]}, clientY: {value: at[1]}});
+                fireEvent(target, ev);
+            });
+        };
+        const scenes = (list: CanvasElement[]) => list.filter((e) => e.type === 'scene');
+        const images = (list: CanvasElement[]) => list.filter((e) => e.type === 'image');
+
+        beforeEach(() => {
+            let n = 0;
+            jest.mocked(uploadImages).mockImplementation(async (_channel, files, onProgress) => {
+                const uploaded: Array<{file: File; info: FileInfo}> = [];
+                const failed: File[] = [];
+                files.forEach((file, i) => {
+                    if (file.name.startsWith('bad')) {
+                        failed.push(file);
+                    } else {
+                        n = (n % 9) + 1;
+                        const wide = file.name.startsWith('SC10');
+                        uploaded.push({file, info: {id: String(n).repeat(26), width: wide ? 200 : 100, height: 100, name: file.name} as FileInfo});
+                    }
+                    onProgress(i + 1, files.length);
+                });
+                return {uploaded, failed};
+            });
+        });
+
+        test('dropping images creates one card and one image each, in name order', async () => {
+            const {surface, els} = await renderBoard();
+            await drop(surface, [png('SC10.png'), png('SC2.png')]);
+
+            const cards = scenes(els()).sort((a, b) => a.x - b.x);
+            expect(cards.map((c) => c.label)).toEqual(['SC2', 'SC10']);
+            expect(cards[0].x).toBeGreaterThanOrEqual(100);
+            expect(cards.every((c) => c.createdBy === 'user1')).toBe(true);
+            const imgs = images(els());
+            expect(imgs).toHaveLength(2);
+            for (const c of cards) {
+                const img = imgs.find((i) => i.sceneId === c.id)!;
+                expect(img.fileId).toHaveLength(26);
+                expect(img.aspect).toBe(c.label === 'SC10' ? 2 : 1);
+            }
+        });
+
+        test('images are drawn above their cards', async () => {
+            const {surface, els} = await renderBoard();
+            await drop(surface, [png('a.png'), png('b.png')]);
+            const list = els();
+            expect(images(list)).toHaveLength(2);
+            for (const img of images(list)) {
+                expect(img.z).toBeGreaterThan(list.find((s) => s.id === img.sceneId)!.z);
+            }
+        });
+
+        test('one undo removes the whole drop', async () => {
+            const {root, surface, els} = await renderBoard();
+            await drop(surface, [png('a.png'), png('b.png'), png('c.png')]);
+            expect(els()).toHaveLength(6);
+            fireEvent.keyDown(root, {key: 'z', ctrlKey: true});
+            expect(els()).toHaveLength(0);
+        });
+
+        test('dropping on a card stacks the images into it', async () => {
+            const {surface, els} = await renderBoard();
+            await drop(surface, [png('a.png')]);
+            const card = scenes(els())[0];
+            const img = sceneParts(card).image;
+            await drop(surface, [png('b.png')], [img.x + 5, img.y + 5]);
+
+            expect(scenes(els())).toHaveLength(1);
+            const added = images(els()).find((i) => i.name === 'b.png')!;
+            expect(added.sceneId).toBe(card.id);
+            expect(added.x).toBe(img.x + 24);
+        });
+
+        test('dropping on a card\'s final strip sets its final', async () => {
+            const {surface, els} = await renderBoard();
+            await drop(surface, [png('a.png')]);
+            const f = sceneParts(scenes(els())[0]).final;
+            await drop(surface, [png('final.png')], [f.x + (f.w / 2), f.y + (f.h / 2)]);
+
+            const after = scenes(els())[0];
+            expect(after.finalFileId).toHaveLength(26);
+            expect(after.finalName).toBe('final.png');
+            expect(images(els())).toHaveLength(1);
+        });
+
+        test('non-images are refused with a message', async () => {
+            const {surface, els} = await renderBoard();
+            await drop(surface, [png('notes.pdf', 'application/pdf')]);
+            expect(els()).toHaveLength(0);
+            expect(uploadImages).not.toHaveBeenCalled();
+            expect(screen.getByText(/notes\.pdf/)).toBeInTheDocument();
+        });
+
+        test('failed uploads are reported and skipped', async () => {
+            const {surface, els} = await renderBoard();
+            await drop(surface, [png('ok.png'), png('bad.png')]);
+            expect(scenes(els())).toHaveLength(1);
+            expect(screen.getByText(/bad\.png/)).toBeInTheDocument();
+        });
+
+        test('read-only users cannot drop', async () => {
+            const {surface, els} = await renderBoard(true);
+            let notPrevented = false;
+            await act(async () => {
+                notPrevented = fireEvent.drop(surface, {dataTransfer: {files: [png('a.png')], types: ['Files']}});
+            });
+            expect(notPrevented).toBe(true);
+            expect(els()).toHaveLength(0);
+            expect(uploadImages).not.toHaveBeenCalled();
+        });
+
+        test('a drop does not reach the channel\'s file upload', async () => {
+            const {surface} = await renderBoard();
+            const onBody = jest.fn();
+            document.body.addEventListener('drop', onBody);
+            await drop(surface, [png('a.png')]);
+            document.body.removeEventListener('drop', onBody);
+            expect(onBody).not.toHaveBeenCalled();
+        });
+
+        test('pasting image files imports them', async () => {
+            const {root, els} = await renderBoard();
+            await act(async () => {
+                fireEvent.paste(root, {clipboardData: {files: [png('p.png')], types: ['Files']}});
+            });
+            expect(scenes(els())).toHaveLength(1);
+            expect(images(els())).toHaveLength(1);
+        });
+
+        test('pasting without files still pastes copied elements', async () => {
+            const {root, surface, els} = await renderBoard();
+            fireEvent.keyDown(root, {key: 'r'});
+            drag(surface, [10, 10], [60, 40]);
+            fireEvent.keyDown(root, {key: 'c', ctrlKey: true});
+            fireEvent.paste(root, {clipboardData: {files: [], types: ['text/plain']}});
+            expect(els()).toHaveLength(2);
+        });
     });
 });

@@ -5,6 +5,11 @@ import React, {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import {defineMessages, useIntl} from 'react-intl';
 import {useSelector, useStore} from 'react-redux';
 
+import {CloseIcon} from '@mattermost/compass-icons/components';
+import {Icon} from '@mattermost/compass-ui/components/icon';
+import {IconButton} from '@mattermost/compass-ui/components/icon-button';
+import {WithTooltip} from '@mattermost/shared/components/tooltip';
+
 import {Client4} from 'mattermost-redux/client';
 import {getCurrentUser, getCurrentUserId, getUsers} from 'mattermost-redux/selectors/entities/users';
 
@@ -18,8 +23,9 @@ import type {GlobalState} from 'types/store';
 import CanvasFooter from './canvas_footer';
 import CanvasProperties from './canvas_properties';
 import type {PanelAction} from './canvas_properties';
-import CanvasToolbar, {TOOLS} from './canvas_toolbar';
+import CanvasToolbar, {TOOLS, keepFocus} from './canvas_toolbar';
 import type {Tool} from './canvas_toolbar';
+import {isImageFile, uploadImages} from './canvas_uploads';
 import {align, bounds, hitTest, inRect, resizeAll, unionBounds} from './geometry';
 import type {Bounds, Handle, Point, ResizePatch} from './geometry';
 import {
@@ -34,6 +40,7 @@ import {
     randomSeed,
     readElements,
     reorder,
+    setLocalAuthor,
     updateElements,
     updateInBatches,
     writeInBatches,
@@ -41,6 +48,7 @@ import {
 import type {CanvasElement, ElementStyle, ElementType} from './model';
 import {CanvasRenderer} from './renderer';
 import type {RemoteCursor, RemoteSelection} from './renderer';
+import {labelFor, layoutScenes, sceneAt, sceneParts, sortByName, stackInScene} from './storyboard';
 import {CanvasSync} from './sync';
 import type {SyncStatus} from './sync';
 
@@ -63,7 +71,19 @@ const messages = defineMessages({
     offline: {id: 'canvas.status.offline', defaultMessage: 'Offline'},
     error: {id: 'canvas.status.error', defaultMessage: 'Changes not saved — retrying'},
     unsupported: {id: 'canvas.unsupported', defaultMessage: 'This browser can’t display the canvas.'},
+    uploading: {id: 'canvas.import.uploading', defaultMessage: 'Uploading images {done}/{total}…'},
+    skipped: {id: 'canvas.import.skipped', defaultMessage: 'Only PNG and JPEG images can be added. Skipped: {names}'},
+    uploadFailed: {id: 'canvas.import.failed', defaultMessage: 'Could not upload: {names}'},
+    dismiss: {id: 'canvas.import.dismiss', defaultMessage: 'Dismiss'},
 });
+
+const MAX_NAMES = 5;
+const nameList = (names: string[]) => names.slice(0, MAX_NAMES).join(', ') + (names.length > MAX_NAMES ? ' …' : '');
+const isTextTarget = (t: EventTarget | null) => {
+    const el = t as HTMLElement | null;
+    return Boolean(el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)));
+};
+const contains = (b: Bounds, p: Point) => p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h;
 
 /** A stable colour per user, so everyone sees the same colour for a peer. */
 export function colorFor(userId: string) {
@@ -140,6 +160,8 @@ function Board({channelId, readOnly}: Props) {
     const [status, setStatus] = useState<SyncStatus>('loading');
     const [canUndo, setCanUndo] = useState(false);
     const [canRedo, setCanRedo] = useState(false);
+    const [progress, setProgress] = useState<{done: number; total: number}>();
+    const [notice, setNotice] = useState<{skipped: string[]; failed: string[]}>();
 
     const rootRef = useRef<HTMLDivElement>(null);
     const surfaceRef = useRef<HTMLDivElement>(null);
@@ -209,6 +231,10 @@ function Board({channelId, readOnly}: Props) {
         fn();
         undo.stopCapturing();
     };
+
+    useEffect(() => {
+        setLocalAuthor(doc, userId);
+    }, [doc, userId]);
 
     const duplicateSelection = () => {
         let ids: string[] = [];
@@ -626,6 +652,118 @@ function Board({channelId, readOnly}: Props) {
         select(copies.map((el) => el.id));
     };
 
+    // Image files become scene cards: one per image from `at`, or stacked into the card under it, or a card's final.
+    const importFiles = async (files: File[], at: Point) => {
+        const skipped = files.filter((f) => !isImageFile(f)).map((f) => f.name);
+        let picked = sortByName(files.filter(isImageFile));
+        const before = elsRef.current;
+        const finalCard = [...before].reverse().find((el) => el.type === 'scene' && contains(sceneParts(bounds(el)).final, at));
+        const target = finalCard ?? sceneAt(before, at);
+        if (finalCard) {
+            picked = picked.slice(0, 1);
+        }
+        if (!picked.length) {
+            setNotice(skipped.length ? {skipped, failed: []} : undefined);
+            return;
+        }
+
+        setNotice(undefined);
+        setProgress({done: 0, total: picked.length});
+        const {uploaded, failed} = await uploadImages(channelId, picked, (done, total) => setProgress({done, total}));
+        setProgress(undefined);
+        setNotice(skipped.length || failed.length ? {skipped, failed: failed.map((f) => f.name)} : undefined);
+        if (!uploaded.length) {
+            return;
+        }
+
+        const items = uploaded.map(({file, info}) => ({
+            fileId: info.id,
+            name: file.name,
+            aspect: Number.isFinite(info.width) && Number.isFinite(info.height) && info.width > 0 && info.height > 0 ? info.width / info.height : 1,
+        }));
+        const now = elsRef.current;
+        const card = target && now.find((el) => el.id === target.id); // it may have been deleted during the upload
+        const top = topZ();
+        const aspects = items.map((i) => i.aspect);
+        const imageAt = (i: number, b: Bounds, sceneId: string, z: number) => newElement('image', b, {...items[i], w: b.w, h: b.h, sceneId, z});
+
+        if (card && finalCard) {
+            discrete(() => updateElements(doc, [card.id], {finalFileId: items[0].fileId, finalName: items[0].name}));
+        } else if (card) {
+            const existing = now.filter((el) => el.type === 'image' && el.sceneId === card.id).length;
+            const added = stackInScene(bounds(card), existing, aspects).map((b, i) => imageAt(i, b, card.id, top + 1 + i));
+            discrete(() => writeInBatches(doc, added));
+            select(added.map((el) => el.id));
+        } else {
+            const layout = layoutScenes(aspects, at);
+            const cards = layout.map(({scene}, i) => newElement('scene', scene, {
+                w: scene.w,
+                h: scene.h,
+                z: top + 1 + i,
+                stroke: style.stroke,
+                fill: '#ffffff',
+                label: labelFor(items[i].name),
+                done: false,
+            }));
+            const added = layout.map(({image}, i) => imageAt(i, image, cards[i].id, top + 1 + cards.length + i));
+            discrete(() => writeInBatches(doc, [...cards, ...added]));
+            select(cards.map((el) => el.id));
+        }
+    };
+    const importRef = useRef(importFiles);
+    importRef.current = importFiles;
+    const pasteRef = useRef(paste);
+    pasteRef.current = paste;
+
+    // Native listeners: a file drop must stop here, or the channel's own file upload would take it too.
+    useEffect(() => {
+        const surface = surfaceRef.current!;
+        const root = rootRef.current!;
+        const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes('Files');
+        const onDrag = (e: DragEvent) => {
+            if (readOnly || !hasFiles(e)) {
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.dataTransfer) {
+                e.dataTransfer.dropEffect = 'copy';
+            }
+        };
+        const onDrop = (e: DragEvent) => {
+            onDrag(e);
+            const r = rendererRef.current;
+            if (readOnly || !r || !hasFiles(e)) {
+                return;
+            }
+            importRef.current(Array.from(e.dataTransfer?.files ?? []), r.toWorld(e.clientX, e.clientY));
+        };
+        const onPaste = (e: ClipboardEvent) => {
+            const r = rendererRef.current;
+            if (readOnly || !r || gestureRef.current || isTextTarget(e.target)) {
+                return;
+            }
+            const files = Array.from(e.clipboardData?.files ?? []);
+            if (!files.length) {
+                pasteRef.current();
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            const rect = surface.getBoundingClientRect();
+            importRef.current(files, pointerRef.current ?? r.toWorld(rect.left + (rect.width / 2), rect.top + (rect.height / 2)));
+        };
+        const drags = ['dragenter', 'dragover', 'dragleave'] as const;
+        drags.forEach((t) => surface.addEventListener(t, onDrag));
+        surface.addEventListener('drop', onDrop);
+        root.addEventListener('paste', onPaste);
+        return () => {
+            drags.forEach((t) => surface.removeEventListener(t, onDrag));
+            surface.removeEventListener('drop', onDrop);
+            root.removeEventListener('paste', onPaste);
+        };
+    }, [readOnly]);
+
     // A live edit (a slider drag, a colour pick) is one undo step until onStyleCommit.
     const liveRef = useRef(false);
     const onStyleChange = (change: Partial<ElementStyle>, live = false) => {
@@ -705,8 +843,6 @@ function Board({channelId, readOnly}: Props) {
             duplicateSelection();
         } else if (mod && canEdit && key === 'c') {
             copy();
-        } else if (mod && canEdit && key === 'v') {
-            paste();
         } else if (mod || e.altKey) {
             return;
         } else if (e.shiftKey && e.code === 'Digit1') {
@@ -851,6 +987,32 @@ function Board({channelId, readOnly}: Props) {
                     role='status'
                 >
                     {chip}
+                </div>
+            )}
+            {(progress || notice) && (
+                <div
+                    className='CanvasBoard__status CanvasBoard__status--import'
+                    role='status'
+                >
+                    {progress ? formatMessage(messages.uploading, progress) : (
+                        <>
+                            <span>
+                                {[
+                                    notice!.skipped.length ? formatMessage(messages.skipped, {names: nameList(notice!.skipped)}) : '',
+                                    notice!.failed.length ? formatMessage(messages.uploadFailed, {names: nameList(notice!.failed)}) : '',
+                                ].filter(Boolean).join(' ')}
+                            </span>
+                            <WithTooltip title={formatMessage(messages.dismiss)}>
+                                <IconButton
+                                    size='small'
+                                    aria-label={formatMessage(messages.dismiss)}
+                                    icon={<Icon glyph={<CloseIcon/>}/>}
+                                    onMouseDown={keepFocus}
+                                    onClick={() => setNotice(undefined)}
+                                />
+                            </WithTooltip>
+                        </>
+                    )}
                 </div>
             )}
         </div>

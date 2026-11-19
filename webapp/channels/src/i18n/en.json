@@ -19459,6 +19459,22 @@
     "defaultMessage": "Create canvas channel",
     "description": "Title of the dialog that creates a canvas (whiteboard) channel."
   },
+  "canvas.import.dismiss": {
+    "defaultMessage": "Dismiss",
+    "description": "Tooltip and accessible name of the button that closes the skipped or failed image message in a canvas channel."
+  },
+  "canvas.import.failed": {
+    "defaultMessage": "Could not upload: {names}",
+    "description": "Message on the canvas after images were dropped or pasted and some uploads failed; {names} is a comma-separated list of the file names."
+  },
+  "canvas.import.skipped": {
+    "defaultMessage": "Only PNG and JPEG images can be added. Skipped: {names}",
+    "description": "Message on the canvas after files other than PNG or JPEG images were dropped or pasted; {names} is a comma-separated list of the refused file names."
+  },
+  "canvas.import.uploading": {
+    "defaultMessage": "Uploading images {done}/{total}…",
+    "description": "Progress message on the canvas while dropped or pasted images upload; {done} of {total} files are finished."
+  },
   "canvas.props.actions": {
     "defaultMessage": "Actions",
     "description": "Canvas properties: group of buttons that act on the selected elements"
