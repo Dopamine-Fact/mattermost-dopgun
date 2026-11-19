@@ -1128,13 +1128,6 @@ func (a *App) WriteDriveZip(rctx request.CTX, session model.Session, channel *mo
 				continue
 			}
 		}
-		taskFiles, appErr := a.driveTaskFiles(channel.Id, cmp.Or(it.MirrorOf, it.Id))
-		if appErr != nil {
-			return appErr
-		}
-		for _, tf := range taskFiles {
-			entries = append(entries, entry{it.Name + "/" + tf.Name, tf.Id})
-		}
 		byID := map[string]*model.DriveItem{}
 		for _, d := range descendants {
 			byID[d.Id] = d
@@ -1153,9 +1146,24 @@ func (a *App) WriteDriveZip(rctx request.CTX, session model.Session, channel *mo
 			paths[id] = p
 			return p
 		}
+		// Every folder the zip writes carries its task files, as the explorer shows them.
+		folders := map[string]string{cmp.Or(it.MirrorOf, it.Id): it.Name}
 		for _, d := range descendants {
-			if !d.IsFolder() {
+			if d.IsFolder() {
+				folders[d.Id] = pathOf(d.Id)
+			} else {
 				entries = append(entries, entry{pathOf(d.Id), d.FileId})
+			}
+		}
+		for folderID, folderPath := range folders {
+			taskFiles, appErr := a.driveTaskFiles(channel.Id, folderID)
+			if appErr != nil {
+				return appErr
+			}
+			for _, tf := range taskFiles {
+				if name := path.Base(tf.Name); name != "" && name != "." && name != ".." && name != "/" {
+					entries = append(entries, entry{folderPath + "/" + name, tf.Id})
+				}
 			}
 		}
 	}

@@ -1214,7 +1214,11 @@ func (a *App) UpdatePost(rctx request.CTX, receivedUpdatedPost *model.Post, upda
 	}
 
 	a.invalidateCacheForChannelPosts(rpost.ChannelId)
-	a.publishTaskFolderChanged(rpost)
+	if len(rpost.FileIds) > 0 {
+		a.publishTaskFolderChanged(rpost)
+	} else {
+		a.publishTaskFolderChanged(oldPost) // an edit may have removed the last file
+	}
 
 	userID := rctx.Session().UserId
 	sanitizedPost, isMemberForPreviews, appErr := a.SanitizePostMetadataForUser(rctx, rpost, userID)

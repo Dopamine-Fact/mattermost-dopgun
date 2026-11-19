@@ -262,6 +262,10 @@ func testTaskStoreGetFolderTaskFiles(t *testing.T, rctx request.CTX, ss store.St
 	f3 := withFile(channel.Id, root.Id, 3000, 0)
 	withFile(model.NewId(), "", 4000, 0)
 	withFile(channel.Id, "", 5000, 6000)
+	bor, err := ss.Post().Save(rctx, &model.Post{ChannelId: channel.Id, UserId: userId, Type: model.PostTypeBurnOnRead, Message: "m", CreateAt: 7000, Props: model.StringInterface{"task_id": task.Id, model.PostPropsExpireAt: model.GetMillis() + 100000}})
+	require.NoError(t, err)
+	_, err = ss.FileInfo().Save(rctx, &model.FileInfo{CreatorId: userId, PostId: bor.Id, ChannelId: channel.Id, Path: "p/" + bor.Id, Name: "bor.txt"})
+	require.NoError(t, err)
 
 	files, err := ss.Task().GetFolderTaskFiles(channel.Id, folderId, 10)
 	require.NoError(t, err)

@@ -318,6 +318,7 @@ func (s *SqlTaskStore) GetFolderTaskFiles(channelId, folderId string, limit int)
 		From("Posts").
 		Join("FileInfo ON FileInfo.PostId = Posts.Id").
 		Where(sq.Eq{"Posts.ChannelId": channelId, "Posts.DeleteAt": 0, "FileInfo.DeleteAt": 0}).
+		Where(sq.NotEq{"Posts.Type": model.PostTypeBurnOnRead}). // revealed only on read
 		Where(sq.Expr("Posts.Props->>'task_id' IN (SELECT Id FROM Tasks WHERE FolderId = ?)", folderId)).
 		OrderBy("Posts.CreateAt DESC", "FileInfo.Id DESC").
 		Limit(uint64(limit))
