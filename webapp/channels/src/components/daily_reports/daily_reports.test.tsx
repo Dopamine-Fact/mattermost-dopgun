@@ -3,6 +3,7 @@
 
 import React from 'react';
 
+import type {Department} from '@mattermost/types/custom_roles';
 import type {DailyReport} from '@mattermost/types/daily_reports';
 
 import {Client4} from 'mattermost-redux/client';
@@ -14,6 +15,7 @@ import {TestHelper} from 'utils/test_helper';
 
 import {daysBefore, MESSAGE_MAX_LENGTH, todayIn} from './common';
 import DailyReports from './daily_reports';
+import {rowsForRange} from './team_reports';
 
 jest.mock('mattermost-redux/actions/users', () => ({
     ...jest.requireActual('mattermost-redux/actions/users'),
@@ -69,6 +71,7 @@ const renderPage = (canApprove: boolean) => {
             teams: {
                 currentTeamId: 'team1',
                 teams: {team1: TestHelper.getTeamMock({id: 'team1', name: 'team-one', daily_reports_enabled: true})},
+                membersInTeam: {team1: {u2: TestHelper.getTeamMembershipMock({team_id: 'team1', user_id: 'u2', roles: 'team_user rk_a'})}},
             },
             users: {
                 currentUserId: 'me',
@@ -89,15 +92,48 @@ const openTeamTab = async () => {
     fireEvent.click(await screen.findByRole('tab', {name: 'Team reports'}));
 };
 
+// Status chips only; the status filter lists the same words as options.
+const chips = (label: string) => screen.getAllByText(label, {selector: '.DailyReportsPage__chip'});
+
+// Row names only; the member filter lists the same names as options.
+const ROW_NAME = '.DailyReportsPage__rowName';
+
+const rowOf = (name: string) => screen.getByText(name, {selector: ROW_NAME}).closest('li') as HTMLElement;
+
+const rowNames = () => screen.getAllByTestId('dailyReportRow').map((row) => row.querySelector('.DailyReportsPage__rowName')?.textContent);
+
+// The per-team departments cache loads once for the whole file.
+const departments: Department[] = [{
+    id: 'd1',
+    team_id: 'team1',
+    name: 'Animasyon',
+    color: '#123456',
+    position: 1,
+    is_studio: false,
+    create_at: 1,
+    update_at: 1,
+    delete_at: 0,
+    ranks: [{id: 'a', role_name: 'rk_a', team_id: 'team1', department_id: 'd1', display_name: 'Animator', color: '#000', position: 0, permissions: [], member_count: 1, create_at: 1, update_at: 1, delete_at: 0}],
+} as Department];
+
 const lastListener = () => (WebSocketClient.addMessageListener as jest.Mock).mock.calls.at(-1)[0];
 
 describe('DailyReports', () => {
     beforeEach(() => {
         jest.restoreAllMocks();
+
+        // A Monday, so today's missing rows exist and the report fixtures fall on today.
+        jest.useFakeTimers({advanceTimers: true, now: new Date('2026-11-16T10:00:00Z')});
+        jest.spyOn(Client4, 'getTeamDepartments').mockResolvedValue(departments);
+        jest.spyOn(Client4, 'getTeamMembers').mockResolvedValue([]);
         localStorage.clear();
         mockReports([]);
         jest.spyOn(Client4, 'getDailyReportAssignees').mockResolvedValue([]);
         jest.spyOn(Client4, 'getActionableUserIds').mockResolvedValue(['me', 'u2', 'u3', 'u4', 'u5']);
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
     });
 
     test('a lead cannot review their own report', async () => {
@@ -115,9 +151,9 @@ describe('DailyReports', () => {
         renderPage(true);
 
         await openTeamTab();
-        expect(await screen.findByText('ayse')).toBeInTheDocument();
-        await waitFor(() => expect(screen.queryByText('mehmet')).not.toBeInTheDocument());
-        expect(screen.getAllByText('Missing')).toHaveLength(2); // me and ayse
+        expect(await screen.findByText('ayse', {selector: ROW_NAME})).toBeInTheDocument();
+        await waitFor(() => expect(screen.queryByText('mehmet', {selector: ROW_NAME})).not.toBeInTheDocument());
+        expect(chips('Missing')).toHaveLength(2); // me and ayse
         expect(Client4.getActionableUserIds).toHaveBeenCalledWith('team1', 'manage_daily_reports');
     });
 
@@ -366,7 +402,7 @@ describe('DailyReports', () => {
 
         await openTeamTab();
         expect(await screen.findByText('Wrote the parser')).toBeInTheDocument();
-        expect(screen.getAllByText('Missing')).toHaveLength(2); // me and mehmet have no report
+        expect(chips('Missing')).toHaveLength(2); // me and mehmet have no report
         await act(async () => {
             fireEvent.click(screen.getByRole('button', {name: 'Approve'}));
         });
@@ -399,7 +435,7 @@ describe('DailyReports', () => {
         renderPage(true);
 
         await openTeamTab();
-        expect(await screen.findByText('Auto-approved')).toBeInTheDocument();
+        expect(await screen.findByText('Auto-approved', {selector: '.DailyReportsPage__chip'})).toBeInTheDocument();
         expect(screen.queryByRole('button', {name: 'Approve'})).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', {name: 'Reject'}));
 
@@ -421,9 +457,9 @@ describe('DailyReports', () => {
 
         await openTeamTab();
         expect(await screen.findByText('Handover notes')).toBeInTheDocument();
-        expect(screen.getByText('leaver')).toBeInTheDocument();
+        expect(screen.getByText('leaver', {selector: ROW_NAME})).toBeInTheDocument();
         expect(screen.queryByText('bot')).not.toBeInTheDocument();
-        expect(screen.getAllByText('Missing')).toHaveLength(3); // me, ayse and mehmet
+        expect(chips('Missing')).toHaveLength(3); // me, ayse and mehmet
     });
 
     test('Reporters modal saves the checked members and limits the rows', async () => {
@@ -431,7 +467,7 @@ describe('DailyReports', () => {
         renderPage(true);
 
         await openTeamTab();
-        expect(await screen.findByText('mehmet')).toBeInTheDocument();
+        expect(await screen.findByText('mehmet', {selector: ROW_NAME})).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', {name: 'Reporters'}));
         const dialog = await screen.findByRole('dialog');
         fireEvent.click(within(dialog).getByRole('checkbox', {name: 'ayse'}));
@@ -440,7 +476,7 @@ describe('DailyReports', () => {
         });
 
         expect(save).toHaveBeenCalledWith('team1', ['u2']);
-        await waitFor(() => expect(screen.queryByText('mehmet')).not.toBeInTheDocument());
+        await waitFor(() => expect(screen.queryByText('mehmet', {selector: ROW_NAME})).not.toBeInTheDocument());
     });
 
     test('disables the CSV download when the range is reversed', async () => {
@@ -466,6 +502,139 @@ describe('DailyReports', () => {
         });
 
         await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    });
+});
+
+describe('DailyReports team tab', () => {
+    beforeEach(() => {
+        jest.restoreAllMocks();
+        jest.useFakeTimers({advanceTimers: true, now: new Date('2026-11-16T10:00:00Z')});
+        localStorage.clear();
+        mockReports([]);
+        jest.spyOn(Client4, 'getTeamDepartments').mockResolvedValue(departments);
+        jest.spyOn(Client4, 'getTeamMembers').mockResolvedValue([]);
+        jest.spyOn(Client4, 'getDailyReportAssignees').mockResolvedValue([]);
+        jest.spyOn(Client4, 'getActionableUserIds').mockResolvedValue(['me', 'u2', 'u3', 'u4', 'u5']);
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
+    });
+
+    test('team: search matches name and message text', async () => {
+        mockReports([], [report({message: 'Wrote the parser'}), report({id: 'r2', user_id: 'u3', message: 'Fixed lights'})]);
+        renderPage(true);
+        await openTeamTab();
+        expect(await screen.findByText('Fixed lights')).toBeInTheDocument();
+
+        const search = screen.getByPlaceholderText('Search people or report text…');
+        fireEvent.change(search, {target: {value: 'PARSER'}});
+        expect(screen.getByText('Wrote the parser')).toBeInTheDocument();
+        expect(screen.queryByText('Fixed lights')).not.toBeInTheDocument();
+
+        fireEvent.change(search, {target: {value: 'mehm'}});
+        expect(screen.getByText('Fixed lights')).toBeInTheDocument();
+        expect(screen.queryByText('Wrote the parser')).not.toBeInTheDocument();
+    });
+
+    test('team: status filter Eksik shows only missing rows', async () => {
+        mockReports([], [report({message: 'Wrote the parser'})]);
+        renderPage(true);
+        await openTeamTab();
+        expect(await screen.findByText('Wrote the parser')).toBeInTheDocument();
+
+        fireEvent.change(screen.getByRole('combobox', {name: 'Status'}), {target: {value: 'missing'}});
+        expect(screen.queryByText('Wrote the parser')).not.toBeInTheDocument();
+        expect(rowNames()).toEqual(['me', 'mehmet']);
+        expect(chips('Missing')).toHaveLength(2);
+    });
+
+    test('team: department filter keeps members of that department', async () => {
+        renderPage(true);
+        await openTeamTab();
+        await screen.findByRole('option', {name: 'Animasyon'});
+
+        fireEvent.change(screen.getByRole('combobox', {name: 'Team / member'}), {target: {value: 'dept:d1'}});
+        expect(rowNames()).toEqual(['ayse']);
+
+        fireEvent.change(screen.getByRole('combobox', {name: 'Team / member'}), {target: {value: 'user:u3'}});
+        expect(rowNames()).toEqual(['mehmet']);
+    });
+
+    test('team: sort by name A→Z', async () => {
+        mockReports([], [report({create_at: 5}), report({id: 'r2', user_id: 'u3', message: 'Fixed lights', create_at: 9})]);
+        renderPage(true);
+        await openTeamTab();
+        await screen.findByText('Fixed lights');
+        expect(rowNames()).toEqual(['mehmet', 'ayse', 'me']); // newest sent first, missing last
+
+        fireEvent.change(screen.getByRole('combobox', {name: 'Sort'}), {target: {value: 'name'}});
+        expect(rowNames()).toEqual(['ayse', 'me', 'mehmet']);
+    });
+
+    test('team: To is clamped to 31 days after From', async () => {
+        const list = mockReports([], []);
+        renderPage(true);
+        await openTeamTab();
+
+        fireEvent.change(await screen.findByLabelText('From'), {target: {value: '2026-10-01'}});
+        expect(screen.getByLabelText('To')).toHaveValue('2026-10-31');
+        await waitFor(() => expect(list).toHaveBeenLastCalledWith('team1', '2026-10-01', '2026-10-31'));
+        expect(screen.getByText('Download CSV').closest('a')).toHaveAttribute('href', expect.stringContaining('from=2026-10-01'));
+    });
+
+    test('team: Onayla on a missing row asks, then excuses that user and date', async () => {
+        const excuse = jest.spyOn(Client4, 'excuseDailyReport').mockResolvedValue(report({user_id: 'u3', status: 'excused'}));
+        renderPage(true);
+        await openTeamTab();
+        await screen.findByText('mehmet', {selector: ROW_NAME});
+
+        fireEvent.click(within(rowOf('mehmet')).getByRole('button', {name: 'Excuse'}));
+        const dialog = await screen.findByRole('dialog');
+        expect(excuse).not.toHaveBeenCalled();
+        await act(async () => {
+            fireEvent.click(within(dialog).getByRole('button', {name: 'Excuse'}));
+        });
+
+        expect(excuse).toHaveBeenCalledWith('team1', 'u3', '2026-11-16');
+    });
+
+    test('team: no Reddet on missing or excused rows', async () => {
+        mockReports([], [report({status: 'excused', message: ''})]);
+        renderPage(true);
+        await openTeamTab();
+        expect(await screen.findByText('Excused', {selector: '.DailyReportsPage__chip'})).toBeInTheDocument();
+
+        expect(screen.queryByRole('button', {name: 'Reject'})).not.toBeInTheDocument();
+        expect(within(rowOf('ayse')).getAllByRole('button').map((b) => b.textContent)).toEqual(['View']);
+        expect(within(rowOf('mehmet')).getAllByRole('button').map((b) => b.textContent)).toEqual(['Excuse']);
+    });
+
+    test('team: Görüntüle opens the detail with the gallery', async () => {
+        mockReports([], [report({files: [png, mp4]})]);
+        const approve = jest.spyOn(Client4, 'approveDailyReport').mockResolvedValue(report({status: 'approved'}));
+        renderPage(true);
+        await openTeamTab();
+        expect(await screen.findByText('2 media')).toBeInTheDocument();
+
+        fireEvent.click(within(rowOf('ayse')).getByRole('button', {name: 'View'}));
+        const dialog = await screen.findByRole('dialog');
+        expect(within(dialog).getByRole('img', {name: 'a.png'})).toBeInTheDocument();
+        expect(dialog.querySelector('video')).toBeInTheDocument();
+        await act(async () => {
+            fireEvent.click(within(dialog).getByRole('button', {name: 'Approve'}));
+        });
+        expect(approve).toHaveBeenCalledWith('r1', 1);
+    });
+});
+
+describe('rowsForRange', () => {
+    test('rowsForRange: Mon–Sun range gives missing rows only for Mon–Fri', () => {
+        const saturday = report({date: '2026-11-21'});
+        const rows = rowsForRange('2026-11-16', '2026-11-22', [ayse], [saturday]);
+
+        expect(rows.filter((r) => !r.report).map((r) => r.date)).toEqual(['2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19', '2026-11-20']);
+        expect(rows.filter((r) => r.report).map((r) => [r.user.id, r.date])).toEqual([['u2', '2026-11-21']]);
     });
 });
 

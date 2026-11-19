@@ -20,9 +20,9 @@ export const DAILY_REPORT_UPDATED = 'daily_report_updated';
 export const MESSAGE_MAX_LENGTH = 16000;
 export const REASON_MAX_LENGTH = 1000;
 
-type Status = 'missing' | 'draft' | 'pending' | 'sent' | 'approved' | 'auto_approved' | 'rejected' | 'excused';
+export type Status = 'missing' | 'draft' | 'pending' | 'sent' | 'approved' | 'auto_approved' | 'rejected' | 'excused';
 
-const statusLabels = defineMessages<Status>({
+export const statusLabels = defineMessages<Status>({
     missing: {id: 'daily_reports.status.missing', defaultMessage: 'Missing'},
     draft: {id: 'daily_reports.status.draft', defaultMessage: 'Draft'},
     pending: {id: 'daily_reports.status.pending', defaultMessage: 'Pending'},
@@ -33,7 +33,7 @@ const statusLabels = defineMessages<Status>({
     excused: {id: 'daily_reports.status.excused', defaultMessage: 'Excused'},
 });
 
-function statusOf(report?: DailyReport, own?: boolean): Status {
+export function statusOf(report?: DailyReport, own?: boolean): Status {
     if (!report) {
         return 'missing';
     }

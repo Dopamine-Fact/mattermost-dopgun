@@ -23199,9 +23199,9 @@
     "defaultMessage": "Cancel",
     "description": "Button that discards changes to an already sent daily report and closes its editor."
   },
-  "daily_reports.date": {
-    "defaultMessage": "Date",
-    "description": "Label of the date input that selects which day the Team reports tab shows."
+  "daily_reports.count": {
+    "defaultMessage": "{count, plural, one {# report} other {# reports}}",
+    "description": "Number of rows the Team reports list shows after filtering."
   },
   "daily_reports.download": {
     "defaultMessage": "Download CSV",
@@ -23219,9 +23219,41 @@
     "defaultMessage": "Edited",
     "description": "Tag on a daily report that was changed after it was first sent; on Team reports it toggles the text before the edit."
   },
+  "daily_reports.excuse": {
+    "defaultMessage": "Excuse",
+    "description": "Button on a missing row of Team reports that marks the day as needing no report."
+  },
+  "daily_reports.excuseModal.body": {
+    "defaultMessage": "{name} will not be expected to report on {date}.",
+    "description": "Confirmation text before excusing a missing day; {name} is the member, {date} the day."
+  },
+  "daily_reports.excuseModal.title": {
+    "defaultMessage": "Excuse this day?",
+    "description": "Title of the dialog confirming that a missing daily report is excused."
+  },
   "daily_reports.export.title": {
     "defaultMessage": "Export by date range",
     "description": "Title of the card on My report that downloads reports for a date range as CSV."
+  },
+  "daily_reports.filter.all": {
+    "defaultMessage": "All",
+    "description": "First option of the Team reports status and team/member filters: no filtering."
+  },
+  "daily_reports.filter.departments": {
+    "defaultMessage": "Teams",
+    "description": "Option group label for departments in the Team reports team/member filter."
+  },
+  "daily_reports.filter.members": {
+    "defaultMessage": "Members",
+    "description": "Option group label for people in the Team reports team/member filter."
+  },
+  "daily_reports.filter.status": {
+    "defaultMessage": "Status",
+    "description": "Accessible label of the Team reports status filter."
+  },
+  "daily_reports.filter.who": {
+    "defaultMessage": "Team / member",
+    "description": "Accessible label of the Team reports filter that picks a department or a member."
   },
   "daily_reports.from": {
     "defaultMessage": "From",
@@ -23234,6 +23266,10 @@
   "daily_reports.media.badType": {
     "defaultMessage": "This file type can't be attached.",
     "description": "Shown on a file card when the file is not an image, video or PDF."
+  },
+  "daily_reports.media.count": {
+    "defaultMessage": "{count} media",
+    "description": "Attachment chip on a Team reports row when the report has a video."
   },
   "daily_reports.media.drop": {
     "defaultMessage": "Drag and drop files or <choose>choose</choose>",
@@ -23263,6 +23299,10 @@
     "defaultMessage": "What did you get done today?",
     "description": "Placeholder of the daily report editor."
   },
+  "daily_reports.noContent": {
+    "defaultMessage": "No report content.",
+    "description": "Shown on a Team reports row that has no report text, e.g. a missing day."
+  },
   "daily_reports.notExpected": {
     "defaultMessage": "No report is expected from you in this team.",
     "description": "Shown on My report when the team picked who sends reports and the user is not among them."
@@ -23274,6 +23314,10 @@
   "daily_reports.previouslyRejected": {
     "defaultMessage": "Previously sent back: {reason}",
     "description": "Muted line on a daily report that is pending or approved again after a manager rejected it; {reason} is the reason they wrote then."
+  },
+  "daily_reports.rangeLimit": {
+    "defaultMessage": "Up to {days} days",
+    "description": "Tooltip on the To date of Team reports: the longest range the list shows."
   },
   "daily_reports.recent": {
     "defaultMessage": "Recent reports",
@@ -23327,6 +23371,10 @@
     "defaultMessage": "Save",
     "description": "Button that saves an edited daily report, or the reporters dialog."
   },
+  "daily_reports.search": {
+    "defaultMessage": "Search people or report text…",
+    "description": "Placeholder of the Team reports search box; matches names and report text."
+  },
   "daily_reports.sendHint": {
     "defaultMessage": "Markdown supported. Ctrl+Enter to send.",
     "description": "Hint next to the daily report editor buttons."
@@ -23334,6 +23382,22 @@
   "daily_reports.sidebarLink": {
     "defaultMessage": "Daily reports",
     "description": "Sidebar link to the team daily reports page."
+  },
+  "daily_reports.sort": {
+    "defaultMessage": "Sort",
+    "description": "Accessible label of the Team reports sort select."
+  },
+  "daily_reports.sort.name": {
+    "defaultMessage": "Name (A → Z)",
+    "description": "Team reports sort option: by member name."
+  },
+  "daily_reports.sort.newest": {
+    "defaultMessage": "Sent (newest first)",
+    "description": "Team reports sort option: most recently sent reports first."
+  },
+  "daily_reports.sort.oldest": {
+    "defaultMessage": "Sent (oldest first)",
+    "description": "Team reports sort option: earliest sent reports first."
   },
   "daily_reports.status.approved": {
     "defaultMessage": "Approved",
@@ -23390,6 +23454,10 @@
   "daily_reports.todayReport": {
     "defaultMessage": "Today’s report",
     "description": "Title of the card where the user writes today's report."
+  },
+  "daily_reports.view": {
+    "defaultMessage": "View",
+    "description": "Button on a Team reports row that opens the report in full."
   },
   "dashboard.due.overdue": {
     "defaultMessage": "Overdue",
