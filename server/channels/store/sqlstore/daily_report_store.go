@@ -219,6 +219,75 @@ func (s *SqlDailyReportStore) GetPendingBefore(updatedBefore int64) ([]*model.Da
 		OrderBy("UpdateAt ASC", "Id ASC"), "pending")
 }
 
+func (s *SqlDailyReportStore) GetBeforeDate(teamID, status, beforeDate string) ([]*model.DailyReport, error) {
+	return s.selectReports(s.getQueryBuilder().
+		Select(dailyReportColumns...).
+		From("DailyReports").
+		Where(sq.Eq{"TeamId": teamID, "Status": status}).
+		Where(sq.Lt{"Date": beforeDate}).
+		OrderBy("Date ASC", "Id ASC"), "team_id="+teamID+" status="+status)
+}
+
+func (s *SqlDailyReportStore) Delete(id string) (err error) {
+	tx, err := s.GetMaster().Begin()
+	if err != nil {
+		return errors.Wrap(err, "begin_transaction")
+	}
+	defer finalizeTransactionX(tx, &err)
+
+	if _, err = tx.ExecBuilder(s.getQueryBuilder().Delete("DailyReportFiles").Where(sq.Eq{"ReportId": id})); err != nil {
+		return errors.Wrapf(err, "failed to delete DailyReportFiles for report_id=%s", id)
+	}
+	res, err := tx.ExecBuilder(s.getQueryBuilder().Delete("DailyReports").Where(sq.Eq{"Id": id}))
+	if err != nil {
+		return errors.Wrapf(err, "failed to delete DailyReport with id=%s", id)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return store.NewErrNotFound("DailyReport", id)
+	}
+	return errors.Wrap(tx.Commit(), "commit_transaction")
+}
+
+func (s *SqlDailyReportStore) AddFile(reportID, fileID string, createAt int64) error {
+	if _, err := s.GetMaster().ExecBuilder(s.getQueryBuilder().Insert("DailyReportFiles").
+		Columns("ReportId", "FileId", "CreateAt").Values(reportID, fileID, createAt)); err != nil {
+		return errors.Wrapf(err, "failed to link file_id=%s to report_id=%s", fileID, reportID)
+	}
+	return nil
+}
+
+func (s *SqlDailyReportStore) RemoveFile(reportID, fileID string) error {
+	res, err := s.GetMaster().ExecBuilder(s.getQueryBuilder().Delete("DailyReportFiles").
+		Where(sq.Eq{"ReportId": reportID, "FileId": fileID}))
+	if err != nil {
+		return errors.Wrapf(err, "failed to unlink file_id=%s from report_id=%s", fileID, reportID)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return store.NewErrNotFound("DailyReportFile", reportID+"/"+fileID)
+	}
+	return nil
+}
+
+func (s *SqlDailyReportStore) GetFileIds(reportIDs []string) (map[string][]string, error) {
+	result := map[string][]string{}
+	if len(reportIDs) == 0 {
+		return result, nil
+	}
+	var rows []struct {
+		ReportId string
+		FileId   string
+	}
+	// Master: an upload reads its own link back to count and return the files.
+	if err := s.GetMaster().SelectBuilder(&rows, s.getQueryBuilder().Select("ReportId", "FileId").From("DailyReportFiles").
+		Where(sq.Eq{"ReportId": reportIDs}).OrderBy("CreateAt ASC", "FileId ASC")); err != nil {
+		return nil, errors.Wrap(err, "failed to get DailyReportFiles")
+	}
+	for _, row := range rows {
+		result[row.ReportId] = append(result[row.ReportId], row.FileId)
+	}
+	return result, nil
+}
+
 func (s *SqlDailyReportStore) selectReports(q sq.SelectBuilder, desc string) ([]*model.DailyReport, error) {
 	var rows []dailyReportRow
 	if err := s.GetReplica().SelectBuilder(&rows, q); err != nil {

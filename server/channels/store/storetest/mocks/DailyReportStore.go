@@ -14,6 +14,24 @@ type DailyReportStore struct {
 	mock.Mock
 }
 
+// AddFile provides a mock function with given fields: reportID, fileID, createAt
+func (_m *DailyReportStore) AddFile(reportID string, fileID string, createAt int64) error {
+	ret := _m.Called(reportID, fileID, createAt)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddFile")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, int64) error); ok {
+		r0 = rf(reportID, fileID, createAt)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Approve provides a mock function with given fields: id, approverID, auto, approvedAt, seenUpdateAt
 func (_m *DailyReportStore) Approve(id string, approverID string, auto bool, approvedAt int64, seenUpdateAt int64) error {
 	ret := _m.Called(id, approverID, auto, approvedAt, seenUpdateAt)
@@ -25,6 +43,24 @@ func (_m *DailyReportStore) Approve(id string, approverID string, auto bool, app
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, string, bool, int64, int64) error); ok {
 		r0 = rf(id, approverID, auto, approvedAt, seenUpdateAt)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// Delete provides a mock function with given fields: id
+func (_m *DailyReportStore) Delete(id string) error {
+	ret := _m.Called(id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Delete")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(id)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -85,6 +121,66 @@ func (_m *DailyReportStore) GetAssignees(teamID string) ([]string, error) {
 
 	if rf, ok := ret.Get(1).(func(string) error); ok {
 		r1 = rf(teamID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetBeforeDate provides a mock function with given fields: teamID, status, beforeDate
+func (_m *DailyReportStore) GetBeforeDate(teamID string, status string, beforeDate string) ([]*model.DailyReport, error) {
+	ret := _m.Called(teamID, status, beforeDate)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBeforeDate")
+	}
+
+	var r0 []*model.DailyReport
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string, string) ([]*model.DailyReport, error)); ok {
+		return rf(teamID, status, beforeDate)
+	}
+	if rf, ok := ret.Get(0).(func(string, string, string) []*model.DailyReport); ok {
+		r0 = rf(teamID, status, beforeDate)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.DailyReport)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string, string) error); ok {
+		r1 = rf(teamID, status, beforeDate)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetFileIds provides a mock function with given fields: reportIDs
+func (_m *DailyReportStore) GetFileIds(reportIDs []string) (map[string][]string, error) {
+	ret := _m.Called(reportIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetFileIds")
+	}
+
+	var r0 map[string][]string
+	var r1 error
+	if rf, ok := ret.Get(0).(func([]string) (map[string][]string, error)); ok {
+		return rf(reportIDs)
+	}
+	if rf, ok := ret.Get(0).(func([]string) map[string][]string); ok {
+		r0 = rf(reportIDs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string][]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func([]string) error); ok {
+		r1 = rf(reportIDs)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -193,6 +289,24 @@ func (_m *DailyReportStore) Reject(id string, rejecterID string, reason string, 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, string, string, int64, int64) error); ok {
 		r0 = rf(id, rejecterID, reason, rejectedAt, seenUpdateAt)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// RemoveFile provides a mock function with given fields: reportID, fileID
+func (_m *DailyReportStore) RemoveFile(reportID string, fileID string) error {
+	ret := _m.Called(reportID, fileID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RemoveFile")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string) error); ok {
+		r0 = rf(reportID, fileID)
 	} else {
 		r0 = ret.Error(0)
 	}

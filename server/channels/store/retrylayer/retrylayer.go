@@ -5558,11 +5558,53 @@ func (s *RetryLayerCustomRoleStore) Update(r *model.CustomRole) (*model.CustomRo
 
 }
 
+func (s *RetryLayerDailyReportStore) AddFile(reportID string, fileID string, createAt int64) error {
+
+	tries := 0
+	for {
+		err := s.DailyReportStore.AddFile(reportID, fileID, createAt)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
 func (s *RetryLayerDailyReportStore) Approve(id string, approverID string, auto bool, approvedAt int64, seenUpdateAt int64) error {
 
 	tries := 0
 	for {
 		err := s.DailyReportStore.Approve(id, approverID, auto, approvedAt, seenUpdateAt)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDailyReportStore) Delete(id string) error {
+
+	tries := 0
+	for {
+		err := s.DailyReportStore.Delete(id)
 		if err == nil {
 			return nil
 		}
@@ -5605,6 +5647,48 @@ func (s *RetryLayerDailyReportStore) GetAssignees(teamID string) ([]string, erro
 	tries := 0
 	for {
 		result, err := s.DailyReportStore.GetAssignees(teamID)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDailyReportStore) GetBeforeDate(teamID string, status string, beforeDate string) ([]*model.DailyReport, error) {
+
+	tries := 0
+	for {
+		result, err := s.DailyReportStore.GetBeforeDate(teamID, status, beforeDate)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDailyReportStore) GetFileIds(reportIDs []string) (map[string][]string, error) {
+
+	tries := 0
+	for {
+		result, err := s.DailyReportStore.GetFileIds(reportIDs)
 		if err == nil {
 			return result, nil
 		}
@@ -5689,6 +5773,27 @@ func (s *RetryLayerDailyReportStore) Reject(id string, rejecterID string, reason
 	tries := 0
 	for {
 		err := s.DailyReportStore.Reject(id, rejecterID, reason, rejectedAt, seenUpdateAt)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDailyReportStore) RemoveFile(reportID string, fileID string) error {
+
+	tries := 0
+	for {
+		err := s.DailyReportStore.RemoveFile(reportID, fileID)
 		if err == nil {
 			return nil
 		}

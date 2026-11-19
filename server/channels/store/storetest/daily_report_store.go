@@ -23,6 +23,8 @@ func TestDailyReportStore(t *testing.T, rctx request.CTX, ss store.Store) {
 	t.Run("SeenUpdateAt", func(t *testing.T) { testDailyReportSeenUpdateAt(t, ss) })
 	t.Run("UpdateKeepsRejection", func(t *testing.T) { testDailyReportUpdateKeepsRejection(t, ss) })
 	t.Run("Assignees", func(t *testing.T) { testDailyReportAssignees(t, ss) })
+	t.Run("Files", func(t *testing.T) { testDailyReportFiles(t, ss) })
+	t.Run("GetBeforeDate", func(t *testing.T) { testDailyReportGetBeforeDate(t, ss) })
 }
 
 func newDailyReport(teamID, userID, date string) *model.DailyReport {
@@ -281,4 +283,57 @@ func testDailyReportAssignees(t *testing.T, ss store.Store) {
 	got, err = ss.DailyReport().GetAssignees(otherTeam)
 	require.NoError(t, err)
 	require.Equal(t, []string{c}, got)
+}
+
+func testDailyReportFiles(t *testing.T, ss store.Store) {
+	report, err := ss.DailyReport().Save(newDailyReport(model.NewId(), model.NewId(), "2026-11-18"))
+	require.NoError(t, err)
+	other, err := ss.DailyReport().Save(newDailyReport(model.NewId(), model.NewId(), "2026-11-18"))
+	require.NoError(t, err)
+	first, second := model.NewId(), model.NewId()
+	require.NoError(t, ss.DailyReport().AddFile(report.Id, first, 1))
+	require.NoError(t, ss.DailyReport().AddFile(report.Id, second, 2))
+	require.Error(t, ss.DailyReport().AddFile(report.Id, first, 3))
+
+	ids, err := ss.DailyReport().GetFileIds([]string{report.Id, other.Id})
+	require.NoError(t, err)
+	require.Equal(t, map[string][]string{report.Id: {first, second}}, ids)
+
+	var nfErr *store.ErrNotFound
+	require.ErrorAs(t, ss.DailyReport().RemoveFile(other.Id, first), &nfErr)
+	require.NoError(t, ss.DailyReport().RemoveFile(report.Id, first))
+	ids, err = ss.DailyReport().GetFileIds([]string{report.Id})
+	require.NoError(t, err)
+	require.Equal(t, []string{second}, ids[report.Id])
+
+	require.NoError(t, ss.DailyReport().Delete(report.Id))
+	_, err = ss.DailyReport().Get(report.Id)
+	require.ErrorAs(t, err, &nfErr)
+	ids, err = ss.DailyReport().GetFileIds([]string{report.Id})
+	require.NoError(t, err)
+	require.Empty(t, ids)
+	require.ErrorAs(t, ss.DailyReport().Delete(report.Id), &nfErr)
+}
+
+func testDailyReportGetBeforeDate(t *testing.T, ss store.Store) {
+	teamID := model.NewId()
+	save := func(date, status string) *model.DailyReport {
+		r := newDailyReport(teamID, model.NewId(), date)
+		r.Status = status
+		saved, err := ss.DailyReport().Save(r)
+		require.NoError(t, err)
+		return saved
+	}
+	oldDraft := save("2026-11-18", model.DailyReportStatusDraft)
+	save("2026-11-19", model.DailyReportStatusDraft)
+	save("2026-11-18", model.DailyReportStatusPending)
+	r := newDailyReport(model.NewId(), model.NewId(), "2026-11-18")
+	r.Status = model.DailyReportStatusDraft
+	_, err := ss.DailyReport().Save(r) // another team
+	require.NoError(t, err)
+
+	got, err := ss.DailyReport().GetBeforeDate(teamID, model.DailyReportStatusDraft, "2026-11-19")
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, oldDraft.Id, got[0].Id)
 }
