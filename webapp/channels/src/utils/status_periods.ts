@@ -10,8 +10,8 @@ export type DaySummary = {
     firstOpenAt?: number;
 };
 
-// Local wall-clock "HH:MM" on the same local day as `day`.
-function atTime(day: Date, hhmm: string): number {
+/** Local wall-clock "HH:MM" on the same local day as `day`, in ms. */
+export function atTime(day: Date, hhmm: string): number {
     const [h, m] = hhmm.split(':').map(Number);
     return new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m).getTime();
 }

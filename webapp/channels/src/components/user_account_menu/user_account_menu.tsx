@@ -3,7 +3,7 @@
 
 import classNames from 'classnames';
 import React from 'react';
-import type {MouseEvent, KeyboardEvent} from 'react';
+import type {MouseEvent, KeyboardEvent, ReactNode} from 'react';
 import {useIntl} from 'react-intl';
 
 import CustomStatusModal from 'components/custom_status/custom_status_modal';
@@ -27,7 +27,12 @@ import type {PropsFromRedux} from './index';
 
 import './user_account_menu.scss';
 
-type Props = PropsFromRedux;
+type Props = PropsFromRedux & {
+
+    /** 'sidebar' opens the menu upward from the status box, with `children` shown beside the avatar. */
+    placement?: 'header' | 'sidebar';
+    children?: ReactNode;
+};
 
 export const ELEMENT_ID_FOR_USER_ACCOUNT_MENU_BUTTON = 'userAccountMenuButton';
 export const ELEMENT_ID_FOR_USER_ACCOUNT_MENU = 'userAccountMenu';
@@ -45,35 +50,43 @@ export default function UserAccountMenu(props: Props) {
 
     const isCustomStatusSet = !props.isCustomStatusExpired && props.customStatus && (props.customStatus.text?.length > 0 || props.customStatus.emoji?.length > 0);
     const shouldConfirmBeforeStatusChange = props.autoResetPref === '' && props.status === UserStatuses.OUT_OF_OFFICE;
+    const inSidebar = props.placement === 'sidebar';
+    const buttonContent = (
+        <UserAccountMenuButton
+            profilePicture={props.profilePicture}
+            openCustomStatusModal={openCustomStatusModal}
+            status={props.status}
+        />
+    );
 
     return (
         <Menu.Container
             menuButton={{
-                id: ELEMENT_ID_FOR_USER_ACCOUNT_MENU_BUTTON,
+                id: inSidebar ? `sidebar_${ELEMENT_ID_FOR_USER_ACCOUNT_MENU_BUTTON}` : ELEMENT_ID_FOR_USER_ACCOUNT_MENU_BUTTON,
                 class: classNames('userAccountMenu_menuButton', {
-                    withCustomStatus: isCustomStatusSet,
+                    withCustomStatus: isCustomStatusSet && !inSidebar,
+                    userAccountMenu_sidebarButton: inSidebar,
                 }),
                 'aria-label': formatMessage({id: 'userAccountMenu.menuButton.ariaLabel', defaultMessage: 'User\'s account menu'}),
                 'aria-describedby': 'userAccountMenuButtonDescribedBy',
-                children: (
-                    <UserAccountMenuButton
-                        profilePicture={props.profilePicture}
-                        openCustomStatusModal={openCustomStatusModal}
-                        status={props.status}
-                    />
-                ),
+                children: inSidebar ? (
+                    <>
+                        <span className='userAccountMenu_sidebarAvatar'>{buttonContent}</span>
+                        {props.children}
+                    </>
+                ) : buttonContent,
             }}
             menu={{
                 id: ELEMENT_ID_FOR_USER_ACCOUNT_MENU,
                 width: '264px',
             }}
             anchorOrigin={{
-                vertical: 'bottom',
-                horizontal: 'right',
+                vertical: inSidebar ? 'top' : 'bottom',
+                horizontal: inSidebar ? 'left' : 'right',
             }}
             transformOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
+                vertical: inSidebar ? 'bottom' : 'top',
+                horizontal: inSidebar ? 'left' : 'right',
             }}
         >
             <UserAccountNameMenuItem

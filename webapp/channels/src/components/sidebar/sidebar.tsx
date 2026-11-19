@@ -20,6 +20,7 @@ import type {RhsState} from 'types/store/rhs';
 import ChannelNavigator from './channel_navigator';
 import SidebarJoinRequestCountsSync from './sidebar_join_request_counts_sync';
 import SidebarList from './sidebar_list';
+import StatusBox from './status_box/status_box';
 
 const MobileSidebarHeader = makeAsyncComponent('MobileSidebarHeader', lazy(() => import('./mobile_sidebar_header')));
 const MoreDirectChannels = makeAsyncComponent('MoreDirectChannels', lazy(() => import('components/more_direct_channels')));
@@ -263,6 +264,7 @@ export default class Sidebar extends React.PureComponent<Props, State> {
                     onDragStart={this.onDragStart}
                     onDragEnd={this.onDragEnd}
                 />
+                {!this.props.isMobileView && <StatusBox/>}
                 <DataPrefetch/>
                 <SidebarJoinRequestCountsSync/>
                 {this.renderModals()}
