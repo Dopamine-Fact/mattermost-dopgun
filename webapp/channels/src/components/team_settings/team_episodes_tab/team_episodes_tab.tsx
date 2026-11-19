@@ -4,7 +4,7 @@
 import React, {useCallback, useMemo, useState} from 'react';
 import {defineMessages} from 'react-intl';
 
-import {useTeamDepartments} from 'components/profile_popover/use_custom_roles';
+import {useLoadedTeamDepartments} from 'components/profile_popover/use_custom_roles';
 import SaveChangesPanel, {type SaveChangesPanelState} from 'components/widgets/modals/components/save_changes_panel';
 
 import {parseEpisodeFolders, serializeEpisodeFolders} from './episode_folders';
@@ -39,7 +39,7 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
 
     // Kept as the stored text, so a template nobody edits is never re-serialized into a change.
     const [episodeTasks, setEpisodeTasks] = useState<string>(team.episode_tasks ?? '');
-    const departments = useTeamDepartments(team.id);
+    const departments = useLoadedTeamDepartments(team.id);
     const parsedTasks = useMemo(() => parseEpisodeTasks(episodeTasks), [episodeTasks]);
 
     // Which template the server rejected on the last save.
@@ -51,7 +51,7 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
         const foldersChanged = serializedFolders !== serializeEpisodeFolders(parseEpisodeFolders(team.episode_folders));
 
         // Saving clears department, folder and waits-for references that point at nothing.
-        const cleaned = serializeEpisodeTasks(sanitizeEpisodeTasks(parsedTasks, departments.length ? departments.map((d) => d.id) : undefined, episodeFolders.filter((f) => !f.mirror_of).map((f) => f.path)));
+        const cleaned = serializeEpisodeTasks(sanitizeEpisodeTasks(parsedTasks, departments?.map((d) => d.id), episodeFolders.filter((f) => !f.mirror_of).map((f) => f.path)));
         const tasksChanged = episodeTasks !== (team.episode_tasks ?? '') || cleaned !== serializeEpisodeTasks(parsedTasks);
         const changed = foldersChanged || tasksChanged || tasksEnabled !== Boolean(team.tasks_enabled) || revisionsEnabled !== Boolean(team.revisions_enabled) || canvasEnabled !== Boolean(team.canvas_enabled);
         if (changed) {

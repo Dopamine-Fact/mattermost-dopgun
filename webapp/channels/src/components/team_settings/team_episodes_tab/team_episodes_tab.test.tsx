@@ -10,8 +10,10 @@ import {TestHelper} from 'utils/test_helper';
 
 import EpisodesTab from './team_episodes_tab';
 
+const mockLoadedDepartments = jest.fn((): unknown[] | undefined => undefined);
 jest.mock('components/profile_popover/use_custom_roles', () => ({
     useTeamDepartments: () => [],
+    useLoadedTeamDepartments: () => mockLoadedDepartments(),
 }));
 
 describe('components/TeamSettings/EpisodesTab', () => {
@@ -132,6 +134,21 @@ describe('components/TeamSettings/EpisodesTab', () => {
             await userEvent.click(screen.getByTestId('SaveChangesPanel__save-btn'));
 
             expect(patchTeam).toHaveBeenLastCalledWith(expect.objectContaining({episode_tasks: '[{"key":"a","title":"A"}]'}));
+        });
+
+        test('saving clears a department id when the team has no departments left, but not while they are unknown', async () => {
+            const stale = {...team, episode_tasks: '[{"key":"a","title":"A","department_id":"' + 'd'.repeat(26) + '"}]'};
+            mockLoadedDepartments.mockReturnValue([]);
+            const {unmount} = renderWithContext(<EpisodesTab {...{...defaultProps, team: stale}}/>);
+            await userEvent.click(screen.getByTestId('SaveChangesPanel__save-btn'));
+            expect(patchTeam).toHaveBeenLastCalledWith(expect.objectContaining({episode_tasks: '[{"key":"a","title":"A"}]'}));
+            unmount();
+
+            patchTeam.mockClear();
+            mockLoadedDepartments.mockReturnValue(undefined);
+            renderWithContext(<EpisodesTab {...{...defaultProps, team: stale}}/>);
+            await userEvent.click(screen.getByTestId('SaveChangesPanel__save-btn'));
+            expect(patchTeam).not.toHaveBeenCalled();
         });
 
         test('a rejected folder template shows the error under the panel', async () => {

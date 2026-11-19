@@ -51,9 +51,16 @@ export function refreshTeamDepartments(teamId: string): Promise<void> {
     return load(teamId).then(() => undefined, () => undefined);
 }
 
+const NONE: Department[] = [];
+
 /** The team's departments, Stüdyo geneli first, each with its ranks top first; empty until loaded. */
 export function useTeamDepartments(teamId: string): Department[] {
-    const [departments, setDepartments] = useState<Department[]>([]);
+    return useLoadedTeamDepartments(teamId) ?? NONE;
+}
+
+/** Like useTeamDepartments, but undefined until the load succeeds (and after a failed load), so an empty list means the team has none. */
+export function useLoadedTeamDepartments(teamId: string): Department[] | undefined {
+    const [departments, setDepartments] = useState<Department[]>();
     useEffect(() => {
         if (!teamId) {
             return undefined;
