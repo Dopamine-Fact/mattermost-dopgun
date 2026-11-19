@@ -144,7 +144,9 @@ export function useExplorerData(channelId?: string, folderId = '', chatSort: Cha
                 return;
             }
             setChangeCount((c) => c + 1);
-            if (folderId === TRASH_FOLDER || parents.includes(folderId)) {
+
+            // restricted: the server left out folders some members cannot see, which may include this one.
+            if (folderId === TRASH_FOLDER || parents.includes(folderId) || (msg.data as {restricted?: boolean} | undefined)?.restricted) {
                 reload();
             }
         };

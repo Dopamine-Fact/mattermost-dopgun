@@ -371,10 +371,34 @@ func (a *App) publishDriveChanged(channelID string, parentIDs ...string) {
 			}
 		}
 	}
+	// The event reaches every channel member, so it never names a folder some of them cannot see; restricted tells
+	// open explorers to reload instead.
+	restricted := false
+	ids = slices.DeleteFunc(ids, func(id string) bool {
+		hidden := id != "" && a.driveViewRestricted(id)
+		restricted = restricted || hidden
+		return hidden
+	})
 	data, _ := json.Marshal(ids)
 	message := model.NewWebSocketEvent(model.WebsocketEventDriveChanged, "", channelID, "", nil, "")
 	message.Add("parent_ids", string(data))
+	if restricted {
+		message.Add("restricted", true)
+	}
 	a.Publish(message)
+}
+
+// driveViewRestricted reports whether the folder or a folder above it has view departments; true when unsure.
+func (a *App) driveViewRestricted(id string) bool {
+	item, err := a.Srv().Store().DriveItem().Get(id)
+	if err != nil {
+		return true
+	}
+	ancestors, err := a.Srv().Store().DriveItem().GetAncestors(id)
+	if err != nil {
+		return true
+	}
+	return slices.ContainsFunc(append(ancestors, item), func(f *model.DriveItem) bool { return len(f.ViewDepartments) > 0 })
 }
 
 // embedDriveFiles fills FileInfo on file items and drops those whose file is gone.

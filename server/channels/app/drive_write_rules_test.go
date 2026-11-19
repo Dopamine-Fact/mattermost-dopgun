@@ -173,20 +173,48 @@ func TestDriveRestoreKeepsRules(t *testing.T) {
 	assert.Equal(t, w.Folders["BG"].Id, got.ParentId)
 }
 
+// driveChangedEvent returns the data of the next drive_changed event sent to BasicUser while change runs.
+func driveChangedEvent(t *testing.T, th *TestHelper, change func()) map[string]any {
+	t.Helper()
+	messages, closeWS := connectFakeWebSocket(t, th, th.BasicUser.Id, "", []model.WebsocketEventType{model.WebsocketEventDriveChanged})
+	defer closeWS()
+	change()
+	select {
+	case msg := <-messages:
+		return msg.GetData()
+	case <-time.After(10 * time.Second):
+		t.Fatal("no drive_changed event")
+		return nil
+	}
+}
+
 func TestDriveChangedNamesMirrors(t *testing.T) {
 	th := setupDrive(t)
 	w := driveWriteFixture(t, th)
-	messages, closeWS := connectFakeWebSocket(t, th, th.BasicUser.Id, "", []model.WebsocketEventType{model.WebsocketEventDriveChanged})
-	defer closeWS()
+	// A mirror everyone sees, of BG/Layout (hidden inside BG).
+	open, err := th.App.Srv().Store().DriveItem().Save(&model.DriveItem{ChannelId: w.Channel.Id, ParentId: w.Folders["Open"].Id, Type: model.DriveItemTypeFolder, Name: "Layout", CreatorId: th.BasicUser.Id, DriveRules: model.DriveRules{MirrorOf: w.Folders["BG/Layout"].Id}})
+	require.NoError(t, err)
 
-	driveAddFile(t, th, w.user1, w.Channel, w.Folders["BG/Layout"].Id, "live.txt")
-	select {
-	case msg := <-messages:
-		assert.Contains(t, msg.GetData()["parent_ids"], w.Folders["BG/Layout"].Id)
-		assert.Contains(t, msg.GetData()["parent_ids"], w.Folders["Anim/Layout"].Id)
-	case <-time.After(10 * time.Second):
-		t.Fatal("no drive_changed event")
+	data := driveChangedEvent(t, th, func() { driveAddFile(t, th, w.user1, w.Channel, w.Folders["BG/Layout"].Id, "live.txt") })
+	assert.Contains(t, data["parent_ids"], open.Id, "a visible mirror of a hidden folder is still named")
+	assert.Equal(t, true, data["restricted"])
+}
+
+// The event goes to the whole channel, so it never names a folder some members cannot see.
+func TestDriveChangedHidesRestrictedFolders(t *testing.T) {
+	th := setupDrive(t)
+	w := driveWriteFixture(t, th)
+
+	data := driveChangedEvent(t, th, func() { driveAddFile(t, th, w.user1, w.Channel, w.Folders["BG/Layout"].Id, "live.txt") })
+	for _, key := range []string{"BG/Layout", "Anim/Layout"} { // inside a view-restricted folder; the mirror is restricted itself
+		assert.NotContains(t, data["parent_ids"], w.Folders[key].Id, key)
 	}
+	assert.Equal(t, "[]", data["parent_ids"])
+	assert.Equal(t, true, data["restricted"], "tells open explorers to reload")
+
+	data = driveChangedEvent(t, th, func() { driveAddFile(t, th, w.user1, w.Channel, w.Folders["Open"].Id, "open.txt") })
+	assert.Equal(t, `["`+w.Folders["Open"].Id+`"]`, data["parent_ids"])
+	assert.NotContains(t, data, "restricted")
 }
 
 func TestDriveChangedRootIsOnlyRoot(t *testing.T) {
@@ -199,6 +227,7 @@ func TestDriveChangedRootIsOnlyRoot(t *testing.T) {
 	select {
 	case msg := <-messages:
 		assert.Equal(t, `[""]`, msg.GetData()["parent_ids"]) // no mirror lookup for the root, no hidden folder ids
+		assert.NotContains(t, msg.GetData(), "restricted")
 	case <-time.After(10 * time.Second):
 		t.Fatal("no drive_changed event")
 	}

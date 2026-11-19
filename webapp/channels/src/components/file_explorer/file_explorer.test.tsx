@@ -186,6 +186,7 @@ describe('FileExplorer', () => {
 
         await waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(before));
     });
+
     describe('embedded in a channel', () => {
         beforeEach(() => {
             jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [folder('d1', 'Docs')], path: [], access: ''});
@@ -198,6 +199,31 @@ describe('FileExplorer', () => {
             renderEmbedded();
             fireEvent.doubleClick(await screen.findByRole('gridcell', {name: 'Docs'}));
             expect(push).toHaveBeenCalledWith('/team/channels/town?folder=d1');
+        });
+
+        // With the tree hidden, only the open folder's listing calls getDriveFolder.
+        const sendDriveChanged = (data: Record<string, unknown>) => act(async () => {
+            (WebSocketClient.addMessageListener as jest.Mock).mock.calls.forEach(([listener]) => listener({event: 'drive_changed', data, broadcast: {channel_id: 'c1'}}));
+        });
+
+        test('embedded, a drive_changed for another folder does not reload the open one', async () => {
+            renderEmbedded();
+            await screen.findByRole('gridcell', {name: 'Docs'});
+            const before = jest.mocked(Client4.getDriveFolder).mock.calls.length;
+
+            await sendDriveChanged({parent_ids: '["other"]'});
+
+            expect(Client4.getDriveFolder).toHaveBeenCalledTimes(before);
+        });
+
+        test('embedded, a restricted drive_changed reloads the open folder although it names no folder', async () => {
+            renderEmbedded();
+            await screen.findByRole('gridcell', {name: 'Docs'});
+            const before = jest.mocked(Client4.getDriveFolder).mock.calls.length;
+
+            await sendDriveChanged({parent_ids: '[]', restricted: true});
+
+            await waitFor(() => expect(Client4.getDriveFolder).toHaveBeenCalledTimes(before + 1));
         });
 
         test('embedded, the channel tree is hidden', async () => {
