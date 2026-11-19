@@ -84,6 +84,14 @@ describe('createEpisodeChannel', () => {
         expect(result.data).toEqual({channel, failed: ['Notes']});
     });
 
+    test('without a video it skips the upload and still makes the canvas', async () => {
+        const result = await store().dispatch(createEpisodeChannel('team1', 'Episode 1'));
+
+        expect(Client4.setTaskSectionVideo).not.toHaveBeenCalled();
+        expect(Client4.createCanvas).toHaveBeenCalledWith('team1', 'chan1');
+        expect(result.data).toEqual({channel, failed: ['Notes']});
+    });
+
     test('removes section and channel when the video fails', async () => {
         jest.spyOn(Client4, 'setTaskSectionVideo').mockRejectedValue(new Error('not a video'));
         const result = await store().dispatch(createEpisodeChannel('team1', 'Episode 1', video));
