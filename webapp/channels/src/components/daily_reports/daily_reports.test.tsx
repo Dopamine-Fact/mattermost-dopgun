@@ -12,7 +12,7 @@ import WebSocketClient from 'client/web_websocket_client';
 import {act, fireEvent, renderWithContext, screen, waitFor, within} from 'tests/react_testing_utils';
 import {TestHelper} from 'utils/test_helper';
 
-import {MESSAGE_MAX_LENGTH, todayIn} from './common';
+import {daysBefore, MESSAGE_MAX_LENGTH, todayIn} from './common';
 import DailyReports from './daily_reports';
 
 jest.mock('mattermost-redux/actions/users', () => ({
@@ -54,6 +54,9 @@ const report = (extra: Partial<DailyReport>): DailyReport => ({
     update_at: 1,
     ...extra,
 });
+
+const png = TestHelper.getFileInfoMock({id: 'f1', name: 'a.png', extension: 'png', size: 1258291, mime_type: 'image/png', has_preview_image: true});
+const mp4 = TestHelper.getFileInfoMock({id: 'f2', name: 'clip.mp4', extension: 'mp4', size: 2048, mime_type: 'video/mp4'});
 
 const bot = TestHelper.getUserMock({id: 'u4', username: 'bot', is_bot: true});
 const exMember = TestHelper.getUserMock({id: 'u5', username: 'leaver'});
@@ -207,24 +210,139 @@ describe('DailyReports', () => {
         expect(banner).toHaveTextContent('ayse');
     });
 
-    test('lists earlier rejected reports under Needs fixing and saves them by id', async () => {
+    test('recent reports: a rejected report\'s detail offers Edit and saves by id', async () => {
         mockReports([], [
-            report({id: 'old', user_id: 'me', date: '2000-01-01', status: 'rejected', reject_reason: 'Too short'}),
-            report({id: 'ok', user_id: 'me', date: '2000-01-02'}),
+            report({id: 'old', user_id: 'me', date: '2000-01-01', status: 'rejected', reject_reason: 'Too short', message: 'Short'}),
+            report({id: 'ok', user_id: 'me', date: '2000-01-02', message: 'Fine day'}),
         ]);
         const update = jest.spyOn(Client4, 'updateDailyReport').mockResolvedValue(report({id: 'old', user_id: 'me', date: '2000-01-01', message: 'Longer'}));
         renderPage(false);
 
-        expect(await screen.findByText('Needs fixing')).toBeInTheDocument();
-        expect(screen.getByText(/Too short/)).toBeInTheDocument();
-        fireEvent.click(screen.getByRole('button', {name: 'Edit'}));
-        const box = await screen.findByTestId('dailyReportEditor_old');
+        expect(await screen.findByText('Recent reports')).toBeInTheDocument();
+        expect(screen.queryByText('Needs fixing')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', {name: /Short/}));
+        const dialog = await screen.findByRole('dialog');
+        expect(within(dialog).getByText(/Too short/)).toBeInTheDocument();
+        fireEvent.click(within(dialog).getByRole('button', {name: 'Edit'}));
+        const box = await within(dialog).findByTestId('dailyReportEditor_old');
         fireEvent.input(box, {target: {value: 'Longer'}});
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: 'Save'}));
+            fireEvent.click(within(dialog).getByRole('button', {name: 'Save'}));
         });
 
         expect(update).toHaveBeenCalledWith('old', 'Longer');
+    });
+
+    test('recent reports: lists the last 30 days with attachment count and opens the detail modal', async () => {
+        const list = mockReports([], [
+            report({id: 'a', user_id: 'me', date: '2000-01-01', message: 'Older day'}),
+            report({id: 'b', user_id: 'me', date: '2000-01-03', message: 'Newer day', files: [png, mp4]}),
+        ]);
+        renderPage(false);
+
+        const newer = await screen.findByRole('button', {name: /Newer day/});
+        const older = screen.getByRole('button', {name: /Older day/});
+        expect(newer.compareDocumentPosition(older) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(newer).toHaveTextContent('2 attachments');
+        expect(older).not.toHaveTextContent('attachment');
+        expect(list).toHaveBeenCalledWith('team1', daysBefore(todayIn(undefined), 30), todayIn(undefined), 'me');
+
+        fireEvent.click(newer);
+        const dialog = await screen.findByRole('dialog');
+        expect(within(dialog).getByText('Newer day')).toBeInTheDocument();
+        expect(within(dialog).getByRole('img', {name: 'a.png'})).toBeInTheDocument();
+        expect(dialog.querySelector('video[controls]')).toHaveAttribute('src', Client4.getDailyReportFileUrl('b', 'f2'));
+    });
+
+    test('media: uploads a dropped file and lists it with size and type', async () => {
+        const upload = jest.spyOn(Client4, 'uploadMyDailyReportFile').mockResolvedValue(png);
+        renderPage(false);
+
+        await editor();
+        await act(async () => {
+            fireEvent.drop(screen.getByTestId('dailyReportDropZone'), {dataTransfer: {files: [new File(['x'], 'a.png', {type: 'image/png'})]}});
+        });
+
+        expect(upload).toHaveBeenCalledWith('team1', expect.any(File), expect.any(Function));
+        expect(await screen.findByText('a.png')).toBeInTheDocument();
+        expect(screen.getByText(/1\.2 ?MB · PNG/)).toBeInTheDocument();
+    });
+
+    test('media: refuses an .exe before uploading', async () => {
+        const upload = jest.spyOn(Client4, 'uploadMyDailyReportFile').mockResolvedValue(png);
+        renderPage(false);
+
+        await editor();
+        await act(async () => {
+            fireEvent.drop(screen.getByTestId('dailyReportDropZone'), {dataTransfer: {files: [new File(['x'], 'run.exe')]}});
+        });
+
+        expect(upload).not.toHaveBeenCalled();
+        expect(screen.getByText('run.exe')).toBeInTheDocument();
+        expect(screen.getByText('This file type can\'t be attached.')).toBeInTheDocument();
+    });
+
+    test('media: removes a file', async () => {
+        mockReports([report({id: 'd1', user_id: 'me', status: 'draft', message: '', files: [png]})]);
+        const remove = jest.spyOn(Client4, 'deleteDailyReportFile').mockResolvedValue({status: 'OK'});
+        renderPage(false);
+
+        await editor();
+        await act(async () => {
+            fireEvent.click(screen.getByRole('button', {name: 'Remove a.png'}));
+        });
+
+        expect(remove).toHaveBeenCalledWith('d1', 'f1');
+    });
+
+    test('media: an 11th file is refused in the browser', async () => {
+        const ten = Array.from({length: 10}, (_, i) => ({...png, id: `f${i}`, name: `s${i}.png`}));
+        mockReports([report({id: 'd1', user_id: 'me', status: 'draft', message: '', files: ten})]);
+        const upload = jest.spyOn(Client4, 'uploadMyDailyReportFile').mockResolvedValue(png);
+        renderPage(false);
+
+        await editor();
+        await act(async () => {
+            fireEvent.drop(screen.getByTestId('dailyReportDropZone'), {dataTransfer: {files: [new File(['x'], 'eleven.png', {type: 'image/png'})]}});
+        });
+
+        expect(upload).not.toHaveBeenCalled();
+        expect(screen.getByText('A report can have at most 10 attachments.')).toBeInTheDocument();
+    });
+
+    test('today card: sends with only attachments and an empty message', async () => {
+        mockReports([report({id: 'd1', user_id: 'me', status: 'draft', message: '', files: [png]})]);
+        const submit = jest.spyOn(Client4, 'submitDailyReport').mockResolvedValue(report({id: 'd1', user_id: 'me', message: '', files: [png]}));
+        renderPage(false);
+
+        expect(await screen.findByText('Draft')).toBeInTheDocument();
+        await editor();
+        const send = screen.getByRole('button', {name: 'Send report'});
+        expect(send).toBeEnabled();
+        await act(async () => {
+            fireEvent.click(send);
+        });
+
+        expect(submit).toHaveBeenCalledWith('team1', '');
+    });
+
+    test('today card: pasting an image into the editor attaches it', async () => {
+        const upload = jest.spyOn(Client4, 'uploadMyDailyReportFile').mockResolvedValue(png);
+        renderPage(false);
+
+        const box = await editor();
+        await act(async () => {
+            fireEvent.paste(box, {clipboardData: {files: [new File(['x'], 'shot.png', {type: 'image/png'})]}});
+        });
+
+        expect(upload).toHaveBeenCalledWith('team1', expect.any(File), expect.any(Function));
+    });
+
+    test('the author sees their pending report as Sent', async () => {
+        mockReports([report({user_id: 'me', status: 'pending'})]);
+        renderPage(false);
+
+        expect(await screen.findByText('Sent')).toBeInTheDocument();
     });
 
     test('an unlisted user sees that no report is expected', async () => {

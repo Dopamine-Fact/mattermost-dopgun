@@ -23191,6 +23191,10 @@
     "defaultMessage": "Approve",
     "description": "Button on a pending report row in Team reports that approves it."
   },
+  "daily_reports.attachments": {
+    "defaultMessage": "{count, plural, one {# attachment} other {# attachments}}",
+    "description": "Attachment count on a row of My report > Recent reports."
+  },
   "daily_reports.cancel": {
     "defaultMessage": "Cancel",
     "description": "Button that discards changes to an already sent daily report and closes its editor."
@@ -23207,21 +23211,57 @@
     "defaultMessage": "Edit",
     "description": "Button on a sent daily report that opens it for editing."
   },
+  "daily_reports.editReport": {
+    "defaultMessage": "Edit report",
+    "description": "Title of the editor opened from a sent-back report in the report detail dialog."
+  },
   "daily_reports.edited": {
     "defaultMessage": "Edited",
     "description": "Tag on a daily report that was changed after it was first sent; on Team reports it toggles the text before the edit."
+  },
+  "daily_reports.export.title": {
+    "defaultMessage": "Export by date range",
+    "description": "Title of the card on My report that downloads reports for a date range as CSV."
   },
   "daily_reports.from": {
     "defaultMessage": "From",
     "description": "Label of the start date input for the CSV export of daily reports."
   },
+  "daily_reports.media.added": {
+    "defaultMessage": "Attached media ({count})",
+    "description": "Heading over the list of files attached to a daily report."
+  },
+  "daily_reports.media.badType": {
+    "defaultMessage": "This file type can't be attached.",
+    "description": "Shown on a file card when the file is not an image, video or PDF."
+  },
+  "daily_reports.media.drop": {
+    "defaultMessage": "Drag and drop files or <choose>choose</choose>",
+    "description": "Drop zone on the daily report card; the tagged word opens the file picker."
+  },
+  "daily_reports.media.hint": {
+    "defaultMessage": "Add screenshots, video clips or files to your daily report.",
+    "description": "Explains the media section of the daily report card."
+  },
+  "daily_reports.media.remove": {
+    "defaultMessage": "Remove {name}",
+    "description": "Accessible label of the button that removes an attached file; {name} is the file name."
+  },
+  "daily_reports.media.title": {
+    "defaultMessage": "Media",
+    "description": "Title of the media section on the daily report card."
+  },
+  "daily_reports.media.tooMany": {
+    "defaultMessage": "A report can have at most {max} attachments.",
+    "description": "Shown on a file card when the report already has the maximum number of attachments."
+  },
+  "daily_reports.media.types": {
+    "defaultMessage": "PNG, JPG, GIF, WEBP, MP4, MOV, WEBM or PDF",
+    "description": "Lists the file types the daily report drop zone accepts."
+  },
   "daily_reports.mine.placeholder": {
     "defaultMessage": "What did you get done today?",
     "description": "Placeholder of the daily report editor."
-  },
-  "daily_reports.needsFixing": {
-    "defaultMessage": "Needs fixing",
-    "description": "Section heading on My report listing earlier reports a manager sent back to the user."
   },
   "daily_reports.notExpected": {
     "defaultMessage": "No report is expected from you in this team.",
@@ -23234,6 +23274,14 @@
   "daily_reports.previouslyRejected": {
     "defaultMessage": "Previously sent back: {reason}",
     "description": "Muted line on a daily report that is pending or approved again after a manager rejected it; {reason} is the reason they wrote then."
+  },
+  "daily_reports.recent": {
+    "defaultMessage": "Recent reports",
+    "description": "Section heading on My report listing the user's reports from the last 30 days."
+  },
+  "daily_reports.recent.empty": {
+    "defaultMessage": "No reports in the last 30 days.",
+    "description": "Shown under Recent reports when the user sent none in the last 30 days."
   },
   "daily_reports.reject": {
     "defaultMessage": "Reject",
@@ -23295,6 +23343,14 @@
     "defaultMessage": "Auto-approved",
     "description": "Status of a daily report that was approved automatically because no manager approved it in time."
   },
+  "daily_reports.status.draft": {
+    "defaultMessage": "Draft",
+    "description": "Status of a daily report that has attachments but was not sent yet."
+  },
+  "daily_reports.status.excused": {
+    "defaultMessage": "Excused",
+    "description": "Status of a day a manager excused, so no report is expected."
+  },
   "daily_reports.status.missing": {
     "defaultMessage": "Missing",
     "description": "Status of a team member who has no daily report for the selected day."
@@ -23307,8 +23363,12 @@
     "defaultMessage": "Sent back",
     "description": "Status of a daily report a manager rejected; the author has to fix and resend it."
   },
+  "daily_reports.status.sent": {
+    "defaultMessage": "Sent",
+    "description": "Status the author sees on their own report while it waits for review."
+  },
   "daily_reports.submit": {
-    "defaultMessage": "Submit",
+    "defaultMessage": "Send report",
     "description": "Button that submits the user's first daily report of the day."
   },
   "daily_reports.tab.mine": {
@@ -23327,9 +23387,9 @@
     "defaultMessage": "To",
     "description": "Label of the end date input for the CSV export of daily reports."
   },
-  "daily_reports.today": {
-    "defaultMessage": "Today",
-    "description": "Heading of the card holding the user's report for today."
+  "daily_reports.todayReport": {
+    "defaultMessage": "Today’s report",
+    "description": "Title of the card where the user writes today's report."
   },
   "dashboard.due.overdue": {
     "defaultMessage": "Overdue",

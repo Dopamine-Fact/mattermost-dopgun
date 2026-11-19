@@ -1,45 +1,34 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import classNames from 'classnames';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
-import {useDispatch, useSelector} from 'react-redux';
+import {useDispatch} from 'react-redux';
 
 import type {DailyReport} from '@mattermost/types/daily_reports';
+import type {FileInfo} from '@mattermost/types/files';
 
 import {getMissingProfilesByIds} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
-import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
-import {getUser} from 'mattermost-redux/selectors/entities/users';
-import {displayUsername} from 'mattermost-redux/utils/user_utils';
 
 import Markdown from 'components/markdown';
 import AdvancedTextbox from 'components/widgets/advanced_textbox/advanced_textbox';
 
-import type {GlobalState} from 'types/store';
+import {daysBefore, MESSAGE_MAX_LENGTH, PreviouslyRejected, RejectedBanner, ReportDate, StatusChip, TaskChips, todayIn} from './common';
+import MediaSection from './media_section';
+import type {MediaSectionHandle} from './media_section';
+import ReportDetailModal from './report_detail_modal';
 
-import {daysBefore, MESSAGE_MAX_LENGTH, PreviouslyRejected, StatusChip, TaskChips, todayIn} from './common';
+// How far back the author's own reports are listed under Recent reports.
+const RECENT_DAYS = 30;
 
-// How far back the author is shown reports that were sent back to them.
-const NEEDS_FIXING_DAYS = 30;
+type Upload = (file: File, onProgress: (loaded: number, total: number) => void) => Promise<FileInfo>;
 
-function RejectedBanner({report}: {report: DailyReport}) {
-    const reviewer = useSelector((state: GlobalState) => getUser(state, report.rejected_by));
-    const nameDisplay = useSelector(getTeammateNameDisplaySetting);
-    return (
-        <div
-            className='DailyReportsPage__banner'
-            role='status'
-        >
-            <i className='icon icon-alert-outline'/>
-            <FormattedMessage
-                id='daily_reports.rejectedBanner'
-                defaultMessage='Sent back by {name}: {reason}'
-                values={{name: reviewer ? displayUsername(reviewer, nameDisplay) : '', reason: report.reject_reason}}
-            />
-        </div>
-    );
-}
+const isSent = (report?: DailyReport) => report?.status === 'pending' || report?.status === 'approved' || report?.status === 'rejected';
+
+// The first non-empty line without leading markdown markers, for one-line rows.
+const excerpt = (message: string) => message.split('\n').find((line) => line.trim())?.replace(/^[\s#>*-]+/, '') ?? '';
 
 type EditorProps = {
 
@@ -51,12 +40,21 @@ type EditorProps = {
     report?: DailyReport;
     save: (message: string) => Promise<DailyReport>;
     onError: (message: string) => void;
+
+    /** attaches a file to this report; the media section shows only when given */
+    upload?: Upload;
+    onFilesChange?: () => void;
+
+    /** open the editor right away, even on a sent report */
+    startEditing?: boolean;
 };
 
 // ReportCard shows a report rendered, or an editor that keeps an unsent draft in localStorage.
-function ReportCard({editorId, teamId, date, title, report, save, onError}: EditorProps) {
+function ReportCard({editorId, teamId, date, title, report, save, onError, upload, onFilesChange, startEditing}: EditorProps) {
     const {formatMessage} = useIntl();
     const draftKey = `dailyReportDraft:${teamId}:${date}`;
+    const media = useRef<MediaSectionHandle>(null);
+    const sent = isSent(report);
 
     const hasDraft = useCallback(() => {
         try {
@@ -93,7 +91,9 @@ function ReportCard({editorId, teamId, date, title, report, save, onError}: Edit
         return null;
     });
     const [message, setMessage] = useState(() => draft ?? report?.message ?? '');
-    const [editing, setEditing] = useState(() => !report || draft !== null);
+
+    // A draft or excused day has nothing sent yet, so it opens straight in the editor.
+    const [editing, setEditing] = useState(() => !sent || draft !== null || Boolean(startEditing));
     const [preview, setPreview] = useState(false);
     const [busy, setBusy] = useState(false);
 
@@ -109,9 +109,12 @@ function ReportCard({editorId, teamId, date, title, report, save, onError}: Edit
         }
     }, [version, report, hasDraft]);
 
+    // Attachments alone are a report; the server accepts an empty message then.
+    const sendable = Boolean(message.trim() || report?.files?.length) && message.length <= MESSAGE_MAX_LENGTH && !busy;
+
     const submit = async () => {
         // Same guard as the disabled Send button, since Ctrl+Enter reaches here without it.
-        if (!message.trim() || message.length > MESSAGE_MAX_LENGTH || busy) {
+        if (!sendable) {
             return;
         }
         setBusy(true);
@@ -143,11 +146,23 @@ function ReportCard({editorId, teamId, date, title, report, save, onError}: Edit
         }
     };
 
+    // A pasted screenshot becomes an attachment instead of text.
+    const onPaste = (e: React.ClipboardEvent) => {
+        const files = e.clipboardData?.files;
+        if (files?.length && media.current) {
+            e.preventDefault();
+            media.current.add(files);
+        }
+    };
+
     return (
         <article className='DailyReportsPage__card'>
             <header className='DailyReportsPage__cardHead'>
                 <h2>{title}</h2>
-                <StatusChip report={report}/>
+                <StatusChip
+                    report={report}
+                    own={true}
+                />
                 {report?.edited && (
                     <span className='DailyReportsPage__tag'>
                         <FormattedMessage
@@ -156,9 +171,13 @@ function ReportCard({editorId, teamId, date, title, report, save, onError}: Edit
                         />
                     </span>
                 )}
-                {report && !editing && (
+                <span className='DailyReportsPage__dateChip'>
+                    <i className='icon icon-calendar-outline'/>
+                    <ReportDate date={date}/>
+                </span>
+                {sent && !editing && (
                     <button
-                        className='btn btn-tertiary btn-sm DailyReportsPage__cardAction'
+                        className='btn btn-tertiary btn-sm'
                         onClick={() => setEditing(true)}
                     >
                         <i className='icon icon-pencil-outline'/>
@@ -179,6 +198,7 @@ function ReportCard({editorId, teamId, date, title, report, save, onError}: Edit
                         className='DailyReportsPage__editor'
                         role='presentation'
                         onKeyDown={onKeyDown}
+                        onPaste={onPaste}
                     >
                         <AdvancedTextbox
                             id={`dailyReportEditor_${editorId}`}
@@ -203,7 +223,7 @@ function ReportCard({editorId, teamId, date, title, report, save, onError}: Edit
                                 defaultMessage='Markdown supported. Ctrl+Enter to send.'
                             />
                         </span>
-                        {report && (
+                        {sent && (
                             <button
                                 className='btn btn-tertiary'
                                 onClick={cancel}
@@ -216,19 +236,22 @@ function ReportCard({editorId, teamId, date, title, report, save, onError}: Edit
                         )}
                         <button
                             className='btn btn-primary'
-                            disabled={!message.trim() || message.length > MESSAGE_MAX_LENGTH || busy}
+                            disabled={!sendable}
                             onClick={submit}
                         >
-                            {report ? (
+                            {sent ? (
                                 <FormattedMessage
                                     id='daily_reports.save'
                                     defaultMessage='Save'
                                 />
                             ) : (
-                                <FormattedMessage
-                                    id='daily_reports.submit'
-                                    defaultMessage='Submit'
-                                />
+                                <>
+                                    <i className='icon icon-send'/>
+                                    <FormattedMessage
+                                        id='daily_reports.submit'
+                                        defaultMessage='Send report'
+                                    />
+                                </>
                             )}
                         </button>
                     </div>
@@ -238,6 +261,66 @@ function ReportCard({editorId, teamId, date, title, report, save, onError}: Edit
                     <Markdown message={report?.message ?? ''}/>
                 </div>
             )}
+            {upload && (
+                <MediaSection
+                    ref={media}
+                    files={report?.files ?? []}
+                    reportId={report?.id}
+                    upload={upload}
+                    onChange={onFilesChange ?? (() => {})}
+                />
+            )}
+        </article>
+    );
+}
+
+function ExportCard({teamId, timeZone}: {teamId: string; timeZone?: string}) {
+    const [from, setFrom] = useState(() => todayIn(timeZone));
+    const [to, setTo] = useState(() => todayIn(timeZone));
+    const exportable = Boolean(from && to && from <= to);
+
+    return (
+        <article className='DailyReportsPage__card DailyReportsPage__export'>
+            <h2>
+                <i className='icon icon-download-outline'/>
+                <FormattedMessage
+                    id='daily_reports.export.title'
+                    defaultMessage='Export by date range'
+                />
+            </h2>
+            <label className='DailyReportsPage__field'>
+                <FormattedMessage
+                    id='daily_reports.from'
+                    defaultMessage='From'
+                />
+                <input
+                    type='date'
+                    value={from}
+                    onChange={(e) => e.target.value && setFrom(e.target.value)}
+                />
+            </label>
+            <label className='DailyReportsPage__field'>
+                <FormattedMessage
+                    id='daily_reports.to'
+                    defaultMessage='To'
+                />
+                <input
+                    type='date'
+                    value={to}
+                    onChange={(e) => e.target.value && setTo(e.target.value)}
+                />
+            </label>
+            <a
+                className={classNames('btn btn-tertiary', {disabled: !exportable})}
+                href={exportable ? Client4.getDailyReportsExportUrl(teamId, from, to) : undefined}
+                aria-disabled={!exportable}
+                download={true}
+            >
+                <FormattedMessage
+                    id='daily_reports.download'
+                    defaultMessage='Download CSV'
+                />
+            </a>
         </article>
     );
 }
@@ -257,26 +340,31 @@ const MyReport = ({teamId, timeZone, currentUserId, tick, onError}: Props) => {
     const date = useMemo(() => todayIn(timeZone), [timeZone]);
     const [loaded, setLoaded] = useState(false);
     const [today, setToday] = useState<DailyReport>();
-    const [fixes, setFixes] = useState<DailyReport[]>([]);
+    const [recent, setRecent] = useState<DailyReport[]>([]);
     const [assignees, setAssignees] = useState<string[]>([]);
+    const [reload, setReload] = useState(0);
+    const [detailId, setDetailId] = useState('');
+    const [editingDetail, setEditingDetail] = useState(false);
+
+    const refetch = useCallback(() => setReload((n) => n + 1), []);
 
     useEffect(() => {
         let cancelled = false;
         (async () => {
             try {
-                const [[current], recent, ids] = await Promise.all([
+                const [[current], list, ids] = await Promise.all([
 
                     // No dates: the server defaults to today in the team's timezone.
                     // user_id: approvers would otherwise get the whole team's reports.
                     Client4.getDailyReports(teamId, undefined, undefined, currentUserId),
-                    Client4.getDailyReports(teamId, daysBefore(date, NEEDS_FIXING_DAYS), date, currentUserId),
+                    Client4.getDailyReports(teamId, daysBefore(date, RECENT_DAYS), date, currentUserId),
                     Client4.getDailyReportAssignees(teamId),
                 ]);
                 if (cancelled) {
                     return;
                 }
                 setToday(current);
-                setFixes(recent.filter((r) => r.status === 'rejected' && r.date !== date && r.id !== current?.id));
+                setRecent(list.filter((r) => r.date !== date && r.id !== current?.id).sort((a, b) => b.date.localeCompare(a.date)));
                 setAssignees(ids);
                 setLoaded(true);
                 onError('');
@@ -289,15 +377,15 @@ const MyReport = ({teamId, timeZone, currentUserId, tick, onError}: Props) => {
         return () => {
             cancelled = true;
         };
-    }, [teamId, date, currentUserId, tick, onError]);
+    }, [teamId, date, currentUserId, tick, reload, onError]);
 
     // Reviewer names for the "sent back by" banners.
     useEffect(() => {
-        const ids = [today, ...fixes].map((r) => r?.rejected_by).filter((id): id is string => Boolean(id));
+        const ids = [today, ...recent].map((r) => r?.rejected_by).filter((id): id is string => Boolean(id));
         if (ids.length) {
             dispatch(getMissingProfilesByIds(ids));
         }
-    }, [dispatch, today, fixes]);
+    }, [dispatch, today, recent]);
 
     const saveToday = useCallback(async (message: string) => {
         const saved = await Client4.submitDailyReport(teamId, message);
@@ -305,11 +393,13 @@ const MyReport = ({teamId, timeZone, currentUserId, tick, onError}: Props) => {
         return saved;
     }, [teamId]);
 
-    const saveFix = useCallback(async (reportId: string, message: string) => {
+    const saveEarlier = useCallback(async (reportId: string, message: string) => {
         const saved = await Client4.updateDailyReport(reportId, message);
-        setFixes((prev) => prev.map((r) => (r.id === saved.id ? saved : r)));
+        setRecent((prev) => prev.map((r) => (r.id === saved.id ? saved : r)));
         return saved;
     }, []);
+
+    const uploadToday = useCallback<Upload>((file, onProgress) => Client4.uploadMyDailyReportFile(teamId, file, onProgress), [teamId]);
 
     if (!loaded) {
         return null;
@@ -325,6 +415,8 @@ const MyReport = ({teamId, timeZone, currentUserId, tick, onError}: Props) => {
         );
     }
 
+    const detail = recent.find((r) => r.id === detailId);
+
     return (
         <section className='DailyReportsPage__mine'>
             <ReportCard
@@ -333,35 +425,104 @@ const MyReport = ({teamId, timeZone, currentUserId, tick, onError}: Props) => {
                 date={date}
                 title={
                     <FormattedMessage
-                        id='daily_reports.today'
-                        defaultMessage='Today'
+                        id='daily_reports.todayReport'
+                        defaultMessage='Today’s report'
                     />
                 }
                 report={today}
                 save={saveToday}
                 onError={onError}
+                upload={uploadToday}
+                onFilesChange={refetch}
             />
-            {fixes.length > 0 && (
-                <>
-                    <h2 className='DailyReportsPage__sectionTitle'>
-                        <FormattedMessage
-                            id='daily_reports.needsFixing'
-                            defaultMessage='Needs fixing'
-                        />
-                    </h2>
-                    {fixes.map((r) => (
-                        <ReportCard
-                            key={r.id}
-                            editorId={r.id}
-                            teamId={teamId}
-                            date={r.date}
-                            title={r.date}
-                            report={r}
-                            save={(message) => saveFix(r.id, message)}
-                            onError={onError}
-                        />
+            <ExportCard
+                teamId={teamId}
+                timeZone={timeZone}
+            />
+            <h2 className='DailyReportsPage__sectionTitle'>
+                <FormattedMessage
+                    id='daily_reports.recent'
+                    defaultMessage='Recent reports'
+                />
+            </h2>
+            {recent.length === 0 ? (
+                <p className='DailyReportsPage__empty'>
+                    <FormattedMessage
+                        id='daily_reports.recent.empty'
+                        defaultMessage='No reports in the last 30 days.'
+                    />
+                </p>
+            ) : (
+                <ul className='DailyReportsPage__recent'>
+                    {recent.map((r) => (
+                        <li key={r.id}>
+                            <button
+                                className='DailyReportsPage__recentRow'
+                                onClick={() => setDetailId(r.id)}
+                            >
+                                <span className='DailyReportsPage__recentDate'>
+                                    <ReportDate date={r.date}/>
+                                </span>
+                                <StatusChip
+                                    report={r}
+                                    own={true}
+                                />
+                                <span className='DailyReportsPage__excerpt'>{excerpt(r.message)}</span>
+                                {Boolean(r.files?.length) && (
+                                    <span className='DailyReportsPage__attachments'>
+                                        <i className='icon icon-paperclip'/>
+                                        <FormattedMessage
+                                            id='daily_reports.attachments'
+                                            defaultMessage='{count, plural, one {# attachment} other {# attachments}}'
+                                            values={{count: r.files?.length}}
+                                        />
+                                    </span>
+                                )}
+                                <i className='icon icon-chevron-right'/>
+                            </button>
+                        </li>
                     ))}
-                </>
+                </ul>
+            )}
+            {detail && (
+                <ReportDetailModal
+                    report={detail}
+                    onClose={() => {
+                        setDetailId('');
+                        setEditingDetail(false);
+                    }}
+                    actions={detail.status === 'rejected' && !editingDetail ? (
+                        <button
+                            className='btn btn-primary'
+                            onClick={() => setEditingDetail(true)}
+                        >
+                            <FormattedMessage
+                                id='daily_reports.edit'
+                                defaultMessage='Edit'
+                            />
+                        </button>
+                    ) : undefined}
+                >
+                    {editingDetail ? (
+                        <ReportCard
+                            editorId={detail.id}
+                            teamId={teamId}
+                            date={detail.date}
+                            title={
+                                <FormattedMessage
+                                    id='daily_reports.editReport'
+                                    defaultMessage='Edit report'
+                                />
+                            }
+                            report={detail}
+                            save={(message) => saveEarlier(detail.id, message)}
+                            onError={onError}
+                            upload={(file, onProgress) => Client4.uploadDailyReportFile(detail.id, file, onProgress)}
+                            onFilesChange={refetch}
+                            startEditing={true}
+                        />
+                    ) : undefined}
+                </ReportDetailModal>
             )}
         </section>
     );

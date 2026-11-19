@@ -9,7 +9,6 @@ import {Redirect} from 'react-router-dom';
 
 import {FileTextOutlineIcon} from '@mattermost/compass-icons/components';
 
-import {Client4} from 'mattermost-redux/client';
 import {Permissions} from 'mattermost-redux/constants';
 import {haveITeamPermission} from 'mattermost-redux/selectors/entities/roles';
 import {getCurrentTeam} from 'mattermost-redux/selectors/entities/teams';
@@ -22,7 +21,7 @@ import WebSocketClient from 'client/web_websocket_client';
 import type {GlobalState} from 'types/store';
 import {LhsItemType, LhsPage} from 'types/store/lhs';
 
-import {DAILY_REPORT_UPDATED, todayIn} from './common';
+import {DAILY_REPORT_UPDATED} from './common';
 import MyReport from './my_report';
 import TeamReports from './team_reports';
 
@@ -41,8 +40,6 @@ const DailyReports = () => {
 
     const [tab, setTab] = useState<Tab>('mine');
     const [tick, setTick] = useState(0);
-    const [from, setFrom] = useState(() => todayIn(team?.daily_report_timezone));
-    const [to, setTo] = useState(() => todayIn(team?.daily_report_timezone));
     const [error, setError] = useState('');
 
     const activeTab = canApprove ? tab : 'mine';
@@ -76,8 +73,6 @@ const DailyReports = () => {
     if (canApprove) {
         tabs.push({id: 'team', label: formatMessage({id: 'daily_reports.tab.team', defaultMessage: 'Team reports'})});
     }
-
-    const exportable = Boolean(from && to && from <= to);
 
     return (
         <div className='DailyReportsPage'>
@@ -139,41 +134,6 @@ const DailyReports = () => {
                     />
                 )}
 
-                <div className='DailyReportsPage__export'>
-                    <label className='DailyReportsPage__field'>
-                        <FormattedMessage
-                            id='daily_reports.from'
-                            defaultMessage='From'
-                        />
-                        <input
-                            type='date'
-                            value={from}
-                            onChange={(e) => e.target.value && setFrom(e.target.value)}
-                        />
-                    </label>
-                    <label className='DailyReportsPage__field'>
-                        <FormattedMessage
-                            id='daily_reports.to'
-                            defaultMessage='To'
-                        />
-                        <input
-                            type='date'
-                            value={to}
-                            onChange={(e) => e.target.value && setTo(e.target.value)}
-                        />
-                    </label>
-                    <a
-                        className={classNames('btn btn-tertiary', {disabled: !exportable})}
-                        href={exportable ? Client4.getDailyReportsExportUrl(teamId, from, to) : undefined}
-                        aria-disabled={!exportable}
-                        download={true}
-                    >
-                        <FormattedMessage
-                            id='daily_reports.download'
-                            defaultMessage='Download CSV'
-                        />
-                    </a>
-                </div>
             </div>
         </div>
     );
