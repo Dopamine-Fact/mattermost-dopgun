@@ -91,5 +91,5 @@ export type TasksState = {
     sectionsById: Record<string, TaskSection>;
 };
 
-/** What the episode endpoint returns; failed lists the template folders and tasks that could not be created. */
-export type EpisodeCreated = {channel: Channel; section: TaskSection; failed: string[]};
+/** What the episode endpoint returns; failed lists the template folders and tasks that could not be created, task_ids the seeded tasks. */
+export type EpisodeCreated = {channel: Channel; section: TaskSection; failed: string[]; task_ids: string[]};

@@ -13,5 +13,6 @@ type EpisodeCreate struct {
 type EpisodeCreated struct {
 	Channel *Channel     `json:"channel"`
 	Section *TaskSection `json:"section"`
-	Failed  []string     `json:"failed"` // template folder paths and task titles that could not be created
+	Failed  []string     `json:"failed"`   // template folder paths and task titles that could not be created
+	TaskIds []string     `json:"task_ids"` // the seeded tasks, which the client deletes if it rolls the episode back
 }

@@ -67,7 +67,8 @@ describe('createEpisodeChannel', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        jest.spyOn(Client4, 'createEpisode').mockResolvedValue({channel, section, failed: ['Notes']});
+        jest.spyOn(Client4, 'createEpisode').mockResolvedValue({channel, section, failed: ['Notes'], task_ids: ['t1', 't2']});
+        jest.spyOn(Client4, 'deleteTask').mockResolvedValue({status: 'OK'} as any);
         jest.spyOn(Client4, 'setTaskSectionVideo').mockResolvedValue({...section, video_file_id: 'file1'});
         jest.spyOn(Client4, 'deleteTaskSection').mockResolvedValue({status: 'OK'});
         jest.spyOn(Client4, 'createCanvas').mockResolvedValue({id: 'cv1'} as any);
@@ -89,6 +90,19 @@ describe('createEpisodeChannel', () => {
 
         expect(result.error).toBeTruthy();
         expect(Client4.createCanvas).not.toHaveBeenCalled();
+        expect(Client4.deleteTask).toHaveBeenCalledWith('t1', expect.anything());
+        expect(Client4.deleteTask).toHaveBeenCalledWith('t2', expect.anything());
+        expect(Client4.deleteTaskSection).toHaveBeenCalledWith('sec1', expect.anything());
+        expect(deleteChannel).toHaveBeenCalledWith('chan1');
+    });
+
+    test('removes tasks, section and channel when the canvas fails', async () => {
+        jest.spyOn(Client4, 'createCanvas').mockRejectedValue(new Error('no canvas'));
+        const result = await store().dispatch(createEpisodeChannel('team1', 'Episode 1', video));
+
+        expect(result.error).toBeTruthy();
+        expect(Client4.deleteTask).toHaveBeenCalledWith('t1', expect.anything());
+        expect(Client4.deleteTask).toHaveBeenCalledWith('t2', expect.anything());
         expect(Client4.deleteTaskSection).toHaveBeenCalledWith('sec1', expect.anything());
         expect(deleteChannel).toHaveBeenCalledWith('chan1');
     });
@@ -99,6 +113,7 @@ describe('createEpisodeChannel', () => {
 
         expect(result.error).toBeTruthy();
         expect(Client4.setTaskSectionVideo).not.toHaveBeenCalled();
+        expect(Client4.deleteTask).not.toHaveBeenCalled();
         expect(Client4.deleteTaskSection).not.toHaveBeenCalled();
         expect(deleteChannel).not.toHaveBeenCalled();
     });

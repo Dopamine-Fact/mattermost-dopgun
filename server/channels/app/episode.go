@@ -31,14 +31,17 @@ func (a *App) CreateEpisode(rctx request.CTX, userID, teamID string, in *model.E
 		return nil, appErr
 	}
 
-	created := &model.EpisodeCreated{Channel: channel, Section: section, Failed: []string{}}
+	created := &model.EpisodeCreated{Channel: channel, Section: section, Failed: []string{}, TaskIds: []string{}}
 	created.Failed = append(created.Failed, a.seedEpisodeFolders(rctx, userID, team, channel)...)
 	for _, title := range model.EpisodeTemplateLines(team.EpisodeTasks) {
 		task := &model.Task{TeamId: teamID, SectionId: section.Id, Title: title, Status: model.TaskStatusTodo, CreatorId: userID}
-		if _, appErr := a.CreateTask(rctx, task, ""); appErr != nil {
+		saved, appErr := a.CreateTask(rctx, task, "")
+		if appErr != nil {
 			rctx.Logger().Warn("Failed to create an episode task", mlog.String("title", title), mlog.Err(appErr))
 			created.Failed = append(created.Failed, title)
+			continue
 		}
+		created.TaskIds = append(created.TaskIds, saved.Id)
 	}
 	return created, nil
 }

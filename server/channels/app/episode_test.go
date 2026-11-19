@@ -69,15 +69,17 @@ func TestCreateEpisode(t *testing.T) {
 
 	tasks, appErr := th.App.GetTasksForTeam(th.BasicTeam.Id)
 	require.Nil(t, appErr)
-	var titles []string
+	var titles, ids []string
 	for _, task := range tasks {
 		if task.SectionId == got.Section.Id {
 			require.Equal(t, model.TaskStatusTodo, task.Status)
 			require.Equal(t, th.BasicUser.Id, task.CreatorId)
 			titles = append(titles, task.Title)
+			ids = append(ids, task.Id)
 		}
 	}
 	require.ElementsMatch(t, []string{"Storyboard", "Animatic"}, titles)
+	require.ElementsMatch(t, ids, got.TaskIds, "the client deletes these if the episode is rolled back")
 }
 
 func TestCreateEpisodeRulesOnPathCreatedAsIntermediate(t *testing.T) {
