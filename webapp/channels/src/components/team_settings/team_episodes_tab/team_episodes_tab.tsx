@@ -2,11 +2,18 @@
 // See LICENSE.txt for license information.
 
 import React, {useCallback, useMemo, useState} from 'react';
-import {defineMessages} from 'react-intl';
+import {defineMessages, FormattedMessage, useIntl} from 'react-intl';
 
-import {useLoadedTeamDepartments} from 'components/profile_popover/use_custom_roles';
+import {Button} from '@mattermost/compass-ui/components/button';
+
+import {Client4} from 'mattermost-redux/client';
+
+import ConfirmModal from 'components/confirm_modal';
+import {refreshTeamDepartments, useLoadedTeamDepartments} from 'components/profile_popover/use_custom_roles';
+import BaseSettingItem from 'components/widgets/modals/components/base_setting_item';
 import SaveChangesPanel, {type SaveChangesPanelState} from 'components/widgets/modals/components/save_changes_panel';
 
+import {DOPAMINE_DEPARTMENTS, buildDopamineTemplate} from './dopamine_preset';
 import {parseEpisodeFolders, serializeEpisodeFolders} from './episode_folders';
 import type {EpisodeFolder} from './episode_folders';
 import {parseEpisodeTasks, sanitizeEpisodeTasks, serializeEpisodeTasks} from './episode_tasks';
@@ -27,11 +34,16 @@ const translations = defineMessages({
         id: 'general_tab.episodeTasksInvalid',
         defaultMessage: 'Invalid default episode tasks. Use at most 100 tasks and 100000 characters in total, give every task a title and 0 to 365 days, avoid tasks that wait for each other in a loop, and pick only folders that hold their own files.',
     },
+    PresetFailed: {
+        id: 'team_settings.episodePreset.error',
+        defaultMessage: "Could not load the Dopamine template. Check that you can manage this team's departments and try again.",
+    },
 });
 
 type Props = PropsFromRedux & OwnProps;
 
 const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowTabSwitchError, setAreThereUnsavedChanges, actions}: Props) => {
+    const {formatMessage} = useIntl();
     const [tasksEnabled, setTasksEnabled] = useState<boolean>(Boolean(team.tasks_enabled));
     const [revisionsEnabled, setRevisionsEnabled] = useState<boolean>(Boolean(team.revisions_enabled));
     const [canvasEnabled, setCanvasEnabled] = useState<boolean>(Boolean(team.canvas_enabled));
@@ -45,6 +57,9 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
     // Which template the server rejected on the last save.
     const [templateError, setTemplateError] = useState<'folders' | 'tasks'>();
     const [saveChangesPanelState, setSaveChangesPanelState] = useState<SaveChangesPanelState>();
+    const [presetConfirm, setPresetConfirm] = useState(false);
+    const [presetLoading, setPresetLoading] = useState(false);
+    const [presetFailed, setPresetFailed] = useState(false);
 
     const handleSaveChanges = useCallback(async () => {
         const serializedFolders = serializeEpisodeFolders(episodeFolders);
@@ -103,6 +118,34 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
         set(value);
     }, [setAreThereUnsavedChanges]);
 
+    // Creates the preset's missing departments (matched by name, so a second load adds none), then fills both templates; saving stays with the user.
+    const loadPreset = async () => {
+        setPresetConfirm(false);
+        setPresetFailed(false);
+        setPresetLoading(true);
+        try {
+            const existing = new Set((await Client4.getTeamDepartments(team.id)).map((d) => d.name.trim().toLowerCase()));
+            for (const department of DOPAMINE_DEPARTMENTS) {
+                if (!existing.has(department.name.toLowerCase())) {
+                    // eslint-disable-next-line no-await-in-loop
+                    await Client4.createDepartment(team.id, department);
+                }
+            }
+            const all = await Client4.getTeamDepartments(team.id);
+
+            // The save drops department ids its department list does not know, so reload that list first.
+            await refreshTeamDepartments(team.id);
+            const {folders, tasks} = buildDopamineTemplate(all);
+            setTemplateError(undefined);
+            edited(setEpisodeFolders)(folders);
+            edited(setEpisodeTasks)(serializeEpisodeTasks(tasks));
+        } catch {
+            setPresetFailed(true);
+        } finally {
+            setPresetLoading(false);
+        }
+    };
+
     return (
         <div
             className='modal-info-tab-content user-settings'
@@ -119,6 +162,31 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
                 handleCanvasEnabledChange={edited(setCanvasEnabled)}
             />
             {tasksEnabled && revisionsEnabled && (
+                <BaseSettingItem
+                    className='episode-preset-setting-item'
+                    title={formatMessage({id: 'team_settings.episodePreset.title', defaultMessage: 'Dopamine template'})}
+                    description={formatMessage({
+                        id: 'team_settings.episodePreset.info',
+                        defaultMessage: "Adds Dopamine's departments if they are missing and fills in its default episode folders and tasks below. Nothing changes for episodes until you save.",
+                    })}
+                    content={(
+                        <Button
+                            emphasis='tertiary'
+                            size='small'
+                            onClick={() => setPresetConfirm(true)}
+                            disabled={presetLoading}
+                            data-testid='episodePresetButton'
+                        >
+                            <FormattedMessage
+                                id='team_settings.episodePreset.button'
+                                defaultMessage='Load Dopamine template'
+                            />
+                        </Button>
+                    )}
+                    error={presetFailed ? translations.PresetFailed : undefined}
+                />
+            )}
+            {tasksEnabled && revisionsEnabled && (
                 <TeamEpisodeTemplatesSection
                     teamId={team.id}
                     folders={episodeFolders}
@@ -129,6 +197,30 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
                     tasksError={templateError === 'tasks' ? translations.EpisodeTasksInvalid : undefined}
                 />
             )}
+            <ConfirmModal
+                show={presetConfirm}
+                title={(
+                    <FormattedMessage
+                        id='team_settings.episodePreset.confirmTitle'
+                        defaultMessage='Load the Dopamine template?'
+                    />
+                )}
+                message={(
+                    <FormattedMessage
+                        id='team_settings.episodePreset.confirmMessage'
+                        defaultMessage='The default episode folders and tasks below will be replaced by the Dopamine template, and its missing departments will be created right away. The new template takes effect only after you save.'
+                    />
+                )}
+                confirmButtonText={(
+                    <FormattedMessage
+                        id='team_settings.episodePreset.confirmButton'
+                        defaultMessage='Load template'
+                    />
+                )}
+                onConfirm={loadPreset}
+                onCancel={() => setPresetConfirm(false)}
+                isStacked={true}
+            />
             {(areThereUnsavedChanges || saveChangesPanelState === 'saved') && (
                 <SaveChangesPanel
                     handleCancel={handleCancel}

@@ -34007,6 +34007,34 @@
     "defaultMessage": "Who sees it",
     "description": "Heading of the settings group in the episode folder template that says which departments see the folder."
   },
+  "team_settings.episodePreset.button": {
+    "defaultMessage": "Load Dopamine template",
+    "description": "Button in Team Settings › Episodes that loads the Dopamine studio's default departments, episode folders and episode tasks."
+  },
+  "team_settings.episodePreset.confirmButton": {
+    "defaultMessage": "Load template",
+    "description": "Confirm button of the dialog asking whether to load the Dopamine template in Team Settings › Episodes."
+  },
+  "team_settings.episodePreset.confirmMessage": {
+    "defaultMessage": "The default episode folders and tasks below will be replaced by the Dopamine template, and its missing departments will be created right away. The new template takes effect only after you save.",
+    "description": "Body of the dialog asking whether to load the Dopamine template; departments are created at once, folders and tasks only after Save."
+  },
+  "team_settings.episodePreset.confirmTitle": {
+    "defaultMessage": "Load the Dopamine template?",
+    "description": "Title of the dialog asking whether to load the Dopamine template in Team Settings › Episodes."
+  },
+  "team_settings.episodePreset.error": {
+    "defaultMessage": "Could not load the Dopamine template. Check that you can manage this team's departments and try again.",
+    "description": "Error under the Dopamine template button when creating its departments or reading them failed."
+  },
+  "team_settings.episodePreset.info": {
+    "defaultMessage": "Adds Dopamine's departments if they are missing and fills in its default episode folders and tasks below. Nothing changes for episodes until you save.",
+    "description": "Hint under the Dopamine template heading in Team Settings › Episodes."
+  },
+  "team_settings.episodePreset.title": {
+    "defaultMessage": "Dopamine template",
+    "description": "Heading of the setting in Team Settings › Episodes that loads the Dopamine studio's template. Dopamine is the studio's name; keep it untranslated."
+  },
   "team_settings.episodeTasks.add": {
     "defaultMessage": "Add task",
     "description": "Button under the episode task list in Team Settings; adds a task named New task to the template."

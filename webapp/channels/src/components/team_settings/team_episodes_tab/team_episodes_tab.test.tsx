@@ -5,15 +5,19 @@ import {screen} from '@testing-library/react';
 import React from 'react';
 import type {ComponentProps} from 'react';
 
+import {Client4} from 'mattermost-redux/client';
+
 import {renderWithContext, userEvent} from 'tests/react_testing_utils';
 import {TestHelper} from 'utils/test_helper';
 
+import {DOPAMINE_DEPARTMENTS} from './dopamine_preset';
 import EpisodesTab from './team_episodes_tab';
 
 const mockLoadedDepartments = jest.fn((): unknown[] | undefined => undefined);
 jest.mock('components/profile_popover/use_custom_roles', () => ({
     useTeamDepartments: () => [],
     useLoadedTeamDepartments: () => mockLoadedDepartments(),
+    refreshTeamDepartments: () => Promise.resolve(),
 }));
 
 describe('components/TeamSettings/EpisodesTab', () => {
@@ -149,6 +153,39 @@ describe('components/TeamSettings/EpisodesTab', () => {
             renderWithContext(<EpisodesTab {...{...defaultProps, team: stale}}/>);
             await userEvent.click(screen.getByTestId('SaveChangesPanel__save-btn'));
             expect(patchTeam).not.toHaveBeenCalled();
+        });
+
+        test('loading the Dopamine template creates only missing departments and fills both templates', async () => {
+            const all = DOPAMINE_DEPARTMENTS.map((d, i) => ({...d, id: `dep${i}`}));
+            jest.spyOn(Client4, 'getTeamDepartments').
+                mockResolvedValueOnce([{id: 'dep0', name: ' script / SENARYO ', color: '#3b82f6'}] as never).
+                mockResolvedValueOnce(all as never);
+            const create = jest.spyOn(Client4, 'createDepartment').mockResolvedValue({} as never);
+            mockLoadedDepartments.mockReturnValue(all);
+            renderWithContext(<EpisodesTab {...{...defaultProps, team}}/>);
+
+            await userEvent.click(screen.getByTestId('episodePresetButton'));
+            await userEvent.click(screen.getByRole('button', {name: 'Load template'}));
+            await screen.findByRole('button', {name: '01_SCRIPT'});
+
+            expect(create).toHaveBeenCalledTimes(DOPAMINE_DEPARTMENTS.length - 1);
+            expect(create).not.toHaveBeenCalledWith('team_id', DOPAMINE_DEPARTMENTS[0]);
+            await userEvent.click(screen.getByTestId('SaveChangesPanel__save-btn'));
+            const patch = patchTeam.mock.lastCall[0];
+            expect(patch.episode_folders).toContain('"mirror_of":"01_SCRIPT/EXPORTS"');
+            expect(patch.episode_tasks).toContain('"key":"treatment","title":"Treatment","department_id":"dep0"');
+        });
+
+        test('a failed Dopamine template load shows an error and keeps the templates', async () => {
+            jest.spyOn(Client4, 'getTeamDepartments').mockRejectedValueOnce(new Error('403'));
+            renderWithContext(<EpisodesTab {...{...defaultProps, team}}/>);
+
+            await userEvent.click(screen.getByTestId('episodePresetButton'));
+            await userEvent.click(screen.getByRole('button', {name: 'Load template'}));
+
+            const error = await screen.findByTestId('mm-modal-generic-section-item__error');
+            expect(error).toHaveTextContent('Could not load the Dopamine template.');
+            expect(screen.getByText('Layout')).toBeInTheDocument();
         });
 
         test('a rejected folder template shows the error under the panel', async () => {
