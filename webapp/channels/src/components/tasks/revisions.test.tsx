@@ -163,6 +163,29 @@ describe('Revisions', () => {
         expect(screen.queryByRole('textbox', {name: 'Revision description'})).not.toBeInTheDocument();
         expect(screen.getByRole('button', {name: 'Revision late'})).toBeInTheDocument();
     });
+    test('a channel without a video yet offers the upload instead of a player and revision form', async () => {
+        jest.spyOn(Client4, 'getTaskSectionVideos').mockResolvedValue([]);
+        renderWithContext(
+            <Revisions
+                teamId='team1'
+                tasks={[task('plain', 'sec1', 0, '')]}
+                section={{...channel, video_file_id: ''}}
+                usersById={{}}
+                selectedId=''
+                onSelect={onSelect}
+                canManage={true}
+            />,
+        );
+        expect(document.querySelector('video')).toBeNull();
+        expect(screen.queryByRole('textbox', {name: 'Revision description'})).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'New revision'})).not.toBeInTheDocument();
+        expect(screen.getByText('No video yet. Upload one to start adding revisions.')).toBeInTheDocument();
+
+        const file = new File(['x'], 'cut1.mp4', {type: 'video/mp4'});
+        fireEvent.change(screen.getByLabelText('Upload new version'), {target: {files: [file]}});
+        await waitFor(() => expect(setTaskSectionVideo).toHaveBeenCalledWith('sec1', file, expect.any(Function)));
+    });
+
     test('managers can upload a new version; others cannot', async () => {
         renderRevisions();
         const file = new File(['x'], 'cut2.mp4', {type: 'video/mp4'});

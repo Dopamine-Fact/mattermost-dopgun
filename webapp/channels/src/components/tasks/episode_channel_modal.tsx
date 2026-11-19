@@ -42,7 +42,7 @@ const EpisodeChannelModal = ({onExited}: Props) => {
     };
 
     const create = async () => {
-        if (!team || !name.trim() || !video || busy) {
+        if (!team || !name.trim() || busy) {
             return;
         }
         setBusy(true);
@@ -100,7 +100,7 @@ const EpisodeChannelModal = ({onExited}: Props) => {
             handleCancel={() => setShow(false)}
             handleConfirm={create}
             confirmButtonText={formatMessage({id: 'tasks.revisionChannelModal.create', defaultMessage: 'Create'})}
-            isConfirmDisabled={!name.trim() || !video || busy}
+            isConfirmDisabled={!name.trim() || busy}
             isConfirmLoading={busy}
             autoCloseOnConfirmButton={false}
             compassDesign={true}
@@ -122,8 +122,8 @@ const EpisodeChannelModal = ({onExited}: Props) => {
                 />
                 <label htmlFor='episodeChannelVideo'>
                     <FormattedMessage
-                        id='tasks.revisionChannelModal.video'
-                        defaultMessage='Video'
+                        id='tasks.episodeChannelModal.video'
+                        defaultMessage='Video (optional)'
                     />
                 </label>
                 <input

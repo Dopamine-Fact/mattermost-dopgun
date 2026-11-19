@@ -33439,6 +33439,10 @@
     "defaultMessage": "Create episode channel",
     "description": "Title of the dialog that creates an episode channel (a channel with a video for revisions, a task list, a canvas and starter folders)."
   },
+  "tasks.episodeChannelModal.video": {
+    "defaultMessage": "Video (optional)",
+    "description": "Label of the file picker in the episode channel dialog; the video can be left out and uploaded later from the channel's Revisions tab."
+  },
   "tasks.list.name": {
     "defaultMessage": "Task name",
     "description": ""
@@ -33554,6 +33558,10 @@
   "tasks.revisions.noRevisions": {
     "defaultMessage": "No revisions yet. Pause the video where something needs to change and describe it.",
     "description": "Shown under the video when its revision channel has no revisions yet."
+  },
+  "tasks.revisions.noVideo": {
+    "defaultMessage": "No video yet. Upload one to start adding revisions.",
+    "description": "Shown in a revision channel's Revisions tab, in place of the video player, when no video has been uploaded yet (an episode created without one)."
   },
   "tasks.revisions.olderVersion": {
     "defaultMessage": "Made on an earlier version; open it to watch that version",

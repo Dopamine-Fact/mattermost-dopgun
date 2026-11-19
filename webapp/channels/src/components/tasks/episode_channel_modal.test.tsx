@@ -34,7 +34,7 @@ describe('EpisodeChannelModal', () => {
 
     const createIt = async () => {
         await userEvent.type(screen.getByLabelText('Name'), 'Episode 1');
-        await userEvent.upload(screen.getByLabelText('Video'), video);
+        await userEvent.upload(screen.getByLabelText('Video (optional)'), video);
         await userEvent.click(screen.getByRole('button', {name: 'Create'}));
     };
 
@@ -43,6 +43,15 @@ describe('EpisodeChannelModal', () => {
         renderWithContext(<EpisodeChannelModal onExited={jest.fn()}/>, state);
         await createIt();
         expect(createEpisodeChannel).toHaveBeenCalledWith('team1', 'Episode 1', video);
+        await waitFor(() => expect(getHistory().push).toHaveBeenCalledWith('/team-one/channels/episode-1'));
+    });
+
+    test('creates the episode without a video', async () => {
+        created([]);
+        renderWithContext(<EpisodeChannelModal onExited={jest.fn()}/>, state);
+        await userEvent.type(screen.getByLabelText('Name'), 'Episode 1');
+        await userEvent.click(screen.getByRole('button', {name: 'Create'}));
+        expect(createEpisodeChannel).toHaveBeenCalledWith('team1', 'Episode 1', undefined);
         await waitFor(() => expect(getHistory().push).toHaveBeenCalledWith('/team-one/channels/episode-1'));
     });
 

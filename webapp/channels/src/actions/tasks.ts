@@ -126,9 +126,9 @@ export function createRevisionChannel(teamId: string, displayName: string, video
 }
 
 // createEpisodeChannel has the server create the channel, its revision list, the template folders (with their rules) and tasks;
-// the video and canvas follow, and if either fails the tasks, list and channel are removed again.
+// the video (optional; it can be uploaded later from Revisions) and canvas follow, and if either fails the tasks, list and channel are removed again.
 // Folders and tasks the server could not create come back in failed (template lines).
-export function createEpisodeChannel(teamId: string, displayName: string, video: File): ActionFuncAsync<{channel: Channel; failed: string[]}> {
+export function createEpisodeChannel(teamId: string, displayName: string, video?: File): ActionFuncAsync<{channel: Channel; failed: string[]}> {
     return async (dispatch) => {
         const created = await dispatch(run(() => Client4.createEpisode(teamId, cleanUpUrlable(displayName) || generateId(), displayName)));
         if (!created.data) {
@@ -138,7 +138,7 @@ export function createEpisodeChannel(teamId: string, displayName: string, video:
         await dispatch(getChannelAndMyMember(channel.id));
         dispatch({type: TaskTypes.TASK_SECTION_RECEIVED, data: section});
 
-        let error = (await dispatch(setTaskSectionVideo(section.id, video))).error;
+        let error = video ? (await dispatch(setTaskSectionVideo(section.id, video))).error : undefined;
         if (!error) {
             error = (await dispatch(run(() => Client4.createCanvas(teamId, channel.id)))).error;
         }
