@@ -2743,6 +2743,38 @@
     "defaultMessage": "Option name",
     "description": "Placeholder of the text input used to rename an option value inside the chip's edit menu."
   },
+  "admin.breaks_report.break_count": {
+    "defaultMessage": "Break count",
+    "description": "Column header in the System Console breaks report for how many breaks the user took that day."
+  },
+  "admin.breaks_report.breaks": {
+    "defaultMessage": "Breaks",
+    "description": "Column header in the System Console breaks report for the total break time (hours:minutes) inside working hours."
+  },
+  "admin.breaks_report.date": {
+    "defaultMessage": "Date",
+    "description": "Label of the date picker that chooses which day the System Console breaks report shows."
+  },
+  "admin.breaks_report.empty": {
+    "defaultMessage": "No activity recorded for this day.",
+    "description": "Shown under the System Console breaks report table when nobody has recorded activity on the chosen day."
+  },
+  "admin.breaks_report.first_open": {
+    "defaultMessage": "First open",
+    "description": "Column header in the System Console breaks report for the time the user first opened the desktop app that day."
+  },
+  "admin.breaks_report.overtime": {
+    "defaultMessage": "Overtime",
+    "description": "Column header in the System Console breaks report for active desktop time after the workday end (hours:minutes)."
+  },
+  "admin.breaks_report.title": {
+    "defaultMessage": "Breaks",
+    "description": "Page title of the System Console report listing each user's breaks, first open time and overtime for one day."
+  },
+  "admin.breaks_report.user": {
+    "defaultMessage": "User",
+    "description": "Column header in the System Console breaks report for the user's name."
+  },
   "admin.burn_on_read_feature_discovery.description": {
     "defaultMessage": "With Dopaminefact Enterprise Advanced, users can send transient messages that are automatically deleted a fixed time after they are read by a recipient.",
     "description": "Marketing description on the feature-discovery (upsell) page for burn-on-read messages, shown to admins whose license does not include the feature."
@@ -15231,6 +15263,10 @@
     "defaultMessage": "Board Attributes",
     "description": "Navigation item in the System Console sidebar; opens the Boards product attributes page; compact space."
   },
+  "admin.sidebar.breaks": {
+    "defaultMessage": "Breaks",
+    "description": "System Console sidebar link, under User Management, to the daily breaks report."
+  },
   "admin.sidebar.channels": {
     "defaultMessage": "Channels",
     "description": "Navigation item in the System Console sidebar under User Management; opens the channel management page; 'Channels' are chat channels (noun); compact space."
@@ -17406,6 +17442,30 @@
   "admin.team.userStatusAwayTimeoutTitle": {
     "defaultMessage": "User Status Away Timeout (seconds):",
     "description": "Setting label for a numeric field on the System Console > Site Configuration > Users and Teams page; the parenthesised '(seconds)' states the unit of the field. Ends with a colon. Moved here from the Experimental Features page."
+  },
+  "admin.team.workdayEndDescription": {
+    "defaultMessage": "Time spent active in the desktop app after the workday end is counted as overtime.",
+    "description": "Help text for the System Console setting for the time working hours end; active desktop time after it counts as overtime."
+  },
+  "admin.team.workdayEndExample": {
+    "defaultMessage": "E.g.: \"18:00\"",
+    "description": "Placeholder of the working hours end setting in the System Console, in 24-hour HH:MM."
+  },
+  "admin.team.workdayEndTitle": {
+    "defaultMessage": "Workday end (HH:MM):",
+    "description": "System Console setting title for the time working hours end each day."
+  },
+  "admin.team.workdayStartDescription": {
+    "defaultMessage": "Breaks are counted only between the workday start and end.",
+    "description": "Help text for the System Console setting for the time working hours start; breaks are counted only within working hours."
+  },
+  "admin.team.workdayStartExample": {
+    "defaultMessage": "E.g.: \"09:00\"",
+    "description": "Placeholder of the working hours start setting in the System Console, in 24-hour HH:MM."
+  },
+  "admin.team.workdayStartTitle": {
+    "defaultMessage": "Workday start (HH:MM):",
+    "description": "System Console setting title for the time working hours start each day."
   },
   "admin.teamChannelSettings.usersToBeRemovedModal.title": {
     "defaultMessage": "<b>{total, number} {total, plural, one {User} other {Users}}</b> To Be Removed",
@@ -23894,6 +23954,22 @@
   "discard_changes_modal.title": {
     "defaultMessage": "Discard Changes?",
     "description": "Title of the confirmation dialog shown when closing a form or settings panel with unsaved changes."
+  },
+  "dm_panel.collapse": {
+    "defaultMessage": "Collapse direct messages",
+    "description": "Accessible label of the button that collapses the right-hand direct messages panel."
+  },
+  "dm_panel.expand": {
+    "defaultMessage": "Expand direct messages",
+    "description": "Accessible label of the button that expands the collapsed right-hand direct messages panel."
+  },
+  "dm_panel.label": {
+    "defaultMessage": "Direct messages",
+    "description": "Accessible name of the right-hand panel listing direct messages and teammates."
+  },
+  "dm_panel.title": {
+    "defaultMessage": "Direct Messages",
+    "description": "Heading of the right-hand panel listing direct messages and teammates."
   },
   "dnd_custom_time_picker_modal.defaultMsg": {
     "defaultMessage": "Disable notifications until",
@@ -33067,6 +33143,38 @@
     "defaultMessage": "Slash Commands",
     "description": "Breadcrumb link on the slash command setup confirmation page; navigates back to the Slash Commands list."
   },
+  "status_box.breaks_today": {
+    "defaultMessage": "Breaks today: {minutes} min",
+    "description": "Line in the status box at the bottom of the left sidebar; {minutes} is today's total break time in whole minutes."
+  },
+  "status_box.on_break": {
+    "defaultMessage": "On break {time}",
+    "description": "Line in the status box at the bottom of the left sidebar while the user is Away during working hours; {time} is the running break as mm:ss."
+  },
+  "status_box.overtime": {
+    "defaultMessage": "Overtime {time}",
+    "description": "Line in the status box at the bottom of the left sidebar after working hours; {time} is today's overtime as hh:mm."
+  },
+  "status_box.status.away": {
+    "defaultMessage": "Away",
+    "description": "User status shown in the status box at the bottom of the left sidebar."
+  },
+  "status_box.status.dnd": {
+    "defaultMessage": "Do Not Disturb",
+    "description": "User status shown in the status box at the bottom of the left sidebar."
+  },
+  "status_box.status.offline": {
+    "defaultMessage": "Offline",
+    "description": "User status shown in the status box at the bottom of the left sidebar."
+  },
+  "status_box.status.online": {
+    "defaultMessage": "Online",
+    "description": "User status shown in the status box at the bottom of the left sidebar."
+  },
+  "status_box.status.ooo": {
+    "defaultMessage": "Out of office",
+    "description": "User status shown in the status box at the bottom of the left sidebar."
+  },
   "sticker_picker.empty": {
     "defaultMessage": "No stickers yet. Add custom emojis to use them as stickers.",
     "description": ""
@@ -36934,6 +37042,14 @@
   "user.settings.sidebar.recent": {
     "defaultMessage": "Recent activity",
     "description": "Sort-order option in sidebar category menus: order channels by most recent activity."
+  },
+  "user.settings.sidebar.showDmPanelDesc": {
+    "defaultMessage": "When enabled, direct messages are listed in a collapsible panel on the right instead of the sidebar.",
+    "description": "Help text of the Settings > Sidebar option that lists direct messages in a right-hand panel instead of the sidebar."
+  },
+  "user.settings.sidebar.showDmPanelTitle": {
+    "defaultMessage": "Show direct messages in a right panel",
+    "description": "Title of the Settings > Sidebar option that lists direct messages in a right-hand panel instead of the sidebar."
   },
   "user.settings.sidebar.showUnreadsCategoryDesc": {
     "defaultMessage": "When enabled, all unread channels and direct messages will be grouped together in the sidebar.",
