@@ -7925,6 +7925,11 @@
     "description": "Error returned when a reviewer tries to approve a daily report that was rejected (sent back to its author) and not yet edited."
   },
   {
+    "id": "app.daily_report.approved_dm",
+    "translation": "Your daily report for {{.Date}} was approved by @{{.Reviewer}}. [View it]({{.Link}})",
+    "description": "Direct message the system bot sends to a report's author when a reviewer approves it (not sent for automatic approval). Date is the report day (YYYY-MM-DD), Reviewer the reviewer's username, Link opens the daily reports page."
+  },
+  {
     "id": "app.daily_report.changed.app_error",
     "translation": "This report changed since you opened it. Refresh and review it again.",
     "description": "Error returned when a reviewer approves or rejects a daily report that its author edited (or someone else reviewed) after the reviewer loaded it."

@@ -346,9 +346,38 @@ func TestApproveDailyReport(t *testing.T) {
 	assert.False(t, approved.AutoApproved)
 	assert.NotZero(t, approved.ApprovedAt)
 
+	approvedDMs := func() int {
+		n := 0
+		for _, m := range systemBotDMTexts(t, th, th.BasicUser) {
+			if strings.Contains(m, "approved by @"+th.BasicUser2.Username) && strings.Contains(m, report.Date) {
+				n++
+			}
+		}
+		return n
+	}
+	assert.Equal(t, 1, approvedDMs(), "the author is told by the system bot")
+
 	again, appErr := th.App.ApproveDailyReport(th.Context, report.Id, th.BasicUser.Id, 0)
 	require.Nil(t, appErr)
 	assert.Equal(t, th.BasicUser2.Id, again.ApprovedBy, "re-approving keeps the first approver")
+	assert.Equal(t, 1, approvedDMs(), "no second DM")
+}
+
+func TestAutoApproveSendsNoDM(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	team := enableDailyReports(t, th)
+
+	report, appErr := th.App.SubmitDailyReport(th.Context, team.Id, th.BasicUser.Id, "msg")
+	require.Nil(t, appErr)
+	th.App.RunDailyReportTick(th.Context, time.UnixMilli(report.UpdateAt).Add(31*time.Minute))
+	approved, appErr := th.App.GetDailyReport(report.Id)
+	require.Nil(t, appErr)
+	require.True(t, approved.AutoApproved)
+
+	for _, m := range systemBotDMTexts(t, th, th.BasicUser) {
+		assert.NotContains(t, m, "approved by")
+	}
 }
 
 func TestRunDailyReportTick(t *testing.T) {
