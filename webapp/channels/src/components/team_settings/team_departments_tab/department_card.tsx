@@ -14,6 +14,8 @@ import {Client4} from 'mattermost-redux/client';
 
 import {refreshTeamDepartments} from 'components/profile_popover/use_custom_roles';
 
+import RankMembers from './rank_members';
+
 export const NEW_COLOR = '#888888';
 
 /** `base`, or `base 2`, `base 3`… — the first one not in `taken`; names are unique case-insensitively. */
@@ -88,12 +90,15 @@ type Props = {
     teamId: string;
     department: Department;
 
+    /** every department of the team: giving a rank keeps the person's ranks elsewhere */
+    departments: Department[];
+
     /** the department's drag handle; Stüdyo geneli has none */
     dragHandleProps?: DraggableProvidedDragHandleProps | null;
     onDelete: (target: {kind: 'department' | 'rank'; id: string; name: string; members: number}) => void;
 };
 
-const DepartmentCard = ({teamId, department, dragHandleProps, onDelete}: Props) => {
+const DepartmentCard = ({teamId, department, departments, dragHandleProps, onDelete}: Props) => {
     const {formatMessage} = useIntl();
     const [error, setError] = useState('');
 
@@ -248,6 +253,12 @@ const DepartmentCard = ({teamId, department, dragHandleProps, onDelete}: Props) 
                                             >
                                                 <TrashCanOutlineIcon size={16}/>
                                             </button>
+                                            <RankMembers
+                                                teamId={teamId}
+                                                rank={rank}
+                                                departments={departments}
+                                                run={run}
+                                            />
                                         </li>
                                     )}
                                 </Draggable>

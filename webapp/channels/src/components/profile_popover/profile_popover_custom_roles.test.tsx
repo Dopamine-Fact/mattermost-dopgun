@@ -29,6 +29,7 @@ const rank = (id: string, departmentId: string, name: string, position: number):
     position,
     permissions: [],
     member_count: 0,
+    member_ids: [],
     create_at: 1,
     update_at: 1,
     delete_at: 0,

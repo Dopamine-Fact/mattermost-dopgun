@@ -17,7 +17,7 @@ jest.mock('client/web_websocket_client', () => ({
     removeMessageListener: jest.fn(),
 }));
 
-const rank = (id: string, departmentId: string, name: string, position: number, permissions: string[] = []): Rank => ({
+const rank = (id: string, departmentId: string, name: string, position: number, permissions: string[] = [], memberIds: string[] = []): Rank => ({
     id,
     role_name: 'rk_' + id,
     team_id: 'team1',
@@ -27,6 +27,7 @@ const rank = (id: string, departmentId: string, name: string, position: number, 
     position,
     permissions,
     member_count: position + 1,
+    member_ids: memberIds,
     create_at: 1,
     update_at: 1,
     delete_at: 0,
@@ -45,10 +46,23 @@ const department = (id: string, name: string, ranks: Rank[], isStudio = false): 
     ranks,
 });
 
+// carol is Producer and Lead; alice and bob are Mid; dave has no rank
 const departments = [
-    department('s', 'Stüdyo geneli', [rank('p', 's', 'Producer', 0)], true),
-    department('d1', 'Animasyon', [rank('l', 'd1', 'Lead', 0, ['manage_revisions']), rank('m', 'd1', 'Mid', 1)]),
+    department('s', 'Stüdyo geneli', [rank('p', 's', 'Producer', 0, [], ['u3'])], true),
+    department('d1', 'Animasyon', [rank('l', 'd1', 'Lead', 0, ['manage_revisions'], ['u3']), rank('m', 'd1', 'Mid', 1, [], ['u1', 'u2'])]),
 ];
+
+const people = [
+    TestHelper.getUserMock({id: 'u1', username: 'alice'}),
+    TestHelper.getUserMock({id: 'u2', username: 'bob'}),
+    TestHelper.getUserMock({id: 'u3', username: 'carol'}),
+    TestHelper.getUserMock({id: 'u4', username: 'dave'}),
+    TestHelper.getUserMock({id: 'b1', username: 'robot', is_bot: true}),
+    TestHelper.getUserMock({id: 'g1', username: 'guest', roles: 'system_guest'}),
+    TestHelper.getUserMock({id: 'x1', username: 'gone', delete_at: 1}),
+];
+
+const rankRow = async (name: string) => (await screen.findByDisplayValue(name)).closest('li') as HTMLElement;
 
 const team = TestHelper.getTeamMock({id: 'team1'});
 const props = {
@@ -65,6 +79,54 @@ describe('TeamDepartmentsTab', () => {
     beforeEach(() => {
         jest.restoreAllMocks();
         jest.spyOn(Client4, 'getTeamDepartments').mockResolvedValue(departments);
+        jest.spyOn(Client4, 'getProfilesInTeam').mockResolvedValue(people);
+    });
+
+    test('each rank lists the people holding it', async () => {
+        renderTab();
+
+        const mid = await rankRow('Mid');
+        expect(await within(mid).findByText('alice')).toBeInTheDocument();
+        expect(within(mid).getByText('bob')).toBeInTheDocument();
+        expect(within(await rankRow('Lead')).getByText('carol')).toBeInTheDocument();
+    });
+
+    test('the picker offers active members who do not hold the rank', async () => {
+        renderTab();
+
+        const mid = await rankRow('Mid');
+        await within(mid).findByText('alice');
+        const options = within(within(mid).getByRole('combobox', {name: 'Add person to Mid'})).getAllByRole('option').slice(1);
+        expect(options.map((o) => o.textContent)).toEqual(['carol', 'dave']);
+    });
+
+    test('adding a person replaces their rank in that department and keeps the others', async () => {
+        const set = jest.spyOn(Client4, 'setMemberRanks').mockResolvedValue({} as never);
+        renderTab();
+
+        const mid = await rankRow('Mid');
+        await within(mid).findByText('alice');
+        fireEvent.change(within(mid).getByRole('combobox', {name: 'Add person to Mid'}), {target: {value: 'u3'}});
+
+        await waitFor(() => expect(set).toHaveBeenCalledWith('team1', 'u3', ['p', 'm']));
+    });
+
+    test('removing a person takes only that rank away', async () => {
+        const set = jest.spyOn(Client4, 'setMemberRanks').mockResolvedValue({} as never);
+        renderTab();
+
+        fireEvent.click(await within(await rankRow('Lead')).findByRole('button', {name: 'Remove carol from Lead'}));
+
+        await waitFor(() => expect(set).toHaveBeenCalledWith('team1', 'u3', ['p']));
+    });
+
+    test('a refused change shows the error under the card', async () => {
+        jest.spyOn(Client4, 'setMemberRanks').mockRejectedValue(new Error('You do not outrank this rank'));
+        renderTab();
+
+        fireEvent.click(await within(await rankRow('Lead')).findByRole('button', {name: 'Remove carol from Lead'}));
+
+        expect(await screen.findByText('You do not outrank this rank')).toBeInTheDocument();
     });
 
     test('renders Stüdyo geneli first, without a delete button', async () => {

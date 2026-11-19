@@ -33807,6 +33807,14 @@
     "defaultMessage": "Department",
     "description": "Button text in the Team Settings › Departments tab that adds a new department; shown after a plus icon."
   },
+  "team_settings.departments.add_member": {
+    "defaultMessage": "+ Add person",
+    "description": "First option of the picker under a rank in Team Settings › Departments; choosing a person from it gives them that rank."
+  },
+  "team_settings.departments.add_member_to": {
+    "defaultMessage": "Add person to {rank}",
+    "description": "Accessible label of the picker under a rank in Team Settings › Departments; {rank} is the rank's name."
+  },
   "team_settings.departments.add_rank": {
     "defaultMessage": "Rank",
     "description": "Button text under a department card in the Team Settings › Departments tab that adds a rank; shown after a plus icon."
@@ -33894,6 +33902,10 @@
   "team_settings.departments.rank_name": {
     "defaultMessage": "Rank name",
     "description": "Accessible label of the inline field that renames a rank in the Team Settings › Departments tab."
+  },
+  "team_settings.departments.remove_member": {
+    "defaultMessage": "Remove {name} from {rank}",
+    "description": "Accessible label of the × button on a person under a rank in Team Settings › Departments; it takes the rank {rank} away from {name}."
   },
   "team_settings_modal.accessPoliciesTab": {
     "defaultMessage": "Channel Membership",

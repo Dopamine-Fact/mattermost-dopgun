@@ -5,12 +5,14 @@ import type {DropResult} from '@hello-pangea/dnd';
 import {DragDropContext, Draggable, Droppable} from '@hello-pangea/dnd';
 import React, {useEffect, useState} from 'react';
 import {FormattedMessage, defineMessages, useIntl} from 'react-intl';
+import {useDispatch} from 'react-redux';
 
 import {PlusIcon} from '@mattermost/compass-icons/components';
 import {GenericModal} from '@mattermost/components';
 import type {Department} from '@mattermost/types/custom_roles';
 import type {Team} from '@mattermost/types/teams';
 
+import {getProfilesInTeam} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
 
 import {refreshTeamDepartments, useTeamDepartments} from 'components/profile_popover/use_custom_roles';
@@ -39,6 +41,12 @@ const TeamDepartmentsTab = ({team}: Props) => {
     // Mirrors the server list so a drop shows at once, before the reorder call returns.
     const [departments, setDepartments] = useState<Department[]>(loaded);
     useEffect(() => setDepartments(loaded), [loaded]);
+
+    // the people the rank pickers offer; shortcut: first 200 members only, page it if a studio grows past that
+    const dispatch = useDispatch();
+    useEffect(() => {
+        dispatch(getProfilesInTeam(team.id, 0, 200));
+    }, [dispatch, team.id]);
     const [deleting, setDeleting] = useState<DeleteTarget | null>(null);
     const [error, setError] = useState('');
 
@@ -107,6 +115,7 @@ const TeamDepartmentsTab = ({team}: Props) => {
                         key={d.id}
                         teamId={team.id}
                         department={d}
+                        departments={departments}
                         onDelete={setDeleting}
                     />
                 ))}
@@ -133,6 +142,7 @@ const TeamDepartmentsTab = ({team}: Props) => {
                                             <DepartmentCard
                                                 teamId={team.id}
                                                 department={d}
+                                                departments={departments}
                                                 dragHandleProps={draggable.dragHandleProps}
                                                 onDelete={setDeleting}
                                             />

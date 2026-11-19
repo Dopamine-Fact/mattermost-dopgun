@@ -118,7 +118,7 @@ const departments: Department[] = [{
     create_at: 1,
     update_at: 1,
     delete_at: 0,
-    ranks: [{id: 'a', role_name: 'rk_a', team_id: 'team1', department_id: 'd1', display_name: 'Animator', color: '#000', position: 0, permissions: [], member_count: 1, create_at: 1, update_at: 1, delete_at: 0}],
+    ranks: [{id: 'a', role_name: 'rk_a', team_id: 'team1', department_id: 'd1', display_name: 'Animator', color: '#000', position: 0, permissions: [], member_count: 1, member_ids: [], create_at: 1, update_at: 1, delete_at: 0}],
 } as Department];
 
 const lastListener = () => (WebSocketClient.addMessageListener as jest.Mock).mock.calls.at(-1)[0];

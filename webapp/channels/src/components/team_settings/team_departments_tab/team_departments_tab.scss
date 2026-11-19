@@ -106,6 +106,34 @@
         text-align: center;
     }
 
+    // a second line under the rank, from its name to the end
+    &__people {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+        grid-column: 3 / -1;
+    }
+
+    &__person {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 2px 2px 6px;
+        border-radius: 12px;
+        background: rgba(var(--center-channel-color-rgb), 0.08);
+        font-size: 12px;
+        gap: 4px;
+    }
+
+    &__addPerson {
+        padding: 2px 6px;
+        border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+        border-radius: 12px;
+        background: var(--center-channel-bg);
+        color: inherit;
+        font-size: 12px;
+    }
+
     &__footer {
         display: flex;
         align-items: center;

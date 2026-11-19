@@ -83,6 +83,10 @@ export function useLoadedTeamDepartments(teamId: string): Department[] | undefin
     return departments;
 }
 
+/** The ranks a user holds, in department order then rank order (Stüdyo geneli first). */
+export const ranksHeldBy = (departments: Department[], userId: string): Rank[] =>
+    departments.flatMap((department) => department.ranks.filter((rank) => rank.member_ids.includes(userId)));
+
 /** The ranks, in department order, that a member's space-separated team roles include. */
 export const ranksOf = (departments: Department[], roleNames: string): Array<{department: Department; rank: Rank}> => {
     const held = new Set(roleNames.split(' '));

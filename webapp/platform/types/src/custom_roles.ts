@@ -16,6 +16,9 @@ export type Rank = {
     position: number;
     permissions: string[];
     member_count: number;
+
+    /** user ids of the team's members holding it, sorted */
+    member_ids: string[];
     create_at: number;
     update_at: number;
     delete_at: number;
