@@ -117,6 +117,15 @@ describe('EpisodeTaskPanel', () => {
         expect(onChange).toHaveBeenLastCalledWith([{key: 'a', title: 'A', folder: 'BG'}]);
     });
 
+    test('a stale folder shows as Missing folder and a dangling waits-for as Missing task', async () => {
+        const onChange = setup([{key: 'a', title: 'A', folder: 'Old', waits_for: ['zz']}]);
+        await userEvent.click(screen.getByRole('button', {name: 'A'}));
+
+        expect(options(screen.getByLabelText('Folder'))).toContain('Missing folder');
+        await userEvent.click(screen.getByRole('checkbox', {name: 'Missing task'}));
+        expect(onChange).toHaveBeenLastCalledWith([{key: 'a', title: 'A', folder: 'Old'}]);
+    });
+
     test('deleting a task removes it from the other tasks waits-for', async () => {
         const onChange = setup([{key: 'a', title: 'A', waits_for: ['b']}, {key: 'b', title: 'B'}]);
         await userEvent.click(screen.getByRole('button', {name: 'Delete B'}));

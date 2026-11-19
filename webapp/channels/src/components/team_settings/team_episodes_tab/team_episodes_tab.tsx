@@ -4,11 +4,12 @@
 import React, {useCallback, useMemo, useState} from 'react';
 import {defineMessages} from 'react-intl';
 
+import {useTeamDepartments} from 'components/profile_popover/use_custom_roles';
 import SaveChangesPanel, {type SaveChangesPanelState} from 'components/widgets/modals/components/save_changes_panel';
 
 import {parseEpisodeFolders, serializeEpisodeFolders} from './episode_folders';
 import type {EpisodeFolder} from './episode_folders';
-import {parseEpisodeTasks, serializeEpisodeTasks} from './episode_tasks';
+import {parseEpisodeTasks, sanitizeEpisodeTasks, serializeEpisodeTasks} from './episode_tasks';
 import type {EpisodeTask} from './episode_tasks';
 import TeamEpisodeTemplatesSection from './team_episode_templates_section';
 import TeamTasksSection from './team_tasks_section';
@@ -38,6 +39,7 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
 
     // Kept as the stored text, so a template nobody edits is never re-serialized into a change.
     const [episodeTasks, setEpisodeTasks] = useState<string>(team.episode_tasks ?? '');
+    const departments = useTeamDepartments(team.id);
     const parsedTasks = useMemo(() => parseEpisodeTasks(episodeTasks), [episodeTasks]);
 
     // Which template the server rejected on the last save.
@@ -47,7 +49,10 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
     const handleSaveChanges = useCallback(async () => {
         const serializedFolders = serializeEpisodeFolders(episodeFolders);
         const foldersChanged = serializedFolders !== serializeEpisodeFolders(parseEpisodeFolders(team.episode_folders));
-        const tasksChanged = episodeTasks !== (team.episode_tasks ?? '');
+
+        // Saving clears department, folder and waits-for references that point at nothing.
+        const cleaned = serializeEpisodeTasks(sanitizeEpisodeTasks(parsedTasks, departments.length ? departments.map((d) => d.id) : undefined, episodeFolders.filter((f) => !f.mirror_of).map((f) => f.path)));
+        const tasksChanged = episodeTasks !== (team.episode_tasks ?? '') || cleaned !== serializeEpisodeTasks(parsedTasks);
         const changed = foldersChanged || tasksChanged || tasksEnabled !== Boolean(team.tasks_enabled) || revisionsEnabled !== Boolean(team.revisions_enabled) || canvasEnabled !== Boolean(team.canvas_enabled);
         if (changed) {
             const {error} = await actions.patchTeam({
@@ -56,7 +61,7 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
                 revisions_enabled: revisionsEnabled,
                 canvas_enabled: canvasEnabled,
                 ...(foldersChanged && {episode_folders: serializedFolders}),
-                ...(tasksChanged && {episode_tasks: episodeTasks}),
+                ...(tasksChanged && {episode_tasks: cleaned}),
             });
             if (error) {
                 const errorId = (error as {server_error_id?: string}).server_error_id;
@@ -73,7 +78,7 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
         setSaveChangesPanelState('saved');
         setShowTabSwitchError(false);
         setAreThereUnsavedChanges(false);
-    }, [actions, tasksEnabled, revisionsEnabled, canvasEnabled, episodeFolders, episodeTasks, team.id, team.tasks_enabled, team.revisions_enabled, team.canvas_enabled, team.episode_folders, team.episode_tasks, setShowTabSwitchError, setAreThereUnsavedChanges]);
+    }, [actions, parsedTasks, departments, tasksEnabled, revisionsEnabled, canvasEnabled, episodeFolders, episodeTasks, team.id, team.tasks_enabled, team.revisions_enabled, team.canvas_enabled, team.episode_folders, team.episode_tasks, setShowTabSwitchError, setAreThereUnsavedChanges]);
 
     const handleClose = useCallback(() => {
         setSaveChangesPanelState('editing');

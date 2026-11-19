@@ -125,6 +125,15 @@ describe('components/TeamSettings/EpisodesTab', () => {
             }));
         });
 
+        test('saving clears a missing folder and a dangling waits-for', async () => {
+            const stale = {...team, episode_tasks: '[{"key":"a","title":"A","folder":"Gone","waits_for":["zz"]}]'};
+            renderWithContext(<EpisodesTab {...{...defaultProps, team: stale}}/>);
+
+            await userEvent.click(screen.getByTestId('SaveChangesPanel__save-btn'));
+
+            expect(patchTeam).toHaveBeenLastCalledWith(expect.objectContaining({episode_tasks: '[{"key":"a","title":"A"}]'}));
+        });
+
         test('a rejected folder template shows the error under the panel', async () => {
             patchTeam.mockReturnValueOnce({error: {server_error_id: 'model.team.is_valid.episode_folders.app_error', message: 'Invalid default episode folders.'}});
             renderWithContext(<EpisodesTab {...{...defaultProps, team}}/>);

@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {episodeTaskCycle, parseEpisodeTasks, serializeEpisodeTasks} from './episode_tasks';
+import {episodeTaskCycle, parseEpisodeTasks, sanitizeEpisodeTasks, serializeEpisodeTasks} from './episode_tasks';
 
 describe('episode_tasks', () => {
     test('old text parses to title-only entries keyed line0..', () => {
@@ -23,6 +23,15 @@ describe('episode_tasks', () => {
         const tasks = parseEpisodeTasks('Storyboard\nAnimatic');
 
         expect(serializeEpisodeTasks(tasks)).toBe('[{"key":"line0","title":"Storyboard"},{"key":"line1","title":"Animatic"}]');
+    });
+
+    test('sanitize clears a deleted department, a missing folder and a dangling waits-for', () => {
+        const tasks = [{key: 'a', title: 'A', department_id: 'gone', folder: 'Old', waits_for: ['b', 'zz']}, {key: 'b', title: 'B', department_id: 'd', folder: 'BG'}];
+
+        expect(sanitizeEpisodeTasks(tasks, ['d'], ['BG'])).toEqual([{key: 'a', title: 'A', waits_for: ['b']}, {key: 'b', title: 'B', department_id: 'd', folder: 'BG'}]);
+
+        // departments not loaded yet: left alone
+        expect(sanitizeEpisodeTasks(tasks, undefined, ['BG'])[0].department_id).toBe('gone');
     });
 
     test('a cycle a -> b -> a is detected, a chain is not', () => {

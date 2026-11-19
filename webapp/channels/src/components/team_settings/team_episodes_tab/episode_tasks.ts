@@ -60,6 +60,20 @@ export function serializeEpisodeTasks(tasks: EpisodeTask[]): string {
     return tasks.length ? JSON.stringify(tasks.map(tidyEpisodeTask)) : '';
 }
 
+/**
+ * Clears what points at nothing: a department the team no longer has, a folder that is not an own-files folder of the
+ * template, a waits_for key of no task. Departments are left alone while unknown (not loaded yet).
+ */
+export function sanitizeEpisodeTasks(tasks: EpisodeTask[], departmentIds: string[] | undefined, ownFolders: string[]): EpisodeTask[] {
+    const keys = new Set(tasks.map((t) => t.key));
+    return tasks.map((t) => tidyEpisodeTask({
+        ...t,
+        department_id: departmentIds && !departmentIds.includes(t.department_id ?? '') ? '' : t.department_id,
+        folder: ownFolders.includes(t.folder ?? '') ? t.folder : '',
+        waits_for: t.waits_for?.filter((k) => keys.has(k)),
+    }));
+}
+
 /** True when following waits_for from some task leads back to it. */
 export function episodeTaskCycle(tasks: EpisodeTask[]): boolean {
     const byKey = new Map(tasks.map((t) => [t.key, t]));

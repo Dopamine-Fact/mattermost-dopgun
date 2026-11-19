@@ -51,6 +51,8 @@ const msg = defineMessages({
     waitsFor: {id: 'team_settings.episodeTasks.waitsFor', defaultMessage: 'Waits for'},
     waitsForHint: {id: 'team_settings.episodeTasks.waitsForHint', defaultMessage: 'Cannot be taken until these are done. Tasks that would make a loop are disabled.'},
     folder: {id: 'team_settings.episodeTasks.folder', defaultMessage: 'Folder'},
+    missingFolder: {id: 'team_settings.episodeTasks.missingFolder', defaultMessage: 'Missing folder'},
+    missingTask: {id: 'team_settings.episodeTasks.missingTask', defaultMessage: 'Missing task'},
     noFolder: {id: 'team_settings.episodeTasks.noFolder', defaultMessage: 'No folder'},
 });
 
@@ -168,6 +170,19 @@ const TaskDetail = ({task, tasks, folders, departments, members, onChange}: Deta
                         </label>
                     );
                 })}
+                {waits.filter((k) => !tasks.some((t) => t.key === k)).map((k) => (
+                    <label
+                        key={k}
+                        className='EpisodeTasks__check'
+                    >
+                        <input
+                            type='checkbox'
+                            checked={true}
+                            onChange={() => setWaits(k, false)}
+                        />
+                        {formatMessage(msg.missingTask)}
+                    </label>
+                ))}
             </fieldset>
             <label className='EpisodeTasks__field'>
                 {formatMessage(msg.folder)}
@@ -176,7 +191,7 @@ const TaskDetail = ({task, tasks, folders, departments, members, onChange}: Deta
                     onChange={(e) => onChange({...task, folder: e.target.value})}
                 >
                     <option value=''>{formatMessage(msg.noFolder)}</option>
-                    {task.folder && !ownFolders.includes(task.folder) && <option value={task.folder}>{task.folder}</option>}
+                    {task.folder && !ownFolders.includes(task.folder) && <option value={task.folder}>{formatMessage(msg.missingFolder)}</option>}
                     {ownFolders.map((path) => (
                         <option
                             key={path}

@@ -34015,6 +34015,14 @@
     "defaultMessage": "Episode tasks",
     "description": "Accessible name of the episode task template list in Team Settings."
   },
+  "team_settings.episodeTasks.missingFolder": {
+    "defaultMessage": "Missing folder",
+    "description": "Option label in the episode task template for a folder that is no longer an own-files folder of the folder template; saving clears it."
+  },
+  "team_settings.episodeTasks.missingTask": {
+    "defaultMessage": "Missing task",
+    "description": "Checkbox label in the Waits for group of the episode task template for a task that no longer exists; saving clears it."
+  },
   "team_settings.episodeTasks.noFolder": {
     "defaultMessage": "No folder",
     "description": "Option in the folder select of an episode task template; the task gets no drive folder."
