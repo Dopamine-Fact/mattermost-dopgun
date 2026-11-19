@@ -1,13 +1,16 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import type {FileInfo} from './files';
+
 export type DailyReportTask = {
     id: string;
     title: string;
     section_name: string;
 };
 
-export type DailyReportStatus = 'pending' | 'approved' | 'rejected';
+/** draft: files attached but not sent, seen only by the author; excused: a reviewer said no report is expected */
+export type DailyReportStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'excused';
 
 export type DailyReport = {
     id: string;
@@ -31,4 +34,7 @@ export type DailyReport = {
     reject_reason: string;
     create_at: number;
     update_at: number;
+
+    /** screenshots and short videos attached to the report */
+    files?: FileInfo[];
 };

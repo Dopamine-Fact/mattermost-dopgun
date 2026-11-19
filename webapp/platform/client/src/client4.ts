@@ -5178,6 +5178,36 @@ export default class Client4 {
         return `${this.getTeamRoute(teamId)}/daily_reports/export${buildQueryString({from, to})}`;
     };
 
+    // uploadMyDailyReportFile attaches to today's report, starting a draft when there is none yet.
+    uploadMyDailyReportFile = (teamId: string, file: File, onProgress?: (loaded: number, total: number) => void) => {
+        const formData = new FormData();
+        formData.append('file', file, file.name);
+        return this.uploadWithProgress<FileInfo>(`${this.getTeamRoute(teamId)}/daily_reports/mine/files`, formData, undefined, onProgress);
+    };
+
+    uploadDailyReportFile = (reportId: string, file: File, onProgress?: (loaded: number, total: number) => void) => {
+        const formData = new FormData();
+        formData.append('file', file, file.name);
+        return this.uploadWithProgress<FileInfo>(`${this.getBaseRoute()}/daily_reports/${reportId}/files`, formData, undefined, onProgress);
+    };
+
+    deleteDailyReportFile = (reportId: string, fileId: string) => {
+        return this.doFetch<StatusOK>(`${this.getBaseRoute()}/daily_reports/${reportId}/files/${fileId}`, {method: 'delete'});
+    };
+
+    getDailyReportFileUrl = (reportId: string, fileId: string, kind?: 'thumbnail' | 'preview') => {
+        const url = `${this.getBaseRoute()}/daily_reports/${reportId}/files/${fileId}`;
+        return kind ? `${url}/${kind}` : url;
+    };
+
+    // excuseDailyReport marks userId's day (YYYY-MM-DD, today or earlier) as needing no report.
+    excuseDailyReport = (teamId: string, userId: string, date: string) => {
+        return this.doFetch<DailyReport>(
+            `${this.getTeamRoute(teamId)}/daily_reports/excuse`,
+            {method: 'post', body: JSON.stringify({user_id: userId, date})},
+        );
+    };
+
     // Channel drive methods
     getDriveRoute(channelId: string) {
         return `${this.getChannelRoute(channelId)}/drive`;
@@ -5346,15 +5376,18 @@ export default class Client4 {
         );
     };
 
-    // setTaskSectionVideo uses XMLHttpRequest because fetch cannot report upload progress.
     setTaskSectionVideo = (sectionId: string, video: File, connectionId: string, onProgress?: (loaded: number, total: number) => void) => {
         const formData = new FormData();
         formData.append('video', video, video.name);
-        const url = `${this.getBaseRoute()}/task_sections/${sectionId}/video`;
-        const {headers, credentials} = this.getOptions({method: 'post', body: formData, headers: {'Connection-Id': connectionId}});
+        return this.uploadWithProgress<TaskSection>(`${this.getBaseRoute()}/task_sections/${sectionId}/video`, formData, connectionId, onProgress);
+    };
+
+    // uploadWithProgress posts a multipart form with XMLHttpRequest because fetch cannot report upload progress.
+    private uploadWithProgress = <T>(url: string, formData: FormData, connectionId?: string, onProgress?: (loaded: number, total: number) => void) => {
+        const {headers, credentials} = this.getOptions({method: 'post', body: formData, headers: connectionId ? {'Connection-Id': connectionId} : {}});
         const invalid = (cause?: unknown) => new ClientError(this.getUrl(), {message: 'Received invalid response from the server.', url}, cause);
 
-        return new Promise<TaskSection>((resolve, reject) => {
+        return new Promise<T>((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.open('POST', url);
             xhr.withCredentials = credentials === 'include';
