@@ -3,10 +3,11 @@
 
 import classNames from 'classnames';
 import React, {Suspense, useEffect, useMemo, useState} from 'react';
-import {FormattedMessage, useIntl} from 'react-intl';
+import {defineMessages, FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {useHistory, useLocation} from 'react-router-dom';
 
+import {FormatListBulletedIcon, KanbanIcon} from '@mattermost/compass-icons/components';
 import type {UserProfile} from '@mattermost/types/users';
 
 import {getProfilesInTeam as fetchProfilesInTeam} from 'mattermost-redux/actions/users';
@@ -25,10 +26,12 @@ import {fetchTeamTasks} from 'actions/tasks';
 import ExplorerUploadPanel from 'components/file_explorer/explorer_upload_panel';
 import {useExplorerChannels} from 'components/file_explorer/use_explorer_data';
 import {useExplorerUploads} from 'components/file_explorer/use_explorer_uploads';
+import Board from 'components/tasks/board';
 import List from 'components/tasks/list';
 import Revisions from 'components/tasks/revisions';
 import TaskDetail from 'components/tasks/task_detail';
 import TaskPostList from 'components/tasks/task_post_list';
+import Timeline from 'components/tasks/timeline';
 
 import {isArchivedChannel} from 'utils/channel_utils';
 
@@ -46,7 +49,19 @@ const LazyFileExplorer = React.lazy(() => import('components/file_explorer/file_
 // shortcut: the assignee picker lists the first 200 team members, like the tasks page.
 const MEMBER_PAGE_SIZE = 200;
 
-type Tab = 'messages' | 'revisions' | 'tasks' | 'canvas' | 'files';
+type Tab = 'messages' | 'revisions' | 'tasks' | 'timeline' | 'canvas' | 'files';
+
+const viewLabels = defineMessages({
+    list: {id: 'tasks.view.list', defaultMessage: 'List'},
+    board: {id: 'tasks.view.board', defaultMessage: 'Board'},
+    timeline: {id: 'tasks.view.timeline', defaultMessage: 'Timeline'},
+});
+
+// The Tasks tab's views, picked from the menu that opens when hovering or focusing the tab.
+const TASK_VIEWS = [
+    {id: 'list', Icon: FormatListBulletedIcon, label: viewLabels.list},
+    {id: 'board', Icon: KanbanIcon, label: viewLabels.board},
+] as const;
 
 type Props = {
     channelId: string;
@@ -148,6 +163,7 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
     const linkedTab: Tab = (linkedRevision && 'revisions') || (linkedTask && 'tasks') || (linkedCanvas && 'canvas') || (linkedFolder && 'files') || switchedTab || 'messages';
     const linkedId = linkedRevision || linkedTask;
     const [tab, setTab] = useState<Tab>(linkedTab);
+    const [tasksView, setTasksView] = useState<typeof TASK_VIEWS[number]['id']>('list');
     const [selectedId, setSelectedId] = useState(linkedId);
 
     // Reset during render, not in an effect, so a new channel never commits with the old channel's tab.
@@ -238,23 +254,33 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
                 </div>
             </div>
         );
-    } else if (section && tab === 'tasks') {
+    } else if (section && (tab === 'tasks' || tab === 'timeline')) {
+        const viewProps = {teamId, tasks: sectionTasks, sections, usersById, selectedId, onSelect: setSelectedId, canManage: canManageTasks};
+        let view = (
+            <List
+                {...viewProps}
+                sectionId={section.id}
+            />
+        );
+        if (tab === 'timeline') {
+            // The timeline's canManage only renames, deletes and adds sections, which the episode owns.
+            view = (
+                <Timeline
+                    {...viewProps}
+                    sections={[section]}
+                    canManage={false}
+                />
+            );
+        } else if (tasksView === 'board') {
+            view = <Board {...viewProps}/>;
+        }
         panel = (
             <div
                 className='RevisionTabs__panel ChannelTabs__cover'
                 role='tabpanel'
             >
                 <div className='RevisionTabs__main'>
-                    <List
-                        teamId={teamId}
-                        sectionId={section.id}
-                        tasks={sectionTasks}
-                        sections={sections}
-                        usersById={usersById}
-                        selectedId={selectedId}
-                        onSelect={setSelectedId}
-                        canManage={canManageTasks}
-                    />
+                    {view}
                 </div>
                 {detail}
             </div>
@@ -316,12 +342,33 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
                             defaultMessage='Revisions'
                         />
                     ))}
-                    {section && tabButton('tasks', (
-                        <FormattedMessage
-                            id='tasks.revisionTabs.tasks'
-                            defaultMessage='Tasks'
-                        />
-                    ))}
+                    {section && (
+                        <div className='RevisionTabs__dropdown'>
+                            {tabButton('tasks', (
+                                <FormattedMessage
+                                    id='tasks.revisionTabs.tasks'
+                                    defaultMessage='Tasks'
+                                />
+                            ))}
+                            <div className='RevisionTabs__menu'>
+                                {TASK_VIEWS.map(({id, Icon, label}) => (
+                                    <button
+                                        key={id}
+                                        aria-pressed={tasksView === id}
+                                        className={classNames('RevisionTabs__menuItem', {'RevisionTabs__menuItem--active': tasksView === id})}
+                                        onClick={() => {
+                                            setTasksView(id);
+                                            switchTab('tasks');
+                                        }}
+                                    >
+                                        <Icon size={16}/>
+                                        {formatMessage(label)}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {section && tabButton('timeline', <FormattedMessage {...viewLabels.timeline}/>)}
                     {isCanvas && tabButton('canvas', (
                         <FormattedMessage
                             id='canvas.tabs.canvas'

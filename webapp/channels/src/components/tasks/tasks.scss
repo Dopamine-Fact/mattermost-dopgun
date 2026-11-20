@@ -726,6 +726,54 @@
         flex: 1;
     }
 
+    // Tasks opens a List/Board menu on hover or keyboard focus.
+    &__dropdown {
+        position: relative;
+        display: flex;
+
+        &:hover,
+        &:focus-within {
+            .RevisionTabs__menu {
+                display: flex;
+            }
+        }
+    }
+
+    &__menu {
+        position: absolute;
+        z-index: 10;
+        top: 100%;
+        left: 0;
+        display: none;
+        min-width: 140px;
+        flex-direction: column;
+        padding: 4px 0;
+        border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+        border-radius: 4px;
+        background: var(--center-channel-bg);
+        box-shadow: var(--elevation-4);
+    }
+
+    &__menuItem {
+        display: flex;
+        align-items: center;
+        padding: 6px 12px;
+        border: none;
+        background: transparent;
+        color: var(--center-channel-color);
+        gap: 8px;
+        text-align: left;
+
+        &:hover {
+            background: rgba(var(--center-channel-color-rgb), 0.08);
+        }
+
+        &--active {
+            color: var(--button-bg);
+            font-weight: 600;
+        }
+    }
+
     &__filter {
         max-width: 240px;
         height: 28px;

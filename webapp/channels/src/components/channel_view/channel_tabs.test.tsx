@@ -146,7 +146,7 @@ describe('ChannelTabs', () => {
     test('a revision channel shows Messages, Revisions, Tasks', async () => {
         renderTabs('chan1');
         await waitFor(() => expect(getCanvas).toHaveBeenCalledWith('chan1'));
-        expect(tabNames()).toEqual(['Messages', 'Revisions', 'Tasks']);
+        expect(tabNames()).toEqual(['Messages', 'Revisions', 'Tasks', 'Timeline']);
         expect(screen.getByRole('tab', {name: 'Messages'})).toHaveAttribute('aria-selected', 'true');
         expect(screen.getByText('chat')).toBeInTheDocument();
     });
@@ -186,7 +186,7 @@ describe('ChannelTabs', () => {
         isCanvas(true);
         renderTabs('chan1');
         expect(await screen.findByRole('tab', {name: 'Canvas'})).toBeInTheDocument();
-        expect(tabNames()).toEqual(['Messages', 'Revisions', 'Tasks', 'Canvas']);
+        expect(tabNames()).toEqual(['Messages', 'Revisions', 'Tasks', 'Timeline', 'Canvas']);
     });
 
     test('a plain channel has no tab bar', async () => {
@@ -266,6 +266,36 @@ describe('ChannelTabs', () => {
         expect(createTask).toHaveBeenCalledWith({team_id: 'team1', title: 'Layout', status: 'todo', section_id: 'sec1'});
     });
 
+    test('the Tasks menu opens the list or the board', () => {
+        renderTabs('chan1');
+        expect(screen.getByRole('button', {name: 'List'})).toHaveAttribute('aria-pressed', 'true');
+
+        fireEvent.click(screen.getByRole('button', {name: 'Board'}));
+        expect(screen.getByRole('tab', {name: 'Tasks'})).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByRole('button', {name: 'Board'})).toHaveAttribute('aria-pressed', 'true');
+        expect(document.querySelector('.TaskBoard')).not.toBeNull();
+        expect(screen.getByText('Storyboard')).toBeInTheDocument();
+        expect(screen.queryByText('Logo too small')).toBeNull();
+
+        // Leaving and clicking Tasks again keeps the last view.
+        fireEvent.click(screen.getByRole('tab', {name: 'Messages'}));
+        fireEvent.click(screen.getByRole('tab', {name: 'Tasks'}));
+        expect(document.querySelector('.TaskBoard')).not.toBeNull();
+
+        fireEvent.click(screen.getByRole('button', {name: 'List'}));
+        expect(document.querySelector('.TaskBoard')).toBeNull();
+        expect(screen.getAllByRole('textbox', {name: 'New task title'}).length).toBeGreaterThan(0);
+    });
+
+    test('the Timeline tab shows this section only and cannot edit sections', () => {
+        renderTabs('chan1');
+        fireEvent.click(screen.getByRole('tab', {name: 'Timeline'}));
+        expect(chatHidden()).toBe(true);
+        expect(screen.getByText('1 task has no dates and is not shown here.')).toBeInTheDocument();
+        expect(screen.queryByRole('textbox', {name: 'New section name'})).toBeNull();
+        expect(screen.queryByRole('textbox', {name: 'Section name'})).toBeNull();
+    });
+
     test('without manage_tasks the Tasks tab cannot add', () => {
         renderTabs('chan1', {permissions: ['create_post', 'manage_revisions']});
         fireEvent.click(screen.getByRole('tab', {name: 'Tasks'}));
@@ -286,11 +316,11 @@ describe('ChannelTabs', () => {
 
     test('a channel with a tab bar gets a Files tab when the team has files on', () => {
         const {unmount} = renderTabs('chan1', {filesEnabled: true});
-        expect(tabNames()).toEqual(['Messages', 'Revisions', 'Tasks', 'Files']);
+        expect(tabNames()).toEqual(['Messages', 'Revisions', 'Tasks', 'Timeline', 'Files']);
         unmount();
 
         renderTabs('chan1');
-        expect(tabNames()).toEqual(['Messages', 'Revisions', 'Tasks']);
+        expect(tabNames()).toEqual(['Messages', 'Revisions', 'Tasks', 'Timeline']);
     });
 
     test('?folder= opens the Files tab at that folder', async () => {
@@ -308,7 +338,7 @@ describe('ChannelTabs', () => {
 
     test('an archived episode channel has no Files tab, since the explorer does not list it', () => {
         renderTabs('chan1', {filesEnabled: true, deleteAt: 5});
-        expect(tabNames()).toEqual(['Messages', 'Revisions', 'Tasks']);
+        expect(tabNames()).toEqual(['Messages', 'Revisions', 'Tasks', 'Timeline']);
     });
 
     test('leaving the Files tab drops ?folder= from the address', async () => {
