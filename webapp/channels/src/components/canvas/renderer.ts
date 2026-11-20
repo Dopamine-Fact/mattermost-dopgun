@@ -153,7 +153,7 @@ function spriteSlot(el: CanvasElement): Bounds {
 }
 
 /** Shows the texture in the slot (contain when asked), or a grey placeholder filling the slot while there is none. */
-function fitSprite(sprite: Sprite, texture: Texture | undefined, slot: Bounds, contain: boolean) {
+export function fitSprite(sprite: Sprite, texture: Texture | undefined, slot: Bounds, contain: boolean) {
     sprite.texture = texture ?? Texture.WHITE;
     sprite.tint = texture ? 0xffffff : PLACEHOLDER_TINT;
     let {x, y, w, h} = slot;
@@ -220,7 +220,7 @@ function buildScene(el: DrawElement, stroke: string): Container {
 }
 
 /** Builds the display object for one element, in coordinates relative to (el.x, el.y). */
-function build(el: DrawElement): Container {
+export function build(el: DrawElement): Container {
     const stroke = safeColor(el.stroke) ?? '#000000';
     if (el.type === 'scene') {
         return buildScene(el, stroke);
@@ -228,7 +228,9 @@ function build(el: DrawElement): Container {
     if (el.type === 'image') {
         const sprite = new Sprite(Texture.WHITE); // the texture pass fills in the image
         fitSprite(sprite, undefined, spriteSlot(el), false);
-        return sprite;
+        const root = new Container(); // fitSprite positions the sprite in its slot, so the root carries the element's x/y
+        root.addChild(sprite);
+        return root;
     }
     if (el.type === 'text') {
         const fontSize = num(el.fontSize, 20);
