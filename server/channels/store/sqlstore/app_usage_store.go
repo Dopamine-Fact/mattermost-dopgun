@@ -38,6 +38,8 @@ func (s *SqlAppUsageStore) GetTotals(userID string, from, to int64) ([]*model.Ap
 		Column(sq.Expr("SUM(LEAST(EndAt, ?) - GREATEST(StartAt, ?)) AS Ms", to, from)).
 		From("AppUsage").
 		Where(sq.Lt{"StartAt": to}).
+		// No valid interval is longer than AppUsageMaxLength, so this bound lets the StartAt index limit the scan.
+		Where(sq.GtOrEq{"StartAt": from - model.AppUsageMaxLength}).
 		Where(sq.Gt{"EndAt": from}).
 		GroupBy("UserId", "App", "Title").
 		OrderBy("UserId", "Ms DESC")

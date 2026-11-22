@@ -79,4 +79,16 @@ describe('startAppUsageRelay', () => {
         await tick();
         expect(fromDesktop).not.toHaveBeenCalled();
     });
+
+    test('drops a chunk the server rejects as invalid and sends the rest', async () => {
+        const many = Array.from({length: 250}, (_, i) => interval(i));
+        fromDesktop.mockResolvedValueOnce(many);
+        post.mockRejectedValueOnce({status_code: 400});
+        stop = startAppUsageRelay();
+        await tick();
+        expect(post).toHaveBeenCalledTimes(2);
+        expect(post).toHaveBeenLastCalledWith(many.slice(200));
+        await tick();
+        expect(post).toHaveBeenCalledTimes(2);
+    });
 });

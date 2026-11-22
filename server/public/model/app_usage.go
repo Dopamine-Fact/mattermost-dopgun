@@ -8,7 +8,7 @@ const (
 
 	appUsageMaxAppRunes   = 128
 	appUsageMaxTitleRunes = 512
-	appUsageMaxLength     = int64(24 * 60 * 60 * 1000)
+	AppUsageMaxLength     = int64(24 * 60 * 60 * 1000)
 	appUsageMaxAhead      = int64(5 * 60 * 1000)
 )
 
@@ -36,7 +36,7 @@ func (u *AppUsage) Prepare(userID string, now int64) bool {
 	u.UserId = userID
 	u.App = truncateRunes(u.App, appUsageMaxAppRunes)
 	u.Title = truncateRunes(u.Title, appUsageMaxTitleRunes)
-	return u.App != "" && u.StartAt < u.EndAt && u.EndAt-u.StartAt <= appUsageMaxLength && u.EndAt <= now+appUsageMaxAhead
+	return u.App != "" && u.StartAt < u.EndAt && u.EndAt-u.StartAt <= AppUsageMaxLength && u.EndAt <= now+appUsageMaxAhead
 }
 
 func truncateRunes(s string, n int) string {

@@ -25,8 +25,15 @@ export function startAppUsageRelay(everyMs = 60000): () => void {
             const oldest = Date.now() - KEEP_MS;
             pending = pending.filter((i) => i.end_at >= oldest);
             while (pending.length) {
-                // eslint-disable-next-line no-await-in-loop
-                await Client4.postAppUsage(pending.slice(0, BATCH));
+                try {
+                    // eslint-disable-next-line no-await-in-loop
+                    await Client4.postAppUsage(pending.slice(0, BATCH));
+                } catch (err) {
+                    // A 400 means the rows are invalid (e.g. a fast clock) and would block everything behind them forever.
+                    if ((err as {status_code?: number})?.status_code !== 400) {
+                        throw err;
+                    }
+                }
                 pending = pending.slice(BATCH);
             }
         } catch {

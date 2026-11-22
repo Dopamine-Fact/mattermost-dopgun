@@ -18,6 +18,7 @@ func TestAppUsageStore(t *testing.T, rctx request.CTX, ss store.Store) {
 	t.Run("GetTotalsClampsAndGroups", func(t *testing.T) { testAppUsageGetTotalsClampsAndGroups(t, ss) })
 	t.Run("GetTotalsCrossesMidnight", func(t *testing.T) { testAppUsageGetTotalsCrossesMidnight(t, ss) })
 	t.Run("GetTotalsFiltersUser", func(t *testing.T) { testAppUsageGetTotalsFiltersUser(t, ss) })
+	t.Run("GetTotalsAssumesMaxLength", func(t *testing.T) { testAppUsageGetTotalsAssumesMaxLength(t, ss) })
 }
 
 func appUsageRow(userID, app, title string, start, end int64) *model.AppUsage {
@@ -81,4 +82,15 @@ func testAppUsageGetTotalsFiltersUser(t *testing.T, ss store.Store) {
 		users[r.UserId] = true
 	}
 	require.True(t, users[u1] && users[u2], "empty user id returns every user's totals")
+}
+
+// GetTotals bounds StartAt from below by the longest valid interval so it can use the StartAt index.
+func testAppUsageGetTotalsAssumesMaxLength(t *testing.T, ss store.Store) {
+	u := model.NewId()
+	day := 10 * model.AppUsageMaxLength
+	require.NoError(t, ss.AppUsage().SaveMany([]*model.AppUsage{
+		appUsageRow(u, "chrome", "A", day-model.AppUsageMaxLength, day+60000),
+		appUsageRow(u, "chrome", "B", day-2*model.AppUsageMaxLength, day+60000),
+	}))
+	require.Equal(t, map[string]int64{"chrome/A": 60000}, totalsByKey(t, ss, u, day, day+model.AppUsageMaxLength))
 }
