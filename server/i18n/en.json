@@ -7015,6 +7015,16 @@
     "description": "Internal API error when computing site statistics for the System Console analytics pages fails; admin-facing."
   },
   {
+    "id": "app.app_usage.get.app_error",
+    "translation": "Encountered an error retrieving application usage.",
+    "description": "API error when loading per-application usage totals for the System Console breaks report fails."
+  },
+  {
+    "id": "app.app_usage.save.app_error",
+    "translation": "Encountered an error saving application usage.",
+    "description": "API error when saving the desktop app's recorded foreground-window usage fails."
+  },
+  {
     "id": "app.audit.get.finding.app_error",
     "translation": "We encountered an error finding the audits.",
     "description": "Internal error when fetching audit log records from the database fails; admin-facing."
