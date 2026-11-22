@@ -1164,6 +1164,14 @@ $sidebarOpacityAnimationDuration: 0.15s;
         font-size: 18px;
     }
 
+    // Uploaded icons are pictures, not glyphs: at glyph size (14px) they are unreadable.
+    .SidebarChannel .SidebarLink > img.channel-custom-icon {
+        width: 22px;
+        height: 22px;
+        margin: 0 6px 0 -4px;
+        border-radius: 4px;
+    }
+
     .SidebarChannelLinkLabel_wrapper,
     .SidebarChannelLinkLabel_wrapper > div {
         display: flex;

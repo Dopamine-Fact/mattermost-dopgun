@@ -104,6 +104,7 @@ export type Channel = {
     discoverable?: boolean;
     disable_join_leave_messages?: boolean;
     last_icon_update?: number;
+    name_color?: string;
 
     // Create-only: attribute values to store with the channel. Sent so the server
     // can refuse a channel that would not satisfy its own required attributes.

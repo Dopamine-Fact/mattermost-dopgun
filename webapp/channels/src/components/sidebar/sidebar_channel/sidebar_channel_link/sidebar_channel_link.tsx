@@ -215,6 +215,7 @@ export class SidebarChannelLink extends React.PureComponent<Props, State> {
             <span
                 ref={this.labelRef}
                 className='SidebarChannelLinkLabel'
+                style={channel.name_color ? {color: channel.name_color} : undefined}
             >
                 {wrapEmojis(label)}
             </span>

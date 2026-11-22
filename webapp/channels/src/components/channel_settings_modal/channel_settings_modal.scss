@@ -126,6 +126,12 @@
         .ChannelSettingsModal__attributesSection {
             margin-top: 24px;
         }
+
+        .ChannelSettingsModal__nameColor {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
     }
 
     &__typeSelector {

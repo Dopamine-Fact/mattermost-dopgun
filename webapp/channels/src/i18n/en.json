@@ -21647,6 +21647,18 @@
     "defaultMessage": "Board Settings",
     "description": "Title of the Channel Settings modal. This is the wording used when the channel is a board."
   },
+  "channel_settings.name_color.description": {
+    "defaultMessage": "Color of the channel name in the sidebar. Leave empty to use the theme color.",
+    "description": "Help text under the Channel Name Color setting in Channel Settings > Info; explains the color applies to the channel's name in the left sidebar."
+  },
+  "channel_settings.name_color.reset": {
+    "defaultMessage": "Use theme color",
+    "description": "Button in Channel Settings > Info that clears the custom channel name color so the sidebar uses the theme's text color again."
+  },
+  "channel_settings.name_color.title": {
+    "defaultMessage": "Channel Name Color",
+    "description": "Title of the setting in Channel Settings > Info where a custom color for the channel's name in the sidebar is chosen."
+  },
   "channel_settings.permissions_policy.action.create_bor": {
     "defaultMessage": "Create burn-on-read message",
     "description": "Permission action in the channel Permissions Policy rule editor; allows sending burn-on-read messages."

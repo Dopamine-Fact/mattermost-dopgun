@@ -129,6 +129,7 @@ type Channel struct {
 	Discoverable             bool   `json:"discoverable"`
 	DisableJoinLeaveMessages bool   `json:"disable_join_leave_messages"`
 	LastIconUpdate           int64  `json:"last_icon_update"`
+	NameColor                string `json:"name_color"`
 }
 
 // HasPolicyAction reports whether the channel's policy declares the given
@@ -214,6 +215,7 @@ type ChannelPatch struct {
 	DefaultCategoryName      *string            `json:"default_category_name"`
 	Discoverable             *bool              `json:"discoverable"`
 	DisableJoinLeaveMessages *bool              `json:"disable_join_leave_messages"`
+	NameColor                *string            `json:"name_color"`
 }
 
 func (c *ChannelPatch) Auditable() map[string]any {
@@ -225,6 +227,7 @@ func (c *ChannelPatch) Auditable() map[string]any {
 		"managed_category_name":       c.ManagedCategoryName,
 		"discoverable":                c.Discoverable,
 		"disable_join_leave_messages": c.DisableJoinLeaveMessages,
+		"name_color":                  c.NameColor,
 	}
 }
 
@@ -395,6 +398,10 @@ func (o *Channel) IsValid() *AppError {
 		}
 	}
 
+	if o.NameColor != "" && !channelHexColorRegex.MatchString(o.NameColor) {
+		return NewAppError("Channel.IsValid", "model.channel.is_valid.name_color.app_error", nil, "id="+o.Id, http.StatusBadRequest)
+	}
+
 	if o.Discoverable && o.Type != ChannelTypePrivate {
 		return NewAppError("Channel.IsValid", "model.channel.is_valid.discoverable.app_error", nil, "id="+o.Id, http.StatusBadRequest)
 	}
@@ -543,6 +550,10 @@ func (o *Channel) Patch(patch *ChannelPatch) {
 
 	if patch.DisableJoinLeaveMessages != nil {
 		o.DisableJoinLeaveMessages = *patch.DisableJoinLeaveMessages
+	}
+
+	if patch.NameColor != nil {
+		o.NameColor = *patch.NameColor
 	}
 }
 

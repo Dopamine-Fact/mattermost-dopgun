@@ -3411,6 +3411,10 @@
     "translation": "Kimlik geçersiz."
   },
   {
+    "id": "model.channel.is_valid.name_color.app_error",
+    "translation": "Kanal adı rengi #ff8800 gibi bir hex renk olmalıdır."
+  },
+  {
     "id": "model.channel.is_valid.purpose.app_error",
     "translation": "Amaç geçersiz."
   },

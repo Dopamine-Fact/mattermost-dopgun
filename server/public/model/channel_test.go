@@ -113,6 +113,14 @@ func TestChannelIsValidDiscoverable(t *testing.T) {
 	})
 }
 
+func TestChannelIsValidNameColor(t *testing.T) {
+	c := Channel{Id: NewId(), CreateAt: GetMillis(), UpdateAt: GetMillis(), DisplayName: "x", Name: "valid-name", Type: ChannelTypeOpen}
+	for color, valid := range map[string]bool{"": true, "#ff8800": true, "#F80": true, "red": false, "#ff88001": false, "ff8800": false} {
+		c.NameColor = color
+		require.Equal(t, valid, c.IsValid() == nil, color)
+	}
+}
+
 func TestChannelSupportsGroupSync(t *testing.T) {
 	require.True(t, (&Channel{Type: ChannelTypeOpen}).SupportsGroupSync())
 	require.True(t, (&Channel{Type: ChannelTypePrivate}).SupportsGroupSync())

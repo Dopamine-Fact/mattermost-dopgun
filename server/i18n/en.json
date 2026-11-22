@@ -16962,6 +16962,11 @@
     "description": "API validation error shown when a new channel's URL name looks like a 26-character hexadecimal string (reserved for IDs); asks the user to pick a different name."
   },
   {
+    "id": "model.channel.is_valid.name_color.app_error",
+    "translation": "Channel name color must be a hex color such as #ff8800.",
+    "description": "Channel validation error shown when the color chosen for the channel's name in the sidebar is not a valid hex color."
+  },
+  {
     "id": "model.channel.is_valid.purpose.app_error",
     "translation": "Invalid purpose.",
     "description": "Validation error when a channel's purpose (description) text fails validation, e.g. too long."

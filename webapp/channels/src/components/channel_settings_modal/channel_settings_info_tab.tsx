@@ -35,6 +35,7 @@ import Constants from 'utils/constants';
 import type {GlobalState} from 'types/store';
 
 import ChannelIconSection from './channel_icon_section';
+import ChannelNameColorSection from './channel_name_color_section';
 
 type ChannelSettingsInfoTabProps = {
     channel: Channel;
@@ -163,6 +164,7 @@ function ChannelSettingsInfoTab({
     const [channelHeader, setChannelHeader] = useState(channel?.header ?? '');
     const [channelType, setChannelType] = useState<ChannelType>(channel?.type as ChannelType ?? Constants.OPEN_CHANNEL as ChannelType);
     const [discoverable, setDiscoverable] = useState<boolean>(channel?.discoverable ?? false);
+    const [nameColor, setNameColor] = useState(channel?.name_color ?? '');
 
     // Render condition: feature flag on, the in-progress type selection is
     // private (gating on channelType rather than channel.type so the toggle
@@ -213,10 +215,11 @@ function ChannelSettingsInfoTab({
             hasTextChanged(channelUrl, channel.name) ||
             hasTextChanged(channelPurpose, channel.purpose) ||
             channelType !== channel.type ||
+            nameColor !== (channel.name_color ?? '') ||
             (defaultCategoryName ?? '') !== (serverDefaultCategoryName ?? '') ||
             managedCategoryName !== serverManagedCategoryName ||
             (showDiscoverableToggle && discoverable !== Boolean(channel.discoverable));
-    }, [channel, isDMorGroupChannel, hasAttributeChanges, displayName, channelUrl, channelPurpose, channelHeader, channelType, defaultCategoryName, serverDefaultCategoryName, managedCategoryName, serverManagedCategoryName, discoverable, showDiscoverableToggle]);
+    }, [channel, isDMorGroupChannel, hasAttributeChanges, displayName, channelUrl, channelPurpose, channelHeader, channelType, nameColor, defaultCategoryName, serverDefaultCategoryName, managedCategoryName, serverManagedCategoryName, discoverable, showDiscoverableToggle]);
 
     useEffect(() => {
         setAreThereUnsavedChanges?.(hasUnsavedChanges);
@@ -364,6 +367,9 @@ function ChannelSettingsInfoTab({
         if (hasTextChanged(channelHeader, channel.header)) {
             updated.header = channelHeader.trim();
         }
+        if (!isDMorGroupChannel && nameColor !== (channel.name_color ?? '')) {
+            updated.name_color = nameColor;
+        }
         if ((defaultCategoryName ?? '') !== (serverDefaultCategoryName ?? '')) {
             updated.default_category_name = defaultCategoryName ?? '';
         }
@@ -397,6 +403,7 @@ function ChannelSettingsInfoTab({
             setDisplayName(data?.display_name ?? updated.display_name ?? channel.display_name);
             setChannelURL(data?.name ?? updated.name ?? channel.name);
             setChannelPurpose(data?.purpose ?? updated.purpose ?? channel.purpose);
+            setNameColor(data?.name_color ?? nameColor);
         }
         setChannelHeader(data?.header ?? updated.header ?? channel.header);
         setServerDefaultCategoryName(defaultCategoryName);
@@ -406,7 +413,7 @@ function ChannelSettingsInfoTab({
         }
 
         return true;
-    }, [channel, displayName, channelType, isDMorGroupChannel, channelUrl, channelPurpose, channelHeader, dispatch, formatMessage, handleServerError, defaultCategoryName, serverDefaultCategoryName, managedCategoryName, serverManagedCategoryName, discoverable, showDiscoverableToggle, channelKind]);
+    }, [channel, displayName, channelType, isDMorGroupChannel, channelUrl, channelPurpose, channelHeader, nameColor, dispatch, formatMessage, handleServerError, defaultCategoryName, serverDefaultCategoryName, managedCategoryName, serverManagedCategoryName, discoverable, showDiscoverableToggle, channelKind]);
 
     // Handle save changes panel actions
     const handleSaveChanges = useCallback(async () => {
@@ -450,6 +457,7 @@ function ChannelSettingsInfoTab({
         setDefaultCategoryName(serverDefaultCategoryName);
         setManagedCategoryName(serverManagedCategoryName);
         setDiscoverable(Boolean(channel?.discoverable));
+        setNameColor(channel?.name_color ?? '');
         attributesRef.current?.discard();
         setHasAttributeChanges(false);
 
@@ -641,6 +649,14 @@ function ChannelSettingsInfoTab({
             {!isDMorGroupChannel && (
                 <ChannelIconSection
                     channel={channel}
+                    disabled={!canManageChannelProperties}
+                />
+            )}
+
+            {!isDMorGroupChannel && (
+                <ChannelNameColorSection
+                    value={nameColor}
+                    onChange={setNameColor}
                     disabled={!canManageChannelProperties}
                 />
             )}
