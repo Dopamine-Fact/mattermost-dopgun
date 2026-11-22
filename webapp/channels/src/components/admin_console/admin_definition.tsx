@@ -2416,6 +2416,10 @@ const AdminDefinition: AdminDefinitionType = {
                                     value: 'onyx',
                                     display_name: defineMessage({id: 'admin.customization.defaultTheme.options.onyx', defaultMessage: 'Onyx'}),
                                 },
+                                {
+                                    value: 'amethyst',
+                                    display_name: defineMessage({id: 'admin.customization.defaultTheme.options.amethyst', defaultMessage: 'Amethyst'}),
+                                },
                             ],
                             isHidden: it.any(
                                 it.not(it.licensed),

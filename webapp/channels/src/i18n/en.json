@@ -4123,6 +4123,10 @@
     "defaultMessage": "E.g.: \"git,smtp\"",
     "description": "Placeholder example for the Custom URL Schemes input, showing the comma-separated format."
   },
+  "admin.customization.defaultTheme.options.amethyst": {
+    "defaultMessage": "Amethyst",
+    "description": "Option in the 'Default Theme' dropdown in System Console > Site Configuration > Customization. The Dopaminefact purple theme name — keep it in English."
+  },
   "admin.customization.defaultTheme.options.denim": {
     "defaultMessage": "Denim",
     "description": "Option in the 'Default Theme' dropdown in System Console > Site Configuration > Customization. A Mattermost theme brand name — keep it in English."

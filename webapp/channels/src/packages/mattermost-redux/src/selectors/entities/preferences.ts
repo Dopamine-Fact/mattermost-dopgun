@@ -133,11 +133,11 @@ const getThemePreference = createSelector(
     },
 );
 
-export type ThemeKey = 'dopaminefact' | 'denim' | 'sapphire' | 'quartz' | 'indigo' | 'onyx';
+export type ThemeKey = 'dopaminefact' | 'denim' | 'sapphire' | 'quartz' | 'indigo' | 'onyx' | 'amethyst';
 
 export type LegacyThemeType = 'Mattermost' | 'Organization' | 'Mattermost Dark' | 'Windows Dark';
 
-export type ThemeType = 'Dopaminefact' | 'Denim' | 'Sapphire' | 'Quartz' | 'Indigo' | 'Onyx';
+export type ThemeType = 'Dopaminefact' | 'Denim' | 'Sapphire' | 'Quartz' | 'Indigo' | 'Onyx' | 'Amethyst';
 
 export type Theme = {
     [key: string]: string | undefined;

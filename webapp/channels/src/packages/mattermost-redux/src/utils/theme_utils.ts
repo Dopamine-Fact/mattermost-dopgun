@@ -131,6 +131,7 @@ const themeTypeMap: ThemeTypeMap = {
     Quartz: 'quartz',
     Indigo: 'indigo',
     Onyx: 'onyx',
+    Amethyst: 'amethyst',
 };
 
 // setThemeDefaults will set defaults on the theme for any unset properties.
