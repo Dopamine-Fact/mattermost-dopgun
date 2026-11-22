@@ -39,7 +39,7 @@ const messages = () => within(screen.getByRole('list', {name: 'Messages'})).getA
 
 describe('ConversationViewer', () => {
     beforeEach(() => {
-        jest.spyOn(Client4, 'autocompleteUsers').mockImplementation(async (name) => ({users: [ali, ayse].filter((u) => u.username.startsWith(name))}));
+        jest.spyOn(Client4, 'searchUsers').mockImplementation(async (term: string) => [ali, ayse].filter((u) => u.username.startsWith(term)));
     });
     afterEach(() => jest.restoreAllMocks());
 
@@ -122,6 +122,58 @@ describe('ConversationViewer', () => {
         await act(async () => resolveSlow(postList([post({id: 'p2', message: 'dm msg'})])));
 
         expect(screen.queryByText('dm msg')).not.toBeInTheDocument();
+    });
+
+    test('user search includes deactivated users', async () => {
+        jest.spyOn(Client4, 'getChannelsForUser').mockResolvedValue([]);
+
+        renderWithContext(<ConversationViewer/>, state);
+        await pickUser('ali');
+
+        expect(Client4.searchUsers).toHaveBeenCalledWith('al', {allow_inactive: true});
+    });
+
+    test('shows whose conversations are listed', async () => {
+        jest.spyOn(Client4, 'getChannelsForUser').mockResolvedValue([]);
+
+        renderWithContext(<ConversationViewer/>, state);
+        await pickUser('ali');
+
+        expect(await screen.findByRole('heading', {name: 'ali'})).toBeInTheDocument();
+    });
+
+    test('picking the same user again reloads the conversations', async () => {
+        const spy = jest.spyOn(Client4, 'getChannelsForUser').mockResolvedValue([channel({id: 'c1', type: 'O', display_name: 'General'})]);
+
+        renderWithContext(<ConversationViewer/>, state);
+        await pickUser('ali');
+        await waitFor(() => expect(conversations()).toEqual(['General']));
+        await pickUser('ali');
+
+        await waitFor(() => expect(spy).toHaveBeenCalledTimes(2));
+        await waitFor(() => expect(conversations()).toEqual(['General']));
+    });
+
+    test('a failed load says so instead of showing an empty conversation', async () => {
+        jest.spyOn(Client4, 'getChannelsForUser').mockResolvedValue([channel({id: 'c1', type: 'O', display_name: 'General'})]);
+        jest.spyOn(Client4, 'getPosts').mockRejectedValue(new Error('500'));
+
+        renderWithContext(<ConversationViewer/>, state);
+        await pickUser('ali');
+        fireEvent.click(await screen.findByRole('button', {name: 'General'}));
+
+        expect(await screen.findByText('Could not load. Try again.')).toBeInTheDocument();
+        expect(screen.queryByText('No messages.')).not.toBeInTheDocument();
+    });
+
+    test('a failed conversation list says so instead of "No conversations."', async () => {
+        jest.spyOn(Client4, 'getChannelsForUser').mockRejectedValue(new Error('500'));
+
+        renderWithContext(<ConversationViewer/>, state);
+        await pickUser('ali');
+
+        expect(await screen.findByText('Could not load. Try again.')).toBeInTheDocument();
+        expect(screen.queryByText('No conversations.')).not.toBeInTheDocument();
     });
 
     test('picking another user clears the open conversation', async () => {

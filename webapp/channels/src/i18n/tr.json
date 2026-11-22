@@ -1028,6 +1028,7 @@
   "admin.connectionSecurityTlsDescription": "Dopaminefact ile sunucunuz arasındaki bağlantıyı şifreler.",
   "admin.contentFlagging.title": "İçerik işaretleme",
   "admin.conversation_viewer.empty": "Yazışma yok.",
+  "admin.conversation_viewer.failed": "Yüklenemedi. Tekrar deneyin.",
   "admin.conversation_viewer.files": "{count} dosya",
   "admin.conversation_viewer.load_older": "Daha eski",
   "admin.conversation_viewer.messages": "Mesajlar",

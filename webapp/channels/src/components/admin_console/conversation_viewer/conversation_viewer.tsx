@@ -26,6 +26,7 @@ const msg = defineMessages({
     noMessages: {id: 'admin.conversation_viewer.no_messages', defaultMessage: 'No messages.'},
     loadOlder: {id: 'admin.conversation_viewer.load_older', defaultMessage: 'Load older'},
     files: {id: 'admin.conversation_viewer.files', defaultMessage: '{count} files'},
+    failed: {id: 'admin.conversation_viewer.failed', defaultMessage: 'Could not load. Try again.'},
 });
 
 const PAGE = 60;
@@ -43,6 +44,8 @@ export default function ConversationViewer() {
     const [term, setTerm] = useState('');
     const [results, setResults] = useState<UserProfile[]>([]);
     const [userId, setUserId] = useState('');
+    const [reload, setReload] = useState(0); // bumped on every pick, so picking the same user again refetches
+    const [failed, setFailed] = useState(false);
     const [channels, setChannels] = useState<Channel[]>([]);
     const [channelId, setChannelId] = useState('');
     const [posts, setPosts] = useState<Post[]>([]);
@@ -61,7 +64,7 @@ export default function ConversationViewer() {
             return undefined;
         }
         let cancelled = false;
-        Client4.autocompleteUsers(term, '', '').then((r) => !cancelled && setResults(r.users)).catch(() => {});
+        Client4.searchUsers(term, {allow_inactive: true}).then((r: UserProfile[]) => !cancelled && setResults(r)).catch(() => {});
         return () => {
             cancelled = true;
         };
@@ -77,11 +80,11 @@ export default function ConversationViewer() {
                 setChannels([...list].sort((a, b) => b.last_post_at - a.last_post_at));
                 dispatch(getMissingProfilesByIds(list.filter((c) => c.type === 'D').flatMap((c) => c.name.split('__'))));
             }
-        }).catch(() => {});
+        }).catch(() => !cancelled && setFailed(true));
         return () => {
             cancelled = true;
         };
-    }, [userId, dispatch]);
+    }, [userId, reload, dispatch]);
 
     const showPage = (id: string, list: PostList, older: boolean) => {
         if (id !== openId.current) {
@@ -97,6 +100,8 @@ export default function ConversationViewer() {
         setTerm('');
         openId.current = '';
         setUserId(id);
+        setReload((n) => n + 1);
+        setFailed(false);
         setChannels([]);
         setChannelId('');
         setPosts([]);
@@ -108,11 +113,13 @@ export default function ConversationViewer() {
         setChannelId(id);
         setPosts([]);
         setHasOlder(false);
-        Client4.getPosts(id, 0, PAGE, true, false).then((list) => showPage(id, list, false)).catch(() => {});
+        setFailed(false);
+        Client4.getPosts(id, 0, PAGE, true, false).then((list) => showPage(id, list, false)).catch(() => id === openId.current && setFailed(true));
     };
 
     const loadOlder = () => {
-        Client4.getPostsBefore(channelId, posts[0].id, 0, PAGE, true, false).then((list) => showPage(channelId, list, true)).catch(() => {});
+        const id = channelId;
+        Client4.getPostsBefore(id, posts[0].id, 0, PAGE, true, false).then((list) => showPage(id, list, true)).catch(() => id === openId.current && setFailed(true));
     };
 
     return (
@@ -144,6 +151,8 @@ export default function ConversationViewer() {
                             ))}
                         </ul>
                     )}
+                    {failed && <div className='error-text'><FormattedMessage {...msg.failed}/></div>}
+                    {userId && <h3>{userName(userId)}</h3>}
                     {userId && (
                         <div style={{display: 'flex', gap: 24, alignItems: 'flex-start'}}>
                             <ul
@@ -160,7 +169,7 @@ export default function ConversationViewer() {
                                         </button>
                                     </li>
                                 ))}
-                                {channels.length === 0 && <li><FormattedMessage {...msg.empty}/></li>}
+                                {channels.length === 0 && !failed && <li><FormattedMessage {...msg.empty}/></li>}
                             </ul>
                             {channelId && (
                                 <div style={{flex: 1}}>
@@ -192,7 +201,7 @@ export default function ConversationViewer() {
                                             </li>
                                         ))}
                                     </ul>
-                                    {posts.length === 0 && <FormattedMessage {...msg.noMessages}/>}
+                                    {posts.length === 0 && !failed && <FormattedMessage {...msg.noMessages}/>}
                                 </div>
                             )}
                         </div>

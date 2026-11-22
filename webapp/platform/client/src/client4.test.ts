@@ -30,6 +30,17 @@ describe('Client4', () => {
         });
     });
 
+    test('getChannelsForUser includes archived channels', async () => {
+        const client = new Client4();
+        client.setUrl('http://mattermost.example.com');
+        const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(new Response('[]', {status: 200}));
+
+        await client.getChannelsForUser('u1');
+
+        expect(fetchSpy).toHaveBeenCalledWith('http://mattermost.example.com/api/v4/users/u1/channels?include_deleted=true', expect.anything());
+        fetchSpy.mockRestore();
+    });
+
     describe('setTaskSectionVideo', () => {
         // A stand-in XMLHttpRequest: the test plays the server by firing upload.onprogress and onload itself.
         class FakeXHR {

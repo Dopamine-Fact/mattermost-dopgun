@@ -4019,6 +4019,10 @@
     "defaultMessage": "No conversations.",
     "description": "Shown in the System Console Conversations page when the picked user has no DMs, group messages or channels."
   },
+  "admin.conversation_viewer.failed": {
+    "defaultMessage": "Could not load. Try again.",
+    "description": "Error shown in the System Console Conversations page when a user's conversation list or a conversation's messages could not be loaded."
+  },
   "admin.conversation_viewer.files": {
     "defaultMessage": "{count} files",
     "description": "Under a message in the System Console Conversations page; {count} is the number of files attached to the message."
