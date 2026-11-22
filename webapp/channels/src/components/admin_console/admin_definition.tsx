@@ -47,6 +47,7 @@ import CompanyInfo, {searchableStrings as billingCompanyInfoSearchableStrings} f
 import BoardAttributes, {searchableStrings as boardAttributesSearchableStrings} from './board_attributes';
 import BrandImageSetting from './brand_image_setting/brand_image_setting';
 import BreaksReport from './breaks_report/breaks_report';
+import ConversationViewer from './conversation_viewer/conversation_viewer';
 import ClassificationMarkings, {searchableStrings as classificationMarkingsSearchableStrings} from './classification_markings';
 import ClientSideUserIdsSetting from './client_side_userids_setting';
 import ClusterSettings, {searchableStrings as clusterSearchableStrings} from './cluster_settings';
@@ -525,6 +526,15 @@ const AdminDefinition: AdminDefinitionType = {
                 schema: {
                     id: 'BreaksReport',
                     component: BreaksReport,
+                },
+            },
+            conversation_viewer: {
+                url: 'user_management/conversations',
+                title: defineMessage({id: 'admin.sidebar.conversations', defaultMessage: 'Conversations'}),
+                isHidden: it.not(it.isSystemAdmin),
+                schema: {
+                    id: 'ConversationViewer',
+                    component: ConversationViewer,
                 },
             },
         },

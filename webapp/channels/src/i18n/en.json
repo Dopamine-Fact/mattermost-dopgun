@@ -4015,6 +4015,38 @@
     "defaultMessage": "Content Flagging",
     "description": "Legacy name of the Data Spillage Handling admin page, kept as a searchable string so old searches for 'Content Flagging' still find the page."
   },
+  "admin.conversation_viewer.empty": {
+    "defaultMessage": "No conversations.",
+    "description": "Shown in the System Console Conversations page when the picked user has no DMs, group messages or channels."
+  },
+  "admin.conversation_viewer.files": {
+    "defaultMessage": "{count} files",
+    "description": "Under a message in the System Console Conversations page; {count} is the number of files attached to the message."
+  },
+  "admin.conversation_viewer.load_older": {
+    "defaultMessage": "Load older",
+    "description": "Button in the System Console Conversations page that loads the previous page of older messages of the open conversation."
+  },
+  "admin.conversation_viewer.messages": {
+    "defaultMessage": "Messages",
+    "description": "Accessible label of the message list of the open conversation in the System Console Conversations page."
+  },
+  "admin.conversation_viewer.no_messages": {
+    "defaultMessage": "No messages.",
+    "description": "Shown in the System Console Conversations page when the open conversation has no messages."
+  },
+  "admin.conversation_viewer.title": {
+    "defaultMessage": "Conversations",
+    "description": "Page title of the System Console page where a System Admin reads a user's direct messages, group messages and channels; also the label of that user's conversation list."
+  },
+  "admin.conversation_viewer.user": {
+    "defaultMessage": "User",
+    "description": "Label of the search box in the System Console Conversations page used to find the user whose conversations to read."
+  },
+  "admin.conversation_viewer.users": {
+    "defaultMessage": "Users",
+    "description": "Accessible label of the list of users matching the search in the System Console Conversations page."
+  },
   "admin.custom_terms_of_service_feature_discovery.copy": {
     "defaultMessage": "Create your own terms of service that new users must accept before accessing your Dopaminefact instance on desktop, web, or mobile.",
     "description": "Body copy on the feature discovery (upsell) page for custom terms of service."
@@ -15302,6 +15334,10 @@
   "admin.sidebar.complianceMonitoring": {
     "defaultMessage": "Compliance Monitoring",
     "description": "Navigation item in the System Console left sidebar linking to the Compliance Monitoring page."
+  },
+  "admin.sidebar.conversations": {
+    "defaultMessage": "Conversations",
+    "description": "System Console sidebar item under User Management that opens the page for reading a user's conversations."
   },
   "admin.sidebar.cors": {
     "defaultMessage": "CORS",
