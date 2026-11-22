@@ -5287,6 +5287,10 @@ export default class Client4 {
     };
 
     /** system admins only: time per user, app and window title inside [from, to) in ms; one user or everyone */
+    getChannelsForUser = (userId: string) => {
+        return this.doFetch<Channel[]>(`${this.getUserRoute(userId)}/channels`, {method: 'get'});
+    };
+
     getAppUsage = (from: number, to: number, userId?: string) => {
         return this.doFetch<AppUsageTotal[]>(`${this.getBaseRoute()}/app_usage${buildQueryString({from, to, user_id: userId})}`, {method: 'get'});
     };
