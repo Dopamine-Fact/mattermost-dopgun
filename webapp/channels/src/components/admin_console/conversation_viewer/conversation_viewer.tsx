@@ -179,8 +179,7 @@ export default function ConversationViewer() {
                                                 style={{opacity: p.type.startsWith('system_') ? 0.6 : 1, marginBottom: 8}}
                                             >
                                                 <strong>{userName(p.user_id)}</strong>
-                                                {' '}
-                                                <small>{new Date(p.create_at).toLocaleString()}</small>
+                                                <small style={{marginLeft: 8}}>{new Date(p.create_at).toLocaleString()}</small>
                                                 <div style={{whiteSpace: 'pre-wrap'}}>{p.message}</div>
                                                 {Boolean(p.file_ids?.length) && (
                                                     <small>

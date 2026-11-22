@@ -89,7 +89,7 @@ describe('ConversationViewer', () => {
 
     test('load older prepends older posts and hides when fewer than 60 come back', async () => {
         jest.spyOn(Client4, 'getChannelsForUser').mockResolvedValue([channel({id: 'c2', type: 'D', name: 'u1__u2'})]);
-        const page = Array.from({length: 60}, (_, i) => post({id: `p${60 - i}`, message: `m${60 - i}`, create_at: 100 + 60 - i}));
+        const page = Array.from({length: 60}, (_, i) => post({id: `p${60 - i}`, message: `m${60 - i}`, create_at: 160 - i}));
         jest.spyOn(Client4, 'getPosts').mockResolvedValue(postList(page));
         const older = jest.spyOn(Client4, 'getPostsBefore').mockResolvedValue(postList([post({id: 'p0', message: 'oldest', create_at: 1})]));
 
