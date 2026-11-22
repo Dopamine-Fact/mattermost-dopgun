@@ -32,18 +32,12 @@ const statusMessages = defineMessages({
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-// "mm:ss"; minutes keep counting past an hour.
-function formatMinSec(ms: number) {
-    const s = Math.floor(ms / 1000);
-    return `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
-}
-
 function formatHourMin(ms: number) {
     const m = Math.floor(ms / 60000);
     return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
 }
 
-/** The current user's avatar, status, and break/overtime counters at the bottom of the left sidebar; opens the status menu. */
+/** The current user's avatar, status, and overtime counter at the bottom of the left sidebar; opens the status menu. */
 export default function StatusBox() {
     const user = useSelector(getCurrentUser);
     const status = useSelector((state: GlobalState) => getStatusForUserId(state, user?.id)) || UserStatuses.OFFLINE;
@@ -78,15 +72,11 @@ export default function StatusBox() {
     }, [status, load]);
 
     const today = new Date(now);
-    const workStart = atTime(today, workdayStart);
     const workEnd = atTime(today, workdayEnd);
-    const inHours = now >= workStart && now < workEnd;
     const afterHours = now >= workEnd;
     const summary = useMemo(() => summarizeDay(periods, new Date(now), workdayStart, workdayEnd, now), [periods, now, workdayStart, workdayEnd]);
-    const openAway = periods.find((p) => p.kind === 'away' && !p.end_at);
     const openActive = periods.find((p) => p.kind === 'active' && !p.end_at);
-    const onBreak = inHours && status === UserStatuses.AWAY && openAway !== undefined;
-    const running = onBreak || (afterHours && openActive !== undefined);
+    const running = afterHours && openActive !== undefined;
 
     useEffect(() => {
         if (!running) {
@@ -108,24 +98,6 @@ export default function StatusBox() {
                 <span className='StatusBox__text'>
                     <span className='StatusBox__name'>{displayUsername(user, nameDisplay)}</span>
                     <span className='StatusBox__status'><FormattedMessage {...statusMessage}/></span>
-                    {onBreak && openAway && (
-                        <span className='StatusBox__counter StatusBox__counter--break'>
-                            <FormattedMessage
-                                id='status_box.on_break'
-                                defaultMessage='On break {time}'
-                                values={{time: formatMinSec(now - Math.max(openAway.start_at, workStart))}}
-                            />
-                        </span>
-                    )}
-                    {inHours && (
-                        <span className='StatusBox__counter'>
-                            <FormattedMessage
-                                id='status_box.breaks_today'
-                                defaultMessage='Breaks today: {minutes} min'
-                                values={{minutes: Math.floor(summary.breakMs / 60000)}}
-                            />
-                        </span>
-                    )}
                     {afterHours && summary.overtimeMs > 0 && (
                         <span className='StatusBox__counter StatusBox__counter--overtime'>
                             <FormattedMessage

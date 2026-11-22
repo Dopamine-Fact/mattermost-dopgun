@@ -7817,8 +7817,6 @@
   "single_image_view.copy_link_tooltip": "Bağlantıyı kopyala",
   "single_image_view.download_tooltip": "İndir",
   "slash_commands.header": "Bölü komutları",
-  "status_box.breaks_today": "Bugün mola: {minutes} dk",
-  "status_box.on_break": "Molada {time}",
   "status_box.overtime": "Fazla mesai {time}",
   "status_box.status.away": "Uzakta",
   "status_box.status.dnd": "Rahatsız etmeyin",

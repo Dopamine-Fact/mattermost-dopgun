@@ -33147,14 +33147,6 @@
     "defaultMessage": "Slash Commands",
     "description": "Breadcrumb link on the slash command setup confirmation page; navigates back to the Slash Commands list."
   },
-  "status_box.breaks_today": {
-    "defaultMessage": "Breaks today: {minutes} min",
-    "description": "Line in the status box at the bottom of the left sidebar; {minutes} is today's total break time in whole minutes."
-  },
-  "status_box.on_break": {
-    "defaultMessage": "On break {time}",
-    "description": "Line in the status box at the bottom of the left sidebar while the user is Away during working hours; {time} is the running break as mm:ss."
-  },
   "status_box.overtime": {
     "defaultMessage": "Overtime {time}",
     "description": "Line in the status box at the bottom of the left sidebar after working hours; {time} is today's overtime as hh:mm."

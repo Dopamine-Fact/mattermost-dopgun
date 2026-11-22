@@ -52,11 +52,6 @@
 .StatusBox__counter {
     font-variant-numeric: tabular-nums;
 
-    &--break {
-        color: var(--away-indicator);
-        font-weight: 600;
-    }
-
     &--overtime {
         color: var(--online-indicator);
         font-weight: 600;

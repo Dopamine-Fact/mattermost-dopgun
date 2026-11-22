@@ -7,7 +7,7 @@ import type {StatusPeriod} from '@mattermost/types/status_periods';
 
 import {Client4} from 'mattermost-redux/client';
 
-import {renderWithContext, screen} from 'tests/react_testing_utils';
+import {act, renderWithContext, screen, waitFor} from 'tests/react_testing_utils';
 import {TestHelper} from 'utils/test_helper';
 
 import StatusBox from './status_box';
@@ -39,12 +39,14 @@ describe('StatusBox', () => {
         expect(screen.getByText('Online')).toBeInTheDocument();
     });
 
-    test('shows a running break and today\'s total while away inside working hours', async () => {
+    test('shows no break counter while away inside working hours', async () => {
         jest.spyOn(Date, 'now').mockReturnValue(at(12, 20));
         mockPeriods([{kind: 'away', start_at: at(12)}]);
         renderWithContext(<StatusBox/>, state('away'));
-        expect(await screen.findByText('On break 20:00')).toBeInTheDocument();
-        expect(screen.getByText('Breaks today: 20 min')).toBeInTheDocument();
+        await waitFor(() => expect(Client4.getStatusPeriods).toHaveBeenCalled());
+        await act(() => Promise.resolve());
+        expect(screen.queryByText(/On break/)).toBeNull();
+        expect(screen.queryByText(/Breaks today/)).toBeNull();
     });
 
     test('shows overtime while active after the workday end', async () => {
