@@ -114,6 +114,7 @@ type SqlStoreStores struct {
 	customRole                 store.CustomRoleStore
 	department                 store.DepartmentStore
 	statusPeriod               store.StatusPeriodStore
+	appUsage                   store.AppUsageStore
 	view                       store.ViewStore
 	propertyGroup              store.PropertyGroupStore
 	propertyField              store.PropertyFieldStore
@@ -317,6 +318,7 @@ func New(settings model.SqlSettings, logger mlog.LoggerIFace, metrics einterface
 	store.stores.customRole = newSqlCustomRoleStore(store)
 	store.stores.department = newSqlDepartmentStore(store)
 	store.stores.statusPeriod = newSqlStatusPeriodStore(store)
+	store.stores.appUsage = newSqlAppUsageStore(store)
 	store.stores.view = newSqlViewStore(store)
 	store.stores.propertyGroup = newPropertyGroupStore(store)
 	store.stores.propertyField = newPropertyFieldStore(store)
@@ -1201,6 +1203,10 @@ func (ss *SqlStore) Department() store.DepartmentStore {
 
 func (ss *SqlStore) StatusPeriod() store.StatusPeriodStore {
 	return ss.stores.statusPeriod
+}
+
+func (ss *SqlStore) AppUsage() store.AppUsageStore {
+	return ss.stores.appUsage
 }
 
 func (ss *SqlStore) DriveItem() store.DriveItemStore {

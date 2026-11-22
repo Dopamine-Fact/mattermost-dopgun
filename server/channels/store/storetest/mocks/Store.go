@@ -40,6 +40,26 @@ func (_m *Store) AccessControlPolicy() store.AccessControlPolicyStore {
 	return r0
 }
 
+// AppUsage provides a mock function with no fields
+func (_m *Store) AppUsage() store.AppUsageStore {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for AppUsage")
+	}
+
+	var r0 store.AppUsageStore
+	if rf, ok := ret.Get(0).(func() store.AppUsageStore); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.AppUsageStore)
+		}
+	}
+
+	return r0
+}
+
 // Attributes provides a mock function with no fields
 func (_m *Store) Attributes() store.AttributesStore {
 	ret := _m.Called()

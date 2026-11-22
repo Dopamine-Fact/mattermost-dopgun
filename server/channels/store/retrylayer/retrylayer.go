@@ -20,6 +20,7 @@ import (
 type RetryLayer struct {
 	store.Store
 	AccessControlPolicyStore        store.AccessControlPolicyStore
+	AppUsageStore                   store.AppUsageStore
 	AttributesStore                 store.AttributesStore
 	AuditStore                      store.AuditStore
 	AutoTranslationStore            store.AutoTranslationStore
@@ -93,6 +94,10 @@ type RetryLayer struct {
 
 func (s *RetryLayer) AccessControlPolicy() store.AccessControlPolicyStore {
 	return s.AccessControlPolicyStore
+}
+
+func (s *RetryLayer) AppUsage() store.AppUsageStore {
+	return s.AppUsageStore
 }
 
 func (s *RetryLayer) Attributes() store.AttributesStore {
@@ -373,6 +378,11 @@ func (s *RetryLayer) Webhook() store.WebhookStore {
 
 type RetryLayerAccessControlPolicyStore struct {
 	store.AccessControlPolicyStore
+	Root *RetryLayer
+}
+
+type RetryLayerAppUsageStore struct {
+	store.AppUsageStore
 	Root *RetryLayer
 }
 
@@ -927,6 +937,48 @@ func (s *RetryLayerAccessControlPolicyStore) SetMembershipAutoAdd(rctx request.C
 		if tries >= 3 {
 			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
 			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerAppUsageStore) GetTotals(userID string, from int64, to int64) ([]*model.AppUsageTotal, error) {
+
+	tries := 0
+	for {
+		result, err := s.AppUsageStore.GetTotals(userID, from, to)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerAppUsageStore) SaveMany(rows []*model.AppUsage) error {
+
+	tries := 0
+	for {
+		err := s.AppUsageStore.SaveMany(rows)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
 		}
 		timepkg.Sleep(100 * timepkg.Millisecond)
 	}
@@ -22706,6 +22758,7 @@ func New(childStore store.Store) *RetryLayer {
 	}
 
 	newStore.AccessControlPolicyStore = &RetryLayerAccessControlPolicyStore{AccessControlPolicyStore: childStore.AccessControlPolicy(), Root: &newStore}
+	newStore.AppUsageStore = &RetryLayerAppUsageStore{AppUsageStore: childStore.AppUsage(), Root: &newStore}
 	newStore.AttributesStore = &RetryLayerAttributesStore{AttributesStore: childStore.Attributes(), Root: &newStore}
 	newStore.AuditStore = &RetryLayerAuditStore{AuditStore: childStore.Audit(), Root: &newStore}
 	newStore.AutoTranslationStore = &RetryLayerAutoTranslationStore{AutoTranslationStore: childStore.AutoTranslation(), Root: &newStore}

@@ -97,6 +97,7 @@ type Store interface {
 	CustomRole() CustomRoleStore
 	Department() DepartmentStore
 	StatusPeriod() StatusPeriodStore
+	AppUsage() AppUsageStore
 	DriveItem() DriveItemStore
 	View() ViewStore
 	PropertyGroup() PropertyGroupStore
@@ -1310,6 +1311,14 @@ type StatusPeriodStore interface {
 	EndOpenActive(now int64) error
 	// GetRange returns rows overlapping [from, to), all users when userID is "", ordered by UserId then StartAt.
 	GetRange(userID string, from, to int64) ([]*model.StatusPeriod, error)
+}
+
+// AppUsageStore keeps the foreground-window intervals the desktop app records; (UserId, StartAt) is unique.
+type AppUsageStore interface {
+	// SaveMany inserts the rows, silently skipping any whose (UserId, StartAt) is already stored.
+	SaveMany(rows []*model.AppUsage) error
+	// GetTotals sums the time per user, app and title inside [from, to), all users when userID is "".
+	GetTotals(userID string, from, to int64) ([]*model.AppUsageTotal, error)
 }
 
 type DepartmentStore interface {

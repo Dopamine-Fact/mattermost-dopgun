@@ -19,6 +19,7 @@ type TimerLayer struct {
 	store.Store
 	Metrics                         einterfaces.MetricsInterface
 	AccessControlPolicyStore        store.AccessControlPolicyStore
+	AppUsageStore                   store.AppUsageStore
 	AttributesStore                 store.AttributesStore
 	AuditStore                      store.AuditStore
 	AutoTranslationStore            store.AutoTranslationStore
@@ -92,6 +93,10 @@ type TimerLayer struct {
 
 func (s *TimerLayer) AccessControlPolicy() store.AccessControlPolicyStore {
 	return s.AccessControlPolicyStore
+}
+
+func (s *TimerLayer) AppUsage() store.AppUsageStore {
+	return s.AppUsageStore
 }
 
 func (s *TimerLayer) Attributes() store.AttributesStore {
@@ -372,6 +377,11 @@ func (s *TimerLayer) Webhook() store.WebhookStore {
 
 type TimerLayerAccessControlPolicyStore struct {
 	store.AccessControlPolicyStore
+	Root *TimerLayer
+}
+
+type TimerLayerAppUsageStore struct {
+	store.AppUsageStore
 	Root *TimerLayer
 }
 
@@ -892,6 +902,38 @@ func (s *TimerLayerAccessControlPolicyStore) SetMembershipAutoAdd(rctx request.C
 		s.Root.Metrics.ObserveStoreMethodDuration("AccessControlPolicyStore.SetMembershipAutoAdd", success, elapsed)
 	}
 	return result, err
+}
+
+func (s *TimerLayerAppUsageStore) GetTotals(userID string, from int64, to int64) ([]*model.AppUsageTotal, error) {
+	start := time.Now()
+
+	result, err := s.AppUsageStore.GetTotals(userID, from, to)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("AppUsageStore.GetTotals", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerAppUsageStore) SaveMany(rows []*model.AppUsage) error {
+	start := time.Now()
+
+	err := s.AppUsageStore.SaveMany(rows)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("AppUsageStore.SaveMany", success, elapsed)
+	}
+	return err
 }
 
 func (s *TimerLayerAttributesStore) ClearUserAttributesCache() {
@@ -17938,6 +17980,7 @@ func New(childStore store.Store, metrics einterfaces.MetricsInterface) *TimerLay
 	}
 
 	newStore.AccessControlPolicyStore = &TimerLayerAccessControlPolicyStore{AccessControlPolicyStore: childStore.AccessControlPolicy(), Root: &newStore}
+	newStore.AppUsageStore = &TimerLayerAppUsageStore{AppUsageStore: childStore.AppUsage(), Root: &newStore}
 	newStore.AttributesStore = &TimerLayerAttributesStore{AttributesStore: childStore.Attributes(), Root: &newStore}
 	newStore.AuditStore = &TimerLayerAuditStore{AuditStore: childStore.Audit(), Root: &newStore}
 	newStore.AutoTranslationStore = &TimerLayerAutoTranslationStore{AutoTranslationStore: childStore.AutoTranslation(), Root: &newStore}

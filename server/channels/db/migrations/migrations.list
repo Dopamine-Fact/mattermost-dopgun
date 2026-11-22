@@ -521,3 +521,5 @@ channels/db/migrations/postgres/000262_status_periods.down.sql
 channels/db/migrations/postgres/000262_status_periods.up.sql
 channels/db/migrations/postgres/000263_status_periods_open_unique.down.sql
 channels/db/migrations/postgres/000263_status_periods_open_unique.up.sql
+channels/db/migrations/postgres/000264_app_usage.down.sql
+channels/db/migrations/postgres/000264_app_usage.up.sql
