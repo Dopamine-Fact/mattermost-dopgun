@@ -5,6 +5,7 @@ import semver from 'semver';
 
 import type {DesktopAPI, PopoutViewProps, Theme, SessionAttributeField} from '@mattermost/desktop-api';
 import {isDesktopApp} from '@mattermost/shared/utils/user_agent';
+import type {AppUsageInterval} from '@mattermost/types/app_usage';
 
 declare global {
     interface Window {
@@ -153,6 +154,13 @@ export class DesktopAppAPI {
 
     getDarkMode = () => {
         return window.desktopAPI?.getDarkMode?.() ?? Promise.resolve(false);
+    };
+
+    /** drains the foreground-window intervals the desktop app recorded for this server; [] outside a desktop app that records them */
+    getAppUsage = (): Promise<AppUsageInterval[]> => {
+        // @mattermost/desktop-api does not declare getAppUsage yet.
+        const api = window.desktopAPI as {getAppUsage?: () => Promise<AppUsageInterval[]>} | undefined;
+        return api?.getAppUsage?.() ?? Promise.resolve([]);
     };
 
     /**

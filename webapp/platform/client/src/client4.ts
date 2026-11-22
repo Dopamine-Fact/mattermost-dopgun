@@ -6,6 +6,7 @@
 import type {AccessControlPolicy, CELExpressionError, AccessControlTestResult, AccessControlPoliciesResult, AccessControlPolicyChannelsResult, AccessControlVisualAST, AccessControlAttributes, AccessControlPolicyActiveUpdate, PolicySimulationResponse, PolicySimulationByUsersParams} from '@mattermost/types/access_control';
 import type {ClusterInfo, AnalyticsRow, SchemaMigration, LogFilterQuery, LogsByNode} from '@mattermost/types/admin';
 import type {Agent, LLMService} from '@mattermost/types/agents';
+import type {AppUsageInterval, AppUsageTotal} from '@mattermost/types/app_usage';
 import type {AppBinding, AppCallRequest, AppCallResponse} from '@mattermost/types/apps';
 import type {Audit} from '@mattermost/types/audits';
 import type {UserAutocomplete, AutocompleteSuggestion} from '@mattermost/types/autocomplete';
@@ -5278,6 +5279,16 @@ export default class Client4 {
     /** periods overlapping [from, to) in ms; own rows unless a system admin passes a userId, or none for everyone */
     getStatusPeriods = (from: number, to: number, userId?: string) => {
         return this.doFetch<StatusPeriod[]>(`${this.getBaseRoute()}/status_periods${buildQueryString({from, to, user_id: userId})}`, {method: 'get'});
+    };
+
+    /** stores the desktop app's foreground-window intervals for the current user, at most 200 per call */
+    postAppUsage = (intervals: AppUsageInterval[]) => {
+        return this.doFetch<StatusOK>(`${this.getBaseRoute()}/app_usage`, {method: 'post', body: JSON.stringify(intervals)});
+    };
+
+    /** system admins only: time per user, app and window title inside [from, to) in ms; one user or everyone */
+    getAppUsage = (from: number, to: number, userId?: string) => {
+        return this.doFetch<AppUsageTotal[]>(`${this.getBaseRoute()}/app_usage${buildQueryString({from, to, user_id: userId})}`, {method: 'get'});
     };
 
     // Department and rank methods

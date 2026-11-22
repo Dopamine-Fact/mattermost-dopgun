@@ -15,6 +15,7 @@ import LoadingScreen from 'components/loading_screen';
 
 import WebSocketClient from 'client/web_websocket_client';
 import {ensureAuthenticatedPluginsLoaded} from 'plugins';
+import {startAppUsageRelay} from 'utils/app_usage_relay';
 import Constants from 'utils/constants';
 import DesktopApp from 'utils/desktop_api';
 import {isKeyPressed} from 'utils/keyboard';
@@ -91,9 +92,11 @@ export default class LoggedIn extends React.PureComponent<Props> {
         // Listen for user activity and notifications from the Desktop App (if applicable)
         const offUserActivity = DesktopApp.onUserActivityUpdate(this.updateActiveStatus);
         const offNotificationClicked = DesktopApp.onNotificationClicked(this.clickNotification);
+        const stopAppUsageRelay = startAppUsageRelay();
         this.cleanupDesktopListeners = () => {
             offUserActivity();
             offNotificationClicked();
+            stopAppUsageRelay();
         };
 
         // Device tracking setup
