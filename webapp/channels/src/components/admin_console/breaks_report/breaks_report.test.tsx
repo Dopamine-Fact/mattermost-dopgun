@@ -3,6 +3,7 @@
 
 import React from 'react';
 
+import type {AppUsageTotal} from '@mattermost/types/app_usage';
 import type {StatusPeriod} from '@mattermost/types/status_periods';
 
 import {Client4} from 'mattermost-redux/client';
@@ -28,8 +29,10 @@ const state = {
 };
 
 const period = (p: Partial<StatusPeriod>): StatusPeriod => ({id: Math.random().toString(), user_id: 'u1', kind: 'active', start_at: 0, end_at: 0, ...p});
+const usage = (userId: string, app: string, title: string, ms: number): AppUsageTotal => ({user_id: userId, app, title, ms});
 
 describe('BreaksReport', () => {
+    beforeEach(() => jest.spyOn(Client4, 'getAppUsage').mockResolvedValue([]));
     afterEach(() => jest.restoreAllMocks());
 
     test('lists each user\'s day sorted by break total, longest first', async () => {
@@ -74,5 +77,47 @@ describe('BreaksReport', () => {
         fireEvent.change(screen.getByLabelText('Date'), {target: {value: '2026-11-18'}});
 
         await waitFor(() => expect(spy).toHaveBeenLastCalledWith(at(18, 0), at(19, 0)));
+    });
+
+    test('lists app usage per user with apps and window titles, longest first', async () => {
+        jest.spyOn(Date, 'now').mockReturnValue(at(20, 20));
+        jest.spyOn(Client4, 'getStatusPeriods').mockResolvedValue([]);
+        jest.spyOn(Client4, 'getAppUsage').mockResolvedValue([
+            usage('u1', 'chrome', 'Docs', 30 * 60000),
+            usage('u1', 'chrome', 'Mail', 15 * 60000),
+            usage('u1', 'Photoshop', 'ep01.psd', 2 * 3600000),
+            usage('u2', 'Slack', 'x', 60000),
+        ]);
+
+        renderWithContext(<BreaksReport/>, state);
+
+        expect(await screen.findByText('App usage')).toBeInTheDocument();
+        const text = (await screen.findByText('ali — 02:45')).closest('details')!.textContent!;
+        expect(text.indexOf('Photoshop 02:00')).toBeGreaterThan(-1);
+        expect(text.indexOf('Photoshop 02:00')).toBeLessThan(text.indexOf('chrome 00:45'));
+        expect(text.indexOf('chrome 00:45')).toBeLessThan(text.indexOf('Docs 00:30'));
+        expect(text.indexOf('Docs 00:30')).toBeLessThan(text.indexOf('Mail 00:15'));
+        expect(screen.getByText('ayse — 00:01')).toBeInTheDocument();
+    });
+
+    test('asks app usage for the selected local day', async () => {
+        jest.spyOn(Date, 'now').mockReturnValue(at(20, 20));
+        jest.spyOn(Client4, 'getStatusPeriods').mockResolvedValue([]);
+        const spy = jest.spyOn(Client4, 'getAppUsage').mockResolvedValue([]);
+
+        renderWithContext(<BreaksReport/>, state);
+        expect(spy).toHaveBeenCalledWith(new Date(2026, 10, 20).getTime(), new Date(2026, 10, 21).getTime());
+        fireEvent.change(screen.getByLabelText('Date'), {target: {value: '2026-11-18'}});
+
+        await waitFor(() => expect(spy).toHaveBeenLastCalledWith(at(18, 0), at(19, 0)));
+    });
+
+    test('shows an empty note when no app usage was recorded', async () => {
+        jest.spyOn(Date, 'now').mockReturnValue(at(20, 20));
+        jest.spyOn(Client4, 'getStatusPeriods').mockResolvedValue([]);
+
+        renderWithContext(<BreaksReport/>, state);
+
+        expect(await screen.findByText('No app usage recorded for this day.')).toBeInTheDocument();
     });
 });

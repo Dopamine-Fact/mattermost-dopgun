@@ -2743,6 +2743,14 @@
     "defaultMessage": "Option name",
     "description": "Placeholder of the text input used to rename an option value inside the chip's edit menu."
   },
+  "admin.breaks_report.app_usage": {
+    "defaultMessage": "App usage",
+    "description": "Heading of the per-user application usage section in the System Console breaks report."
+  },
+  "admin.breaks_report.app_usage_empty": {
+    "defaultMessage": "No app usage recorded for this day.",
+    "description": "Shown under the app usage heading in the breaks report when no desktop app usage was recorded for the selected day."
+  },
   "admin.breaks_report.break_count": {
     "defaultMessage": "Break count",
     "description": "Column header in the System Console breaks report for how many breaks the user took that day."

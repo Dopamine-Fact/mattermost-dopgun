@@ -718,6 +718,8 @@
   "admin.board_attributes.values.protected_tooltip": "Sistem özniteliği seçenekleri değiştirilemez",
   "admin.board_attributes.values.rename_duplicate": "Aynı adlı bir değer zaten var.",
   "admin.board_attributes.values.rename_placeholder": "Seçenek adı",
+  "admin.breaks_report.app_usage": "Uygulama kullanımı",
+  "admin.breaks_report.app_usage_empty": "Bu gün için uygulama kullanımı kaydedilmedi.",
   "admin.breaks_report.break_count": "Mola sayısı",
   "admin.breaks_report.breaks": "Mola",
   "admin.breaks_report.date": "Tarih",
