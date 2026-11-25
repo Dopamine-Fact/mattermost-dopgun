@@ -6686,6 +6686,48 @@ func (s *RetryLayerDriveItemStore) GetMirrors(channelID string, sourceIDs []stri
 
 }
 
+func (s *RetryLayerDriveItemStore) GetSharedWithTeam(teamID string) ([]*model.DriveShare, error) {
+
+	tries := 0
+	for {
+		result, err := s.DriveItemStore.GetSharedWithTeam(teamID)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDriveItemStore) GetShares(itemIDs []string) ([]*model.DriveShare, error) {
+
+	tries := 0
+	for {
+		result, err := s.DriveItemStore.GetShares(itemIDs)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
 func (s *RetryLayerDriveItemStore) GetTrash(channelID string) ([]*model.DriveItem, error) {
 
 	tries := 0
@@ -6785,6 +6827,27 @@ func (s *RetryLayerDriveItemStore) Save(item *model.DriveItem) (*model.DriveItem
 		if tries >= 3 {
 			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
 			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerDriveItemStore) SetShares(itemID string, teamIDs []string, creatorID string) error {
+
+	tries := 0
+	for {
+		err := s.DriveItemStore.SetShares(itemID, teamIDs, creatorID)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
 		}
 		timepkg.Sleep(100 * timepkg.Millisecond)
 	}
@@ -17554,6 +17617,27 @@ func (s *RetryLayerTaskStore) GetForTeam(teamId string) ([]*model.Task, error) {
 	tries := 0
 	for {
 		result, err := s.TaskStore.GetForTeam(teamId)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTaskStore) GetLibraryTaskFiles(teamId string, folderId string, limit int) ([]*model.DriveTaskFile, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.GetLibraryTaskFiles(teamId, folderId, limit)
 		if err == nil {
 			return result, nil
 		}

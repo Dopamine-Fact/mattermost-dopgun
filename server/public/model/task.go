@@ -61,8 +61,10 @@ type Task struct {
 	VideoFileId  string      `json:"video_file_id"` // the video version a revision was written on; empty for ordinary tasks. Set on create only.
 	DepartmentId string      `json:"department_id"` // the department that does the task; empty = any
 	WaitsFor     StringArray `json:"waits_for"`     // ids of the tasks that must be done first
-	FolderId     string      `json:"folder_id"`     // the drive folder seeded for the task; set on create only
-	ParentId     string      `json:"parent_id"`     // the task this is a subtask of; empty for a top-level task
+	FolderId     string      `json:"folder_id"`     // the episode channel's drive folder that lists the task's files
+	// LibraryFolderId is a folder of the team files library that also lists the task's files.
+	LibraryFolderId string `json:"library_folder_id"`
+	ParentId        string `json:"parent_id"` // the task this is a subtask of; empty for a top-level task
 
 	// ApprovalStatus is where a done task is in the approval chain (TaskApproval*); the server sets it, never a patch.
 	ApprovalStatus string `json:"approval_status"`
@@ -90,6 +92,9 @@ type TaskPatch struct {
 	DepartmentId *string      `json:"department_id"`
 	WaitsFor     *StringArray `json:"waits_for"`
 	ParentId     *string      `json:"parent_id"`
+
+	FolderId        *string `json:"folder_id"`
+	LibraryFolderId *string `json:"library_folder_id"`
 }
 
 // TaskApprovalRequest is the body of POST /tasks/{task_id}/approval.
@@ -206,6 +211,12 @@ func (t *Task) Patch(p *TaskPatch) {
 	if p.ParentId != nil {
 		t.ParentId = *p.ParentId
 	}
+	if p.FolderId != nil {
+		t.FolderId = *p.FolderId
+	}
+	if p.LibraryFolderId != nil {
+		t.LibraryFolderId = *p.LibraryFolderId
+	}
 }
 
 func (t *Task) IsValid() *AppError {
@@ -228,6 +239,9 @@ func (t *Task) IsValid() *AppError {
 		return NewAppError("Task.IsValid", "model.task.is_valid.department_id.app_error", nil, "id="+t.Id, http.StatusBadRequest)
 	}
 	if t.FolderId != "" && !IsValidId(t.FolderId) {
+		return NewAppError("Task.IsValid", "model.task.is_valid.folder_id.app_error", nil, "id="+t.Id, http.StatusBadRequest)
+	}
+	if t.LibraryFolderId != "" && !IsValidId(t.LibraryFolderId) {
 		return NewAppError("Task.IsValid", "model.task.is_valid.folder_id.app_error", nil, "id="+t.Id, http.StatusBadRequest)
 	}
 	if t.ParentId != "" && (!IsValidId(t.ParentId) || t.ParentId == t.Id) {

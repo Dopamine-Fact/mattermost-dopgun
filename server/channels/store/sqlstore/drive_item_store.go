@@ -256,6 +256,51 @@ func (s *SqlDriveItemStore) PermanentDeleteByChannel(channelID string) error {
 	return nil
 }
 
+func (s *SqlDriveItemStore) SetShares(itemID string, teamIDs []string, creatorID string) (err error) {
+	tx, err := s.GetMaster().Begin()
+	if err != nil {
+		return errors.Wrap(err, "begin_transaction")
+	}
+	defer finalizeTransactionX(tx, &err)
+	if _, err = tx.ExecBuilder(s.getQueryBuilder().Delete("DriveShares").Where(sq.Eq{"ItemId": itemID})); err != nil {
+		return errors.Wrapf(err, "failed to clear DriveShares for item_id=%s", itemID)
+	}
+	if len(teamIDs) > 0 {
+		now := model.GetMillis()
+		q := s.getQueryBuilder().Insert("DriveShares").Columns("ItemId", "TeamId", "CreatorId", "CreateAt")
+		for _, teamID := range teamIDs {
+			q = q.Values(itemID, teamID, creatorID, now)
+		}
+		if _, err = tx.ExecBuilder(q); err != nil {
+			return errors.Wrapf(err, "failed to save DriveShares for item_id=%s", itemID)
+		}
+	}
+	return tx.Commit()
+}
+
+func (s *SqlDriveItemStore) selectShares() sq.SelectBuilder {
+	return s.getQueryBuilder().Select("ItemId", "TeamId", "CreatorId", "CreateAt").From("DriveShares").OrderBy("CreateAt", "ItemId", "TeamId")
+}
+
+func (s *SqlDriveItemStore) GetShares(itemIDs []string) ([]*model.DriveShare, error) {
+	shares := []*model.DriveShare{}
+	if len(itemIDs) == 0 {
+		return shares, nil
+	}
+	if err := s.GetReplica().SelectBuilder(&shares, s.selectShares().Where(sq.Eq{"ItemId": itemIDs})); err != nil {
+		return nil, errors.Wrap(err, "failed to get DriveShares")
+	}
+	return shares, nil
+}
+
+func (s *SqlDriveItemStore) GetSharedWithTeam(teamID string) ([]*model.DriveShare, error) {
+	shares := []*model.DriveShare{}
+	if err := s.GetReplica().SelectBuilder(&shares, s.selectShares().Where(sq.Eq{"TeamId": teamID})); err != nil {
+		return nil, errors.Wrapf(err, "failed to get DriveShares for team_id=%s", teamID)
+	}
+	return shares, nil
+}
+
 func joinColumns(alias string) string {
 	out := ""
 	for i, c := range driveItemColumns {

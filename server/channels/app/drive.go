@@ -127,10 +127,7 @@ func (a *App) DriveCanCreateIn(rctx request.CTX, session model.Session, channel 
 	if !a.DriveCan(rctx, session, channel, DriveCreate, nil) {
 		return false
 	}
-	if folderID == "" {
-		return true
-	}
-	folderPath, appErr := a.driveFolderPath(channel, folderID)
+	folderPath, appErr := a.driveFolderPath(channel, folderID) // the root is an empty path: a files channel's is closed
 	if appErr != nil {
 		if appErr.StatusCode != http.StatusBadRequest {
 			rctx.Logger().Warn("Failed to read drive folder path", mlog.String("folder_id", folderID), mlog.Err(appErr))
@@ -158,7 +155,7 @@ func (a *App) driveCanModifyIn(rctx request.CTX, session model.Session, channel 
 	if v.manager {
 		return true
 	}
-	if item.HasRules() {
+	if item.HasRules() || (v.files != nil && v.files.protected[item.Id]) {
 		return false
 	}
 	var descendants []*model.DriveItem
@@ -375,8 +372,9 @@ func (a *App) publishDriveChanged(channelID string, parentIDs ...string) {
 	// The event reaches every channel member, so it never names a folder some of them cannot see; restricted tells
 	// open explorers to reload instead.
 	restricted := false
+	hiddenTops := a.teamFilesHiddenTops(channelID)
 	ids = slices.DeleteFunc(ids, func(id string) bool {
-		hidden := id != "" && a.driveViewRestricted(id)
+		hidden := id != "" && a.driveViewRestricted(id, hiddenTops)
 		restricted = restricted || hidden
 		return hidden
 	})
@@ -389,8 +387,9 @@ func (a *App) publishDriveChanged(channelID string, parentIDs ...string) {
 	a.Publish(message)
 }
 
-// driveViewRestricted reports whether the folder or a folder above it has view departments; true when unsure.
-func (a *App) driveViewRestricted(id string) bool {
+// driveViewRestricted reports whether the folder or a folder above it has view departments or is one of hiddenTops;
+// true when unsure.
+func (a *App) driveViewRestricted(id string, hiddenTops map[string]bool) bool {
 	item, err := a.Srv().Store().DriveItem().Get(id)
 	if err != nil {
 		return true
@@ -399,7 +398,7 @@ func (a *App) driveViewRestricted(id string) bool {
 	if err != nil {
 		return true
 	}
-	return slices.ContainsFunc(append(ancestors, item), func(f *model.DriveItem) bool { return len(f.ViewDepartments) > 0 })
+	return slices.ContainsFunc(append(ancestors, item), func(f *model.DriveItem) bool { return len(f.ViewDepartments) > 0 || hiddenTops[f.Id] })
 }
 
 // embedDriveFiles fills FileInfo on file items and drops those whose file is gone.
@@ -445,7 +444,11 @@ func (a *App) ListDriveFolder(rctx request.CTX, session model.Session, channel *
 	if mirrored {
 		listing.Access = model.DriveAccessRead
 	} else {
-		switch _, w := driveRuleAccess(folderPath, v.depts); w { // for managers too: it picks the icon, not the permission
+		visible, w := driveRuleAccess(folderPath, v.depts) // for managers too: it picks the icon, not the permission
+		if v.files != nil {
+			_, w = v.files.access(folderPath, visible, w)
+		}
+		switch w {
 		case driveWriteAllowed:
 			listing.Access = model.DriveAccessWrite
 		case driveWriteDenied:
@@ -480,7 +483,11 @@ func (a *App) ListDriveFolder(rctx request.CTX, session model.Session, channel *
 		return nil, appErr
 	}
 	if listID != "" {
-		if listing.TaskFiles, appErr = a.driveTaskFiles(channel.Id, listID); appErr != nil {
+		if v.files != nil && len(folderPath) > 1 && v.files.top[folderPath[0].Id] != nil && v.files.top[folderPath[0].Id].Kind == model.TeamFilesKindLibrary {
+			if listing.TaskFiles, appErr = a.driveLibraryTaskFiles(channel.TeamId, listID); appErr != nil {
+				return nil, appErr
+			}
+		} else if listing.TaskFiles, appErr = a.driveTaskFiles(channel.Id, listID); appErr != nil {
 			return nil, appErr
 		}
 	}

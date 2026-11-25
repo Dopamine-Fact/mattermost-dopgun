@@ -842,6 +842,9 @@ func getFile(c *Context, w http.ResponseWriter, r *http.Request) {
 	model.AddEventParameterAuditableToAuditRec(auditRec, "file", fileInfo)
 
 	perm, isMember := c.App.SessionHasPermissionToReadChannel(c.AppContext, *c.AppContext.Session(), channel)
+	if !perm { // a file in a team files folder shared with one of the caller's teams
+		perm = c.App.CanReadSharedDriveFile(c.AppContext, c.AppContext.Session().UserId, fileInfo)
+	}
 	if !isContentReviewer {
 		if fileInfo.CreatorId == model.BookmarkFileOwner {
 			if !perm {
@@ -906,6 +909,9 @@ func getFileThumbnail(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	perm, isMember := c.App.SessionHasPermissionToReadChannel(c.AppContext, *c.AppContext.Session(), channel)
+	if !perm { // a file in a team files folder shared with one of the caller's teams
+		perm = c.App.CanReadSharedDriveFile(c.AppContext, c.AppContext.Session().UserId, info)
+	}
 	if info.CreatorId == model.BookmarkFileOwner {
 		if !perm {
 			c.SetPermissionError(model.PermissionReadChannelContent)
@@ -1035,6 +1041,9 @@ func getFilePreview(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	perm, isMember := c.App.SessionHasPermissionToReadChannel(c.AppContext, *c.AppContext.Session(), channel)
+	if !perm { // a file in a team files folder shared with one of the caller's teams
+		perm = c.App.CanReadSharedDriveFile(c.AppContext, c.AppContext.Session().UserId, info)
+	}
 	if info.CreatorId == model.BookmarkFileOwner {
 		if !perm {
 			c.SetPermissionError(model.PermissionReadChannelContent)
@@ -1102,6 +1111,9 @@ func getFileInfo(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	perm, isMember := c.App.SessionHasPermissionToReadChannel(c.AppContext, *c.AppContext.Session(), channel)
+	if !perm { // a file in a team files folder shared with one of the caller's teams
+		perm = c.App.CanReadSharedDriveFile(c.AppContext, c.AppContext.Session().UserId, info)
+	}
 	if info.CreatorId == model.BookmarkFileOwner {
 		if !perm {
 			c.SetPermissionError(model.PermissionReadChannelContent)

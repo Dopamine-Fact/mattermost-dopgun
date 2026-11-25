@@ -21,7 +21,7 @@ func newSqlTaskStore(sqlStore *SqlStore) store.TaskStore {
 	return &SqlTaskStore{sqlStore}
 }
 
-var taskColumns = []string{"Id", "TeamId", "SectionId", "Title", "Description", "AssigneeId", "StartAt", "DueAt", "Status", "SortOrder", "VideoTime", "VideoFileId", "DepartmentId", "WaitsFor", "FolderId", "ParentId", "ApprovalStatus", "CreatorId", "CreateAt", "UpdateAt"}
+var taskColumns = []string{"Id", "TeamId", "SectionId", "Title", "Description", "AssigneeId", "StartAt", "DueAt", "Status", "SortOrder", "VideoTime", "VideoFileId", "DepartmentId", "WaitsFor", "FolderId", "LibraryFolderId", "ParentId", "ApprovalStatus", "CreatorId", "CreateAt", "UpdateAt"}
 
 var taskCommentColumns = []string{"Id", "TaskId", "UserId", "Message", "FileIds", "CreateAt"}
 
@@ -36,7 +36,7 @@ func (s *SqlTaskStore) Save(task *model.Task) (*model.Task, error) {
 	_, err := s.GetMaster().ExecBuilder(s.getQueryBuilder().
 		Insert("Tasks").
 		Columns(taskColumns...).
-		Values(task.Id, task.TeamId, task.SectionId, task.Title, task.Description, task.AssigneeId, task.StartAt, task.DueAt, task.Status, task.SortOrder, task.VideoTime, task.VideoFileId, task.DepartmentId, task.WaitsFor, task.FolderId, task.ParentId, task.ApprovalStatus, task.CreatorId, task.CreateAt, task.UpdateAt))
+		Values(task.Id, task.TeamId, task.SectionId, task.Title, task.Description, task.AssigneeId, task.StartAt, task.DueAt, task.Status, task.SortOrder, task.VideoTime, task.VideoFileId, task.DepartmentId, task.WaitsFor, task.FolderId, task.LibraryFolderId, task.ParentId, task.ApprovalStatus, task.CreatorId, task.CreateAt, task.UpdateAt))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to save Task with id=%s", task.Id)
 	}
@@ -86,6 +86,8 @@ func (s *SqlTaskStore) Update(task *model.Task) (*model.Task, error) {
 		Set("VideoTime", task.VideoTime).
 		Set("DepartmentId", task.DepartmentId).
 		Set("WaitsFor", task.WaitsFor).
+		Set("FolderId", task.FolderId).
+		Set("LibraryFolderId", task.LibraryFolderId).
 		Set("ParentId", task.ParentId).
 		Set("ApprovalStatus", task.ApprovalStatus).
 		Set("UpdateAt", task.UpdateAt).
@@ -327,6 +329,30 @@ func (s *SqlTaskStore) GetFolderTaskFiles(channelId, folderId string, limit int)
 	rows := []*driveTaskFileRow{}
 	if err := s.GetReplica().SelectBuilder(&rows, query); err != nil {
 		return nil, errors.Wrapf(err, "failed to get task files for folder_id=%s", folderId)
+	}
+	files := make([]*model.DriveTaskFile, 0, len(rows))
+	for _, r := range rows {
+		files = append(files, &model.DriveTaskFile{FileInfo: r.ToModel(), TaskId: r.TaskId})
+	}
+	return files, nil
+}
+
+// GetLibraryTaskFiles lists the message files, in the team's open channels, of the tasks reflected into a library folder.
+func (s *SqlTaskStore) GetLibraryTaskFiles(teamId, folderId string, limit int) ([]*model.DriveTaskFile, error) {
+	query := s.getQueryBuilder().
+		Select(s.stores.fileInfo.(*SqlFileInfoStore).queryFields...).
+		Column("Posts.Props->>'task_id' AS TaskId").
+		From("Posts").
+		Join("FileInfo ON FileInfo.PostId = Posts.Id").
+		Join("Channels ON Channels.Id = Posts.ChannelId").
+		Where(sq.Eq{"Channels.TeamId": teamId, "Channels.Type": model.ChannelTypeOpen, "Channels.DeleteAt": 0, "Posts.DeleteAt": 0, "FileInfo.DeleteAt": 0}).
+		Where(sq.NotEq{"Posts.Type": model.PostTypeBurnOnRead}).
+		Where(sq.Expr("Posts.Props->>'task_id' IN (SELECT Id FROM Tasks WHERE TeamId = ? AND LibraryFolderId = ?)", teamId, folderId)).
+		OrderBy("Posts.CreateAt DESC", "FileInfo.Id DESC").
+		Limit(uint64(limit))
+	rows := []*driveTaskFileRow{}
+	if err := s.GetReplica().SelectBuilder(&rows, query); err != nil {
+		return nil, errors.Wrapf(err, "failed to get library task files for folder_id=%s", folderId)
 	}
 	files := make([]*model.DriveTaskFile, 0, len(rows))
 	for _, r := range rows {

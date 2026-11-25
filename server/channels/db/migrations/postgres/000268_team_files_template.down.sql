@@ -1,0 +1,6 @@
+DROP TABLE IF EXISTS DriveShares;
+DROP INDEX IF EXISTS idx_tasks_libraryfolderid;
+ALTER TABLE Tasks DROP COLUMN IF EXISTS LibraryFolderId;
+ALTER TABLE Departments DROP COLUMN IF EXISTS LibraryWrite;
+ALTER TABLE Teams DROP COLUMN IF EXISTS FilesChannelId;
+ALTER TABLE Teams DROP COLUMN IF EXISTS FilesTemplate;

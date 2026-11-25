@@ -1238,6 +1238,7 @@ type TaskStore interface {
 	DeleteComment(id string) error
 	GetPostIdsForTask(taskId, channelId string, before int64, limit int) ([]string, error)
 	GetFolderTaskFiles(channelId, folderId string, limit int) ([]*model.DriveTaskFile, error)
+	GetLibraryTaskFiles(teamId, folderId string, limit int) ([]*model.DriveTaskFile, error)
 }
 
 type CanvasStore interface {
@@ -1387,6 +1388,12 @@ type DriveItemStore interface {
 	GetMirrors(channelID string, sourceIDs []string) ([]*model.DriveItem, error)
 	PermanentDelete(ids []string) error
 	PermanentDeleteByChannel(channelID string) error
+	// SetShares replaces the teams a folder is shared with.
+	SetShares(itemID string, teamIDs []string, creatorID string) error
+	// GetShares lists the shares of the given items.
+	GetShares(itemIDs []string) ([]*model.DriveShare, error)
+	// GetSharedWithTeam lists the shares into a team.
+	GetSharedWithTeam(teamID string) ([]*model.DriveShare, error)
 }
 
 type ScheduledPostStore interface {

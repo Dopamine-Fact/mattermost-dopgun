@@ -24,9 +24,11 @@ type Department struct {
 	Color    string `json:"color"`
 	Position int    `json:"position"`
 	IsStudio bool   `json:"is_studio"`
-	CreateAt int64  `json:"create_at"`
-	UpdateAt int64  `json:"update_at"`
-	DeleteAt int64  `json:"delete_at"`
+	// LibraryWrite lets the department's ranks write into the team files library.
+	LibraryWrite bool  `json:"library_write"`
+	CreateAt     int64 `json:"create_at"`
+	UpdateAt     int64 `json:"update_at"`
+	DeleteAt     int64 `json:"delete_at"`
 }
 
 // DepartmentWithRanks is a department and its ranks in order, as the Departmanlar tab shows them.
@@ -38,6 +40,8 @@ type DepartmentWithRanks struct {
 type DepartmentPatch struct {
 	Name  *string `json:"name"`
 	Color *string `json:"color"`
+
+	LibraryWrite *bool `json:"library_write"`
 }
 
 func (d *Department) Auditable() map[string]any {
@@ -57,6 +61,9 @@ func (d *Department) Patch(p *DepartmentPatch) {
 	}
 	if p.Color != nil {
 		d.Color = *p.Color
+	}
+	if p.LibraryWrite != nil {
+		d.LibraryWrite = *p.LibraryWrite
 	}
 }
 

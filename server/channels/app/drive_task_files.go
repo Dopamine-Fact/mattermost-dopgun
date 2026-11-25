@@ -27,6 +27,15 @@ func (a *App) driveTaskFiles(channelID, folderID string) ([]*model.DriveTaskFile
 	return files, nil
 }
 
+// driveLibraryTaskFiles returns the message files of the tasks reflected into a team library folder; never nil.
+func (a *App) driveLibraryTaskFiles(teamID, folderID string) ([]*model.DriveTaskFile, *model.AppError) {
+	files, err := a.Srv().Store().Task().GetLibraryTaskFiles(teamID, folderID, driveTaskFilesLimit)
+	if err != nil {
+		return nil, driveStoreError("driveLibraryTaskFiles", err)
+	}
+	return files, nil
+}
+
 // publishTaskFolderChanged tells explorers that a post with files, about a task with a drive folder, changed what
 // that folder lists. It never fails the post operation.
 func (a *App) publishTaskFolderChanged(post *model.Post) {
@@ -44,6 +53,11 @@ func (a *App) publishTaskFolderChanged(post *model.Post) {
 			a.Log().Warn("Failed to load the task of a post with files", mlog.String("task_id", taskID), mlog.Err(err))
 		}
 		return
+	}
+	if task.LibraryFolderId != "" {
+		if folder, err := a.Srv().Store().DriveItem().Get(task.LibraryFolderId); err == nil {
+			a.publishDriveChanged(folder.ChannelId, folder.Id)
+		}
 	}
 	if task.FolderId == "" {
 		return

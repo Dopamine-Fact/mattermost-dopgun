@@ -456,6 +456,84 @@ func (_m *DriveItemStore) UpdateMany(items []*model.DriveItem) error {
 	return r0
 }
 
+// GetShares provides a mock function with given fields: itemIDs
+func (_m *DriveItemStore) GetShares(itemIDs []string) ([]*model.DriveShare, error) {
+	ret := _m.Called(itemIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetShares")
+	}
+
+	var r0 []*model.DriveShare
+	var r1 error
+	if rf, ok := ret.Get(0).(func([]string) ([]*model.DriveShare, error)); ok {
+		return rf(itemIDs)
+	}
+	if rf, ok := ret.Get(0).(func([]string) []*model.DriveShare); ok {
+		r0 = rf(itemIDs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.DriveShare)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func([]string) error); ok {
+		r1 = rf(itemIDs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetSharedWithTeam provides a mock function with given fields: teamID
+func (_m *DriveItemStore) GetSharedWithTeam(teamID string) ([]*model.DriveShare, error) {
+	ret := _m.Called(teamID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSharedWithTeam")
+	}
+
+	var r0 []*model.DriveShare
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]*model.DriveShare, error)); ok {
+		return rf(teamID)
+	}
+	if rf, ok := ret.Get(0).(func(string) []*model.DriveShare); ok {
+		r0 = rf(teamID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.DriveShare)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(teamID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SetShares provides a mock function with given fields: itemID, teamIDs, creatorID
+func (_m *DriveItemStore) SetShares(itemID string, teamIDs []string, creatorID string) error {
+	ret := _m.Called(itemID, teamIDs, creatorID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetShares")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, []string, string) error); ok {
+		r0 = rf(itemID, teamIDs, creatorID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // NewDriveItemStore creates a new instance of DriveItemStore. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewDriveItemStore(t interface {

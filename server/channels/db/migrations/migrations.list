@@ -529,3 +529,5 @@ channels/db/migrations/postgres/000266_task_approval_and_subtasks.down.sql
 channels/db/migrations/postgres/000266_task_approval_and_subtasks.up.sql
 channels/db/migrations/postgres/000267_create_personal_notes.down.sql
 channels/db/migrations/postgres/000267_create_personal_notes.up.sql
+channels/db/migrations/postgres/000268_team_files_template.down.sql
+channels/db/migrations/postgres/000268_team_files_template.up.sql

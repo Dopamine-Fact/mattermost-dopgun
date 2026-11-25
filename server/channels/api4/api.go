@@ -419,6 +419,7 @@ func Init(srv *app.Server) (*API, error) {
 	api.InitStatusPeriods()
 	api.InitAppUsage()
 	api.InitDrive()
+	api.InitTeamFiles()
 	api.InitEpisode()
 	api.InitCustomProfileAttributes()
 	api.InitAuditLogging()

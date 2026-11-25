@@ -207,8 +207,11 @@ func (a *App) PatchTask(rctx request.CTX, task *model.Task, patch *model.TaskPat
 		if patched.SectionId != task.SectionId || patched.WaitsFor == nil {
 			patched.WaitsFor = model.StringArray{} // links never cross sections; nil would store JSON null
 		}
-		if patched.SectionId != task.SectionId {
+		if patched.SectionId != task.SectionId && patch.FolderId == nil {
 			patched.FolderId = "" // the folder is the episode channel's; the task has left it
+		}
+		if appErr := a.validateTaskFolders(&patched, patched.FolderId != task.FolderId, patched.LibraryFolderId != task.LibraryFolderId); appErr != nil {
+			return nil, appErr
 		}
 		if patch.WaitsFor != nil {
 			if appErr := validateTaskWaitsFor(&patched, byID); appErr != nil {

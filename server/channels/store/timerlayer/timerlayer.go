@@ -5502,6 +5502,38 @@ func (s *TimerLayerDriveItemStore) GetMirrors(channelID string, sourceIDs []stri
 	return result, err
 }
 
+func (s *TimerLayerDriveItemStore) GetSharedWithTeam(teamID string) ([]*model.DriveShare, error) {
+	start := time.Now()
+
+	result, err := s.DriveItemStore.GetSharedWithTeam(teamID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.GetSharedWithTeam", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerDriveItemStore) GetShares(itemIDs []string) ([]*model.DriveShare, error) {
+	start := time.Now()
+
+	result, err := s.DriveItemStore.GetShares(itemIDs)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.GetShares", success, elapsed)
+	}
+	return result, err
+}
+
 func (s *TimerLayerDriveItemStore) GetTrash(channelID string) ([]*model.DriveItem, error) {
 	start := time.Now()
 
@@ -5580,6 +5612,22 @@ func (s *TimerLayerDriveItemStore) Save(item *model.DriveItem) (*model.DriveItem
 		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.Save", success, elapsed)
 	}
 	return result, err
+}
+
+func (s *TimerLayerDriveItemStore) SetShares(itemID string, teamIDs []string, creatorID string) error {
+	start := time.Now()
+
+	err := s.DriveItemStore.SetShares(itemID, teamIDs, creatorID)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("DriveItemStore.SetShares", success, elapsed)
+	}
+	return err
 }
 
 func (s *TimerLayerDriveItemStore) Update(item *model.DriveItem) (*model.DriveItem, error) {
@@ -13877,6 +13925,22 @@ func (s *TimerLayerTaskStore) GetForTeam(teamId string) ([]*model.Task, error) {
 			success = "true"
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.GetForTeam", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerTaskStore) GetLibraryTaskFiles(teamId string, folderId string, limit int) ([]*model.DriveTaskFile, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.GetLibraryTaskFiles(teamId, folderId, limit)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.GetLibraryTaskFiles", success, elapsed)
 	}
 	return result, err
 }

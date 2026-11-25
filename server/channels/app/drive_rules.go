@@ -57,6 +57,7 @@ func driveRuleAccess(path []*model.DriveItem, depts map[string]bool) (visible bo
 type driveViewer struct {
 	manager bool            // manage_channel_roles: bypasses every folder rule
 	depts   map[string]bool // department ids of the person's ranks in the channel's team
+	files   *teamFilesRules // the team files template's rules; nil outside a team files channel
 }
 
 func (a *App) driveViewerFor(rctx request.CTX, session model.Session, channel *model.Channel) (*driveViewer, *model.AppError) {
@@ -67,6 +68,11 @@ func (a *App) driveViewerFor(rctx request.CTX, session model.Session, channel *m
 	}
 	// Not in the team: no departments, so every restricted folder stays hidden.
 	v := &driveViewer{manager: ok, depts: depts}
+	if team := a.teamFilesTeam(channel); team != nil {
+		if v.files, appErr = a.teamFilesRulesFor(team, depts); appErr != nil {
+			return nil, appErr
+		}
+	}
 	return v, nil
 }
 
@@ -79,7 +85,11 @@ func (v *driveViewer) access(path []*model.DriveItem) (visible bool, write drive
 		}
 		return true, driveWriteAllowed
 	}
-	return driveRuleAccess(path, v.depts)
+	visible, write = driveRuleAccess(path, v.depts)
+	if v.files != nil {
+		visible, write = v.files.access(path, visible, write)
+	}
+	return visible, write
 }
 
 // driveReadPath is how v reaches folderID ("" = root): its own path when visible, else the path through the first

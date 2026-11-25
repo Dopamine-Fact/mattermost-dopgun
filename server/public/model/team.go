@@ -60,6 +60,10 @@ type Team struct {
 	NotesEnabled        bool    `json:"notes_enabled"`
 	EpisodeFolders      string  `json:"episode_folders"` // JSON folder list (or newline-separated paths) seeded into each new episode
 	EpisodeTasks        string  `json:"episode_tasks"`   // JSON task list (or newline-separated titles) seeded into each new episode
+	// FilesTemplate is the JSON folder layout of the team Files page (TeamFilesFolder list). Kept out of the team
+	// JSON because it names folders hidden from members; read it through the files layout or template endpoints.
+	FilesTemplate  string `json:"-"`
+	FilesChannelId string `json:"files_channel_id"` // the private channel that stores the template's folders
 
 	// Not persisted; derived by the store via EXISTS on AccessControlPolicies(Type='team').
 	// Use HasMembershipPolicyAction for enforcement — this is a read-path signal only.

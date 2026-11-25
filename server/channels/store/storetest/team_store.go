@@ -4054,6 +4054,16 @@ func testTeamStoreEpisodeTemplates(t *testing.T, rctx request.CTX, ss store.Stor
 	require.NoError(t, err)
 	require.Equal(t, "Kurgu", got.EpisodeFolders)
 	require.Equal(t, "Layout\nRender", got.EpisodeTasks)
+
+	channelID := model.NewId()
+	got.FilesTemplate = `[{"name":"01_DOCTRINE","access":"read"}]`
+	got.FilesChannelId = channelID
+	_, err = ss.Team().Update(got)
+	require.NoError(t, err)
+	got, err = ss.Team().Get(team.Id)
+	require.NoError(t, err)
+	require.Equal(t, `[{"name":"01_DOCTRINE","access":"read"}]`, got.FilesTemplate)
+	require.Equal(t, channelID, got.FilesChannelId)
 }
 
 func saveTeamMemberWithRoles(t *testing.T, rctx request.CTX, ss store.Store, teamID, roles string) *model.TeamMember {

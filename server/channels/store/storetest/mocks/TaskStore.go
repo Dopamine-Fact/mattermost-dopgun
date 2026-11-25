@@ -548,6 +548,36 @@ func (_m *TaskStore) UpdateSection(section *model.TaskSection) (*model.TaskSecti
 	return r0, r1
 }
 
+// GetLibraryTaskFiles provides a mock function with given fields: teamId, folderId, limit
+func (_m *TaskStore) GetLibraryTaskFiles(teamId string, folderId string, limit int) ([]*model.DriveTaskFile, error) {
+	ret := _m.Called(teamId, folderId, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLibraryTaskFiles")
+	}
+
+	var r0 []*model.DriveTaskFile
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string, int) ([]*model.DriveTaskFile, error)); ok {
+		return rf(teamId, folderId, limit)
+	}
+	if rf, ok := ret.Get(0).(func(string, string, int) []*model.DriveTaskFile); ok {
+		r0 = rf(teamId, folderId, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.DriveTaskFile)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string, int) error); ok {
+		r1 = rf(teamId, folderId, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // NewTaskStore creates a new instance of TaskStore. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewTaskStore(t interface {

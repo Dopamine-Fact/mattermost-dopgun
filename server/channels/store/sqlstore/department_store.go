@@ -21,7 +21,7 @@ func newSqlDepartmentStore(sqlStore *SqlStore) store.DepartmentStore {
 	return &SqlDepartmentStore{sqlStore}
 }
 
-var departmentColumns = []string{"Id", "TeamId", "Name", "Color", "Position", "IsStudio", "CreateAt", "UpdateAt", "DeleteAt"}
+var departmentColumns = []string{"Id", "TeamId", "Name", "Color", "Position", "IsStudio", "LibraryWrite", "CreateAt", "UpdateAt", "DeleteAt"}
 
 var departmentUniqueIndexes = []string{"idx_departments_team_name", "idx_departments_team_studio"}
 
@@ -33,7 +33,7 @@ func (s *SqlDepartmentStore) Save(d *model.Department) (*model.Department, error
 	_, err := s.GetMaster().ExecBuilder(s.getQueryBuilder().
 		Insert("Departments").
 		Columns(departmentColumns...).
-		Values(d.Id, d.TeamId, d.Name, d.Color, d.Position, d.IsStudio, d.CreateAt, d.UpdateAt, d.DeleteAt))
+		Values(d.Id, d.TeamId, d.Name, d.Color, d.Position, d.IsStudio, d.LibraryWrite, d.CreateAt, d.UpdateAt, d.DeleteAt))
 	if err != nil && IsUniqueConstraintError(err, departmentUniqueIndexes) {
 		return nil, store.NewErrConflict("Department", err, "name="+d.Name)
 	} else if err != nil {
@@ -51,6 +51,7 @@ func (s *SqlDepartmentStore) Update(d *model.Department) (*model.Department, err
 		Update("Departments").
 		Set("Name", d.Name).
 		Set("Color", d.Color).
+		Set("LibraryWrite", d.LibraryWrite).
 		Set("UpdateAt", d.UpdateAt).
 		Where(sq.Eq{"Id": d.Id, "DeleteAt": 0}))
 	if err != nil && IsUniqueConstraintError(err, departmentUniqueIndexes) {
