@@ -53,6 +53,7 @@ type RetryLayer struct {
 	NotifyAdminStore                store.NotifyAdminStore
 	OAuthStore                      store.OAuthStore
 	OutgoingOAuthConnectionStore    store.OutgoingOAuthConnectionStore
+	PersonalNoteStore               store.PersonalNoteStore
 	PluginStore                     store.PluginStore
 	PostStore                       store.PostStore
 	PostAcknowledgementStore        store.PostAcknowledgementStore
@@ -226,6 +227,10 @@ func (s *RetryLayer) OAuth() store.OAuthStore {
 
 func (s *RetryLayer) OutgoingOAuthConnection() store.OutgoingOAuthConnectionStore {
 	return s.OutgoingOAuthConnectionStore
+}
+
+func (s *RetryLayer) PersonalNote() store.PersonalNoteStore {
+	return s.PersonalNoteStore
 }
 
 func (s *RetryLayer) Plugin() store.PluginStore {
@@ -543,6 +548,11 @@ type RetryLayerOAuthStore struct {
 
 type RetryLayerOutgoingOAuthConnectionStore struct {
 	store.OutgoingOAuthConnectionStore
+	Root *RetryLayer
+}
+
+type RetryLayerPersonalNoteStore struct {
+	store.PersonalNoteStore
 	Root *RetryLayer
 }
 
@@ -9948,6 +9958,153 @@ func (s *RetryLayerOutgoingOAuthConnectionStore) UpdateConnection(rctx request.C
 	tries := 0
 	for {
 		result, err := s.OutgoingOAuthConnectionStore.UpdateConnection(rctx, conn)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerPersonalNoteStore) ClearReminder(id string) error {
+
+	tries := 0
+	for {
+		err := s.PersonalNoteStore.ClearReminder(id)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerPersonalNoteStore) Delete(id string) error {
+
+	tries := 0
+	for {
+		err := s.PersonalNoteStore.Delete(id)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerPersonalNoteStore) Get(id string) (*model.PersonalNote, error) {
+
+	tries := 0
+	for {
+		result, err := s.PersonalNoteStore.Get(id)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerPersonalNoteStore) GetDueReminders(now int64, limit int) ([]*model.PersonalNote, error) {
+
+	tries := 0
+	for {
+		result, err := s.PersonalNoteStore.GetDueReminders(now, limit)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerPersonalNoteStore) GetForTeam(teamID string, userID string, opts store.PersonalNoteListOptions) ([]*model.PersonalNote, error) {
+
+	tries := 0
+	for {
+		result, err := s.PersonalNoteStore.GetForTeam(teamID, userID, opts)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerPersonalNoteStore) Save(n *model.PersonalNote) (*model.PersonalNote, error) {
+
+	tries := 0
+	for {
+		result, err := s.PersonalNoteStore.Save(n)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerPersonalNoteStore) Update(n *model.PersonalNote) (*model.PersonalNote, error) {
+
+	tries := 0
+	for {
+		result, err := s.PersonalNoteStore.Update(n)
 		if err == nil {
 			return result, nil
 		}
@@ -22791,6 +22948,7 @@ func New(childStore store.Store) *RetryLayer {
 	newStore.NotifyAdminStore = &RetryLayerNotifyAdminStore{NotifyAdminStore: childStore.NotifyAdmin(), Root: &newStore}
 	newStore.OAuthStore = &RetryLayerOAuthStore{OAuthStore: childStore.OAuth(), Root: &newStore}
 	newStore.OutgoingOAuthConnectionStore = &RetryLayerOutgoingOAuthConnectionStore{OutgoingOAuthConnectionStore: childStore.OutgoingOAuthConnection(), Root: &newStore}
+	newStore.PersonalNoteStore = &RetryLayerPersonalNoteStore{PersonalNoteStore: childStore.PersonalNote(), Root: &newStore}
 	newStore.PluginStore = &RetryLayerPluginStore{PluginStore: childStore.Plugin(), Root: &newStore}
 	newStore.PostStore = &RetryLayerPostStore{PostStore: childStore.Post(), Root: &newStore}
 	newStore.PostAcknowledgementStore = &RetryLayerPostAcknowledgementStore{PostAcknowledgementStore: childStore.PostAcknowledgement(), Root: &newStore}

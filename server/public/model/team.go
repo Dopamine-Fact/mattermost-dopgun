@@ -56,6 +56,7 @@ type Team struct {
 	DailyReportTime     string  `json:"daily_report_time"` // "HH:MM" in DailyReportTimezone
 	DailyReportTimezone string  `json:"daily_report_timezone"`
 	FilesEnabled        bool    `json:"files_enabled"`
+	NotesEnabled        bool    `json:"notes_enabled"`
 	EpisodeFolders      string  `json:"episode_folders"` // JSON folder list (or newline-separated paths) seeded into each new episode
 	EpisodeTasks        string  `json:"episode_tasks"`   // JSON task list (or newline-separated titles) seeded into each new episode
 
@@ -110,6 +111,7 @@ func (o *Team) Auditable() map[string]any {
 		"daily_report_time":     o.DailyReportTime,
 		"daily_report_timezone": o.DailyReportTimezone,
 		"files_enabled":         o.FilesEnabled,
+		"notes_enabled":         o.NotesEnabled,
 		"episode_folders":       episodeFolderCount(o.EpisodeFolders),
 		"episode_tasks":         len(ParseEpisodeTasks(o.EpisodeTasks)),
 	}
@@ -134,6 +136,7 @@ type TeamPatch struct {
 	DailyReportTime     *string `json:"daily_report_time"`
 	DailyReportTimezone *string `json:"daily_report_timezone"`
 	FilesEnabled        *bool   `json:"files_enabled"`
+	NotesEnabled        *bool   `json:"notes_enabled"`
 	EpisodeFolders      *string `json:"episode_folders"`
 	EpisodeTasks        *string `json:"episode_tasks"`
 }
@@ -150,6 +153,7 @@ func (o *TeamPatch) Auditable() map[string]any {
 		"daily_report_time":     o.DailyReportTime,
 		"daily_report_timezone": o.DailyReportTimezone,
 		"files_enabled":         o.FilesEnabled,
+		"notes_enabled":         o.NotesEnabled,
 		"episode_folders":       episodeTemplatePatchLines(o.EpisodeFolders, episodeFolderCount),
 		"episode_tasks":         episodeTemplatePatchLines(o.EpisodeTasks, func(t string) int { return len(ParseEpisodeTasks(t)) }),
 	}
@@ -539,6 +543,10 @@ func (o *Team) Patch(patch *TeamPatch) {
 
 	if patch.FilesEnabled != nil {
 		o.FilesEnabled = *patch.FilesEnabled
+	}
+
+	if patch.NotesEnabled != nil {
+		o.NotesEnabled = *patch.NotesEnabled
 	}
 
 	if patch.EpisodeFolders != nil {

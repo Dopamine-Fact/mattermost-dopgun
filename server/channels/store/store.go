@@ -94,6 +94,7 @@ type Store interface {
 	Task() TaskStore
 	Canvas() CanvasStore
 	DailyReport() DailyReportStore
+	PersonalNote() PersonalNoteStore
 	CustomRole() CustomRoleStore
 	Department() DepartmentStore
 	StatusPeriod() StatusPeriodStore
@@ -1280,6 +1281,30 @@ type DailyReportStore interface {
 	RemoveFile(reportID, fileID string) error
 	// GetFileIds maps each report id to its linked file ids, oldest link first; reports without files are absent.
 	GetFileIds(reportIDs []string) (map[string][]string, error)
+}
+
+// PersonalNoteListOptions filters PersonalNoteStore.GetForTeam.
+type PersonalNoteListOptions struct {
+	FromDate, ToDate string // inclusive YYYY-MM-DD; ignored when Undated
+	Undated          bool
+	OnlyMine         bool
+	Limit            int // 0 = no limit
+}
+
+type PersonalNoteStore interface {
+	Save(n *model.PersonalNote) (*model.PersonalNote, error)
+	// Get returns *store.ErrNotFound when no note has that id.
+	Get(id string) (*model.PersonalNote, error)
+	// Update writes every editable field; *store.ErrNotFound when it does not exist.
+	Update(n *model.PersonalNote) (*model.PersonalNote, error)
+	Delete(id string) error
+	// GetForTeam lists userID's notes plus other users' team-visible notes whose owner is still an active member
+	// and not deactivated. Dated notes order by Date, Time (all-day first), CreateAt; undated ones open first, newest first.
+	GetForTeam(teamID, userID string, opts PersonalNoteListOptions) ([]*model.PersonalNote, error)
+	// GetDueReminders lists notes with 0 < RemindAt <= now, oldest first, across all teams.
+	GetDueReminders(now int64, limit int) ([]*model.PersonalNote, error)
+	// ClearReminder sets RemindAt to 0.
+	ClearReminder(id string) error
 }
 
 type CustomRoleStore interface {

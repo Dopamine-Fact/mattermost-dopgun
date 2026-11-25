@@ -110,6 +110,7 @@ type SqlStoreStores struct {
 	task                       store.TaskStore
 	canvas                     store.CanvasStore
 	dailyReport                store.DailyReportStore
+	personalNote               store.PersonalNoteStore
 	driveItem                  store.DriveItemStore
 	customRole                 store.CustomRoleStore
 	department                 store.DepartmentStore
@@ -314,6 +315,7 @@ func New(settings model.SqlSettings, logger mlog.LoggerIFace, metrics einterface
 	store.stores.task = newSqlTaskStore(store)
 	store.stores.canvas = newSqlCanvasStore(store)
 	store.stores.dailyReport = newSqlDailyReportStore(store)
+	store.stores.personalNote = newSqlPersonalNoteStore(store)
 	store.stores.driveItem = newSqlDriveItemStore(store)
 	store.stores.customRole = newSqlCustomRoleStore(store)
 	store.stores.department = newSqlDepartmentStore(store)
@@ -1191,6 +1193,10 @@ func (ss *SqlStore) Canvas() store.CanvasStore {
 
 func (ss *SqlStore) DailyReport() store.DailyReportStore {
 	return ss.stores.dailyReport
+}
+
+func (ss *SqlStore) PersonalNote() store.PersonalNoteStore {
+	return ss.stores.personalNote
 }
 
 func (ss *SqlStore) CustomRole() store.CustomRoleStore {

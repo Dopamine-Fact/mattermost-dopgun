@@ -974,6 +974,26 @@ func (_m *Store) OutgoingOAuthConnection() store.OutgoingOAuthConnectionStore {
 	return r0
 }
 
+// PersonalNote provides a mock function with no fields
+func (_m *Store) PersonalNote() store.PersonalNoteStore {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for PersonalNote")
+	}
+
+	var r0 store.PersonalNoteStore
+	if rf, ok := ret.Get(0).(func() store.PersonalNoteStore); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.PersonalNoteStore)
+		}
+	}
+
+	return r0
+}
+
 // Plugin provides a mock function with no fields
 func (_m *Store) Plugin() store.PluginStore {
 	ret := _m.Called()

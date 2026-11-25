@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS PersonalNotes;
+ALTER TABLE Teams DROP COLUMN IF EXISTS NotesEnabled;

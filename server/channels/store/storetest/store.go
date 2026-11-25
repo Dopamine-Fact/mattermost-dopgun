@@ -69,6 +69,7 @@ type Store struct {
 	TaskStore                       mocks.TaskStore
 	CanvasStore                     mocks.CanvasStore
 	DailyReportStore                mocks.DailyReportStore
+	PersonalNoteStore               mocks.PersonalNoteStore
 	CustomRoleStore                 mocks.CustomRoleStore
 	DepartmentStore                 mocks.DepartmentStore
 	StatusPeriodStore               mocks.StatusPeriodStore
@@ -145,6 +146,7 @@ func (s *Store) ScheduledPost() store.ScheduledPostStore     { return &s.Schedul
 func (s *Store) Task() store.TaskStore                       { return &s.TaskStore }
 func (s *Store) Canvas() store.CanvasStore                   { return &s.CanvasStore }
 func (s *Store) DailyReport() store.DailyReportStore         { return &s.DailyReportStore }
+func (s *Store) PersonalNote() store.PersonalNoteStore       { return &s.PersonalNoteStore }
 func (s *Store) CustomRole() store.CustomRoleStore           { return &s.CustomRoleStore }
 func (s *Store) Department() store.DepartmentStore           { return &s.DepartmentStore }
 func (s *Store) StatusPeriod() store.StatusPeriodStore       { return &s.StatusPeriodStore }
@@ -278,6 +280,7 @@ func (s *Store) AssertExpectations(t mock.TestingT) bool {
 		&s.TaskStore,
 		&s.CanvasStore,
 		&s.DailyReportStore,
+		&s.PersonalNoteStore,
 		&s.CustomRoleStore,
 		&s.DepartmentStore,
 		&s.StatusPeriodStore,

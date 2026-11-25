@@ -52,6 +52,7 @@ type TimerLayer struct {
 	NotifyAdminStore                store.NotifyAdminStore
 	OAuthStore                      store.OAuthStore
 	OutgoingOAuthConnectionStore    store.OutgoingOAuthConnectionStore
+	PersonalNoteStore               store.PersonalNoteStore
 	PluginStore                     store.PluginStore
 	PostStore                       store.PostStore
 	PostAcknowledgementStore        store.PostAcknowledgementStore
@@ -225,6 +226,10 @@ func (s *TimerLayer) OAuth() store.OAuthStore {
 
 func (s *TimerLayer) OutgoingOAuthConnection() store.OutgoingOAuthConnectionStore {
 	return s.OutgoingOAuthConnectionStore
+}
+
+func (s *TimerLayer) PersonalNote() store.PersonalNoteStore {
+	return s.PersonalNoteStore
 }
 
 func (s *TimerLayer) Plugin() store.PluginStore {
@@ -542,6 +547,11 @@ type TimerLayerOAuthStore struct {
 
 type TimerLayerOutgoingOAuthConnectionStore struct {
 	store.OutgoingOAuthConnectionStore
+	Root *TimerLayer
+}
+
+type TimerLayerPersonalNoteStore struct {
+	store.PersonalNoteStore
 	Root *TimerLayer
 }
 
@@ -8014,6 +8024,118 @@ func (s *TimerLayerOutgoingOAuthConnectionStore) UpdateConnection(rctx request.C
 			success = "true"
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("OutgoingOAuthConnectionStore.UpdateConnection", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerPersonalNoteStore) ClearReminder(id string) error {
+	start := time.Now()
+
+	err := s.PersonalNoteStore.ClearReminder(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("PersonalNoteStore.ClearReminder", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerPersonalNoteStore) Delete(id string) error {
+	start := time.Now()
+
+	err := s.PersonalNoteStore.Delete(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("PersonalNoteStore.Delete", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerPersonalNoteStore) Get(id string) (*model.PersonalNote, error) {
+	start := time.Now()
+
+	result, err := s.PersonalNoteStore.Get(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("PersonalNoteStore.Get", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerPersonalNoteStore) GetDueReminders(now int64, limit int) ([]*model.PersonalNote, error) {
+	start := time.Now()
+
+	result, err := s.PersonalNoteStore.GetDueReminders(now, limit)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("PersonalNoteStore.GetDueReminders", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerPersonalNoteStore) GetForTeam(teamID string, userID string, opts store.PersonalNoteListOptions) ([]*model.PersonalNote, error) {
+	start := time.Now()
+
+	result, err := s.PersonalNoteStore.GetForTeam(teamID, userID, opts)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("PersonalNoteStore.GetForTeam", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerPersonalNoteStore) Save(n *model.PersonalNote) (*model.PersonalNote, error) {
+	start := time.Now()
+
+	result, err := s.PersonalNoteStore.Save(n)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("PersonalNoteStore.Save", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerPersonalNoteStore) Update(n *model.PersonalNote) (*model.PersonalNote, error) {
+	start := time.Now()
+
+	result, err := s.PersonalNoteStore.Update(n)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("PersonalNoteStore.Update", success, elapsed)
 	}
 	return result, err
 }
@@ -18013,6 +18135,7 @@ func New(childStore store.Store, metrics einterfaces.MetricsInterface) *TimerLay
 	newStore.NotifyAdminStore = &TimerLayerNotifyAdminStore{NotifyAdminStore: childStore.NotifyAdmin(), Root: &newStore}
 	newStore.OAuthStore = &TimerLayerOAuthStore{OAuthStore: childStore.OAuth(), Root: &newStore}
 	newStore.OutgoingOAuthConnectionStore = &TimerLayerOutgoingOAuthConnectionStore{OutgoingOAuthConnectionStore: childStore.OutgoingOAuthConnection(), Root: &newStore}
+	newStore.PersonalNoteStore = &TimerLayerPersonalNoteStore{PersonalNoteStore: childStore.PersonalNote(), Root: &newStore}
 	newStore.PluginStore = &TimerLayerPluginStore{PluginStore: childStore.Plugin(), Root: &newStore}
 	newStore.PostStore = &TimerLayerPostStore{PostStore: childStore.Post(), Root: &newStore}
 	newStore.PostAcknowledgementStore = &TimerLayerPostAcknowledgementStore{PostAcknowledgementStore: childStore.PostAcknowledgement(), Root: &newStore}

@@ -525,3 +525,5 @@ channels/db/migrations/postgres/000264_app_usage.down.sql
 channels/db/migrations/postgres/000264_app_usage.up.sql
 channels/db/migrations/postgres/000265_add_channel_name_color.down.sql
 channels/db/migrations/postgres/000265_add_channel_name_color.up.sql
+channels/db/migrations/postgres/000267_create_personal_notes.down.sql
+channels/db/migrations/postgres/000267_create_personal_notes.up.sql
