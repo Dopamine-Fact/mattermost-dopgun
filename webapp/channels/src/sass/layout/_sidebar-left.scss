@@ -1002,6 +1002,56 @@ $sidebarOpacityAnimationDuration: 0.15s;
         }
     }
 
+    /* Sub-channels: the parent's toggle sits in the link's left padding, its sub-channels are indented */
+    .SidebarChannel--hasSubChannels {
+        position: relative;
+    }
+
+    .SidebarChannel__subChannelToggle {
+        position: absolute;
+        z-index: 1;
+        top: 8px;
+        left: 3px;
+        display: flex;
+        width: 16px;
+        height: 16px;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: none;
+        border-radius: 4px;
+        background: transparent;
+        color: rgba(var(--sidebar-text-rgb), 0.64);
+
+        &:hover {
+            background: rgba(var(--sidebar-text-rgb), 0.16);
+            color: var(--sidebar-text);
+        }
+
+        .icon {
+            font-size: 14px;
+            transition: transform 0.15s ease;
+
+            &::before {
+                margin: 0;
+            }
+
+            &.open {
+                transform: rotate(90deg);
+            }
+        }
+    }
+
+    .SidebarChannel--sub .SidebarLink {
+        padding-left: 37px;
+    }
+
+    .SidebarChannel.combineTarget .SidebarLink {
+        border-radius: 4px;
+        background: rgba(var(--sidebar-text-rgb), 0.16);
+        box-shadow: inset 0 0 0 2px var(--sidebar-text-active-border);
+    }
+
     .SidebarChannel.invisible {
         opacity: 0;
     }

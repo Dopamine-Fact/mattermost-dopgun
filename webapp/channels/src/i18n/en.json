@@ -32943,6 +32943,10 @@
     "defaultMessage": "Copy Link",
     "description": "Menu item in a sidebar channel's options menu that copies the channel's permalink."
   },
+  "sidebar_left.sidebar_channel_menu.detachFromParent": {
+    "defaultMessage": "Detach from Parent Channel",
+    "description": "Item in a sub-channel's sidebar menu that removes it from its parent channel so it is listed on its own again."
+  },
   "sidebar_left.sidebar_channel_menu.dropdownAriaLabel": {
     "defaultMessage": "Edit channel menu",
     "description": "Accessible label for the dropdown menu of options on a sidebar channel."
@@ -33079,9 +33083,17 @@
     "defaultMessage": "Invite Users",
     "description": "Accessible label for the invite members button in the channel sidebar."
   },
+  "sidebar_left.sidebar_channel.hideSubChannels": {
+    "defaultMessage": "Hide sub-channels",
+    "description": "Accessible label of the arrow next to a parent channel in the sidebar when its sub-channels are shown; clicking hides them."
+  },
   "sidebar_left.sidebar_channel.selectedCount": {
     "defaultMessage": "{count} selected",
     "description": "Badge shown on the dragged item when multiple sidebar channels are drag-selected at once; {count} is how many are selected."
+  },
+  "sidebar_left.sidebar_channel.showSubChannels": {
+    "defaultMessage": "Show sub-channels",
+    "description": "Accessible label of the arrow next to a parent channel in the sidebar when its sub-channels are hidden; clicking lists them under it."
   },
   "sidebar_right_menu.console": {
     "defaultMessage": "System Console",
@@ -33442,6 +33454,10 @@
   "sticker_picker.empty": {
     "defaultMessage": "No stickers yet. Add custom emojis to use them as stickers.",
     "description": ""
+  },
+  "sub_channel_tabs.label": {
+    "defaultMessage": "Sub-channels",
+    "description": "Accessible label of the row of tabs above a parent channel that switches between the parent and its sub-channels."
   },
   "suggestion.all": {
     "defaultMessage": "All channel types",

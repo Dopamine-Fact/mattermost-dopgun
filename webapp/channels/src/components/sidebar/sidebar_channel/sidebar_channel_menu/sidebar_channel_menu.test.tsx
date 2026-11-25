@@ -59,6 +59,8 @@ describe('components/sidebar/sidebar_channel/sidebar_channel_menu', () => {
         createCategory: jest.fn(),
         addChannelsInSidebar: jest.fn(),
         onMenuToggle: jest.fn(),
+        canDetachFromParent: false,
+        setChannelParent: jest.fn(),
     };
 
     const openMenu = async () => {
@@ -92,6 +94,20 @@ describe('components/sidebar/sidebar_channel/sidebar_channel_menu', () => {
         expect(screen.getByRole('menuitem', {name: 'Copy Link'})).toBeInTheDocument();
         expect(screen.getByRole('menuitem', {name: 'Add Members'})).toBeInTheDocument();
         expect(screen.getByRole('menuitem', {name: 'Leave Channel'})).toBeInTheDocument();
+        expect(screen.queryByRole('menuitem', {name: 'Detach from Parent Channel'})).not.toBeInTheDocument();
+    });
+
+    test('should detach a sub-channel from its parent', async () => {
+        const props = {...baseProps, canDetachFromParent: true, setChannelParent: jest.fn()};
+        renderWithContext(
+            <SidebarChannelMenu {...props}/>,
+        );
+
+        await openMenu();
+        await userEvent.click(screen.getByRole('menuitem', {name: 'Detach from Parent Channel'}));
+        await waitFor(() => {
+            expect(props.setChannelParent).toHaveBeenCalledWith(testChannel.id, '');
+        });
     });
 
     test('should show correct menu items when channel is unread', async () => {

@@ -7,7 +7,7 @@ import type {ChannelType} from '@mattermost/types/channels';
 
 import SidebarChannel from 'components/sidebar/sidebar_channel/sidebar_channel';
 
-import {renderWithContext, screen} from 'tests/react_testing_utils';
+import {renderWithContext, screen, userEvent} from 'tests/react_testing_utils';
 
 jest.mock('components/tours/onboarding_tour', () => ({
     ChannelsAndDirectMessagesTour: () => null,
@@ -52,7 +52,39 @@ describe('components/sidebar/sidebar_channel', () => {
         autoSortedCategoryIds: new Set<string>(),
         isChannelSelected: false,
         collapseCategoryWithUnreads: false,
+        subChannelIds: [],
     };
+
+    test('should list sub-channels under a parent behind a toggle', async () => {
+        localStorage.clear();
+        const sub = {...baseProps.channel, id: 'sub_id', name: 'sub', display_name: 'Sub Channel', team_id: 'team_id', parent_id: 'channel_id'};
+        renderWithContext(
+            <SidebarChannel
+                {...baseProps}
+                subChannelIds={[sub.id]}
+            />,
+            {
+                entities: {
+                    channels: {channels: {[sub.id]: sub}, myMembers: {[sub.id]: {channel_id: sub.id, notify_props: {}}}},
+                    teams: {currentTeamId: 'team_id', teams: {team_id: {id: 'team_id', name: 'team_name'}}},
+                },
+            },
+        );
+
+        const toggle = screen.getByRole('button', {name: 'Show sub-channels'});
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        const subRow = screen.getAllByRole('listitem')[1];
+        expect(subRow).toHaveClass('SidebarChannel--sub', 'collapsed');
+
+        await userEvent.click(toggle);
+        expect(screen.getByRole('button', {name: 'Hide sub-channels'})).toHaveAttribute('aria-expanded', 'true');
+        expect(subRow).toHaveClass('expanded');
+        expect(localStorage.getItem('sidebarSubChannelsOpen:channel_id')).toBe('true');
+
+        await userEvent.click(screen.getByRole('button', {name: 'Hide sub-channels'}));
+        expect(subRow).toHaveClass('collapsed');
+        expect(localStorage.getItem('sidebarSubChannelsOpen:channel_id')).toBeNull();
+    });
 
     test('should not be collapsed when there are unread messages', () => {
         const props = {

@@ -157,6 +157,7 @@ describe('SidebarList', () => {
             close: jest.fn(),
             moveChannelsInSidebar: jest.fn(),
             moveCategory: jest.fn(),
+            setChannelParent: jest.fn(),
             removeFromCategory: jest.fn(),
             setDraggingState: jest.fn(),
             stopDragging: jest.fn(),
@@ -469,5 +470,30 @@ describe('SidebarList', () => {
 
         instance.onDragEnd(channelResult);
         expect(baseProps.actions.moveChannelsInSidebar).toHaveBeenCalledWith(channelResult.destination!.droppableId, channelResult.destination!.index, channelResult.draggableId);
+    });
+
+    test('should make a channel dropped onto another channel its sub-channel', () => {
+        const props = {...baseProps, actions: {...baseProps.actions, moveChannelsInSidebar: jest.fn(), setChannelParent: jest.fn()}};
+        const sidebarListRef = React.createRef<SidebarListComponent>();
+        renderWithContext(
+            <SidebarListComponent
+                {...props}
+                intl={intl}
+                ref={sidebarListRef}
+            />,
+        );
+
+        sidebarListRef.current!.onDragEnd({
+            reason: 'DROP',
+            type: 'SIDEBAR_CHANNEL',
+            source: {droppableId: 'category1', index: 2},
+            destination: null,
+            combine: {draggableId: 'parent_channel', droppableId: 'category1'},
+            draggableId: 'child_channel',
+            mode: 'FLUID' as MovementMode,
+        });
+
+        expect(props.actions.setChannelParent).toHaveBeenCalledWith('child_channel', 'parent_channel');
+        expect(props.actions.moveChannelsInSidebar).not.toHaveBeenCalled();
     });
 });

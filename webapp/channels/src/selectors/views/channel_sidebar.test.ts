@@ -960,4 +960,37 @@ describe('makeGetFilteredChannelIdsForCategory', () => {
 
         expect(getFilteredChannelIdsForCategory(state, category1)).toEqual([readChannel.id]);
     });
+
+    test('should leave out sub-channels listed under their parent', () => {
+        const parent = {...readChannel, team_id: 'team1', display_name: 'Parent'};
+        const subB = {...unreadChannel1, team_id: 'team1', display_name: 'B', parent_id: parent.id};
+        const subA = {...unreadChannel2, team_id: 'team1', display_name: 'A', parent_id: parent.id};
+        const category1 = {id: 'category1', team_id: 'team1', channel_ids: [subB.id, parent.id, subA.id]} as ChannelCategory;
+
+        const makeState = (myMembers: Record<string, unknown>) => ({
+            ...baseState,
+            entities: {
+                ...baseState.entities,
+                channels: {
+                    ...baseState.entities.channels,
+                    channels: {currentChannel, [parent.id]: parent, [subA.id]: subA, [subB.id]: subB},
+                    myMembers,
+                },
+                channelCategories: {
+                    byId: {category1},
+                    orderByTeam: {team1: [category1]},
+                },
+            },
+        } as unknown as GlobalState);
+        const {[parent.id]: parentMember, ...otherMembers} = baseState.entities.channels.myMembers;
+
+        const state = makeState({...otherMembers, [parent.id]: parentMember});
+        expect(Selectors.getSubChannelIdsByParent(state)).toEqual({[parent.id]: [subA.id, subB.id]});
+        expect(Selectors.makeGetFilteredChannelIdsForCategory()(state, category1)).toEqual([parent.id]);
+
+        // A sub-channel whose parent I'm not in stays in its own category.
+        const notInParent = makeState(otherMembers);
+        expect(Selectors.getSubChannelIdsByParent(notInParent)).toEqual({});
+        expect(Selectors.makeGetFilteredChannelIdsForCategory()(notInParent, category1)).toEqual([subB.id, parent.id, subA.id]);
+    });
 });

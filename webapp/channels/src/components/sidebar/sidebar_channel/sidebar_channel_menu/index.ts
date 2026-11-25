@@ -6,7 +6,7 @@ import type {ConnectedProps} from 'react-redux';
 
 import type {Channel} from '@mattermost/types/channels';
 
-import {favoriteChannel, unfavoriteChannel, readMultipleChannels} from 'mattermost-redux/actions/channels';
+import {favoriteChannel, unfavoriteChannel, readMultipleChannels, setChannelParent} from 'mattermost-redux/actions/channels';
 import Permissions from 'mattermost-redux/constants/permissions';
 import {isFavoriteChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getMyChannelMemberships, getCurrentUserId} from 'mattermost-redux/selectors/entities/common';
@@ -44,7 +44,16 @@ function mapStateToProps(state: GlobalState, ownProps: OwnProps) {
         managePrivateChannelMembers = haveIChannelPermission(state, currentTeam.id, ownProps.channel.id, Permissions.MANAGE_PRIVATE_CHANNEL_MEMBERS);
     }
 
+    // Detaching a sub-channel needs the same permission the server checks: managing the channel's properties.
+    const canDetachFromParent = Boolean(ownProps.channel.parent_id && currentTeam && haveIChannelPermission(
+        state,
+        currentTeam.id,
+        ownProps.channel.id,
+        ownProps.channel.type === 'P' ? Permissions.MANAGE_PRIVATE_CHANNEL_PROPERTIES : Permissions.MANAGE_PUBLIC_CHANNEL_PROPERTIES,
+    ));
+
     return {
+        canDetachFromParent,
         currentUserId: getCurrentUserId(state),
         isFavorite: isFavoriteChannel(state, ownProps.channel.id),
         isMuted: isChannelMuted(member),
@@ -62,6 +71,7 @@ const mapDispatchToProps = {
     muteChannel,
     unmuteChannel,
     openModal,
+    setChannelParent,
 };
 
 const connector = connect(mapStateToProps, mapDispatchToProps);

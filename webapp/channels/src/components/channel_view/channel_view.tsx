@@ -23,6 +23,7 @@ import {ChannelComposerBanner} from './channel_composer_banner';
 import ChannelTabs from './channel_tabs';
 import ChannelViewPluginComponent from './channel_view_plugin_component';
 import InputLoading from './input_loading';
+import SubChannelTabs from './sub_channel_tabs';
 
 import type {PropsFromRedux} from './index';
 
@@ -270,6 +271,7 @@ export default class ChannelView extends React.PureComponent<Props, State> {
                     />
                 )}
                 <ChannelHeader key='channelHeader'/>
+                <SubChannelTabs channelId={this.props.channelId}/>
                 <ChannelBanner
                     key='channelBanner'
                     channelId={this.props.channelId}
