@@ -75,12 +75,20 @@ func TestPatchTaskRules(t *testing.T) {
 		_, appErr = th.App.PatchTask(member, reload(b.Id), status(model.TaskStatusTodo), "")
 		require.Nil(t, appErr)
 
-		// The lock gates To do only.
+		// The start lock gates To do only; done waits for A from any column and for anyone.
 		_, appErr = th.App.PatchTask(member, reload(a.Id), status(model.TaskStatusTodo), "")
 		require.Nil(t, appErr)
 		_, appErr = th.App.PatchTask(member, reload(b.Id), status(model.TaskStatusDone), "")
-		requireErr(appErr, "app.task.locked.app_error")
+		requireErr(appErr, "app.task.waits_for_open.app_error")
 		_, appErr = th.App.PatchTask(manager, reload(b.Id), status(model.TaskStatusInProgress), "")
+		require.Nil(t, appErr)
+		_, appErr = th.App.PatchTask(member, reload(b.Id), status(model.TaskStatusDone), "")
+		requireErr(appErr, "app.task.waits_for_open.app_error")
+		_, appErr = th.App.PatchTask(manager, reload(b.Id), status(model.TaskStatusDone), "")
+		requireErr(appErr, "app.task.waits_for_open.app_error")
+		require.Equal(t, model.TaskStatusInProgress, reload(b.Id).Status)
+
+		_, appErr = th.App.PatchTask(member, reload(a.Id), status(model.TaskStatusDone), "")
 		require.Nil(t, appErr)
 		_, appErr = th.App.PatchTask(member, reload(b.Id), status(model.TaskStatusDone), "")
 		require.Nil(t, appErr)

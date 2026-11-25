@@ -33827,6 +33827,10 @@
     "defaultMessage": "Waits for",
     "description": "Legend of the checkbox list in the task details panel naming the tasks that must be done before this task can start."
   },
+  "tasks.doneBlocked": {
+    "defaultMessage": "\"{title}\" can't be done yet. It is waiting for: {titles}",
+    "description": "Notice above the task board or list when a task is dropped into Done while tasks it waits for are not done; the card snaps back. {title} is the task, {titles} a comma-separated list of the tasks it waits for."
+  },
   "tasks.episodeChannelModal.failed": {
     "defaultMessage": "The channel was created, but these could not be added:",
     "description": "Shown in the episode channel dialog after the channel was made, above a list of template folders and tasks that failed to be created."

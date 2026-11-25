@@ -10,6 +10,7 @@ import (
 	"maps"
 	"net/http"
 	"slices"
+	"strings"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/shared/i18n"
@@ -212,6 +213,16 @@ func (a *App) PatchTask(rctx request.CTX, task *model.Task, patch *model.TaskPat
 		if patch.WaitsFor != nil {
 			if appErr := validateTaskWaitsFor(&patched, byID); appErr != nil {
 				return nil, appErr
+			}
+		}
+		if patched.Status == model.TaskStatusDone && task.Status != model.TaskStatusDone {
+			// No one, managers included, finishes a task before the tasks it waits for.
+			if open := a.taskLocked(&patched, byID); len(open) > 0 {
+				titles := make([]string, len(open))
+				for i, o := range open {
+					titles[i] = o.Title
+				}
+				return nil, model.NewAppError("PatchTask", "app.task.waits_for_open.app_error", map[string]any{"Titles": strings.Join(titles, ", ")}, "id="+task.Id, http.StatusBadRequest)
 			}
 		}
 		if appErr := a.checkTaskLock(rctx, task, &patched, byID); appErr != nil {

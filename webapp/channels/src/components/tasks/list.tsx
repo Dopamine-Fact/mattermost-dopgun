@@ -2,11 +2,10 @@
 // See LICENSE.txt for license information.
 
 import {DragDropContext, Draggable, Droppable} from '@hello-pangea/dnd';
-import type {DropResult} from '@hello-pangea/dnd';
 import classNames from 'classnames';
 import React, {useMemo, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
-import {useDispatch, useSelector} from 'react-redux';
+import {useSelector} from 'react-redux';
 
 import {ChevronDownIcon, ChevronRightIcon} from '@mattermost/compass-icons/components';
 import type {TaskStatus} from '@mattermost/types/tasks';
@@ -14,19 +13,16 @@ import type {TaskStatus} from '@mattermost/types/tasks';
 import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 
-import {patchTask} from 'actions/tasks';
-
 import {useLoadedTeamDepartments} from 'components/profile_popover/use_custom_roles';
 
-import {AddTask, ApprovalBadge, AssigneeAvatar, DepartmentChip, DoneToggle, DueDate, LockLine, ParentLabel, SectionLabel, StatusSelect, SubtaskBadge, SubtasksToggle, TakeItButton, useApprovalEnabled} from './task_bits';
+import {AddTask, ApprovalBadge, AssigneeAvatar, DepartmentChip, DoneToggle, DueDate, LockLine, ParentLabel, SectionLabel, StatusSelect, SubtaskBadge, SubtasksToggle, TakeItButton, TaskDropNotice, useApprovalEnabled, useTaskDrop} from './task_bits';
 import {lockedBy} from './task_departments';
-import {dropToPatch, groupByStatus, isApprovalLocked, STATUSES, statusMessages, subtaskCounts, visibleTasks} from './task_utils';
+import {groupByStatus, isApprovalLocked, STATUSES, statusMessages, subtaskCounts, visibleTasks} from './task_utils';
 import type {ViewProps} from './task_utils';
 
 // sectionId, when set, files tasks added here under that section.
 const List = ({teamId, tasks, sections, usersById, selectedId, onSelect, canManage, sectionId}: ViewProps & {sectionId?: string}) => {
     const {formatMessage} = useIntl();
-    const dispatch = useDispatch();
     const nameDisplay = useSelector(getTeammateNameDisplaySetting);
     const [showSubtasks, setShowSubtasks] = useState(false);
     const byStatus = useMemo(() => groupByStatus(visibleTasks(tasks, showSubtasks)), [tasks, showSubtasks]);
@@ -37,12 +33,7 @@ const List = ({teamId, tasks, sections, usersById, selectedId, onSelect, canMana
     const byId = useMemo(() => Object.fromEntries(tasks.map((t) => [t.id, t])), [tasks]);
     const [collapsed, setCollapsed] = useState<Partial<Record<TaskStatus, boolean>>>({});
 
-    const handleDragEnd = (result: DropResult) => {
-        const patch = dropToPatch(byStatus, result);
-        if (patch) {
-            dispatch(patchTask(result.draggableId, patch));
-        }
-    };
+    const {onDragEnd, notice} = useTaskDrop(byStatus, byId);
 
     return (
         <div className='TaskList'>
@@ -73,7 +64,8 @@ const List = ({teamId, tasks, sections, usersById, selectedId, onSelect, canMana
                     defaultMessage='Status'
                 />
             </div>
-            <DragDropContext onDragEnd={handleDragEnd}>
+            <TaskDropNotice notice={notice}/>
+            <DragDropContext onDragEnd={onDragEnd}>
                 {STATUSES.map((status) => {
                     const isCollapsed = Boolean(collapsed[status]);
                     const Chevron = isCollapsed ? ChevronRightIcon : ChevronDownIcon;

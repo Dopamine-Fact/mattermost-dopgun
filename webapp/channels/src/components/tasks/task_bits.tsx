@@ -1,8 +1,9 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import type {DropResult} from '@hello-pangea/dnd';
 import classNames from 'classnames';
-import React from 'react';
+import React, {useState} from 'react';
 import type {CSSProperties} from 'react';
 import {FormattedDate, FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
@@ -27,8 +28,8 @@ import type {GlobalState} from 'types/store';
 
 import BlurInput from './blur_input';
 import {isOverdue} from './dates';
-import {userDepartmentIds} from './task_departments';
-import {approvalMessages, isApprovalLocked, isComplete, sectionColor, STATUSES, statusMessages} from './task_utils';
+import {openWaitsFor, userDepartmentIds} from './task_departments';
+import {approvalMessages, dropToPatch, isApprovalLocked, isComplete, sectionColor, STATUSES, statusMessages} from './task_utils';
 import type {SubtaskCount} from './task_utils';
 
 // useApprovalEnabled: whether the team runs the supervisor → director approval of done tasks.
@@ -36,10 +37,51 @@ export function useApprovalEnabled(teamId: string): boolean {
     return useSelector((state: GlobalState) => Boolean(getTeam(state, teamId)?.task_approval_enabled));
 }
 
-// useHasOpenSubtasks: a parent cannot be finished while one of its subtasks is not done and approved.
-function useHasOpenSubtasks(taskId: string): boolean {
-    return useSelector((state: GlobalState) => Object.values(state.entities.tasks.byId).some((t) => t.parent_id === taskId && !isComplete(t)));
+// useCannotFinish: a task cannot be finished while one of its subtasks, or a task it waits for, is not done and approved.
+function useCannotFinish(task: Task): boolean {
+    return useSelector((state: GlobalState) => {
+        const byId = state.entities.tasks.byId;
+        return Object.values(byId).some((t) => t.parent_id === task.id && !isComplete(t)) || openWaitsFor(task, byId).length > 0;
+    });
 }
+
+// useTaskDrop handles a drag between status groups. A drop into Done while a waits-for task is open is refused (the
+// card snaps back); that reason, or the server's error after patchTask rolls the card back, is the notice.
+export function useTaskDrop(byStatus: Record<TaskStatus, Task[]>, byId: Record<string, Task>) {
+    const {formatMessage} = useIntl();
+    const dispatch = useDispatch();
+    const [notice, setNotice] = useState('');
+    const onDragEnd = async (result: DropResult) => {
+        const patch = dropToPatch(byStatus, result);
+        const task = byId[result.draggableId];
+        if (!patch || !task) {
+            return;
+        }
+        const open = patch.status === 'done' && task.status !== 'done' ? openWaitsFor(task, byId) : [];
+        if (open.length) {
+            setNotice(formatMessage(
+                {id: 'tasks.doneBlocked', defaultMessage: '"{title}" can\'t be done yet. It is waiting for: {titles}'},
+                {title: task.title, titles: open.map((t) => t.title).join(', ')},
+            ));
+            return;
+        }
+        setNotice('');
+        const saved = await dispatch(patchTask(task.id, patch)) as {error?: {message?: string}};
+        if (saved.error) {
+            setNotice(saved.error.message ?? '');
+        }
+    };
+    return {onDragEnd, notice};
+}
+
+export const TaskDropNotice = ({notice}: {notice: string}) => (notice ? (
+    <p
+        className='TaskDetail__error'
+        role='alert'
+    >
+        {notice}
+    </p>
+) : null);
 
 // locked: the waits-for lock holds the task for this viewer, so it cannot be marked done. An approved task and a
 // parent with open subtasks cannot be toggled either.
@@ -49,7 +91,7 @@ export const DoneToggle = ({task, locked}: {task: Task; locked?: boolean}) => {
     const done = task.status === 'done';
     const Icon = done ? CheckCircleIcon : CheckCircleOutlineIcon;
     const approvalLocked = isApprovalLocked(task, useApprovalEnabled(task.team_id));
-    const openSubtasks = useHasOpenSubtasks(task.id);
+    const cannotFinish = useCannotFinish(task);
 
     return (
         <button
@@ -59,7 +101,7 @@ export const DoneToggle = ({task, locked}: {task: Task; locked?: boolean}) => {
                 dispatch(patchTask(task.id, {status: done ? 'todo' : 'done'}));
             }}
             aria-pressed={done}
-            disabled={locked || approvalLocked || (!done && openSubtasks)}
+            disabled={locked || approvalLocked || (!done && cannotFinish)}
             aria-label={formatMessage({id: 'tasks.markDone', defaultMessage: 'Mark {title} as done'}, {title: task.title})}
         >
             <Icon size={16}/>
@@ -134,7 +176,7 @@ export const StatusSelect = ({task, locked}: {task: Task; locked?: boolean}) => 
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
     const approvalLocked = isApprovalLocked(task, useApprovalEnabled(task.team_id));
-    const openSubtasks = useHasOpenSubtasks(task.id);
+    const cannotFinish = useCannotFinish(task);
     return (
         <select
             className={`TaskStatusPill TaskStatus--${task.status}`}
@@ -148,7 +190,7 @@ export const StatusSelect = ({task, locked}: {task: Task; locked?: boolean}) => 
                 <option
                     key={status}
                     value={status}
-                    disabled={status !== task.status && (locked || (status === 'done' && openSubtasks))}
+                    disabled={status !== task.status && (locked || (status === 'done' && cannotFinish))}
                 >
                     {formatMessage(statusMessages[status])}
                 </option>

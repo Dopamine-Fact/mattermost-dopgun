@@ -4,7 +4,7 @@
 import type {Department} from '@mattermost/types/custom_roles';
 import type {Task} from '@mattermost/types/tasks';
 
-import {lockedBy, userDepartmentIds} from './task_departments';
+import {lockedBy, openWaitsFor, userDepartmentIds} from './task_departments';
 
 const dept = (id: string, ...roles: string[]) => ({id, ranks: roles.map((name) => ({role_name: name}))}) as unknown as Department;
 
@@ -31,5 +31,9 @@ describe('lockedBy', () => {
         expect(lockedBy(task('t', {waits_for: ['d']}), byId)).toEqual([]);
         expect(lockedBy(task('t', {status: 'in_progress', waits_for: ['s']}), byId)).toEqual([]);
         expect(lockedBy(task('t', {waits_for: ['s'], video_file_id: 'f'}), byId)).toEqual([]);
+    });
+
+    test('openWaitsFor keeps a started task from being done until they are', () => {
+        expect(openWaitsFor(task('t', {status: 'in_progress', waits_for: ['s', 'd', 'p']}), byId)).toEqual([story, pending]);
     });
 });

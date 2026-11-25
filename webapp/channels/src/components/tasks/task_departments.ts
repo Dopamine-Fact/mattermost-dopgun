@@ -13,11 +13,15 @@ export function userDepartmentIds(roles: string, departments: Department[]): Set
     return new Set(ranksOf(departments, roles).map(({department}) => department.id));
 }
 
-// lockedBy is the waits-for tasks still to finish (done and approved). The lock only holds a To do task; revisions
-// never wait.
+// openWaitsFor is the waits-for tasks still to finish (done and approved); until they are, the task cannot be done.
+export function openWaitsFor(task: Task, byId: Record<string, Task>): Task[] {
+    return (task.waits_for ?? []).map((id) => byId[id]).filter((t) => t && !isComplete(t));
+}
+
+// lockedBy is openWaitsFor for a To do task: the lock that keeps it from being started. Revisions never wait.
 export function lockedBy(task: Task, byId: Record<string, Task>): Task[] {
     if (task.status !== 'todo' || task.video_file_id) {
         return [];
     }
-    return (task.waits_for ?? []).map((id) => byId[id]).filter((t) => t && !isComplete(t));
+    return openWaitsFor(task, byId);
 }

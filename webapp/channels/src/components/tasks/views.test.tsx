@@ -1,6 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import type {DropResult} from '@hello-pangea/dnd';
 import React from 'react';
 
 import type {Department} from '@mattermost/types/custom_roles';
@@ -10,12 +11,13 @@ import {Client4} from 'mattermost-redux/client';
 
 import {patchTask} from 'actions/tasks';
 
-import {fireEvent, renderWithContext, screen} from 'tests/react_testing_utils';
+import {act, fireEvent, renderHookWithContext, renderWithContext, screen} from 'tests/react_testing_utils';
 import {TestHelper} from 'utils/test_helper';
 
 import Board from './board';
 import List from './list';
-import {addDays, startOfDay} from './task_utils';
+import {useTaskDrop} from './task_bits';
+import {addDays, groupByStatus, startOfDay} from './task_utils';
 import Timeline from './timeline';
 
 jest.mock('actions/tasks', () => ({
@@ -137,5 +139,30 @@ describe('task views', () => {
         renderWithContext(<Board {...viewProps}/>);
         expect(await screen.findByText('Animation')).toBeInTheDocument();
         expect(screen.getAllByLabelText('Waiting for: Task b')).toHaveLength(1);
+    });
+});
+
+describe('useTaskDrop', () => {
+    const waiting = task('w', 'in_progress', {waits_for: ['p']});
+    const pre = task('p', 'todo');
+    const byId = {w: waiting, p: pre};
+    const byStatus = groupByStatus([waiting, pre]);
+    const drop = (id: string, from: string, to: string) => ({draggableId: id, source: {droppableId: from, index: 0}, destination: {droppableId: to, index: 0}}) as DropResult;
+
+    beforeEach(() => jest.mocked(patchTask).mockClear());
+
+    test('refuses a drop into Done while a waits-for task is open and names it', async () => {
+        const {result} = renderHookWithContext(() => useTaskDrop(byStatus, byId));
+        await act(() => result.current.onDragEnd(drop('w', 'in_progress', 'done')));
+        expect(patchTask).not.toHaveBeenCalled();
+        expect(result.current.notice).toBe('"Task w" can\'t be done yet. It is waiting for: Task p');
+    });
+
+    test('saves other drops and shows the server error when the save is refused', async () => {
+        jest.mocked(patchTask).mockReturnValueOnce((() => Promise.resolve({error: {message: 'Refused by the server'}})) as unknown as ReturnType<typeof patchTask>);
+        const {result} = renderHookWithContext(() => useTaskDrop(byStatus, byId));
+        await act(() => result.current.onDragEnd(drop('p', 'todo', 'in_progress')));
+        expect(patchTask).toHaveBeenCalledWith('p', expect.objectContaining({status: 'in_progress'}));
+        expect(result.current.notice).toBe('Refused by the server');
     });
 });

@@ -12722,6 +12722,11 @@
     "description": "API error when a task patch sets waits-for tasks that are missing, in another section, repeated, the task itself, or that would make a loop."
   },
   {
+    "id": "app.task.waits_for_open.app_error",
+    "translation": "This task can't be done yet. It is waiting for: {{.Titles}}.",
+    "description": "API error, shown on the task board, when a task is moved to Done while tasks it waits for are not done. Titles is a comma-separated list of those task titles."
+  },
+  {
     "id": "app.team.access_policies.channel_not_found.app_error",
     "translation": "One or more channels were not found.",
     "description": "API error shown to an admin configuring a team access policy when some of the selected channels do not exist."

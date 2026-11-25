@@ -2,24 +2,19 @@
 // See LICENSE.txt for license information.
 
 import {DragDropContext, Draggable, Droppable} from '@hello-pangea/dnd';
-import type {DropResult} from '@hello-pangea/dnd';
 import classNames from 'classnames';
 import React, {useMemo, useState} from 'react';
 import {useIntl} from 'react-intl';
-import {useDispatch} from 'react-redux';
-
-import {patchTask} from 'actions/tasks';
 
 import {useLoadedTeamDepartments} from 'components/profile_popover/use_custom_roles';
 
-import {AddTask, ApprovalBadge, AssigneeAvatar, DepartmentChip, DoneToggle, DueDate, LockLine, ParentLabel, SectionLabel, SubtaskBadge, SubtasksToggle, TakeItButton, useApprovalEnabled} from './task_bits';
+import {AddTask, ApprovalBadge, AssigneeAvatar, DepartmentChip, DoneToggle, DueDate, LockLine, ParentLabel, SectionLabel, SubtaskBadge, SubtasksToggle, TakeItButton, TaskDropNotice, useApprovalEnabled, useTaskDrop} from './task_bits';
 import {lockedBy} from './task_departments';
-import {dropToPatch, groupByStatus, isApprovalLocked, STATUSES, statusMessages, subtaskCounts, visibleTasks} from './task_utils';
+import {groupByStatus, isApprovalLocked, STATUSES, statusMessages, subtaskCounts, visibleTasks} from './task_utils';
 import type {ViewProps} from './task_utils';
 
 const Board = ({teamId, tasks, sections, usersById, selectedId, onSelect, canManage}: ViewProps) => {
     const {formatMessage} = useIntl();
-    const dispatch = useDispatch();
     const [showSubtasks, setShowSubtasks] = useState(false);
     const byStatus = useMemo(() => groupByStatus(visibleTasks(tasks, showSubtasks)), [tasks, showSubtasks]);
     const counts = useMemo(() => subtaskCounts(tasks), [tasks]);
@@ -28,20 +23,16 @@ const Board = ({teamId, tasks, sections, usersById, selectedId, onSelect, canMan
     const byId = useMemo(() => Object.fromEntries(tasks.map((t) => [t.id, t])), [tasks]);
     const sectionsById = useMemo(() => new Map(sections.map((s) => [s.id, s])), [sections]);
 
-    const handleDragEnd = (result: DropResult) => {
-        const patch = dropToPatch(byStatus, result);
-        if (patch) {
-            dispatch(patchTask(result.draggableId, patch));
-        }
-    };
+    const {onDragEnd, notice} = useTaskDrop(byStatus, byId);
 
     return (
-        <DragDropContext onDragEnd={handleDragEnd}>
+        <DragDropContext onDragEnd={onDragEnd}>
             <SubtasksToggle
                 tasks={tasks}
                 checked={showSubtasks}
                 onChange={setShowSubtasks}
             />
+            <TaskDropNotice notice={notice}/>
             <div className='TaskBoard'>
                 {STATUSES.map((status) => (
                     <section
