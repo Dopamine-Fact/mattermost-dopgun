@@ -344,10 +344,31 @@ export function makeSortChannelsByRecency(): (state: GlobalState, channels: Chan
     );
 }
 
+// Moves DMs with deactivated users to the end, keeping the existing order otherwise.
+export function makeSortDeactivatedDMsLast(): (state: GlobalState, channels: Channel[]) => Channel[] {
+    return createSelector(
+        'makeSortDeactivatedDMsLast',
+        (_state: GlobalState, channels: Channel[]) => channels,
+        getCurrentUserId,
+        (state: GlobalState) => state.entities.users.profiles,
+        (channels, currentUserId, profiles) => {
+            const isDeactivatedDM = (channel: Channel) => channel.type === General.DM_CHANNEL &&
+                Boolean(profiles[getUserIdFromChannelName(currentUserId, channel.name)]?.delete_at);
+
+            if (!channels.some(isDeactivatedDM)) {
+                return channels;
+            }
+
+            return [...channels.filter((c) => !isDeactivatedDM(c)), ...channels.filter(isDeactivatedDM)];
+        },
+    );
+}
+
 export function makeSortChannels() {
     const sortChannelsByName = makeSortChannelsByName();
     const sortChannelsByNameWithDMs = makeSortChannelsByNameWithDMs();
     const sortChannelsByRecency = makeSortChannelsByRecency();
+    const sortDeactivatedDMsLast = makeSortDeactivatedDMsLast();
 
     return (state: GlobalState, originalChannels: Channel[], category: ChannelCategory) => {
         let channels = originalChannels;
@@ -363,6 +384,11 @@ export function makeSortChannels() {
             } else {
                 channels = sortChannelsByName(state, channels);
             }
+        }
+
+        // Manual order is left alone so drag-and-drop indexes stay correct.
+        if (category.sorting !== CategorySorting.Manual) {
+            channels = sortDeactivatedDMsLast(state, channels);
         }
 
         return channels;

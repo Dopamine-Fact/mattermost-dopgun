@@ -723,6 +723,37 @@ describe('makeSortChannelsByNameWithDMs', () => {
     });
 });
 
+describe('makeSortDeactivatedDMsLast', () => {
+    const state = {
+        entities: {
+            users: {
+                currentUserId: 'me',
+                profiles: {
+                    active: {id: 'active', delete_at: 0},
+                    gone: {id: 'gone', delete_at: 1000},
+                },
+            },
+        },
+    } as unknown as GlobalState;
+
+    const goneDM = ch({id: 'goneDM', type: General.DM_CHANNEL, name: 'gone__me'});
+    const activeDM = ch({id: 'activeDM', type: General.DM_CHANNEL, name: 'active__me'});
+    const gm = ch({id: 'gm', type: General.GM_CHANNEL});
+
+    test('should move DMs with deactivated users to the end and keep the rest in order', () => {
+        const sort = Selectors.makeSortDeactivatedDMsLast();
+
+        expect(sort(state, [goneDM, activeDM, gm])).toEqual([activeDM, gm, goneDM]);
+    });
+
+    test('should return the same array when no DM is deactivated', () => {
+        const sort = Selectors.makeSortDeactivatedDMsLast();
+        const channels = [activeDM, gm];
+
+        expect(sort(state, channels)).toBe(channels);
+    });
+});
+
 describe('makeSortChannelsByRecency', () => {
     const channel1 = ch({id: 'channel1', display_name: 'Apple', last_post_at: 1000, last_root_post_at: 3000, create_at: 0});
     const channel2 = ch({id: 'channel2', display_name: 'Banana', last_post_at: 2000, last_root_post_at: 1000, create_at: 0});

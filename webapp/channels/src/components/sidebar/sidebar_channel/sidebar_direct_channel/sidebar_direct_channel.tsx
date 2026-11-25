@@ -56,7 +56,7 @@ class SidebarDirectChannel extends React.PureComponent<Props> {
 
         if (teammate.id && teammate.delete_at) {
             return (
-                <i className='icon icon-archive-outline'/>
+                <i className='icon icon-account-minus-outline'/>
             );
         }
 
