@@ -531,3 +531,5 @@ channels/db/migrations/postgres/000267_create_personal_notes.down.sql
 channels/db/migrations/postgres/000267_create_personal_notes.up.sql
 channels/db/migrations/postgres/000268_team_files_template.down.sql
 channels/db/migrations/postgres/000268_team_files_template.up.sql
+channels/db/migrations/postgres/000269_add_channel_parent_id.down.sql
+channels/db/migrations/postgres/000269_add_channel_parent_id.up.sql

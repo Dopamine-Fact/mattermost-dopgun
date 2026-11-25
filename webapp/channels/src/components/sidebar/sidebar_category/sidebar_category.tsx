@@ -411,6 +411,9 @@ export default class SidebarCategory extends React.PureComponent<Props, State> {
                                 droppableId={category.id}
                                 type='SIDEBAR_CHANNEL'
                                 isDropDisabled={this.isDropDisabled()}
+
+                                // A channel dropped onto another channel becomes its sub-channel (see SidebarList.onDragEnd).
+                                isCombineEnabled={this.props.draggingState.type === DraggingStateTypes.CHANNEL}
                             >
                                 {(droppableProvided, droppableSnapshot) => {
                                     return (

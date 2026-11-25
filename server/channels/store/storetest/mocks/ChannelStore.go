@@ -2478,6 +2478,34 @@ func (_m *ChannelStore) GroupSyncedChannelCount() (int64, error) {
 	return r0, r1
 }
 
+// HasChildChannels provides a mock function with given fields: parentID
+func (_m *ChannelStore) HasChildChannels(parentID string) (bool, error) {
+	ret := _m.Called(parentID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HasChildChannels")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (bool, error)); ok {
+		return rf(parentID)
+	}
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(parentID)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(parentID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // IncrementMentionCount provides a mock function with given fields: channelID, userIDs, isRoot, isUrgent
 func (_m *ChannelStore) IncrementMentionCount(channelID string, userIDs []string, isRoot bool, isUrgent bool) error {
 	ret := _m.Called(channelID, userIDs, isRoot, isUrgent)

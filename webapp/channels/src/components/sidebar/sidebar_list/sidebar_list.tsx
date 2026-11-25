@@ -80,6 +80,7 @@ type Props = WrappedComponentProps & {
     actions: {
         moveChannelsInSidebar: (categoryId: string, targetIndex: number, draggableChannelId: string) => void;
         moveCategory: (teamId: string, categoryId: string, newIndex: number) => void;
+        setChannelParent: (channelId: string, parentId: string) => void;
         switchToChannelById: (channelId: string) => void;
         switchToLhsStaticPage: (pageId: string) => void;
         close: () => void;
@@ -460,7 +461,10 @@ export class SidebarList extends React.PureComponent<Props, State> {
     onDragEnd = (result: DropResult) => {
         this.props.onDragEnd(result);
 
-        if (result.reason === 'DROP' && result.destination) {
+        // Dropped onto another channel rather than between two: it becomes that channel's sub-channel.
+        if (result.reason === 'DROP' && result.combine && result.type === 'SIDEBAR_CHANNEL') {
+            this.props.actions.setChannelParent(result.draggableId, result.combine.draggableId);
+        } else if (result.reason === 'DROP' && result.destination) {
             if (result.type === 'SIDEBAR_CHANNEL') {
                 this.props.actions.moveChannelsInSidebar(result.destination.droppableId, result.destination.index, result.draggableId);
             } else if (result.type === 'SIDEBAR_CATEGORY') {

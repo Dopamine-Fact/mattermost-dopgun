@@ -12,6 +12,7 @@ import {
     BellOutlineIcon,
     BellOffOutlineIcon,
     LinkVariantIcon,
+    LinkVariantOffIcon,
     AccountPlusOutlineIcon,
     DotsVerticalIcon,
     ExitToAppIcon,
@@ -40,6 +41,7 @@ import type {PropsFromRedux, OwnProps} from './index';
 type Props = PropsFromRedux & OwnProps;
 
 const SidebarChannelMenu = ({
+    canDetachFromParent,
     channel,
     channelLink,
     currentUserId,
@@ -57,6 +59,7 @@ const SidebarChannelMenu = ({
     unfavoriteChannel,
     unmuteChannel,
     channelLeaveHandler,
+    setChannelParent,
 }: Props) => {
     const isLeaving = useRef(false);
     const isInManagedCategory = useSelector((state: GlobalState) => isChannelInManagedCategory(state, channel.id));
@@ -255,6 +258,23 @@ const SidebarChannelMenu = ({
         );
     }
 
+    let detachMenuItem: JSX.Element | null = null;
+    if (canDetachFromParent) {
+        detachMenuItem = (
+            <Menu.Item
+                id={`detachFromParent-${channel.id}`}
+                onClick={() => setChannelParent(channel.id, '')}
+                leadingElement={<LinkVariantOffIcon size={18}/>}
+                labels={(
+                    <FormattedMessage
+                        id='sidebar_left.sidebar_channel_menu.detachFromParent'
+                        defaultMessage='Detach from Parent Channel'
+                    />
+                )}
+            />
+        );
+    }
+
     let leaveChannelMenuItem: JSX.Element | null = null;
     if (channel.name !== Constants.DEFAULT_CHANNEL) {
         let leaveChannelText = <FormattedMessage {...messages.leave[channelKind]}/>;
@@ -317,6 +337,7 @@ const SidebarChannelMenu = ({
             {muteUnmuteChannelMenuItem}
             <Menu.Separator/>
             <ChannelMoveToSubmenu channel={channel}/>
+            {detachMenuItem}
             {(copyLinkMenuItem || addMembersMenuItem) && <Menu.Separator/>}
             {copyLinkMenuItem}
             {addMembersMenuItem}

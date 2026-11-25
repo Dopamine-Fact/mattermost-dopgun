@@ -228,8 +228,35 @@ export const getDisplayedChannels = createSelector(
     },
 );
 
+// Sub-channels I'm a member of whose parent is also one of my unarchived channels in the current team, keyed by
+// parent id and sorted by name. Those sub-channels are listed under their parent in the sidebar.
+// shortcut: sub-channels I haven't joined aren't listed; add a server query if they should show up too.
+export const getSubChannelIdsByParent: (state: GlobalState) => Record<string, string[]> = createSelector(
+    'getSubChannelIdsByParent',
+    getAllChannels,
+    getMyChannelMemberships,
+    getCurrentTeamId,
+    (allChannels, myMembers, teamId) => {
+        const channels = Object.values(allChannels).filter((c) => c.team_id === teamId && c.delete_at === 0 && myMembers[c.id]);
+        const parentIds = new Set(channels.map((c) => c.id));
+        const subChannels = channels.filter((c) => c.parent_id && parentIds.has(c.parent_id));
+        const byParent: Record<string, string[]> = {};
+        for (const c of subChannels.sort((a, b) => a.display_name.localeCompare(b.display_name))) {
+            (byParent[c.parent_id!] ??= []).push(c.id);
+        }
+        return byParent;
+    },
+);
+
+// The sub-channels shown under their parent, so their own categories leave them out.
+export const getNestedSubChannelIds: (state: GlobalState) => Set<string> = createSelector(
+    'getNestedSubChannelIds',
+    getSubChannelIdsByParent,
+    (byParent) => new Set(Object.values(byParent).flat()),
+);
+
 // Returns a selector that, given a category, returns the ids of channels visible in that category. The returned channels do not
-// include unread channels when the Unreads category is enabled.
+// include unread channels when the Unreads category is enabled, nor sub-channels listed under their parent.
 export function makeGetFilteredChannelIdsForCategory(): (state: GlobalState, category: ChannelCategory) => string[] {
     const getChannelIdsForCategory = makeGetChannelIdsForCategory();
 
@@ -240,8 +267,10 @@ export function makeGetFilteredChannelIdsForCategory(): (state: GlobalState, cat
         (state: GlobalState) => shouldShowUnreadsCategory(state),
         getProductRailFilter,
         getBoardChannelIds,
-        (allChannelIds, unreadChannelIdsSet, showUnreadsCategory, railSection, boardChannelIds) => {
-            const channelIds = filterChannelIdsForSection(allChannelIds, railSection, boardChannelIds);
+        getNestedSubChannelIds,
+        (allChannelIds, unreadChannelIdsSet, showUnreadsCategory, railSection, boardChannelIds, nestedIds) => {
+            const topLevelIds = allChannelIds.some((id) => nestedIds.has(id)) ? allChannelIds.filter((id) => !nestedIds.has(id)) : allChannelIds;
+            const channelIds = filterChannelIdsForSection(topLevelIds, railSection, boardChannelIds);
 
             if (!showUnreadsCategory) {
                 return channelIds;

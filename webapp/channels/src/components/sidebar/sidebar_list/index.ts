@@ -8,7 +8,7 @@ import type {Dispatch} from 'redux';
 import type {PreferenceType} from '@mattermost/types/preferences';
 
 import {moveCategory} from 'mattermost-redux/actions/channel_categories';
-import {readAllMessages} from 'mattermost-redux/actions/channels';
+import {readAllMessages, setChannelParent} from 'mattermost-redux/actions/channels';
 import {savePreferences} from 'mattermost-redux/actions/preferences';
 import {markAllInTeamAsRead} from 'mattermost-redux/actions/teams';
 import {Preferences} from 'mattermost-redux/constants';
@@ -129,6 +129,7 @@ function mapDispatchToProps(dispatch: Dispatch) {
             switchToChannelById,
             moveChannelsInSidebar,
             moveCategory,
+            setChannelParent,
             setDraggingState,
             stopDragging,
             clearChannelSelection,

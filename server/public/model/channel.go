@@ -130,6 +130,8 @@ type Channel struct {
 	DisableJoinLeaveMessages bool   `json:"disable_join_leave_messages"`
 	LastIconUpdate           int64  `json:"last_icon_update"`
 	NameColor                string `json:"name_color"`
+	// ParentId makes this channel a sub-channel of another channel in the same team; empty for none.
+	ParentId string `json:"parent_id"`
 }
 
 // HasPolicyAction reports whether the channel's policy declares the given
@@ -402,6 +404,10 @@ func (o *Channel) IsValid() *AppError {
 		return NewAppError("Channel.IsValid", "model.channel.is_valid.name_color.app_error", nil, "id="+o.Id, http.StatusBadRequest)
 	}
 
+	if o.ParentId != "" && (!IsValidId(o.ParentId) || o.ParentId == o.Id) {
+		return NewAppError("Channel.IsValid", "model.channel.is_valid.parent_id.app_error", nil, "id="+o.Id, http.StatusBadRequest)
+	}
+
 	if o.Discoverable && o.Type != ChannelTypePrivate {
 		return NewAppError("Channel.IsValid", "model.channel.is_valid.discoverable.app_error", nil, "id="+o.Id, http.StatusBadRequest)
 	}
@@ -471,6 +477,26 @@ func (o *Channel) IsBoard() bool {
 
 func (o *Channel) IsSpace() bool {
 	return o.Type == ChannelTypeSpace
+}
+
+// ValidateParent checks that parent can hold o as a sub-channel. Sub-channels are one level
+// deep, so the parent must not be a sub-channel itself and o must not have sub-channels
+// (hasChildren); together these also rule out cycles.
+func (o *Channel) ValidateParent(parent *Channel, hasChildren bool) *AppError {
+	isTeamChannel := func(c *Channel) bool { return c.Type == ChannelTypeOpen || c.Type == ChannelTypePrivate }
+	switch {
+	case !isTeamChannel(o) || !isTeamChannel(parent):
+		return NewAppError("Channel.ValidateParent", "model.channel.parent.type.app_error", nil, "", http.StatusBadRequest)
+	case o.Id == parent.Id:
+		return NewAppError("Channel.ValidateParent", "model.channel.is_valid.parent_id.app_error", nil, "", http.StatusBadRequest)
+	case o.DeleteAt != 0 || parent.DeleteAt != 0:
+		return NewAppError("Channel.ValidateParent", "model.channel.parent.archived.app_error", nil, "", http.StatusBadRequest)
+	case o.TeamId != parent.TeamId:
+		return NewAppError("Channel.ValidateParent", "model.channel.parent.team.app_error", nil, "", http.StatusBadRequest)
+	case parent.ParentId != "" || hasChildren:
+		return NewAppError("Channel.ValidateParent", "model.channel.parent.depth.app_error", nil, "", http.StatusBadRequest)
+	}
+	return nil
 }
 
 // IsMessageChannel reports whether the channel is one of the message-bearing

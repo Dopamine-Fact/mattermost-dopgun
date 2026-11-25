@@ -1892,6 +1892,14 @@ export default class Client4 {
         );
     };
 
+    // An empty parentId detaches the channel from its parent.
+    setChannelParent = (channelId: string, parentId: string) => {
+        return this.doFetch<ServerChannel>(
+            `${this.getChannelRoute(channelId)}/parent`,
+            {method: 'put', body: JSON.stringify({parent_id: parentId})},
+        );
+    };
+
     patchChannel = (channelId: string, channelPatch: Partial<Channel>) => {
         return this.doFetch<ServerChannel>(
             `${this.getChannelRoute(channelId)}/patch`,

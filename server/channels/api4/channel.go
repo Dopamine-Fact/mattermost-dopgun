@@ -96,6 +96,7 @@ func (api *API) InitChannel() {
 	api.BaseRoutes.Channel.Handle("/image", api.APISessionRequired(setChannelIcon, handlerParamFileAPI)).Methods(http.MethodPost)
 	api.BaseRoutes.Channel.Handle("/image", api.APISessionRequired(removeChannelIcon)).Methods(http.MethodDelete)
 	api.BaseRoutes.Channel.Handle("/privacy", api.APISessionRequired(updateChannelPrivacy)).Methods(http.MethodPut)
+	api.BaseRoutes.Channel.Handle("/parent", api.APISessionRequired(setChannelParent)).Methods(http.MethodPut)
 	api.BaseRoutes.Channel.Handle("/restore", api.APISessionRequired(restoreChannel)).Methods(http.MethodPost)
 	api.BaseRoutes.Channel.Handle("", api.APISessionRequired(deleteChannel)).Methods(http.MethodDelete)
 	api.BaseRoutes.Channel.Handle("/stats", api.APISessionRequired(getChannelStats)).Methods(http.MethodGet)
@@ -486,6 +487,59 @@ func updateChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 	c.LogAudit("name=" + channel.Name)
 
 	if err := json.NewEncoder(w).Encode(oldChannel); err != nil {
+		c.Logger.Warn("Error while writing response", mlog.Err(err))
+	}
+}
+
+// setChannelParent makes the channel a sub-channel of body.parent_id, or detaches it when
+// parent_id is empty. The user must be able to manage the properties of both channels.
+func setChannelParent(c *Context, w http.ResponseWriter, r *http.Request) {
+	c.RequireChannelId()
+	if c.Err != nil {
+		return
+	}
+
+	props := model.MapFromJSON(r.Body)
+	parentID := props["parent_id"]
+	if parentID != "" && !model.IsValidId(parentID) {
+		c.SetInvalidParam("parent_id")
+		return
+	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventUpdateChannel, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	model.AddEventParameterToAuditRec(auditRec, "channel_id", c.Params.ChannelId)
+	model.AddEventParameterToAuditRec(auditRec, "parent_id", parentID)
+
+	for _, id := range []string{c.Params.ChannelId, parentID} {
+		if id == "" {
+			continue
+		}
+		channel, appErr := c.App.GetChannel(c.AppContext, id)
+		if appErr != nil {
+			c.Err = appErr
+			return
+		}
+		permission := model.PermissionManagePublicChannelProperties
+		if channel.Type == model.ChannelTypePrivate {
+			permission = model.PermissionManagePrivateChannelProperties
+		}
+		if ok, _ := c.App.SessionHasPermissionToChannel(c.AppContext, *c.AppContext.Session(), id, permission); !ok {
+			c.SetPermissionError(permission)
+			return
+		}
+	}
+
+	channel, appErr := c.App.SetChannelParent(c.AppContext, c.Params.ChannelId, parentID)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	auditRec.AddEventResultState(channel)
+	auditRec.Success()
+
+	if err := json.NewEncoder(w).Encode(channel); err != nil {
 		c.Logger.Warn("Error while writing response", mlog.Err(err))
 	}
 }

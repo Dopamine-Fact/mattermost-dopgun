@@ -17042,6 +17042,11 @@
     "description": "Channel validation error shown when the color chosen for the channel's name in the sidebar is not a valid hex color."
   },
   {
+    "id": "model.channel.is_valid.parent_id.app_error",
+    "translation": "Invalid parent channel.",
+    "description": "Error shown when a channel is made a sub-channel of a malformed channel id or of itself."
+  },
+  {
     "id": "model.channel.is_valid.purpose.app_error",
     "translation": "Invalid purpose.",
     "description": "Validation error when a channel's purpose (description) text fails validation, e.g. too long."
@@ -17070,6 +17075,26 @@
     "id": "model.channel.is_valid_board.type.app_error",
     "translation": "Channel type must be BO (open board) or BP (private board).",
     "description": "API validation error when creating a board-type channel; 'BO' and 'BP' are literal channel type codes and must not be translated."
+  },
+  {
+    "id": "model.channel.parent.archived.app_error",
+    "translation": "Archived channels can't be parent channels or sub-channels.",
+    "description": "Error shown when a channel is dragged onto another channel in the sidebar to make it a sub-channel, but one of the two channels is archived."
+  },
+  {
+    "id": "model.channel.parent.depth.app_error",
+    "translation": "Sub-channels can only be one level deep: a sub-channel can't have its own sub-channels.",
+    "description": "Error shown when making a channel a sub-channel would nest sub-channels more than one level deep."
+  },
+  {
+    "id": "model.channel.parent.team.app_error",
+    "translation": "A sub-channel must be in the same team as its parent channel.",
+    "description": "Error shown when a channel is made a sub-channel of a channel in a different team."
+  },
+  {
+    "id": "model.channel.parent.type.app_error",
+    "translation": "Only public and private channels can be sub-channels or parent channels.",
+    "description": "Error shown when a direct or group message is used as a sub-channel or a parent channel."
   },
   {
     "id": "model.channel_bookmark.is_valid.board.file_id.app_error",

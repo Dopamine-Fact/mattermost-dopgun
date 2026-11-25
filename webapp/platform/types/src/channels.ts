@@ -106,6 +106,9 @@ export type Channel = {
     last_icon_update?: number;
     name_color?: string;
 
+    // Set when this channel is a sub-channel: the id of its parent channel in the same team.
+    parent_id?: string;
+
     // Create-only: attribute values to store with the channel. Sent so the server
     // can refuse a channel that would not satisfy its own required attributes.
     property_values?: Array<{field_id: string; value: unknown}>;

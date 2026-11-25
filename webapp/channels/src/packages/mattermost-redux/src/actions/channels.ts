@@ -42,7 +42,7 @@ import type {GetStateFunc, ActionFunc, ActionFuncAsync} from 'mattermost-redux/t
 import {DelayedDataLoader} from 'mattermost-redux/utils/data_loader';
 
 import {addChannelToInitialCategory, addChannelToCategory} from './channel_categories';
-import {logError} from './errors';
+import {logError, LogErrorBarMode} from './errors';
 import {bindClientFunc, forceLogoutIfNecessary} from './helpers';
 import {resetReloadPostsInChannel} from './posts';
 import {savePreferences} from './preferences';
@@ -314,6 +314,23 @@ export function updateChannelPrivacy(channelId: string, privacy: string): Action
         onSuccess: [ChannelTypes.RECEIVED_CHANNEL],
         params: [channelId, privacy],
     });
+}
+
+// Makes the channel a sub-channel of parentId, or detaches it when parentId is empty. The server's
+// reason for refusing (other team, nesting too deep) is shown in the error bar.
+export function setChannelParent(channelId: string, parentId: string): ActionFuncAsync<Channel> {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client4.setChannelParent(channelId, parentId);
+        } catch (error) {
+            forceLogoutIfNecessary(error, dispatch, getState);
+            dispatch(logError(error, {errorBarMode: LogErrorBarMode.Always}));
+            return {error};
+        }
+        dispatch({type: ChannelTypes.RECEIVED_CHANNEL, data});
+        return {data};
+    };
 }
 
 export function convertGroupMessageToPrivateChannel(channelID: string, teamID: string, displayName: string, name: string): ActionFuncAsync<Channel> {
