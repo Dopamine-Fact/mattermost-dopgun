@@ -1,11 +1,5 @@
 [
   {
-    "section": "about.license",
-    "system_manager": "read",
-    "system_user_manager": "none",
-    "system_read_only_admin": "read"
-  },
-  {
     "section": "reporting.system_analytics",
     "system_manager": "read",
     "system_user_manager": "none",

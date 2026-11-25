@@ -8,7 +8,7 @@ import {FormattedMessage, defineMessage, defineMessages} from 'react-intl';
 import {Link} from 'react-router-dom';
 import semver from 'semver';
 
-import {AccountMultipleOutlineIcon, ChartBarIcon, CogOutlineIcon, CreditCardOutlineIcon, FlaskOutlineIcon, FormatListBulletedIcon, InformationOutlineIcon, PowerPlugOutlineIcon, ServerVariantIcon, ShieldOutlineIcon, SitemapIcon, TableLargeIcon} from '@mattermost/compass-icons/components';
+import {AccountMultipleOutlineIcon, ChartBarIcon, CogOutlineIcon, CreditCardOutlineIcon, FlaskOutlineIcon, FormatListBulletedIcon,PowerPlugOutlineIcon, ServerVariantIcon, ShieldOutlineIcon, SitemapIcon, TableLargeIcon} from '@mattermost/compass-icons/components';
 import type {Job} from '@mattermost/types/jobs';
 
 import {Posts} from 'mattermost-redux/constants';
@@ -66,8 +66,6 @@ import AttributeDetails from './global_attributes/attribute_details';
 import ClassificationAttribute from './global_attributes/classification_attribute';
 import HealthDashboard from './health_dashboard';
 import IPFiltering from './ip_filtering';
-import LicenseSettings from './license_settings';
-import {searchableStrings as licenseSettingsSearchableStrings} from './license_settings/license_settings';
 import LicensedSectionContainer from './licensed_section_container';
 import AutoTranslation, {searchableStrings as autoTranslationSearchableStrings} from './localization/auto_translation';
 import Localization, {searchableStrings as localizationSearchableStrings} from './localization/localization';
@@ -261,32 +259,6 @@ const workspaceOptimizationHidden = it.any(
 );
 
 const AdminDefinition: AdminDefinitionType = {
-    about: {
-        icon: (
-            <InformationOutlineIcon
-                size={14}
-                color={'currentColor'}
-            />
-        ),
-        sectionTitle: defineMessage({id: 'admin.sidebar.about', defaultMessage: 'About'}),
-        isHidden: it.any(
-            it.configIsTrue('ExperimentalSettings', 'RestrictSystemAdmin'),
-            it.not(it.userHasReadPermissionOnSomeResources(RESOURCE_KEYS.ABOUT)),
-        ),
-        subsections: {
-            license: {
-                url: 'about/license',
-                title: defineMessage({id: 'admin.sidebar.license', defaultMessage: 'Edition and License'}),
-                searchableStrings: licenseSettingsSearchableStrings,
-                isHidden: it.not(it.userHasReadPermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                isDisabled: it.not(it.userHasWritePermissionOnResource(RESOURCE_KEYS.ABOUT.EDITION_AND_LICENSE)),
-                schema: {
-                    id: 'LicenseSettings',
-                    component: LicenseSettings,
-                },
-            },
-        },
-    },
     billing: {
         icon: (
             <CreditCardOutlineIcon

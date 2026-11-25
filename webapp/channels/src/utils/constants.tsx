@@ -2112,7 +2112,7 @@ export const ConsolePages = {
     DATA_RETENTION: '/admin_console/compliance/data_retention_settings',
     ELASTICSEARCH: '/admin_console/environment/elasticsearch',
     GUEST_ACCOUNTS: '/admin_console/authentication/guest_access',
-    LICENSE: '/admin_console/about/license',
+    SYSTEM_ROLES: '/admin_console/user_management/system_roles',
     SAML: '/admin_console/authentication/saml',
     FILE_STORAGE: '/admin_console/environment/file_storage',
     SESSION_LENGTHS: '/admin_console/environment/session_lengths',

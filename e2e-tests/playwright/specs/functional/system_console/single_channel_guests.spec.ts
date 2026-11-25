@@ -110,48 +110,6 @@ test.describe('Single-channel guests', () => {
     );
 
     /**
-     * @objective Verify the Single-channel Guests row appears on the Edition and License page when guests are enabled
-     *
-     * @precondition
-     * Server has a non-Entry license with guest accounts enabled and a single-channel guest limit configured
-     */
-    test(
-        'displays single-channel guests row on edition and license page when guest accounts are enabled',
-        {tag: '@system_console'},
-        async ({pw}) => {
-            const {adminUser, adminClient, team} = await setupSingleChannelGuestsTest(pw);
-
-            if (!adminUser) {
-                throw new Error('Failed to create admin user');
-            }
-
-            // # Enable guest accounts (narrow patch, not destructive full-config update)
-            await patchGuestEnabled(adminClient, true);
-
-            // # Create a guest user and add to one channel
-            const guestUser = await adminClient.createUser(await pw.random.user(), '', '');
-            await adminClient.updateUserRoles(guestUser.id, 'system_guest');
-            await adminClient.addToTeam(team.id, guestUser.id);
-
-            const channel = await adminClient.createChannel(
-                pw.random.channel({teamId: team.id, name: 'guest-channel', displayName: 'Guest Channel', unique: true}),
-            );
-            await adminClient.addToChannel(guestUser.id, channel.id);
-
-            // # Log in as admin and navigate to edition and license page
-            const {systemConsolePage} = await pw.testBrowser.login(adminUser);
-            await systemConsolePage.goto();
-            await systemConsolePage.toBeVisible();
-
-            // Re-apply patch after initial load + reload to counter WebSocket config resets.
-            await navigateWithGuestPatch(systemConsolePage.page, adminClient, '/admin_console/about/license', true);
-
-            // * Verify the single-channel guests row is visible
-            await expect(systemConsolePage.page.getByText('SINGLE-CHANNEL GUESTS:')).toBeVisible();
-        },
-    );
-
-    /**
      * @objective Verify the Single-channel Guests stat card is not shown when guest accounts are disabled
      */
     test(

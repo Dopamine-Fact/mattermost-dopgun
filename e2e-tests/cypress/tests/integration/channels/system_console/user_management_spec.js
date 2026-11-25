@@ -230,7 +230,7 @@ describe('User Management', () => {
         cy.visit('/admin_console/user_management/user/invalid');
 
         // * Verify that the user is redirected to the default page.
-        cy.url().should('include', '/admin_console/about/license');
+        cy.url().should('include', '/admin_console/reporting/');
     });
 
     it('Admin cannot access Manage User Settings option on a unlicensed instance', () => {

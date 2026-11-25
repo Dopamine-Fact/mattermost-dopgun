@@ -1,14 +1,5 @@
 [
     {
-        "section": "about.license",
-        "disabledInputs": [
-            {
-                "path": "/admin_console/about/license",
-                "selector": "remove-button"
-            }
-        ]
-    },
-    {
         "section": "reporting.system_analytics",
         "disabledInputs": []
     },
@@ -249,7 +240,7 @@
     },
     {
         "section": "authentication.signup",
-        "disabledInputs":[
+        "disabledInputs": [
             {
                 "path": "/admin_console/authentication/signup",
                 "selector": "TeamSettings.EnableUserCreationfalse"

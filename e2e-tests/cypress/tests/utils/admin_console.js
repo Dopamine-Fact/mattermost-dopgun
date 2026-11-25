@@ -3,12 +3,6 @@
 
 export const adminConsoleNavigation = [
     {
-        type: ['team', 'e20'],
-        header: 'Edition and License',
-        sidebar: 'Edition and License',
-        url: 'admin_console/about/license',
-    },
-    {
         type: ['cloud_enterprise'],
         header: 'Subscription',
         sidebar: 'Subscription',

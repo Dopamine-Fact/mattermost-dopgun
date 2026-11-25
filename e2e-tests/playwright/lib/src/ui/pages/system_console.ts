@@ -8,7 +8,6 @@ import LoginPage from './login';
 import SystemConsoleNavbar from '@/ui/components/system_console/navbar';
 import SystemConsoleSidebar from '@/ui/components/system_console/sidebar';
 import SystemConsoleHeader from '@/ui/components/system_console/header';
-import EditionAndLicense from '@/ui/components/system_console/sections/about/edition_and_license';
 import TeamStatistics from '@/ui/components/system_console/sections/reporting/team_statistics';
 import ServerLogs from '@/ui/components/system_console/sections/reporting/server_logs';
 import Users from '@/ui/components/system_console/sections/user_management/users';
@@ -39,9 +38,6 @@ export default class SystemConsolePage {
     readonly navbar: SystemConsoleNavbar;
     readonly sidebar: SystemConsoleSidebar;
     readonly header: SystemConsoleHeader;
-
-    // About
-    readonly editionAndLicense: EditionAndLicense;
 
     // Reporting
     readonly teamStatistics: TeamStatistics;
@@ -93,9 +89,6 @@ export default class SystemConsolePage {
 
         const adminConsoleWrapper = page.locator('#adminConsoleWrapper');
         this.header = new SystemConsoleHeader(adminConsoleWrapper);
-
-        // About
-        this.editionAndLicense = new EditionAndLicense(adminConsoleWrapper);
 
         // Reporting
         this.teamStatistics = new TeamStatistics(adminConsoleWrapper);
@@ -156,11 +149,6 @@ export default class SystemConsolePage {
     async gotoPluginManagement() {
         await this.page.goto('/admin_console/plugins/plugin_management');
         await this.pluginManagement.toBeVisible();
-    }
-
-    async gotoEditionAndLicense() {
-        await this.page.goto('/admin_console/about/license');
-        await this.editionAndLicense.toBeVisible();
     }
 
     /**

@@ -1433,9 +1433,9 @@ export async function navigateToPermissionPoliciesPage(page: Page): Promise<void
     await page.goto('/admin_console/system_attributes/permission_policies');
     await page.waitForLoadState('networkidle');
 
-    if (page.url().includes('/admin_console/about/license')) {
+    if (!page.url().includes('/admin_console/system_attributes/permission_policies')) {
         throw new Error(
-            'Permission Policies page is unavailable and redirected to License. Rebuild and run webapp from a branch that includes the permission policies route before running ABAC tests.',
+            'Permission Policies page is unavailable and redirected to the default page. Rebuild and run webapp from a branch that includes the permission policies route before running ABAC tests.',
         );
     }
 }

@@ -6,7 +6,7 @@
  * Covers admin UI for presets, save validation, preset-change confirmation, and custom preset detection.
  *
  * Local runs: upload or use a license with SkuShortName `enterprise`, `entry`, or `advanced`.
- * Professional-only licenses hide this admin route (React Router redirects to /admin_console/about/license).
+ * Professional-only licenses hide this admin route (React Router redirects to the default Reporting page).
  */
 
 import type {Page} from '@playwright/test';
@@ -36,7 +36,7 @@ test.describe('System Console - Classification markings', () => {
         const license = await adminClient.getClientLicenseOld();
         test.skip(
             licenseTier(license.SkuShortName) < 20,
-            'Classification markings requires Enterprise-tier license (SkuShortName enterprise, entry, or advanced). Professional/trial Professional is not sufficient—the admin route is hidden and redirects to /admin_console/about/license.',
+            'Classification markings requires Enterprise-tier license (SkuShortName enterprise, entry, or advanced). Professional/trial Professional is not sufficient—the admin route is hidden and redirects to the default Reporting page.',
         );
 
         // Skip if the custom_profile_attributes property group is absent on this server.

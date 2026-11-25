@@ -89,7 +89,7 @@ function ThreeDaysLeftTrialModal(props: Props): JSX.Element | null {
                     height={90}
                 />
             ),
-            pageURL: ConsolePages.LICENSE,
+            pageURL: ConsolePages.SYSTEM_ROLES,
             buttonLabel,
         },
     ], []);

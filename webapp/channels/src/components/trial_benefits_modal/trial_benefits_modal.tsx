@@ -102,7 +102,7 @@ const TrialBenefitsModal = ({
                     height={180}
                 />
             ),
-            pageURL: ConsolePages.LICENSE,
+            pageURL: ConsolePages.SYSTEM_ROLES,
             buttonLabel,
         },
         {

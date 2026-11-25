@@ -59,10 +59,10 @@ describe('System Console > User Management > Deactivation', () => {
             // * Verify status indicator is not shown in channel header
             cy.get('#channelHeaderDescription .status').should('not.exist');
 
-            // * Verify archived icon is shown in LHS
+            // * Verify deactivated icon is shown in LHS
             cy.uiGetLhsSection('DIRECT MESSAGES').
                 find('.active').should('be.visible').
-                find('.icon-archive-outline').should('be.visible');
+                find('.icon-account-minus-outline').should('be.visible');
         });
     });
 });

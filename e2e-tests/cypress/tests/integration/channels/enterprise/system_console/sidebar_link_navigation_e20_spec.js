@@ -20,11 +20,11 @@ describe('System Console - Enterprise', () => {
         cy.apiRequireLicense();
 
         // # Go to system admin then verify admin console URL and header
-        cy.visit('/admin_console/about/license');
-        cy.url().should('include', '/admin_console/about/license');
+        cy.visit('/admin_console/reporting/system_analytics');
+        cy.url().should('include', '/admin_console/reporting/system_analytics');
         cy.get('.admin-console__header', {timeout: TIMEOUTS.ONE_MIN}).
             should('be.visible').
-            and('have.text', 'Edition and License');
+            and('have.text', 'System Statistics');
     });
 
     const serverType = 'e20';
@@ -65,6 +65,6 @@ function verifyCannotNavigate(testCase) {
     // # Visit the URL directly
     cy.visit(testCase.url);
 
-    // * Verify that it redirects to Edition and License page
-    cy.url().should('include', '/admin_console/about/license');
+    // * Verify that it redirects to the default Reporting page
+    cy.url().should('include', '/admin_console/reporting/');
 }
