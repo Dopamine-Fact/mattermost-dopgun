@@ -62,7 +62,7 @@ import type {
 import type {ContentFlaggingConfig} from '@mattermost/types/content_flagging';
 import type {Department, DepartmentCreate, DepartmentPatch, Rank, RankCreate, RankPatch} from '@mattermost/types/custom_roles';
 import type {DailyReport} from '@mattermost/types/daily_reports';
-import type {DriveChatFileSort, DriveItem, DriveListing} from '@mattermost/types/drive';
+import type {DriveChatFileSort, DriveItem, DriveListing, DriveShares, TeamFilesFolder, TeamFilesLayout} from '@mattermost/types/drive';
 import type {
     DataRetentionCustomPolicies,
     CreateDataRetentionCustomPolicy,
@@ -5303,6 +5303,35 @@ export default class Client4 {
             `${this.getDriveRoute(channelId)}/chat_files${buildQueryString({page, per_page: perPage, sort_by: sortBy, sort_desc: sortDesc})}`,
             {method: 'get'},
         );
+    };
+
+    getDriveFolders = (channelId: string) => {
+        return this.doFetch<DriveItem[]>(`${this.getDriveRoute(channelId)}/folders`, {method: 'get'});
+    };
+
+    getDriveShares = (channelId: string, itemId: string) => {
+        return this.doFetch<DriveShares>(`${this.getDriveRoute(channelId)}/shares${buildQueryString({item_id: itemId})}`, {method: 'get'});
+    };
+
+    setDriveShares = (channelId: string, itemId: string, teamIds: string[]) => {
+        return this.doFetch<DriveShares>(`${this.getDriveRoute(channelId)}/shares`, {method: 'put', body: JSON.stringify({item_id: itemId, team_ids: teamIds})});
+    };
+
+    getTeamFilesLayout = (teamId: string) => {
+        return this.doFetch<TeamFilesLayout>(`${this.getTeamRoute(teamId)}/files/layout`, {method: 'get'});
+    };
+
+    getTeamFilesTemplate = (teamId: string) => {
+        return this.doFetch<TeamFilesFolder[]>(`${this.getTeamRoute(teamId)}/files/template`, {method: 'get'});
+    };
+
+    saveTeamFilesTemplate = (teamId: string, folders: TeamFilesFolder[]) => {
+        return this.doFetch<TeamFilesFolder[]>(`${this.getTeamRoute(teamId)}/files/template`, {method: 'put', body: JSON.stringify(folders)});
+    };
+
+    /** folders other teams share into teamId (parentId ''), or a folder inside one of them; read-only */
+    getSharedDriveFolder = (teamId: string, parentId = '') => {
+        return this.doFetch<DriveListing>(`${this.getTeamRoute(teamId)}/files/shared${buildQueryString({parent_id: parentId})}`, {method: 'get'});
     };
 
     downloadDriveZip = (channelId: string, itemIds: string[]) => {

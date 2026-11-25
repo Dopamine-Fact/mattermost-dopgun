@@ -24,7 +24,7 @@ export const CHAT_FOLDER = 'chat';
 export const TRASH_FOLDER = 'trash';
 export const CHAT_PAGE_SIZE = 60;
 
-export type ExplorerEntryKind = 'channel' | 'folder' | 'file' | 'chat' | 'trash' | 'task_file';
+export type ExplorerEntryKind = 'channel' | 'folder' | 'file' | 'chat' | 'trash' | 'task_file' | 'virtual';
 
 export type ExplorerEntry = {
     key: string;
@@ -36,6 +36,9 @@ export type ExplorerEntry = {
 
     /** The task a task_file entry belongs to. */
     taskId?: string;
+
+    /** Where a virtual entry (a team template folder or page, a shared folder) leads. */
+    to?: string;
     readOnly: boolean;
     canModify: boolean;
 };
@@ -184,7 +187,9 @@ export function useExplorerData(channelId?: string, folderId = '', chatSort: Cha
             readOnly: inTrash,
             canModify: inTrash ? it.creator_id === me || canManage : !inMirror && (canManage || (!hasRules(it) && (access === 'write' || (access === '' && it.creator_id === me)))),
         }));
-        const canChangeFile = (f: FileInfo) => !inMirror && (canManage || access === 'write' || (access === '' && f.user_id === me));
+
+        // A library folder also lists task files of other channels; those are changed where they were posted.
+        const canChangeFile = (f: FileInfo) => f.channel_id === channelId && !inMirror && (canManage || access === 'write' || (access === '' && f.user_id === me));
         const tasks = current.taskFiles.map((f): ExplorerEntry => ({key: `task:${f.id}`, kind: 'task_file', name: f.name, fileInfo: f, taskId: f.task_id, readOnly: false, canModify: canChangeFile(f)}));
         return folderId ? [...drive, ...tasks] : [{key: CHAT_FOLDER, kind: 'chat', name: chatName, readOnly: true, canModify: false}, ...drive, ...tasks];
     }, [canManage, channelId, channels, chatName, current, folderId, inMirror, me]);

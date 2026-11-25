@@ -24903,9 +24903,17 @@
     "defaultMessage": "This folder is empty. Drop files here or use Upload.",
     "description": "File explorer empty state of a channel folder; Upload is the toolbar button."
   },
+  "file_explorer.empty.production": {
+    "defaultMessage": "You are not a member of any episode channel yet.",
+    "description": "Empty-state text on the Files page's production folder when the user belongs to no episode channel."
+  },
   "file_explorer.empty.search": {
     "defaultMessage": "No items match your search.",
     "description": "File explorer empty state when the 'Search this folder' filter matches nothing."
+  },
+  "file_explorer.empty.shared": {
+    "defaultMessage": "This folder is empty.",
+    "description": "Empty-state text inside a folder another team shared into this team's projects folder."
   },
   "file_explorer.empty.sourceMissing": {
     "defaultMessage": "The folder this one shows was deleted.",
@@ -25018,6 +25026,26 @@
   "file_explorer.search": {
     "defaultMessage": "Search this folder",
     "description": "File explorer search box placeholder; filters the items of the open folder by name."
+  },
+  "file_explorer.share": {
+    "defaultMessage": "Share with teams…",
+    "description": "Context menu item in the file explorer that opens the dialog for sharing a projects folder with other teams."
+  },
+  "file_explorer.share.info": {
+    "defaultMessage": "The folder shows in the projects folder of the teams you pick. Their members can view and download it but not change it.",
+    "description": "Explanation at the top of the share dialog: the folder appears read-only in the chosen teams."
+  },
+  "file_explorer.share.noTeams": {
+    "defaultMessage": "You are not a member of any other team.",
+    "description": "Shown in the share dialog when the user belongs to no other team to share with."
+  },
+  "file_explorer.share.save": {
+    "defaultMessage": "Save",
+    "description": "Confirm button of the dialog that shares a folder with other teams."
+  },
+  "file_explorer.share.title": {
+    "defaultMessage": "Share \"{name}\" with teams",
+    "description": "Title of the dialog that shares a folder with other teams; {name} is the folder name."
   },
   "file_explorer.sidebarLink": {
     "defaultMessage": "Files",
@@ -25502,6 +25530,30 @@
   "general_tab.filesInfo": {
     "defaultMessage": "When enabled, team members get a file explorer in the sidebar where every channel they belong to is a folder for uploading, organising and previewing files.",
     "description": "Help text under the Files setting in Team Settings."
+  },
+  "general_tab.filesTemplate.help": {
+    "defaultMessage": "A JSON list of top folders: name, description, children, kind (\"library\", \"projects\", \"production\" for episode channels, \"channels\" for all channels) and access (\"admin\" hides the folder from everyone but admins, \"read\" lets only admins write). Leave it empty for no template.",
+    "description": "Help text above the JSON editor of the Files page template in team settings; the quoted words are JSON keywords and must stay untranslated."
+  },
+  "general_tab.filesTemplate.invalidJson": {
+    "defaultMessage": "The template is not valid JSON: {error}",
+    "description": "Error under the Files page template editor when the text is not valid JSON; {error} is the parser message."
+  },
+  "general_tab.filesTemplate.loadDopamine": {
+    "defaultMessage": "Load the Dopamine template",
+    "description": "Button that fills the Files page template editor with the Dopamine studio's preset folder layout."
+  },
+  "general_tab.filesTemplate.save": {
+    "defaultMessage": "Save template",
+    "description": "Button that saves the Files page template and creates its folders."
+  },
+  "general_tab.filesTemplate.saved": {
+    "defaultMessage": "Template saved; its folders are ready on the Files page.",
+    "description": "Confirmation shown after the Files page template was saved."
+  },
+  "general_tab.filesTemplate.title": {
+    "defaultMessage": "Files page template",
+    "description": "Label of the Files page template editor in team settings."
   },
   "general_tab.filesTitle": {
     "defaultMessage": "Files",
@@ -33795,9 +33847,17 @@
     "defaultMessage": "Task details",
     "description": ""
   },
+  "tasks.detail.libraryFolder": {
+    "defaultMessage": "Library folder",
+    "description": "Label of the task field choosing the team Files library folder that also lists the task's files."
+  },
   "tasks.detail.noDepartment": {
     "defaultMessage": "No department",
     "description": "Option in the department picker of the task details that leaves the task without a department."
+  },
+  "tasks.detail.noFolder": {
+    "defaultMessage": "None",
+    "description": "Option of the task folder fields meaning no folder."
   },
   "tasks.detail.openFolder": {
     "defaultMessage": "Open folder",
@@ -33822,6 +33882,14 @@
   "tasks.detail.unassigned": {
     "defaultMessage": "Unassigned",
     "description": ""
+  },
+  "tasks.detail.unavailableFolder": {
+    "defaultMessage": "Unavailable folder",
+    "description": "Shown in a task folder field when the task's folder no longer exists or cannot be seen."
+  },
+  "tasks.detail.uploadFolder": {
+    "defaultMessage": "Upload folder",
+    "description": "Label of the task field choosing the episode channel folder that lists the task's files."
   },
   "tasks.detail.waitsFor": {
     "defaultMessage": "Waits for",
@@ -34310,6 +34378,14 @@
   "team_settings.departments.intro": {
     "defaultMessage": "Ranks higher in a department outrank the ones below them. Stüdyo geneli ranks outrank every department. A tick saves at once.",
     "description": "Explanation at the top of the Team Settings › Departments tab; \"Stüdyo geneli\" is the name of the studio-wide department and stays as is."
+  },
+  "team_settings.departments.library_write": {
+    "defaultMessage": "Can write to the Files library",
+    "description": "Checkbox on a department card in team settings that lets the department write into the team Files library."
+  },
+  "team_settings.departments.library_write_help": {
+    "defaultMessage": "Every rank of this department may add and change files in the team library folder.",
+    "description": "Help text next to the department's library write checkbox."
   },
   "team_settings.departments.members": {
     "defaultMessage": "{count, plural, one {# member} other {# members}}",

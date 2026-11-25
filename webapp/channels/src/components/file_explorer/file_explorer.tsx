@@ -10,14 +10,15 @@ import {Redirect, useHistory, useParams} from 'react-router-dom';
 import {AlertOutlineIcon, CheckIcon, ChevronDownIcon, ContentCopyIcon, DownloadOutlineIcon, FolderMoveOutlineIcon, FolderPlusOutlineIcon, PencilOutlineIcon, RestoreIcon, TrashCanOutlineIcon, UploadOutlineIcon} from '@mattermost/compass-icons/components';
 import {Button} from '@mattermost/compass-ui/components/button';
 import {Icon} from '@mattermost/compass-ui/components/icon';
-import type {DriveChatFileSort} from '@mattermost/types/drive';
+import type {DriveChatFileSort, TeamFilesLayout} from '@mattermost/types/drive';
 import type {FileInfo} from '@mattermost/types/files';
 import type {Post} from '@mattermost/types/posts';
 
+import {getChannelAndMyMember} from 'mattermost-redux/actions/channels';
 import {getMissingProfilesByIds} from 'mattermost-redux/actions/users';
 import {Client4} from 'mattermost-redux/client';
 import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
-import {getCurrentTeam} from 'mattermost-redux/selectors/entities/teams';
+import {getCurrentTeam, getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getUsers} from 'mattermost-redux/selectors/entities/users';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 
@@ -41,6 +42,7 @@ import ExplorerDropOverlay from './explorer_drop_overlay';
 import ExplorerItems, {entryCreator, entryModified, entryType} from './explorer_items';
 import type {ExplorerSort, ExplorerView, SortKey} from './explorer_items';
 import ExplorerPreviewPane from './explorer_preview_pane';
+import ExplorerShareModal from './explorer_share_modal';
 import ExplorerStatusBar from './explorer_status_bar';
 import ExplorerToolbar from './explorer_toolbar';
 import {useTrashColumns} from './explorer_trash_view';
@@ -53,6 +55,7 @@ import type {DropResult, DropTarget} from './use_explorer_dnd';
 import {useExplorerSelection, useRubberBand} from './use_explorer_selection';
 import {useExplorerUploads} from './use_explorer_uploads';
 import type {ExplorerUploads, UploadRequest} from './use_explorer_uploads';
+import {CHANNELS_PAGE, isTemplatePage, PRODUCTION_PAGE, SHARED_PAGE, topOfKind, useSharedFolder, useTeamFilesLayout, useTemplateNodes} from './use_team_files';
 
 import './file_explorer.scss';
 
@@ -88,7 +91,7 @@ function useWideEnough() {
     return wide;
 }
 
-const KIND_RANK: Record<ExplorerEntry['kind'], number> = {chat: 0, channel: 1, folder: 1, file: 2, task_file: 2, trash: 3};
+const KIND_RANK: Record<ExplorerEntry['kind'], number> = {chat: 0, channel: 1, folder: 1, virtual: 1, file: 2, task_file: 2, trash: 3};
 const isDriveObject = (e: ExplorerEntry) => e.kind === 'file' || e.kind === 'folder' || e.kind === 'task_file';
 const isTaskFile = (e: ExplorerEntry) => e.kind === 'task_file';
 const driveIds = (entries: ExplorerEntry[]) => entries.flatMap((e) => (e.driveItem ? [e.driveItem.id] : []));
@@ -109,16 +112,20 @@ type ViewProps = {
 
     // Uploads the host keeps and shows, so they stay visible after the explorer unmounts (a channel's tab switch).
     hostUploads?: ExplorerUploads;
+
+    // The team's Files page template; the root then lists its folders instead of the channels.
+    layout?: TeamFilesLayout;
 };
 
-export const FileExplorerView = ({channelName, folderId, urlFor, embedded = false, hostUploads}: ViewProps) => {
+export const FileExplorerView = ({channelName, folderId, urlFor, embedded = false, hostUploads, layout}: ViewProps) => {
     const intl = useIntl();
     const dispatch = useDispatch();
     const history = useHistory();
     const users = useSelector(getUsers);
     const nameSetting = useSelector(getTeammateNameDisplaySetting);
     const channels = useExplorerChannels();
-    const channel = channelName ? channels.find((c) => c.name === channelName) : undefined;
+    const page = isTemplatePage(channelName) ? channelName : undefined;
+    const channel = channelName && !page ? channels.find((c) => c.name === channelName) : undefined;
 
     const [view, setView] = useState<ExplorerView>(() => (readPref(VIEW_KEY, 'icons') === 'details' ? 'details' : 'icons'));
     const [previewOpen, setPreviewOpen] = useState(() => readPref(PREVIEW_KEY, 'true') === 'true');
@@ -137,6 +144,27 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
     const inDrive = Boolean(channel) && !inChat && !inTrash;
     const chatSort = useMemo(() => ({by: CHAT_SORTS[sort.by] ?? 'create_at', desc: sort.desc}), [sort]);
     const data = useExplorerData(channel?.id, folderId, chatSort);
+
+    // The team template: its folders live in the team files channel; the other pages show existing data.
+    const teamId = useSelector(getCurrentTeamId);
+    const nodes = useTemplateNodes(layout);
+    const filesChannel = layout?.channel_id ? channels.find((c) => c.id === layout.channel_id) : undefined;
+    const inFilesChannel = Boolean(channel) && channel?.id === layout?.channel_id;
+    const projects = topOfKind(layout, 'projects');
+    const atProjects = inFilesChannel && Boolean(projects?.id) && folderId === projects?.id;
+    const inProjects = inFilesChannel && Boolean(projects?.id) && (atProjects || data.path.some((p) => p.id === projects?.id));
+    const shared = useSharedFolder(teamId, page === SHARED_PAGE ? folderId : '', page === SHARED_PAGE || atProjects);
+    let pageTop;
+    if (page === PRODUCTION_PAGE) {
+        pageTop = topOfKind(layout, 'production');
+    } else if (page === CHANNELS_PAGE) {
+        pageTop = topOfKind(layout, 'channels');
+    } else if (page === SHARED_PAGE) {
+        pageTop = projects;
+    }
+    const described = inFilesChannel ? nodes.get(folderId)?.folder : pageTop;
+    const loadError = page === SHARED_PAGE ? shared.error : data.error;
+    const loading = page === SHARED_PAGE ? shared.loading : data.loading;
     const ownUploads = useExplorerUploads(data.reload);
 
     // Host uploads need no reload when done: adding a drive file sends drive_changed, which reloads the open folder.
@@ -171,9 +199,33 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
 
     // The page reaches the recycle bin from its channel tree; an embedded explorer has no tree, so its root lists it.
     const trashName = intl.formatMessage({id: 'file_explorer.recycleBin', defaultMessage: 'Recycle Bin'});
-    const entries = useMemo(() => (
-        embedded && channel && !folderId && data.items.length ? [...data.items, {key: TRASH_FOLDER, kind: 'trash' as const, name: trashName, readOnly: true, canModify: false}] : data.items
-    ), [channel, data.items, embedded, folderId, trashName]);
+    const sharedEntries = useMemo(() => shared.items.map((it): ExplorerEntry => (it.type === 'folder' ? {key: `shared:${it.id}`, kind: 'virtual', name: it.name, to: urlFor(SHARED_PAGE, it.id), readOnly: true, canModify: false} : {key: `shared:${it.id}`, kind: 'file', name: it.name, fileInfo: it.file_info, readOnly: true, canModify: false})), [shared.items, urlFor]);
+    const entries = useMemo((): ExplorerEntry[] => {
+        if (page === SHARED_PAGE) {
+            return sharedEntries;
+        }
+        if (!channel && !page && layout?.folders.length) {
+            return layout.folders.flatMap((f): ExplorerEntry[] => {
+                let to: string | undefined;
+                if (f.kind === 'production') {
+                    to = urlFor(PRODUCTION_PAGE);
+                } else if (f.kind === 'channels') {
+                    to = urlFor(CHANNELS_PAGE);
+                } else if (filesChannel && f.id) {
+                    to = urlFor(filesChannel.name, f.id);
+                }
+                return to ? [{key: `template:${f.name}`, kind: 'virtual', name: f.name, to, readOnly: true, canModify: false}] : [];
+            });
+        }
+        if (!channel) {
+            const only = page === PRODUCTION_PAGE ? layout?.production_channel_ids ?? [] : undefined;
+            return data.items.filter((e) => e.channel?.id !== layout?.channel_id && (!only || only.includes(e.channel?.id ?? '')));
+        }
+        if (embedded && !folderId && data.items.length) {
+            return [...data.items, {key: TRASH_FOLDER, kind: 'trash' as const, name: trashName, readOnly: true, canModify: false}];
+        }
+        return atProjects ? [...data.items, ...sharedEntries] : data.items;
+    }, [atProjects, channel, data.items, embedded, filesChannel, folderId, layout, page, sharedEntries, trashName, urlFor]);
 
     const visible = useMemo(() => {
         const query = search.trim().toLowerCase();
@@ -235,8 +287,13 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
                 history.push(urlFor(channel!.name, entry.driveItem!.id));
             }
             return;
+        case 'virtual':
+            if (entry.to) {
+                history.push(entry.to);
+            }
+            return;
         }
-        if (!entry.fileInfo || !channel) {
+        if (!entry.fileInfo) {
             return;
         }
         const fileInfos = visible.map((e) => e.fileInfo).filter((f): f is FileInfo => Boolean(f));
@@ -244,7 +301,7 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
             modalId: ModalIdentifiers.FILE_PREVIEW_MODAL,
             dialogType: FilePreviewModal,
             dialogProps: {
-                post: {channel_id: channel.id} as Post,
+                post: {channel_id: channel?.id ?? entry.fileInfo.channel_id} as Post,
                 fileInfos,
                 startIndex: fileInfos.indexOf(entry.fileInfo),
             },
@@ -253,8 +310,18 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
 
     const crumbs: Crumb[] = embedded ? [] : [{label: intl.formatMessage({id: 'file_explorer.title', defaultMessage: 'Files'}), to: rootUrl}];
     let upTo: string | undefined;
-    if (channel) {
-        crumbs.push({label: channel.display_name, to: urlFor(channel.name)});
+    if (page) {
+        if (pageTop) {
+            crumbs.push({label: pageTop.name, to: page === SHARED_PAGE && filesChannel && pageTop.id ? urlFor(filesChannel.name, pageTop.id) : urlFor(page)});
+        }
+        if (page === SHARED_PAGE) {
+            shared.path.forEach((p) => crumbs.push({label: p.name, to: urlFor(SHARED_PAGE, p.id)}));
+        }
+        upTo = crumbs[crumbs.length - 2]?.to ?? rootUrl;
+    } else if (channel) {
+        if (!inFilesChannel) { // the team template's folders sit right under Files
+            crumbs.push({label: channel.display_name, to: urlFor(channel.name)});
+        }
         upTo = embedded ? undefined : rootUrl;
         if (inChat) {
             crumbs.push({label: intl.formatMessage({id: 'file_explorer.chatAttachments', defaultMessage: 'Chat attachments'}), to: urlFor(channel.name, CHAT_FOLDER)});
@@ -277,11 +344,12 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
     const can = {
         open: selected.length === 1,
         cut: inDrive && canChange && !hasTask,
-        copy: !inTrash && selected.length > 0 && selected.every(isDriveObject),
+        copy: !inTrash && !page && selected.length > 0 && selected.every(isDriveObject),
         paste: writable && Boolean(clipboard),
         rename: inDrive && selected.length === 1 && canChange,
         remove: inDrive && canChange && (!hasTask || selected.every(isTaskFile)),
-        download: !inTrash && selected.length > 0 && selected.every(isDriveObject),
+        download: !inTrash && !page && selected.length > 0 && selected.every(isDriveObject),
+        share: inProjects && Boolean(layout?.is_admin) && selected.length === 1 && selected[0].kind === 'folder',
         newFolder: writable,
         restore: inTrash && canChange,
         purge: inTrash && canChange,
@@ -361,6 +429,11 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
         restore: () => run(() => Client4.restoreDriveItems(channelId, driveIds(selected))),
         empty: () => confirmPermanentDelete(() => run(() => Client4.emptyDriveTrash(channelId))),
         up: () => upTo && history.push(upTo),
+        share: () => dispatch(openModal({
+            modalId: ModalIdentifiers.FILE_EXPLORER_SHARE,
+            dialogType: ExplorerShareModal,
+            dialogProps: {channelId, item: selected[0].driveItem!},
+        })),
     };
 
     const dropOn = (target: DropTarget, result: DropResult) => {
@@ -513,6 +586,7 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
             {key: 'cut', label: L.cut, onClick: actions.cut, disabled: !can.cut, divider: true},
             {key: 'copy', label: L.copy, onClick: actions.copy, disabled: !can.copy},
             {key: 'rename', label: L.rename, onClick: actions.rename, disabled: !can.rename, divider: true},
+            ...(inProjects && layout?.is_admin ? [{key: 'share', label: label('file_explorer.share', 'Share with teams…'), onClick: actions.share, disabled: !can.share}] : []),
             {key: 'delete', label: L.remove, onClick: () => actions.remove(false), disabled: !can.remove, destructive: true},
         ];
     } else if (menu) {
@@ -574,10 +648,10 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
     }
 
     let content: React.ReactNode;
-    if (data.error) {
+    if (loadError) {
         content = (
             <div className='FileExplorer__message'>
-                <p>{data.error}</p>
+                <p>{loadError}</p>
                 <button
                     type='button'
                     className='btn btn-tertiary'
@@ -590,7 +664,7 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
                 </button>
             </div>
         );
-    } else if (data.loading && !data.items.length) {
+    } else if (loading && !entries.length) {
         content = (
             <div className='FileExplorer__message'>
                 <FormattedMessage
@@ -627,6 +701,20 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
                 <FormattedMessage
                     id='file_explorer.empty.sourceMissing'
                     defaultMessage='The folder this one shows was deleted.'
+                />
+            );
+        } else if (page === SHARED_PAGE) {
+            empty = (
+                <FormattedMessage
+                    id='file_explorer.empty.shared'
+                    defaultMessage='This folder is empty.'
+                />
+            );
+        } else if (page === PRODUCTION_PAGE) {
+            empty = (
+                <FormattedMessage
+                    id='file_explorer.empty.production'
+                    defaultMessage='You are not a member of any episode channel yet.'
                 />
             );
         } else if (channel) {
@@ -705,11 +793,12 @@ export const FileExplorerView = ({channelName, folderId, urlFor, embedded = fals
                 search={search}
                 onSearch={setSearch}
             />
+            {described?.description && <div className='FileExplorer__description'>{described.description}</div>}
             <div className='FileExplorer__body'>
                 {!embedded && (
                     <ExplorerTree
                         baseUrl={rootUrl}
-                        channels={channels}
+                        channels={filesChannel ? [filesChannel, ...channels.filter((c) => c.id !== filesChannel.id)] : channels}
                         channelId={channel?.id}
                         folderId={folderId}
                         changeCount={data.changeCount}
@@ -797,22 +886,41 @@ const FileExplorer = () => {
     const {channelName, folderId = ''} = useParams<Params>();
     const baseUrl = `/${team?.name}/files`;
     const urlFor = useCallback((name: string, folder?: string) => [baseUrl, name, folder].filter(Boolean).join('/'), [baseUrl]);
+    const {layout, loaded} = useTeamFilesLayout(team?.files_enabled ? team.id : undefined);
+    const filesChannelId = layout?.channel_id ?? '';
+    const filesChannel = channels.find((c) => c.id === filesChannelId);
+    const [joining, setJoining] = useState(false);
 
     useEffect(() => {
         dispatch(selectLhsItem(LhsItemType.Page, LhsPage.Files));
     }, [dispatch]);
 
+    // Opening the page made the user a member of the team files channel; load it before routing into it.
+    useEffect(() => {
+        if (filesChannelId && !filesChannel) {
+            setJoining(true);
+            Promise.resolve(dispatch(getChannelAndMyMember(filesChannelId))).finally(() => setJoining(false));
+        }
+    }, [dispatch, filesChannel, filesChannelId]);
+
     if (team && !team.files_enabled) {
         return <Redirect to={`/${team.name}`}/>;
     }
-    if (channelName && !channels.some((c) => c.name === channelName)) {
+    if (channelName && !isTemplatePage(channelName) && !channels.some((c) => c.name === channelName)) {
+        if (!loaded || joining) {
+            return null;
+        }
         return <Redirect to={baseUrl}/>;
+    }
+    if (filesChannel && channelName === filesChannel.name && !folderId) {
+        return <Redirect to={baseUrl}/>; // its root is the template, the Files root
     }
     return (
         <FileExplorerView
             channelName={channelName}
             folderId={folderId}
             urlFor={urlFor}
+            layout={layout}
         />
     );
 };

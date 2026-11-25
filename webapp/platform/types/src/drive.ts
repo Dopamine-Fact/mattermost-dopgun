@@ -48,3 +48,32 @@ export type DriveListing = {
 };
 
 export type DriveChatFileSort = 'create_at' | 'name' | 'size';
+
+export type TeamFilesKind = '' | 'library' | 'projects' | 'production' | 'channels';
+export type TeamFilesAccess = '' | 'admin' | 'read';
+
+/** One folder of a team's Files page template; id is its drive folder in the team files channel once applied. */
+export type TeamFilesFolder = {
+    id?: string;
+    name: string;
+    description?: string;
+
+    /** top folders only */
+    kind?: TeamFilesKind;
+    access?: TeamFilesAccess;
+    children?: TeamFilesFolder[];
+};
+
+/** The Files page root for the current user. */
+export type TeamFilesLayout = {
+
+    /** the team files channel; '' without a template */
+    channel_id: string;
+    folders: TeamFilesFolder[];
+
+    /** the team's episode channels (channels with a task section) */
+    production_channel_ids: string[];
+    is_admin: boolean;
+};
+
+export type DriveShares = {item_id: string; team_ids: string[]};

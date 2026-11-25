@@ -134,6 +134,20 @@
         font-size: 12px;
     }
 
+    // pushes the rest of the footer to the right
+    &__library {
+        display: flex;
+        align-items: center;
+        margin: 0 auto 0 0;
+        font-size: 12px;
+        font-weight: normal;
+        gap: 6px;
+    }
+
+    &__libraryHelp {
+        color: rgba(var(--center-channel-color-rgb), 0.56);
+    }
+
     &__footer {
         display: flex;
         align-items: center;

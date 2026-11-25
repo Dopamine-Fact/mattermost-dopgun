@@ -552,3 +552,13 @@ input.FileExplorer__picker[type='file'] {
         flex: 1;
     }
 }
+
+.FileExplorer__description {
+    padding: 8px 16px;
+    border-bottom: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+    background: rgba(var(--button-bg-rgb), 0.06);
+    color: rgba(var(--center-channel-color-rgb), 0.8);
+    font-size: 13px;
+    line-height: 18px;
+    white-space: pre-line;
+}

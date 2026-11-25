@@ -30,7 +30,7 @@ const state = {
     },
 };
 
-const taskFile = (id: string, userId: string): DriveTaskFile => ({...TestHelper.getFileInfoMock({id, name: `${id}.png`, user_id: userId}), task_id: 't1'});
+const taskFile = (id: string, userId: string, channelId = 'c1'): DriveTaskFile => ({...TestHelper.getFileInfoMock({id, name: `${id}.png`, user_id: userId, channel_id: channelId}), task_id: 't1'});
 const folder: DriveItem = {id: 'd1', channel_id: 'c1', parent_id: '', type: 'folder', name: 'Ep', file_id: '', creator_id: 'me', create_at: 1, update_at: 1, delete_at: 0, deleted_by: ''};
 
 const load = async (access: '' | 'write' | 'read', path: DriveItem[] = []) => {
@@ -52,6 +52,13 @@ describe('useExplorerData task files', () => {
         expect((await load('')).slice(1).map((e) => e.canModify)).toEqual([true, false]);
         expect((await load('write')).slice(1).map((e) => e.canModify)).toEqual([true, true]);
         expect((await load('read')).slice(1).map((e) => e.canModify)).toEqual([false, false]);
+    });
+
+    test('from another channel (a library folder) are read-only', async () => {
+        jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [folder], path: [], access: 'write', task_files: [taskFile('episode', 'me', 'c2')]});
+        const {result} = renderHookWithContext(() => useExplorerData('c1', 'd1'), state);
+        await waitFor(() => expect(result.current.items.length).toBe(2));
+        expect(result.current.items[1].canModify).toBe(false);
     });
 
     test('are read-only inside a mirror', async () => {

@@ -162,6 +162,18 @@ describe('TeamDepartmentsTab', () => {
         expect(box).not.toBeChecked();
     });
 
+    test('the library box saves library_write on the department', async () => {
+        const patch = jest.spyOn(Client4, 'patchDepartment').mockResolvedValue(departments[1]);
+        renderTab();
+
+        const card = (await screen.findByDisplayValue('Animasyon')).closest('section') as HTMLElement;
+        const box = within(card).getByRole('checkbox', {name: /Can write to the Files library/});
+        expect(box).not.toBeChecked();
+        fireEvent.click(box);
+
+        await waitFor(() => expect(patch).toHaveBeenCalledWith('team1', 'd1', {library_write: true}));
+    });
+
     test('"Add rank" creates a rank in that department', async () => {
         const create = jest.spyOn(Client4, 'createRank').mockResolvedValue(rank('n', 'd1', 'New rank', 2));
         renderTab();

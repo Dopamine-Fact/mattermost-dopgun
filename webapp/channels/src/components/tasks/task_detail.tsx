@@ -29,7 +29,8 @@ import {DepartmentChip, LockLine, StatusSelect, TakeItButton, useApprovalEnabled
 import TaskComments from './task_comments';
 import {lockedBy} from './task_departments';
 import TaskSubtasks from './task_subtasks';
-import {isApprovalLocked} from './task_utils';
+import {folderPaths, isApprovalLocked, libraryFolderPaths} from './task_utils';
+import type {FolderOption} from './task_utils';
 
 type Props = {
     task: Task;
@@ -90,6 +91,24 @@ const TaskDetail = ({task, sections, members, displayName, onClose, canManage, o
             filter((t) => t.id !== task.id && (task.waits_for.includes(t.id) || !episodeTaskCycle(asKeys([...task.waits_for, t.id])))).
             sort((a, b) => a.title.localeCompare(b.title));
     }, [byId, canManage, task]);
+
+    // A manager picks the episode channel folder that lists the task's files, and a team library folder that mirrors it.
+    const showFolders = canManage && Boolean(channelId) && !task.video_file_id;
+    const [uploadFolders, setUploadFolders] = useState<FolderOption[] | null>(null);
+    const [libraryFolders, setLibraryFolders] = useState<FolderOption[] | null>(null);
+    useEffect(() => {
+        setUploadFolders(null);
+        setLibraryFolders(null);
+        if (!showFolders) {
+            return undefined;
+        }
+        let live = true;
+        Client4.getDriveFolders(channelId).then((items) => live && setUploadFolders(folderPaths(items)), () => {});
+        Client4.getTeamFilesLayout(task.team_id).then((layout) => live && setLibraryFolders(libraryFolderPaths(layout)), () => {});
+        return () => {
+            live = false;
+        };
+    }, [showFolders, channelId, task.team_id]);
 
     const assignable = members.filter((u) => !actionable || actionable.has(u.id) || u.id === currentUserId || u.id === task.assignee_id);
 
@@ -284,6 +303,23 @@ const TaskDetail = ({task, sections, members, displayName, onClose, canManage, o
                 </select>
             </label>
 
+            {showFolders && uploadFolders && (
+                <FolderSelect
+                    label={formatMessage({id: 'tasks.detail.uploadFolder', defaultMessage: 'Upload folder'})}
+                    value={task.folder_id}
+                    options={uploadFolders}
+                    onChange={(folderId) => save({folder_id: folderId})}
+                />
+            )}
+            {showFolders && libraryFolders && (
+                <FolderSelect
+                    label={formatMessage({id: 'tasks.detail.libraryFolder', defaultMessage: 'Library folder'})}
+                    value={task.library_folder_id ?? ''}
+                    options={libraryFolders}
+                    onChange={(folderId) => save({library_folder_id: folderId})}
+                />
+            )}
+
             {task.folder_id && !task.video_file_id && team?.files_enabled && channelName && (
                 <Link
                     className='TaskDetail__folder'
@@ -318,6 +354,40 @@ const TaskDetail = ({task, sections, members, displayName, onClose, canManage, o
                 channelId={sections.find((s) => s.id === task.section_id)?.channel_id || undefined}
             />
         </aside>
+    );
+};
+
+type FolderSelectProps = {
+    label: string;
+    value: string;
+    options: FolderOption[];
+    onChange: (folderId: string) => void;
+};
+
+const FolderSelect = ({label, value, options, onChange}: FolderSelectProps) => {
+    const {formatMessage} = useIntl();
+    return (
+        <label className='TaskDetail__field'>
+            {label}
+            <select
+                className='form-control'
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+            >
+                <option value=''>{formatMessage({id: 'tasks.detail.noFolder', defaultMessage: 'None'})}</option>
+                {value && !options.some((o) => o.id === value) && (
+                    <option value={value}>{formatMessage({id: 'tasks.detail.unavailableFolder', defaultMessage: 'Unavailable folder'})}</option>
+                )}
+                {options.map((o) => (
+                    <option
+                        key={o.id}
+                        value={o.id}
+                    >
+                        {o.path}
+                    </option>
+                ))}
+            </select>
+        </label>
     );
 };
 

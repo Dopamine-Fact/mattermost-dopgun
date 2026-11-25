@@ -417,6 +417,13 @@ export function makeGetChannelIdsForCategory() {
 
 // Returns a selector that takes an array of channels and the category they belong to and returns the array sorted and
 // with inactive DMs/GMs and archived channels filtered out.
+// The team files channel only stores the Files page template's folders; it never shows in the sidebar.
+function filterTeamFilesChannels(state: GlobalState, channels: Channel[]) {
+    const teams = state.entities.teams?.teams ?? {};
+    const isFilesChannel = (c: Channel) => Boolean(c.team_id) && teams[c.team_id]?.files_channel_id === c.id;
+    return channels.some(isFilesChannel) ? channels.filter((c) => !isFilesChannel(c)) : channels;
+}
+
 export function makeFilterAndSortChannelsForCategory() {
     const filterArchivedChannels = makeFilterArchivedChannels();
     const filterAutoclosedDMs = makeFilterAutoclosedDMs();
@@ -429,6 +436,7 @@ export function makeFilterAndSortChannelsForCategory() {
         let channels = originalChannels;
 
         channels = filterArchivedChannels(state, channels);
+        channels = filterTeamFilesChannels(state, channels);
         channels = filterManuallyClosedDMs(state, channels);
 
         channels = filterAutoclosedDMs(state, channels, category.type);

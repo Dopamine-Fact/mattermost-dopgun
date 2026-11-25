@@ -60,6 +60,9 @@ export type Team = {
     /** channel file drives (the Files explorer) */
     files_enabled?: boolean;
 
+    /** the private channel that stores the Files page template's folders; '' without a template */
+    files_channel_id?: string;
+
     /** personal notes and the Calendar page */
     notes_enabled?: boolean;
 

@@ -7,7 +7,7 @@ import React, {useEffect, useState} from 'react';
 import {FormattedMessage, defineMessages, useIntl} from 'react-intl';
 
 import {DragVerticalIcon, PlusIcon, TrashCanOutlineIcon} from '@mattermost/compass-icons/components';
-import type {Department, Rank} from '@mattermost/types/custom_roles';
+import type {Department, DepartmentPatch, Rank} from '@mattermost/types/custom_roles';
 import {RANK_PERMISSIONS} from '@mattermost/types/custom_roles';
 
 import {Client4} from 'mattermost-redux/client';
@@ -130,7 +130,7 @@ const DepartmentCard = ({teamId, department, departments, dragHandleProps, onDel
     // a member holds at most one rank per department, so the counts add up to distinct members
     const departmentMembers = department.ranks.reduce((n, r) => n + r.member_count, 0);
 
-    const patchDepartment = (patch: {name?: string; color?: string}) => run(() => Client4.patchDepartment(teamId, department.id, patch));
+    const patchDepartment = (patch: DepartmentPatch) => run(() => Client4.patchDepartment(teamId, department.id, patch));
     const patchRank = (rank: Rank, patch: {display_name?: string; color?: string}) => run(() => Client4.patchRank(teamId, rank.id, patch));
     const addRank = () => run(() => Client4.createRank(teamId, department.id, {
         display_name: freeName(formatMessage(msg.newRank), department.ranks.map((r) => r.display_name)),
@@ -269,6 +269,17 @@ const DepartmentCard = ({teamId, department, departments, dragHandleProps, onDel
                 )}
             </Droppable>
             <div className='TeamDepartments__footer'>
+                <label className='TeamDepartments__library'>
+                    <input
+                        type='checkbox'
+                        checked={Boolean(department.library_write)}
+                        onChange={(e) => patchDepartment({library_write: e.target.checked})}
+                    />
+                    <FormattedMessage {...msg.libraryWrite}/>
+                    <span className='TeamDepartments__libraryHelp'>
+                        <FormattedMessage {...msg.libraryWriteHelp}/>
+                    </span>
+                </label>
                 {error && <span className='TeamDepartments__error'>{error}</span>}
                 <button
                     type='button'
@@ -305,6 +316,8 @@ const msg = defineMessages({
     rankColor: {id: 'team_settings.departments.rank_color', defaultMessage: 'Color of {name}'},
     deleteRank: {id: 'team_settings.departments.delete_rank', defaultMessage: 'Delete {name}'},
     dragRank: {id: 'team_settings.departments.drag_rank', defaultMessage: 'Drag {name} to change its rank'},
+    libraryWrite: {id: 'team_settings.departments.library_write', defaultMessage: 'Can write to the Files library'},
+    libraryWriteHelp: {id: 'team_settings.departments.library_write_help', defaultMessage: 'Every rank of this department may add and change files in the team library folder.'},
     members: {id: 'team_settings.departments.members', defaultMessage: '{count, plural, one {# member} other {# members}}'},
 });
 

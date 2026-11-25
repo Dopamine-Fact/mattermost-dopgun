@@ -4,6 +4,7 @@
 import React from 'react';
 
 import type {Department} from '@mattermost/types/custom_roles';
+import type {DriveItem} from '@mattermost/types/drive';
 import type {Task, TaskSection} from '@mattermost/types/tasks';
 
 import {Client4} from 'mattermost-redux/client';
@@ -117,6 +118,12 @@ describe('TaskDetail department, pool, lock and folder', () => {
         jest.spyOn(Client4, 'getActionableUserIds').mockResolvedValue([]);
         jest.spyOn(Client4, 'getTeamDepartments').mockResolvedValue([dept('anim', 'Animation'), dept('sound', 'Sound')]);
         patch = jest.spyOn(Client4, 'patchTask').mockResolvedValue(task);
+        jest.spyOn(Client4, 'getDriveFolders').mockResolvedValue([
+            {id: 'exp', name: 'EXPORTS', parent_id: 'ani'},
+            {id: 'ani', name: '02_ANIMATIC', parent_id: ''},
+        ] as DriveItem[]);
+        const library = {id: 'lib', name: '03_LIBRARY', kind: 'library' as const, children: [{id: 'chars', name: 'CHARACTERS'}]};
+        jest.spyOn(Client4, 'getTeamFilesLayout').mockResolvedValue({channel_id: 'files', production_channel_ids: [], is_admin: true, folders: [library]});
     });
     afterEach(() => jest.restoreAllMocks());
 
@@ -230,6 +237,37 @@ describe('TaskDetail department, pool, lock and folder', () => {
         expect(await screen.findByRole('link', {name: 'Open folder'})).toHaveAttribute('href', '/team-one/channels/episode-1?folder=fold1');
     });
 
+    test('a manager picks the upload and library folders by path', async () => {
+        renderIt({...pool, folder_id: 'ani'}, {canManage: true});
+
+        const upload = await screen.findByRole('combobox', {name: 'Upload folder'});
+        expect(Client4.getDriveFolders).toHaveBeenCalledWith('ch1');
+        expect(upload).toHaveValue('ani');
+        expect(within(upload).getAllByRole('option').map((o) => o.textContent)).toEqual(['None', '02_ANIMATIC', '02_ANIMATIC/EXPORTS']);
+        fireEvent.change(upload, {target: {value: 'exp'}});
+        expect(patch).toHaveBeenCalledWith('t1', {folder_id: 'exp'}, expect.anything());
+
+        const library = await screen.findByRole('combobox', {name: 'Library folder'});
+        expect(within(library).getAllByRole('option').map((o) => o.textContent)).toEqual(['None', '03_LIBRARY/CHARACTERS']);
+        fireEvent.change(library, {target: {value: 'chars'}});
+        expect(patch).toHaveBeenCalledWith('t1', {library_folder_id: 'chars'}, expect.anything());
+    });
+
+    test('no library select without a library, and no folder selects for a non-manager', async () => {
+        jest.spyOn(Client4, 'getTeamFilesLayout').mockResolvedValue({channel_id: '', production_channel_ids: [], is_admin: false, folders: []});
+        const view = renderIt(pool, {canManage: true});
+        await screen.findByRole('combobox', {name: 'Upload folder'});
+        await waitFor(() => expect(Client4.getTeamFilesLayout).toHaveBeenCalled());
+        expect(screen.queryByRole('combobox', {name: 'Library folder'})).not.toBeInTheDocument();
+        view.unmount();
+
+        (Client4.getDriveFolders as jest.Mock).mockClear();
+        renderIt(pool);
+        await screen.findByRole('combobox', {name: 'Section'});
+        expect(Client4.getDriveFolders).not.toHaveBeenCalled();
+        expect(screen.queryByRole('combobox', {name: 'Upload folder'})).not.toBeInTheDocument();
+    });
+
     test('a revision shows none of it', async () => {
         renderIt({...pool, video_file_id: 'file1', waits_for: ['s'], folder_id: 'fold1'}, {roles: 'team_user rk_anim', canManage: true});
         await screen.findByRole('combobox', {name: 'Assignee'});
@@ -239,6 +277,7 @@ describe('TaskDetail department, pool, lock and folder', () => {
         expect(screen.queryByText(/Waiting for/)).not.toBeInTheDocument();
         expect(screen.queryByRole('button', {name: 'Take it'})).not.toBeInTheDocument();
         expect(screen.queryByRole('link', {name: 'Open folder'})).not.toBeInTheDocument();
+        expect(screen.queryByRole('combobox', {name: 'Upload folder'})).not.toBeInTheDocument();
     });
 
     test('a department that no longer exists reads Deleted department, with no Take it, and a manager can assign', async () => {

@@ -5,7 +5,7 @@ import type {DropResult} from '@hello-pangea/dnd';
 
 import type {Task} from '@mattermost/types/tasks';
 
-import {addDays, dayIndex, dropToPatch, groupByStatus, isApprovalLocked, isComplete, resizeSpan, sectionColor, sortOrderBetween, startOfDay, subtaskCounts, taskSpan, timelineRange, visibleTasks} from './task_utils';
+import {addDays, dayIndex, dropToPatch, folderPaths, groupByStatus, isApprovalLocked, isComplete, libraryFolderPaths, resizeSpan, sectionColor, sortOrderBetween, startOfDay, subtaskCounts, taskSpan, timelineRange, visibleTasks} from './task_utils';
 
 const task = (id: string, status: Task['status'], sortOrder: number) => ({id, status, sort_order: sortOrder} as Task);
 
@@ -108,5 +108,38 @@ describe('task_utils', () => {
         expect(subtaskCounts([parent, open, done]).get('p')).toEqual({done: 1, total: 2});
         expect(visibleTasks([parent, open, done, orphan], false)).toEqual([parent, orphan]);
         expect(visibleTasks([parent, open, orphan], true)).toEqual([parent, open, orphan]);
+    });
+});
+
+describe('folder paths', () => {
+    test('a drive folder is labelled by its path from the channel root, sorted by path', () => {
+        expect(folderPaths([
+            {id: 'b', name: 'BOARDS', parent_id: 'e'},
+            {id: 'a', name: '02_ANIMATIC', parent_id: ''},
+            {id: 'e', name: 'EXPORTS', parent_id: 'a'},
+            {id: 'r', name: '01_REF', parent_id: ''},
+        ])).toEqual([
+            {id: 'r', path: '01_REF'},
+            {id: 'a', path: '02_ANIMATIC'},
+            {id: 'e', path: '02_ANIMATIC/EXPORTS'},
+            {id: 'b', path: '02_ANIMATIC/EXPORTS/BOARDS'},
+        ]);
+    });
+
+    test('the library offers its descendants with an id, and null without a library', () => {
+        const projects = {id: 'p', name: '01_PROJECTS', kind: 'projects' as const, children: [{id: 'x', name: 'X'}]};
+        const children = [
+            {id: 'ch', name: 'CHARACTERS', children: [{id: 'hero', name: 'HERO'}]},
+            {name: 'UNAPPLIED'},
+            {id: 'bg', name: 'BACKGROUNDS'},
+        ];
+        const library = {id: 'l', name: '03_LIBRARY', kind: 'library' as const, children};
+        const layout = {channel_id: 'c', production_channel_ids: [], is_admin: false, folders: [projects, library]};
+        expect(libraryFolderPaths(layout)).toEqual([
+            {id: 'bg', path: '03_LIBRARY/BACKGROUNDS'},
+            {id: 'ch', path: '03_LIBRARY/CHARACTERS'},
+            {id: 'hero', path: '03_LIBRARY/CHARACTERS/HERO'},
+        ]);
+        expect(libraryFolderPaths({...layout, folders: [projects]})).toBeNull();
     });
 });

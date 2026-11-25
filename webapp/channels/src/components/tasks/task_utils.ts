@@ -4,6 +4,7 @@
 import type {DropResult} from '@hello-pangea/dnd';
 import {defineMessages} from 'react-intl';
 
+import type {DriveItem, TeamFilesFolder, TeamFilesLayout} from '@mattermost/types/drive';
 import type {Task, TaskPatch, TaskSection, TaskStatus} from '@mattermost/types/tasks';
 import type {UserProfile} from '@mattermost/types/users';
 
@@ -181,4 +182,36 @@ export function timelineRange(tasks: Task[], now = Date.now()): {from: number; d
         }
     }
     return {from, days: Math.min(dayIndex(from, to) + 1, MAX_TIMELINE_DAYS)};
+}
+
+export type FolderOption = {id: string; path: string};
+
+const byPath = (a: FolderOption, b: FolderOption) => a.path.localeCompare(b.path);
+
+// folderPaths labels each drive folder with its path from the channel root ("02_ANIMATIC/EXPORTS"), sorted by path.
+export function folderPaths(folders: Array<Pick<DriveItem, 'id' | 'name' | 'parent_id'>>): FolderOption[] {
+    const byId = new Map(folders.map((f) => [f.id, f]));
+    const path = (f: Pick<DriveItem, 'name' | 'parent_id'>): string => {
+        const parent = byId.get(f.parent_id);
+        return parent ? `${path(parent)}/${f.name}` : f.name;
+    };
+    return folders.map((f) => ({id: f.id, path: path(f)})).sort(byPath);
+}
+
+// libraryFolderPaths lists the folders below the team's library folder with their paths; null when the team has no library.
+export function libraryFolderPaths(layout: TeamFilesLayout): FolderOption[] | null {
+    const library = layout.folders.find((f) => f.kind === 'library');
+    if (!library) {
+        return null;
+    }
+    const out: FolderOption[] = [];
+    const walk = (folders: TeamFilesFolder[] | undefined, prefix: string) => folders?.forEach((f) => {
+        const path = `${prefix}/${f.name}`;
+        if (f.id) {
+            out.push({id: f.id, path});
+        }
+        walk(f.children, path);
+    });
+    walk(library.children, library.name);
+    return out.sort(byPath);
 }

@@ -252,6 +252,7 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
                     handleDailyReportTimeChange={handleDailyReportTimeChange}
                 />
                 <TeamFilesSection
+                    teamId={team.id}
                     filesEnabled={filesEnabled}
                     handleFilesEnabledChange={handleFilesEnabledChange}
                 />

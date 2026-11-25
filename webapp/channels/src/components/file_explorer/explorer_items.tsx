@@ -69,6 +69,7 @@ export function entryType(entry: ExplorerEntry, intl: IntlShape): string {
     case 'folder':
     case 'chat':
     case 'trash':
+    case 'virtual':
         return intl.formatMessage({id: 'file_explorer.type.folder', defaultMessage: 'File folder'});
     default: {
         const ext = (entry.fileInfo?.extension || entry.name.split('.').pop() || '').toUpperCase();
@@ -91,6 +92,8 @@ export function EntryIcon({entry, large}: {entry: ExplorerEntry; large?: boolean
         return <MessageTextOutlineIcon size={size}/>;
     case 'trash':
         return <TrashCanOutlineIcon size={size}/>;
+    case 'virtual':
+        return <FolderOutlineIcon size={size}/>;
     case 'folder': {
         const item = entry.driveItem;
         const title = item?.mirror_of ? intl.formatMessage({id: 'file_explorer.mirror', defaultMessage: 'Shows another folder'}) : item?.read_only && intl.formatMessage({id: 'file_explorer.readOnly', defaultMessage: 'Read-only folder'});

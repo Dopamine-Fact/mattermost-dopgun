@@ -640,3 +640,64 @@ describe('FileExplorer', () => {
         });
     });
 });
+
+describe('FileExplorer with a team template', () => {
+    const files = channel('c9', 'dosyalar-x', 'Dosyalar', 'P');
+    const state = {
+        entities: {
+            ...storeState.entities,
+            teams: {currentTeamId: 'team1', teams: {team1: {...team, files_channel_id: 'c9'}}},
+            channels: {
+                ...storeState.entities.channels,
+                channels: {...storeState.entities.channels.channels, c9: files},
+                channelsInTeam: {...storeState.entities.channels.channelsInTeam, team1: new Set(['c1', 'c2', 'c3', 'c5', 'c9'])},
+                myMembers: {...storeState.entities.channels.myMembers, c9: TestHelper.getChannelMembershipMock({channel_id: 'c9', user_id: 'me'})},
+            },
+        },
+    };
+    const layout = {
+        channel_id: 'c9',
+        production_channel_ids: ['c1'],
+        is_admin: false,
+        folders: [
+            {id: 'f1', name: '01_DOCTRINE', description: 'Herkes okur, yalnızca adminler yazar.', access: 'read' as const},
+            {name: '02_PRODUCTION', kind: 'production' as const},
+            {name: '07_CHANNELS', kind: 'channels' as const},
+        ],
+    };
+    const render = (path: string) => renderWithContext(
+        <Route
+            path='/:team/files/:channelName?/:folderId?'
+            component={FileExplorer}
+        />,
+        state,
+        {history: createMemoryHistory({initialEntries: [path]})},
+    );
+
+    beforeEach(() => {
+        jest.restoreAllMocks();
+        jest.spyOn(Client4, 'getTeamFilesLayout').mockResolvedValue(layout);
+    });
+
+    test('the root lists the template folders instead of the channels', async () => {
+        render('/team/files');
+        await waitFor(() => expect(cellNames()).toEqual(['01_DOCTRINE', '02_PRODUCTION', '07_CHANNELS']));
+    });
+
+    test('the production page lists the episode channels', async () => {
+        render('/team/files/~production');
+        await waitFor(() => expect(cellNames()).toEqual(['Town']));
+    });
+
+    test('the channels page lists every channel but the files channel', async () => {
+        render('/team/files/~channels');
+        await waitFor(() => expect(cellNames()).toEqual(['Alpha secret', 'Town']));
+    });
+
+    test('a template folder shows its description and sits right under Files', async () => {
+        jest.spyOn(Client4, 'getDriveFolder').mockResolvedValue({items: [], path: [{...folder('f1', '01_DOCTRINE'), channel_id: 'c9'}], access: 'read', task_files: []});
+        render('/team/files/dosyalar-x/f1');
+        expect(await screen.findByText('Herkes okur, yalnızca adminler yazar.')).toBeInTheDocument();
+        expect(screen.queryByText('Dosyalar', {selector: '.ExplorerAddressBar *'})).not.toBeInTheDocument();
+    });
+});
