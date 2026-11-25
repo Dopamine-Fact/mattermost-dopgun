@@ -59,7 +59,9 @@ ENV MM_INSTALL_TYPE="docker"
 
 USER mattermost
 WORKDIR /mattermost
-HEALTHCHECK --interval=30s --timeout=10s CMD ["/mattermost/bin/mmctl", "system", "status", "--local"]
+# mmctl calls /api/v4/system/ping (with DB and filestore checks) over the local-mode socket; curl is not in the image.
+# start-period covers boot plus schema migrations after an upgrade; Coolify reads this status for the compose app.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 CMD ["/mattermost/bin/mmctl", "system", "status", "--local"]
 CMD ["/mattermost/bin/mattermost"]
 EXPOSE 8065 8067 8074
 VOLUME ["/mattermost/data", "/mattermost/logs", "/mattermost/config", "/mattermost/plugins", "/mattermost/client/plugins"]

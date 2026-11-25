@@ -82,6 +82,13 @@ services:
       TZ: ${TZ:-Europe/Istanbul}
     volumes:
       - /mnt/data/mattermost/push-proxy/config:/mattermost-push-proxy/config
+    # The image has no curl/wget; a TCP check is enough. Without any healthcheck Coolify reports the app as "unknown".
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8066"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     security_opt:
       - no-new-privileges:true
 
