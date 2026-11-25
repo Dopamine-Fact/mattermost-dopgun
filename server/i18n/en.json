@@ -3544,6 +3544,11 @@
     "description": "API error when an endpoint requires a paid license; 'E10' and 'E20' are legacy Mattermost license tier names."
   },
   {
+    "id": "api.note.invalid_range.app_error",
+    "translation": "Choose a valid date range of at most 62 days.",
+    "description": "Error returned when the Calendar page asks for notes with a missing, reversed, malformed or too long from/to date range."
+  },
+  {
     "id": "api.oauth.allow_oauth.pkce_required_public.app_error",
     "translation": "PKCE (Proof Key for Code Exchange) is required for public OAuth clients using authorization code flow.",
     "description": "OAuth authorization error shown to developers/users when a public OAuth client omits PKCE; keep 'PKCE' and the parenthetical expansion technical."
@@ -10194,6 +10199,26 @@
     "id": "app.member_count",
     "translation": "error retrieving member count",
     "description": "Low-level database error detail when counting a group's members fails; terse developer-facing text."
+  },
+  {
+    "id": "app.note.disabled.app_error",
+    "translation": "Personal notes are not enabled for this team.",
+    "description": "Error returned when a personal notes or calendar action is attempted on a team that has personal notes turned off or is archived."
+  },
+  {
+    "id": "app.note.not_found.app_error",
+    "translation": "The note was not found.",
+    "description": "Error returned when a personal note does not exist, belongs to another team, or is another user's private note."
+  },
+  {
+    "id": "app.note.not_owner.app_error",
+    "translation": "Only the owner of this note can change or delete it.",
+    "description": "Error returned when a user tries to edit or delete a teammate's shared personal note."
+  },
+  {
+    "id": "app.note.store.app_error",
+    "translation": "The note could not be saved or loaded.",
+    "description": "Generic database error for personal notes (Calendar page)."
   },
   {
     "id": "app.notification.body.dm.subTitle",
@@ -19285,6 +19310,51 @@
     "id": "model.outgoing_oauth_connection.is_valid.update_at.error",
     "translation": "Update at must be a valid time.",
     "description": "API error when an outgoing OAuth connection's last-update timestamp is unset; 'Update at' names the UpdateAt field."
+  },
+  {
+    "id": "model.personal_note.is_valid.date.app_error",
+    "translation": "The date must be in YYYY-MM-DD format.",
+    "description": "Validation error when a personal note (Calendar page) is saved with a malformed date."
+  },
+  {
+    "id": "model.personal_note.is_valid.id.app_error",
+    "translation": "Invalid note id.",
+    "description": "Validation error when a personal note (Calendar page) is saved with an invalid id."
+  },
+  {
+    "id": "model.personal_note.is_valid.message.app_error",
+    "translation": "The description must be at most 4000 characters.",
+    "description": "Validation error when a personal note (Calendar page) is saved with a description longer than 4000 characters."
+  },
+  {
+    "id": "model.personal_note.is_valid.remind_minutes.app_error",
+    "translation": "Reminders need a date and must be at most 7 days before it.",
+    "description": "Validation error when a personal note (Calendar page) is saved with a reminder on an undated note or an out-of-range reminder offset."
+  },
+  {
+    "id": "model.personal_note.is_valid.team_id.app_error",
+    "translation": "Invalid team id.",
+    "description": "Validation error when a personal note (Calendar page) is saved with an invalid team id."
+  },
+  {
+    "id": "model.personal_note.is_valid.time.app_error",
+    "translation": "The time must be in HH:MM format and needs a date.",
+    "description": "Validation error when a personal note (Calendar page) is saved with a malformed time, or a time without a date."
+  },
+  {
+    "id": "model.personal_note.is_valid.title.app_error",
+    "translation": "The title is required and must be at most 200 characters.",
+    "description": "Validation error when a personal note (Calendar page) is saved with an empty title or one longer than 200 characters."
+  },
+  {
+    "id": "model.personal_note.is_valid.user_id.app_error",
+    "translation": "Invalid user id.",
+    "description": "Validation error when a personal note (Calendar page) is saved with an invalid owner id."
+  },
+  {
+    "id": "model.personal_note.is_valid.visibility.app_error",
+    "translation": "Visibility must be private or team.",
+    "description": "Validation error when a personal note (Calendar page) is saved with a visibility other than private or team."
   },
   {
     "id": "model.plugin_command.error.app_error",
