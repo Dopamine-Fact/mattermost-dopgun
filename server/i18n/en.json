@@ -10221,6 +10221,11 @@
     "description": "Generic database error for personal notes (Calendar page)."
   },
   {
+    "id": "app.note_reminder_dm",
+    "translation": "🔔 Reminder: **{{.Title}}** — {{.When}}\n[Open in calendar]({{.SiteURL}}/{{.TeamName}}/calendar?note={{.NoteId}})",
+    "description": "System bot direct message delivering a personal note reminder from the Calendar page; {{.Title}} is the note title, {{.When}} its date (and time), and the remaining placeholders build the link to the note — keep the URL structure intact."
+  },
+  {
     "id": "app.notification.body.dm.subTitle",
     "translation": "While you were away, {{.SenderName}} sent you a new Direct Message.",
     "description": "Subtitle line in an email notification for a missed direct message; {{.SenderName}} is the sender's display name."
