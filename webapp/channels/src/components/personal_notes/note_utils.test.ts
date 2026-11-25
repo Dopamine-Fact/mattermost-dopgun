@@ -70,6 +70,14 @@ describe('dropToPatch', () => {
     test('week view all-day row clears the time', () => {
         expect(dropToPatch(new Date(2026, 10, 27), true, 'timeGridWeek')).toEqual({date: '2026-11-27', time: ''});
     });
+
+    test('a minutes-before reminder becomes the all-day "on the day" reminder when the time is cleared', () => {
+        // The all-day reminder choices are -1, 0 and 1440; a leftover 15 would fire at 08:45 while the dialog shows "No reminder".
+        expect(dropToPatch(new Date(2026, 10, 27), true, 'timeGridWeek', 15)).toEqual({date: '2026-11-27', time: '', remind_minutes: 0});
+        expect(dropToPatch(new Date(2026, 10, 27), true, 'timeGridWeek', 1440)).toEqual({date: '2026-11-27', time: ''});
+        expect(dropToPatch(new Date(2026, 10, 27), true, 'timeGridWeek', -1)).toEqual({date: '2026-11-27', time: ''});
+        expect(dropToPatch(start, false, 'timeGridWeek', 15)).toEqual({date: '2026-11-27', time: '14:30'});
+    });
 });
 
 describe('date helpers', () => {

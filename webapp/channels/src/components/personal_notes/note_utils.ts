@@ -46,13 +46,20 @@ export function noteToEvent(note: PersonalNote, currentUserId: string, ownerName
     };
 }
 
-/** The patch for a dragged note: month view moves only the day, week view also sets (or clears) the time. */
-export function dropToPatch(start: Date, allDay: boolean, view: string): PersonalNotePatch {
+/**
+ * The patch for a dragged note: month view moves only the day, week view also sets (or clears) the time.
+ * Clearing the time turns a minutes-before reminder into the all-day "on the day" one, which the dialog can show.
+ */
+export function dropToPatch(start: Date, allDay: boolean, view: string, remindMinutes = NO_REMINDER): PersonalNotePatch {
     const date = toLocalDateString(start);
     if (view !== 'timeGridWeek') {
         return {date};
     }
-    return {date, time: allDay ? '' : toLocalTimeString(start)};
+    if (!allDay) {
+        return {date, time: toLocalTimeString(start)};
+    }
+    const keepsReminder = reminderOptions(true).some((o) => o.value === remindMinutes);
+    return keepsReminder ? {date, time: ''} : {date, time: '', remind_minutes: 0};
 }
 
 export function reminderOptions(allDay: boolean): Array<{value: number; labelId: string; defaultMessage: string}> {

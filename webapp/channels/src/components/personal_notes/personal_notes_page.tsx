@@ -149,7 +149,7 @@ const PersonalNotesPage = () => {
     const handleEventDrop = async (info: EventDropArg) => {
         const note: PersonalNote = info.event.extendedProps.note;
         try {
-            await Client4.patchPersonalNote(teamId, note.id, dropToPatch(info.event.start!, info.event.allDay, info.view.type));
+            await Client4.patchPersonalNote(teamId, note.id, dropToPatch(info.event.start!, info.event.allDay, info.view.type, note.remind_minutes));
             refresh();
         } catch (e) {
             info.revert();
