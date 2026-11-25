@@ -5399,17 +5399,17 @@ export default class Client4 {
         );
     };
 
-    deleteTask = (taskId: string, connectionId: string) => {
-        return this.doFetch<StatusOK>(
-            `${this.getBaseRoute()}/tasks/${taskId}`,
-            {method: 'delete', headers: {'Connection-Id': connectionId}},
-        );
-    };
-
     applyTaskApproval = (taskId: string, action: TaskApprovalAction, connectionId: string) => {
         return this.doFetch<Task>(
             `${this.getBaseRoute()}/tasks/${taskId}/approval`,
             {method: 'post', body: JSON.stringify({action}), headers: {'Connection-Id': connectionId}},
+        );
+    };
+
+    deleteTask = (taskId: string, connectionId: string) => {
+        return this.doFetch<StatusOK>(
+            `${this.getBaseRoute()}/tasks/${taskId}`,
+            {method: 'delete', headers: {'Connection-Id': connectionId}},
         );
     };
 

@@ -25531,6 +25531,10 @@
     "defaultMessage": "When enabled, task managers can create revision channels: chat channels with a video where revisions are pinned to moments and assigned as tasks.",
     "description": "Help text under the revision channels setting in Team Settings > Episodes explaining what a revision channel is."
   },
+  "general_tab.revisionsTitle": {
+    "defaultMessage": "Revision channels",
+    "description": "Section title in Team Settings > Episodes for the setting that turns revision channels on or off for the team."
+  },
   "general_tab.taskApprovalEnabled": {
     "defaultMessage": "Require approval of done tasks",
     "description": "Checkbox label in Team Settings > Episodes that turns on the supervisor then director approval of tasks moved to Done."
@@ -25542,10 +25546,6 @@
   "general_tab.taskApprovalTitle": {
     "defaultMessage": "Task approval",
     "description": "Setting title in Team Settings > Episodes for the approval of done tasks."
-  },
-  "general_tab.revisionsTitle": {
-    "defaultMessage": "Revision channels",
-    "description": "Section title in Team Settings > Episodes for the setting that turns revision channels on or off for the team."
   },
   "general_tab.tasksEnabled": {
     "defaultMessage": "Enable tasks for this team",
@@ -33679,6 +33679,10 @@
     "defaultMessage": "+ Add task",
     "description": ""
   },
+  "tasks.addTask.label": {
+    "defaultMessage": "New task title",
+    "description": ""
+  },
   "tasks.approval.approve": {
     "defaultMessage": "Approve",
     "description": "Button in the task detail panel that gives the current approval stage (supervisor or director) to a task in Done."
@@ -33706,10 +33710,6 @@
   "tasks.approval.revert": {
     "defaultMessage": "Reopen",
     "description": "Button in the task detail panel, for directors, that withdraws an approval and reopens the task in In progress."
-  },
-  "tasks.addTask.label": {
-    "defaultMessage": "New task title",
-    "description": ""
   },
   "tasks.comments.attach": {
     "defaultMessage": "Attach files",
@@ -34075,6 +34075,10 @@
     "defaultMessage": "To do",
     "description": ""
   },
+  "tasks.statusOf": {
+    "defaultMessage": "Status of {title}",
+    "description": ""
+  },
   "tasks.subtasks.add": {
     "defaultMessage": "+ Add subtask",
     "description": "Placeholder of the input under a task's subtask list in the task detail panel; typing a title and leaving the field adds a subtask."
@@ -34106,10 +34110,6 @@
   "tasks.subtasks.title": {
     "defaultMessage": "Subtasks ({done}/{total})",
     "description": "Heading of the subtask list in a task's detail panel with progress, e.g. \"Subtasks (2/5)\"; done means done and approved."
-  },
-  "tasks.statusOf": {
-    "defaultMessage": "Status of {title}",
-    "description": ""
   },
   "tasks.takeIt": {
     "defaultMessage": "Take it",
@@ -34311,6 +34311,10 @@
     "defaultMessage": "New department",
     "description": "Name given to a department just created from the Team Settings › Departments tab; the admin renames it inline."
   },
+  "team_settings.departments.new_rank": {
+    "defaultMessage": "New rank",
+    "description": "Name given to a rank just created from the Team Settings › Departments tab; the admin renames it inline."
+  },
   "team_settings.departments.permission.approve_task_director": {
     "defaultMessage": "Director approval",
     "description": "Name of the rank permission (Team Settings > Departments) that lets holders give the final, director approval of tasks."
@@ -34318,10 +34322,6 @@
   "team_settings.departments.permission.approve_task_supervisor": {
     "defaultMessage": "Supervisor approval",
     "description": "Name of the rank permission (Team Settings > Departments) that lets holders give the first, supervisor approval of tasks."
-  },
-  "team_settings.departments.new_rank": {
-    "defaultMessage": "New rank",
-    "description": "Name given to a rank just created from the Team Settings › Departments tab; the admin renames it inline."
   },
   "team_settings.departments.permission.assign_custom_roles": {
     "defaultMessage": "Give ranks",
