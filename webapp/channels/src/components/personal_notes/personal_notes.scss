@@ -1,0 +1,206 @@
+.PersonalNotes {
+    display: flex;
+    overflow: auto;
+    flex-direction: column;
+    padding: 16px 24px;
+    color: var(--center-channel-color);
+    gap: 16px;
+
+    // FullCalendar reads its colors from these variables; map them to the current Mattermost theme.
+    --fc-border-color: rgba(var(--center-channel-color-rgb), 0.12);
+    --fc-page-bg-color: var(--center-channel-bg);
+    --fc-neutral-bg-color: rgba(var(--center-channel-color-rgb), 0.04);
+    --fc-today-bg-color: rgba(var(--button-bg-rgb), 0.08);
+    --fc-event-bg-color: var(--button-bg);
+    --fc-event-border-color: var(--button-bg);
+    --fc-event-text-color: var(--button-color);
+    --fc-button-bg-color: var(--center-channel-bg);
+    --fc-button-border-color: rgba(var(--center-channel-color-rgb), 0.16);
+    --fc-button-text-color: var(--center-channel-color);
+    --fc-button-hover-bg-color: rgba(var(--center-channel-color-rgb), 0.08);
+    --fc-button-hover-border-color: rgba(var(--center-channel-color-rgb), 0.24);
+    --fc-button-active-bg-color: rgba(var(--button-bg-rgb), 0.12);
+    --fc-button-active-border-color: var(--button-bg);
+    --fc-now-indicator-color: var(--dnd-indicator);
+
+    .fc .fc-button-primary:not(:disabled).fc-button-active,
+    .fc .fc-button-primary:not(:disabled):active {
+        color: var(--button-bg);
+    }
+
+    .fc .fc-toolbar-title {
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .fc a {
+        color: inherit;
+    }
+
+    .PersonalNote--team {
+        border-color: rgba(var(--center-channel-color-rgb), 0.24);
+        background: rgba(var(--center-channel-color-rgb), 0.08);
+        color: var(--center-channel-color);
+    }
+
+    .fc-daygrid-dot-event.PersonalNote--own .PersonalNote__event {
+        color: var(--button-bg);
+    }
+
+    .PersonalNote--done .PersonalNote__title {
+        opacity: 0.64;
+        text-decoration: line-through;
+    }
+}
+
+.PersonalNotes__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    h2 {
+        flex: 1;
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+}
+
+.PersonalNotes__filter {
+    display: inline-flex;
+    gap: 4px;
+}
+
+.PersonalNotes__error,
+.PersonalNoteDialog__error {
+    color: var(--error-text);
+}
+
+.PersonalNote__event {
+    display: inline-flex;
+    overflow: hidden;
+    min-width: 0;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.PersonalNote__title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.PersonalNote__owner,
+.PersonalNotes__owner {
+    font-size: 11px;
+    opacity: 0.72;
+}
+
+.PersonalNotes__undated {
+    h3 {
+        margin: 0 0 8px;
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    ul {
+        padding: 0;
+        margin: 0;
+        list-style: none;
+    }
+}
+
+.PersonalNotes__undatedItem {
+    display: flex;
+    align-items: center;
+    padding: 4px 0;
+    gap: 8px;
+
+    &.done .PersonalNotes__undatedTitle {
+        opacity: 0.64;
+        text-decoration: line-through;
+    }
+}
+
+.PersonalNotes__undatedTitle {
+    padding: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    text-align: left;
+}
+
+.PersonalNotes__empty {
+    color: rgba(var(--center-channel-color-rgb), 0.64);
+}
+
+.PersonalNoteDialog__form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    label {
+        display: flex;
+        flex-direction: column;
+        margin: 0;
+        font-weight: 600;
+        gap: 4px;
+    }
+
+    fieldset {
+        padding: 0;
+        border: none;
+        margin: 0;
+    }
+
+    legend {
+        width: auto;
+        border: none;
+        margin: 0 8px 0 0;
+        font-size: 14px;
+        font-weight: 600;
+    }
+}
+
+.PersonalNoteDialog__row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .form-control {
+        width: auto;
+    }
+}
+
+.PersonalNoteDialog .PersonalNoteDialog__check {
+    flex-direction: row;
+    align-items: center;
+    font-weight: 400;
+}
+
+.PersonalNoteDialog__footer {
+    display: flex;
+    width: 100%;
+    gap: 8px;
+}
+
+.PersonalNoteDialog__spacer {
+    flex: 1;
+}
+
+.PersonalNoteDialog__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.PersonalNoteDialog__message {
+    margin-top: 12px;
+    white-space: pre-wrap;
+}

@@ -29659,9 +29659,165 @@
     "defaultMessage": "Too many recipients",
     "description": "Title of the dialog shown when a persistent-notification message mentions more recipients than allowed."
   },
+  "personal_notes.dialog.allDay": {
+    "defaultMessage": "All day",
+    "description": "Calendar page (personal notes): checkbox in the note dialog that makes a dated note all-day (no time)."
+  },
+  "personal_notes.dialog.cancel": {
+    "defaultMessage": "Cancel",
+    "description": "Calendar page (personal notes): button that closes the note dialog without saving."
+  },
+  "personal_notes.dialog.confirmDelete": {
+    "defaultMessage": "Delete for good",
+    "description": "Calendar page (personal notes): second click of the Delete button in the note dialog; deleting cannot be undone."
+  },
+  "personal_notes.dialog.date": {
+    "defaultMessage": "Date",
+    "description": "Calendar page (personal notes): accessible label of the date field in the note dialog."
+  },
+  "personal_notes.dialog.delete": {
+    "defaultMessage": "Delete",
+    "description": "Calendar page (personal notes): button in the note dialog that starts deleting the note (asks again before deleting)."
+  },
+  "personal_notes.dialog.description": {
+    "defaultMessage": "Description",
+    "description": "Calendar page (personal notes): label of the optional description field in the note dialog."
+  },
+  "personal_notes.dialog.edit": {
+    "defaultMessage": "Edit note",
+    "description": "Calendar page (personal notes): title of the dialog that edits one of your notes."
+  },
+  "personal_notes.dialog.new": {
+    "defaultMessage": "New note",
+    "description": "Calendar page (personal notes): title of the dialog that creates a note."
+  },
+  "personal_notes.dialog.noDate": {
+    "defaultMessage": "No date",
+    "description": "Calendar page (personal notes): checkbox in the note dialog that removes the date; the note then shows in the Undated list."
+  },
+  "personal_notes.dialog.reminder": {
+    "defaultMessage": "Reminder",
+    "description": "Calendar page (personal notes): label of the reminder choice in the note dialog; reminders arrive as a system bot direct message."
+  },
+  "personal_notes.dialog.save": {
+    "defaultMessage": "Save",
+    "description": "Calendar page (personal notes): button that saves the note dialog."
+  },
+  "personal_notes.dialog.time": {
+    "defaultMessage": "Time",
+    "description": "Calendar page (personal notes): accessible label of the time field in the note dialog."
+  },
+  "personal_notes.dialog.title": {
+    "defaultMessage": "Title",
+    "description": "Calendar page (personal notes): label of the required title field in the note dialog."
+  },
+  "personal_notes.dialog.visibility": {
+    "defaultMessage": "Who can see it",
+    "description": "Calendar page (personal notes): label of the visibility choice (only me or the whole team) in the note dialog."
+  },
+  "personal_notes.disabled": {
+    "defaultMessage": "Personal notes are not enabled for this team.",
+    "description": "Calendar page (personal notes): shown instead of the calendar when the team has personal notes turned off."
+  },
+  "personal_notes.done": {
+    "defaultMessage": "Done",
+    "description": "Calendar page (personal notes): marks a note as done; checkbox in the note dialog and label in the read-only view."
+  },
+  "personal_notes.error.message": {
+    "defaultMessage": "The description can be at most 4000 characters.",
+    "description": "Calendar page (personal notes): validation error in the note dialog."
+  },
+  "personal_notes.error.reminderWithoutDate": {
+    "defaultMessage": "Pick a date to set a reminder.",
+    "description": "Calendar page (personal notes): validation error in the note dialog when a reminder is set on an undated note."
+  },
+  "personal_notes.error.timeWithoutDate": {
+    "defaultMessage": "Pick a date to set a time.",
+    "description": "Calendar page (personal notes): validation error in the note dialog when a time is set on an undated note."
+  },
+  "personal_notes.error.title": {
+    "defaultMessage": "Enter a title of at most 200 characters.",
+    "description": "Calendar page (personal notes): validation error in the note dialog when the title is empty or too long."
+  },
+  "personal_notes.filter": {
+    "defaultMessage": "Show notes from",
+    "description": "Calendar page (personal notes): accessible label of the Everyone / Only mine filter."
+  },
+  "personal_notes.filter.everyone": {
+    "defaultMessage": "Everyone",
+    "description": "Calendar page (personal notes): filter button showing your notes and teammates' shared notes."
+  },
+  "personal_notes.filter.mine": {
+    "defaultMessage": "Only mine",
+    "description": "Calendar page (personal notes): filter button showing only your own notes."
+  },
+  "personal_notes.markDone": {
+    "defaultMessage": "Mark {title} done",
+    "description": "Calendar page (personal notes): accessible label of the done checkbox in the Undated list; {title} is the note title."
+  },
+  "personal_notes.newNote": {
+    "defaultMessage": "Note",
+    "description": "Calendar page (personal notes): button (with a plus icon) that opens the dialog to create a note."
+  },
+  "personal_notes.reminder.atStart": {
+    "defaultMessage": "At the time",
+    "description": "Calendar page (personal notes): reminder option for a timed note: remind at its start time."
+  },
+  "personal_notes.reminder.day1": {
+    "defaultMessage": "1 day before",
+    "description": "Calendar page (personal notes): reminder option for a timed note."
+  },
+  "personal_notes.reminder.dayBefore": {
+    "defaultMessage": "The day before at 09:00",
+    "description": "Calendar page (personal notes): reminder option for an all-day note."
+  },
+  "personal_notes.reminder.hour1": {
+    "defaultMessage": "1 hour before",
+    "description": "Calendar page (personal notes): reminder option for a timed note."
+  },
+  "personal_notes.reminder.min15": {
+    "defaultMessage": "15 minutes before",
+    "description": "Calendar page (personal notes): reminder option for a timed note."
+  },
+  "personal_notes.reminder.min30": {
+    "defaultMessage": "30 minutes before",
+    "description": "Calendar page (personal notes): reminder option for a timed note."
+  },
+  "personal_notes.reminder.min5": {
+    "defaultMessage": "5 minutes before",
+    "description": "Calendar page (personal notes): reminder option for a timed note."
+  },
+  "personal_notes.reminder.none": {
+    "defaultMessage": "No reminder",
+    "description": "Calendar page (personal notes): reminder option that turns the reminder off."
+  },
+  "personal_notes.reminder.onTheDay": {
+    "defaultMessage": "On the day at 09:00",
+    "description": "Calendar page (personal notes): reminder option for an all-day note."
+  },
   "personal_notes.sidebarLink": {
     "defaultMessage": "Calendar",
     "description": "Sidebar link that opens the team's Calendar page of personal notes."
+  },
+  "personal_notes.title": {
+    "defaultMessage": "Calendar",
+    "description": "Calendar page (personal notes): heading of the Calendar page."
+  },
+  "personal_notes.undated": {
+    "defaultMessage": "Undated",
+    "description": "Calendar page (personal notes): heading of the list of notes without a date, under the calendar."
+  },
+  "personal_notes.undated.empty": {
+    "defaultMessage": "Notes without a date show up here.",
+    "description": "Calendar page (personal notes): empty state of the Undated list."
+  },
+  "personal_notes.visibility.private": {
+    "defaultMessage": "Only me",
+    "description": "Calendar page (personal notes): visibility option: only the owner sees the note."
+  },
+  "personal_notes.visibility.team": {
+    "defaultMessage": "Team",
+    "description": "Calendar page (personal notes): visibility option: every team member sees the note; only the owner can edit it."
   },
   "pluggable.errorOccurred": {
     "defaultMessage": "An error occurred in the {pluginId} plugin.",
