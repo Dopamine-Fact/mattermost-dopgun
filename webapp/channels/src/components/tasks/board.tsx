@@ -4,7 +4,7 @@
 import {DragDropContext, Draggable, Droppable} from '@hello-pangea/dnd';
 import type {DropResult} from '@hello-pangea/dnd';
 import classNames from 'classnames';
-import React, {useMemo} from 'react';
+import React, {useMemo, useState} from 'react';
 import {useIntl} from 'react-intl';
 import {useDispatch} from 'react-redux';
 
@@ -12,15 +12,18 @@ import {patchTask} from 'actions/tasks';
 
 import {useLoadedTeamDepartments} from 'components/profile_popover/use_custom_roles';
 
-import {AddTask, AssigneeAvatar, DepartmentChip, DoneToggle, DueDate, LockLine, SectionLabel, TakeItButton} from './task_bits';
+import {AddTask, ApprovalBadge, AssigneeAvatar, DepartmentChip, DoneToggle, DueDate, LockLine, ParentLabel, SectionLabel, SubtaskBadge, SubtasksToggle, TakeItButton, useApprovalEnabled} from './task_bits';
 import {lockedBy} from './task_departments';
-import {dropToPatch, groupByStatus, STATUSES, statusMessages} from './task_utils';
+import {dropToPatch, groupByStatus, isApprovalLocked, STATUSES, statusMessages, subtaskCounts, visibleTasks} from './task_utils';
 import type {ViewProps} from './task_utils';
 
 const Board = ({teamId, tasks, sections, usersById, selectedId, onSelect, canManage}: ViewProps) => {
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
-    const byStatus = useMemo(() => groupByStatus(tasks), [tasks]);
+    const [showSubtasks, setShowSubtasks] = useState(false);
+    const byStatus = useMemo(() => groupByStatus(visibleTasks(tasks, showSubtasks)), [tasks, showSubtasks]);
+    const counts = useMemo(() => subtaskCounts(tasks), [tasks]);
+    const approvalEnabled = useApprovalEnabled(teamId);
     const departments = useLoadedTeamDepartments(teamId);
     const byId = useMemo(() => Object.fromEntries(tasks.map((t) => [t.id, t])), [tasks]);
     const sectionsById = useMemo(() => new Map(sections.map((s) => [s.id, s])), [sections]);
@@ -34,6 +37,11 @@ const Board = ({teamId, tasks, sections, usersById, selectedId, onSelect, canMan
 
     return (
         <DragDropContext onDragEnd={handleDragEnd}>
+            <SubtasksToggle
+                tasks={tasks}
+                checked={showSubtasks}
+                onChange={setShowSubtasks}
+            />
             <div className='TaskBoard'>
                 {STATUSES.map((status) => (
                     <section
@@ -60,7 +68,7 @@ const Board = ({teamId, tasks, sections, usersById, selectedId, onSelect, canMan
                                                 key={task.id}
                                                 draggableId={task.id}
                                                 index={index}
-                                                isDragDisabled={locked}
+                                                isDragDisabled={locked || isApprovalLocked(task, approvalEnabled)}
                                             >
                                                 {(drag, dragSnapshot) => (
                                                     <div
@@ -83,6 +91,10 @@ const Board = ({teamId, tasks, sections, usersById, selectedId, onSelect, canMan
                                                         }}
                                                     >
                                                         <SectionLabel section={sectionsById.get(task.section_id)}/>
+                                                        <ParentLabel
+                                                            task={task}
+                                                            byId={byId}
+                                                        />
                                                         <DepartmentChip
                                                             task={task}
                                                             departments={departments}
@@ -105,6 +117,8 @@ const Board = ({teamId, tasks, sections, usersById, selectedId, onSelect, canMan
                                                                 waitingFor={waitingFor}
                                                                 compact={true}
                                                             />
+                                                            <SubtaskBadge count={counts.get(task.id)}/>
+                                                            <ApprovalBadge task={task}/>
                                                             <DueDate task={task}/>
                                                         </div>
                                                     </div>

@@ -18,9 +18,9 @@ import {patchTask} from 'actions/tasks';
 
 import {useLoadedTeamDepartments} from 'components/profile_popover/use_custom_roles';
 
-import {AddTask, AssigneeAvatar, DepartmentChip, DoneToggle, DueDate, LockLine, SectionLabel, StatusSelect, TakeItButton} from './task_bits';
+import {AddTask, ApprovalBadge, AssigneeAvatar, DepartmentChip, DoneToggle, DueDate, LockLine, ParentLabel, SectionLabel, StatusSelect, SubtaskBadge, SubtasksToggle, TakeItButton, useApprovalEnabled} from './task_bits';
 import {lockedBy} from './task_departments';
-import {dropToPatch, groupByStatus, STATUSES, statusMessages} from './task_utils';
+import {dropToPatch, groupByStatus, isApprovalLocked, STATUSES, statusMessages, subtaskCounts, visibleTasks} from './task_utils';
 import type {ViewProps} from './task_utils';
 
 // sectionId, when set, files tasks added here under that section.
@@ -28,7 +28,10 @@ const List = ({teamId, tasks, sections, usersById, selectedId, onSelect, canMana
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
     const nameDisplay = useSelector(getTeammateNameDisplaySetting);
-    const byStatus = useMemo(() => groupByStatus(tasks), [tasks]);
+    const [showSubtasks, setShowSubtasks] = useState(false);
+    const byStatus = useMemo(() => groupByStatus(visibleTasks(tasks, showSubtasks)), [tasks, showSubtasks]);
+    const counts = useMemo(() => subtaskCounts(tasks), [tasks]);
+    const approvalEnabled = useApprovalEnabled(teamId);
     const sectionsById = useMemo(() => new Map(sections.map((s) => [s.id, s])), [sections]);
     const departments = useLoadedTeamDepartments(teamId);
     const byId = useMemo(() => Object.fromEntries(tasks.map((t) => [t.id, t])), [tasks]);
@@ -43,6 +46,11 @@ const List = ({teamId, tasks, sections, usersById, selectedId, onSelect, canMana
 
     return (
         <div className='TaskList'>
+            <SubtasksToggle
+                tasks={tasks}
+                checked={showSubtasks}
+                onChange={setShowSubtasks}
+            />
             <div className='TaskList__row TaskList__row--head'>
                 <FormattedMessage
                     id='tasks.list.name'
@@ -102,7 +110,7 @@ const List = ({teamId, tasks, sections, usersById, selectedId, onSelect, canMana
                                                             key={task.id}
                                                             draggableId={task.id}
                                                             index={index}
-                                                            isDragDisabled={locked}
+                                                            isDragDisabled={locked || isApprovalLocked(task, approvalEnabled)}
                                                         >
                                                             {(drag, dragSnapshot) => (
                                                                 <div
@@ -128,6 +136,12 @@ const List = ({teamId, tasks, sections, usersById, selectedId, onSelect, canMana
                                                                             locked={locked}
                                                                         />
                                                                         <span>{task.title}</span>
+                                                                        <ParentLabel
+                                                                            task={task}
+                                                                            byId={byId}
+                                                                        />
+                                                                        <SubtaskBadge count={counts.get(task.id)}/>
+                                                                        <ApprovalBadge task={task}/>
                                                                         <LockLine
                                                                             waitingFor={waitingFor}
                                                                             compact={true}

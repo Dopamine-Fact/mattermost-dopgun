@@ -138,7 +138,7 @@ import type {Session} from '@mattermost/types/sessions';
 import type {CompleteOnboardingRequest} from '@mattermost/types/setup';
 import type {RemoteClusterInfo, SharedChannelRemote} from '@mattermost/types/shared_channels';
 import type {StatusPeriod} from '@mattermost/types/status_periods';
-import type {EpisodeCreated, Task, TaskComment, TaskCreate, TaskPatch, TaskSection, TaskSectionCreate, TaskSectionPatch, TaskSectionVideo} from '@mattermost/types/tasks';
+import type {EpisodeCreated, Task, TaskApprovalAction, TaskComment, TaskCreate, TaskPatch, TaskSection, TaskSectionCreate, TaskSectionPatch, TaskSectionVideo} from '@mattermost/types/tasks';
 import type {
     GetTeamMembersOpts,
     MemberInviteProfile,
@@ -5403,6 +5403,13 @@ export default class Client4 {
         return this.doFetch<StatusOK>(
             `${this.getBaseRoute()}/tasks/${taskId}`,
             {method: 'delete', headers: {'Connection-Id': connectionId}},
+        );
+    };
+
+    applyTaskApproval = (taskId: string, action: TaskApprovalAction, connectionId: string) => {
+        return this.doFetch<Task>(
+            `${this.getBaseRoute()}/tasks/${taskId}/approval`,
+            {method: 'post', body: JSON.stringify({action}), headers: {'Connection-Id': connectionId}},
         );
     };
 

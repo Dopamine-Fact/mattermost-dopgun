@@ -35,6 +35,50 @@ export const revisionStatusMessages = defineMessages({
     done: {id: 'tasks.revisions.status.done', defaultMessage: 'Done'},
 });
 
+export const approvalMessages = defineMessages({
+    pending_supervisor: {id: 'tasks.approval.pendingSupervisor', defaultMessage: 'Awaiting supervisor'},
+    pending_director: {id: 'tasks.approval.pendingDirector', defaultMessage: 'Awaiting director'},
+    approved: {id: 'tasks.approval.approved', defaultMessage: 'Approved'},
+    rejected: {id: 'tasks.approval.rejected', defaultMessage: 'Rejected'},
+});
+
+// isComplete mirrors the server: a task is finished once it is done and through the approval chain.
+export function isComplete(task: Task): boolean {
+    return task.status === 'done' && task.approval_status === 'approved';
+}
+
+// isApprovalLocked: while the team runs approvals, an approved task keeps its status, section, assignee and parent
+// until a director reverts the approval. Revisions have no approval.
+export function isApprovalLocked(task: Task, approvalEnabled: boolean): boolean {
+    return approvalEnabled && !task.video_file_id && task.approval_status === 'approved';
+}
+
+export type SubtaskCount = {done: number; total: number};
+
+// subtaskCounts is each parent's complete / total subtasks among tasks.
+export function subtaskCounts(tasks: Task[]): Map<string, SubtaskCount> {
+    const counts = new Map<string, SubtaskCount>();
+    for (const task of tasks) {
+        if (task.parent_id) {
+            const count = counts.get(task.parent_id) ?? {done: 0, total: 0};
+            count.total++;
+            count.done += isComplete(task) ? 1 : 0;
+            counts.set(task.parent_id, count);
+        }
+    }
+    return counts;
+}
+
+// visibleTasks hides subtasks whose parent is in the same view unless showSubtasks; a subtask whose parent is not
+// shown stays, so it can still be reached.
+export function visibleTasks(tasks: Task[], showSubtasks: boolean): Task[] {
+    if (showSubtasks) {
+        return tasks;
+    }
+    const ids = new Set(tasks.map((t) => t.id));
+    return tasks.filter((t) => !t.parent_id || !ids.has(t.parent_id));
+}
+
 export function groupByStatus(tasks: Task[]): Record<TaskStatus, Task[]> {
     const groups: Record<TaskStatus, Task[]> = {todo: [], in_progress: [], done: []};
     for (const task of tasks) {

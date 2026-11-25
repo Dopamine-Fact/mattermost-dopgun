@@ -43,6 +43,9 @@ export type Team = {
     /** revision channels; only effective together with tasks_enabled */
     revisions_enabled?: boolean;
 
+    /** done tasks wait for a supervisor's and then a director's approval */
+    task_approval_enabled?: boolean;
+
     /** canvas (whiteboard) channels; independent of tasks_enabled */
     canvas_enabled?: boolean;
     /** daily end-of-day reports; time is HH:MM in daily_report_timezone (IANA) */

@@ -5,7 +5,7 @@ import type {DropResult} from '@hello-pangea/dnd';
 
 import type {Task} from '@mattermost/types/tasks';
 
-import {addDays, dayIndex, dropToPatch, groupByStatus, resizeSpan, sectionColor, sortOrderBetween, startOfDay, taskSpan, timelineRange} from './task_utils';
+import {addDays, dayIndex, dropToPatch, groupByStatus, isApprovalLocked, isComplete, resizeSpan, sectionColor, sortOrderBetween, startOfDay, subtaskCounts, taskSpan, timelineRange, visibleTasks} from './task_utils';
 
 const task = (id: string, status: Task['status'], sortOrder: number) => ({id, status, sort_order: sortOrder} as Task);
 
@@ -83,5 +83,30 @@ describe('task_utils', () => {
         expect(wide.days).toBe(dayIndex(wide.from, addDays(today, 67)) + 1);
 
         expect(timelineRange([{start_at: 0, due_at: addDays(today, 5000)} as Task], now).days).toBe(366);
+    });
+
+    test('a task is complete only once done and approved', () => {
+        expect(isComplete({status: 'done', approval_status: 'approved'} as Task)).toBe(true);
+        expect(isComplete({status: 'done', approval_status: 'pending_director'} as Task)).toBe(false);
+        expect(isComplete({status: 'in_progress', approval_status: 'rejected'} as Task)).toBe(false);
+    });
+
+    test('approval locks only approved ordinary tasks of a team that runs approvals', () => {
+        const approved = {approval_status: 'approved', video_file_id: ''} as Task;
+        expect(isApprovalLocked(approved, true)).toBe(true);
+        expect(isApprovalLocked(approved, false)).toBe(false);
+        expect(isApprovalLocked({...approved, video_file_id: 'v'}, true)).toBe(false);
+        expect(isApprovalLocked({...approved, approval_status: 'pending_supervisor'}, true)).toBe(false);
+    });
+
+    test('subtasks are counted per parent and hidden under a visible parent', () => {
+        const parent = {id: 'p', parent_id: ''} as Task;
+        const open = {id: 'a', parent_id: 'p', status: 'todo', approval_status: ''} as Task;
+        const done = {id: 'b', parent_id: 'p', status: 'done', approval_status: 'approved'} as Task;
+        const orphan = {id: 'c', parent_id: 'elsewhere'} as Task;
+
+        expect(subtaskCounts([parent, open, done]).get('p')).toEqual({done: 1, total: 2});
+        expect(visibleTasks([parent, open, done, orphan], false)).toEqual([parent, orphan]);
+        expect(visibleTasks([parent, open, orphan], true)).toEqual([parent, open, orphan]);
     });
 });

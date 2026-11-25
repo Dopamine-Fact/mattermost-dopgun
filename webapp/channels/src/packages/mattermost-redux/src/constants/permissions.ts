@@ -42,6 +42,8 @@ const values = {
     MANAGE_TASKS: 'manage_tasks',
     MANAGE_DAILY_REPORTS: 'manage_daily_reports',
     MANAGE_REVISIONS: 'manage_revisions',
+    APPROVE_TASK_SUPERVISOR: 'approve_task_supervisor',
+    APPROVE_TASK_DIRECTOR: 'approve_task_director',
     ASSIGN_CUSTOM_ROLES: 'assign_custom_roles',
     DELETE_PRIVATE_CHANNEL: 'delete_private_channel',
     EDIT_OTHER_USERS: 'edit_other_users',

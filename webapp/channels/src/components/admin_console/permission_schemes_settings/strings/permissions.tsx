@@ -405,6 +405,26 @@ export const permissionRolesStrings: Record<string, Record<string, MessageDescri
             defaultMessage: 'Create revision channels, upload their video, and create, assign and delete revision tasks.',
         },
     }),
+    approve_task_supervisor: defineMessages({
+        name: {
+            id: 'admin.permissions.permission.approve_task_supervisor.name',
+            defaultMessage: 'Approve tasks (supervisor)',
+        },
+        description: {
+            id: 'admin.permissions.permission.approve_task_supervisor.description',
+            defaultMessage: 'Give the first approval to a task in Done, or send it back to In progress at that stage.',
+        },
+    }),
+    approve_task_director: defineMessages({
+        name: {
+            id: 'admin.permissions.permission.approve_task_director.name',
+            defaultMessage: 'Approve tasks (director)',
+        },
+        description: {
+            id: 'admin.permissions.permission.approve_task_director.description',
+            defaultMessage: 'Give the final approval to a task in Done, send it back at that stage, or reopen an approved task.',
+        },
+    }),
     manage_incoming_webhooks: defineMessages({
         name: {
             id: 'admin.permissions.permission.manage_incoming_webhooks.name',

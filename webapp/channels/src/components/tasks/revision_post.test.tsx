@@ -30,6 +30,8 @@ const task: Task = {
     department_id: '',
     waits_for: [],
     folder_id: '',
+    parent_id: '',
+    approval_status: '',
 };
 const post = {id: 'post1', channel_id: 'chan1', message: 'New revision at 0:02.33: [Logo bigger](http://x)', props: {task_id: 'rev1'}} as unknown as Post;
 

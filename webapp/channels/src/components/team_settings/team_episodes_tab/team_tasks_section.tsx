@@ -11,11 +11,13 @@ type Props = {
     handleTasksEnabledChange: (enabled: boolean) => void;
     revisionsEnabled: boolean;
     handleRevisionsEnabledChange: (enabled: boolean) => void;
+    taskApprovalEnabled: boolean;
+    handleTaskApprovalEnabledChange: (enabled: boolean) => void;
     canvasEnabled: boolean;
     handleCanvasEnabledChange: (enabled: boolean) => void;
 };
 
-const TeamTasksSection = ({tasksEnabled, handleTasksEnabledChange, revisionsEnabled, handleRevisionsEnabledChange, canvasEnabled, handleCanvasEnabledChange}: Props) => {
+const TeamTasksSection = ({tasksEnabled, handleTasksEnabledChange, revisionsEnabled, handleRevisionsEnabledChange, taskApprovalEnabled, handleTaskApprovalEnabledChange, canvasEnabled, handleCanvasEnabledChange}: Props) => {
     const {formatMessage} = useIntl();
 
     return (
@@ -56,6 +58,26 @@ const TeamTasksSection = ({tasksEnabled, handleTasksEnabledChange, revisionsEnab
                     inputFieldData={{name: 'revisionsEnabled', dataTestId: 'revisionsEnabledCheckbox'}}
                     inputFieldValue={revisionsEnabled}
                     handleChange={handleRevisionsEnabledChange}
+                />
+            )}
+            {tasksEnabled && (
+                <CheckboxSettingItem
+                    className='tasks-setting-item'
+                    title={formatMessage({id: 'general_tab.taskApprovalTitle', defaultMessage: 'Task approval'})}
+                    description={formatMessage({
+                        id: 'general_tab.taskApprovalInfo',
+                        defaultMessage: 'When enabled, a task moved to Done waits for a supervisor\'s and then a director\'s approval before it counts as finished. Approved tasks are locked until a director reopens them.',
+                    })}
+                    descriptionAboveContent={true}
+                    inputFieldTitle={
+                        <FormattedMessage
+                            id='general_tab.taskApprovalEnabled'
+                            defaultMessage='Require approval of done tasks'
+                        />
+                    }
+                    inputFieldData={{name: 'taskApprovalEnabled', dataTestId: 'taskApprovalEnabledCheckbox'}}
+                    inputFieldValue={taskApprovalEnabled}
+                    handleChange={handleTaskApprovalEnabledChange}
                 />
             )}
             <CheckboxSettingItem

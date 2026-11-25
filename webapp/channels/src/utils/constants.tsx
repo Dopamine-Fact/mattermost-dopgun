@@ -1164,6 +1164,8 @@ export const PermissionsScope = {
     [Permissions.MANAGE_TASKS]: 'team_scope',
     [Permissions.MANAGE_DAILY_REPORTS]: 'team_scope',
     [Permissions.MANAGE_REVISIONS]: 'team_scope',
+    [Permissions.APPROVE_TASK_SUPERVISOR]: 'team_scope',
+    [Permissions.APPROVE_TASK_DIRECTOR]: 'team_scope',
     [Permissions.MANAGE_CHANNEL_ROLES]: 'chanel_scope',
     [Permissions.MANAGE_SYSTEM]: 'system_scope',
     [Permissions.CREATE_DIRECT_CHANNEL]: 'system_scope',

@@ -1434,3 +1434,110 @@
 .TaskDetail__folder {
     font-size: 13px;
 }
+
+// Approval chain and subtasks
+
+.TaskApproval {
+    padding: 1px 8px;
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--away-indicator) 22%, var(--center-channel-bg));
+    color: var(--center-channel-color);
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+
+    &--approved {
+        background: color-mix(in srgb, var(--online-indicator) 22%, var(--center-channel-bg));
+    }
+
+    &--rejected {
+        background: color-mix(in srgb, var(--error-text) 18%, var(--center-channel-bg));
+    }
+}
+
+.TaskSubtaskCount {
+    display: inline-flex;
+    align-items: center;
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    font-size: 12px;
+    gap: 2px;
+    white-space: nowrap;
+}
+
+.TaskParentLabel {
+    overflow: hidden;
+    color: rgba(var(--center-channel-color-rgb), 0.64);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.TaskSubtasksToggle {
+    display: flex;
+    align-items: center;
+    padding: 8px 20px 0;
+    margin: 0;
+    font-size: 13px;
+    font-weight: 400;
+    gap: 6px;
+}
+
+.TaskDetail__approval {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.TaskDetail__error {
+    width: 100%;
+    margin: 0;
+    color: var(--error-text);
+    font-size: 12px;
+}
+
+.TaskDetail__parent {
+    align-self: flex-start;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--link-color);
+    font-size: 13px;
+}
+
+.TaskSubtasks {
+    &__list {
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        margin: 4px 0 0;
+        gap: 4px;
+        list-style: none;
+    }
+
+    &__item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    &__title {
+        overflow: hidden;
+        flex: 1;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: var(--center-channel-color);
+        text-align: left;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+
+    &__add {
+        margin-top: 6px;
+    }
+}

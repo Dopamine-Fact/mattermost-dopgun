@@ -51,6 +51,8 @@ const task = (id: string, sectionId: string, videoTime: number, videoFileId = 'f
     department_id: '',
     waits_for: [],
     folder_id: '',
+    parent_id: '',
+    approval_status: '',
 });
 
 const version = (n: number, fileId: string, createAt: number): TaskSectionVideo => ({

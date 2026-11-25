@@ -155,6 +155,7 @@ const Tasks = () => {
                     members={members}
                     displayName={displayName}
                     onClose={() => setSelectedId('')}
+                    onSelect={setSelectedId}
                     canManage={selected.video_file_id ? canManageRevisions : canManage}
                 />
             )}

@@ -7,13 +7,13 @@ import type {CSSProperties} from 'react';
 import {FormattedDate, FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 
-import {CheckCircleIcon, CheckCircleOutlineIcon, LockOutlineIcon} from '@mattermost/compass-icons/components';
+import {CheckboxMultipleMarkedOutlineIcon, CheckCircleIcon, CheckCircleOutlineIcon, LockOutlineIcon} from '@mattermost/compass-icons/components';
 import type {Department} from '@mattermost/types/custom_roles';
 import type {Task, TaskSection, TaskStatus} from '@mattermost/types/tasks';
 import type {UserProfile} from '@mattermost/types/users';
 
 import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
-import {getMyTeamMember} from 'mattermost-redux/selectors/entities/teams';
+import {getMyTeamMember, getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 
@@ -28,14 +28,28 @@ import type {GlobalState} from 'types/store';
 import BlurInput from './blur_input';
 import {isOverdue} from './dates';
 import {userDepartmentIds} from './task_departments';
-import {sectionColor, STATUSES, statusMessages} from './task_utils';
+import {approvalMessages, isApprovalLocked, isComplete, sectionColor, STATUSES, statusMessages} from './task_utils';
+import type {SubtaskCount} from './task_utils';
 
-// locked: the waits-for lock holds the task for this viewer, so it cannot be marked done.
+// useApprovalEnabled: whether the team runs the supervisor → director approval of done tasks.
+export function useApprovalEnabled(teamId: string): boolean {
+    return useSelector((state: GlobalState) => Boolean(getTeam(state, teamId)?.task_approval_enabled));
+}
+
+// useHasOpenSubtasks: a parent cannot be finished while one of its subtasks is not done and approved.
+function useHasOpenSubtasks(taskId: string): boolean {
+    return useSelector((state: GlobalState) => Object.values(state.entities.tasks.byId).some((t) => t.parent_id === taskId && !isComplete(t)));
+}
+
+// locked: the waits-for lock holds the task for this viewer, so it cannot be marked done. An approved task and a
+// parent with open subtasks cannot be toggled either.
 export const DoneToggle = ({task, locked}: {task: Task; locked?: boolean}) => {
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
     const done = task.status === 'done';
     const Icon = done ? CheckCircleIcon : CheckCircleOutlineIcon;
+    const approvalLocked = isApprovalLocked(task, useApprovalEnabled(task.team_id));
+    const openSubtasks = useHasOpenSubtasks(task.id);
 
     return (
         <button
@@ -45,7 +59,7 @@ export const DoneToggle = ({task, locked}: {task: Task; locked?: boolean}) => {
                 dispatch(patchTask(task.id, {status: done ? 'todo' : 'done'}));
             }}
             aria-pressed={done}
-            disabled={locked}
+            disabled={locked || approvalLocked || (!done && openSubtasks)}
             aria-label={formatMessage({id: 'tasks.markDone', defaultMessage: 'Mark {title} as done'}, {title: task.title})}
         >
             <Icon size={16}/>
@@ -119,10 +133,13 @@ export const DueDate = ({task}: {task: Task}) => {
 export const StatusSelect = ({task, locked}: {task: Task; locked?: boolean}) => {
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
+    const approvalLocked = isApprovalLocked(task, useApprovalEnabled(task.team_id));
+    const openSubtasks = useHasOpenSubtasks(task.id);
     return (
         <select
             className={`TaskStatusPill TaskStatus--${task.status}`}
             value={task.status}
+            disabled={approvalLocked}
             onClick={(e) => e.stopPropagation()}
             onChange={(e) => dispatch(patchTask(task.id, {status: e.target.value as TaskStatus}))}
             aria-label={formatMessage({id: 'tasks.statusOf', defaultMessage: 'Status of {title}'}, {title: task.title})}
@@ -131,7 +148,7 @@ export const StatusSelect = ({task, locked}: {task: Task; locked?: boolean}) => 
                 <option
                     key={status}
                     value={status}
-                    disabled={locked && status !== task.status}
+                    disabled={status !== task.status && (locked || (status === 'done' && openSubtasks))}
                 >
                     {formatMessage(statusMessages[status])}
                 </option>
@@ -158,6 +175,79 @@ export const DepartmentChip = ({task, departments}: {task: Task; departments?: D
                 />
             )}
         </span>
+    );
+};
+
+// ApprovalBadge shows where a done task is in the approval chain; an approval given on arrival (no chain) is not shown.
+export const ApprovalBadge = ({task}: {task: Task}) => {
+    const {formatMessage} = useIntl();
+    const approvalEnabled = useApprovalEnabled(task.team_id);
+    const status = task.approval_status;
+    if (!status || task.video_file_id || (status === 'approved' && !approvalEnabled)) {
+        return null;
+    }
+    return (
+        <span className={`TaskApproval TaskApproval--${status}`}>
+            {formatMessage(approvalMessages[status])}
+        </span>
+    );
+};
+
+// SubtaskBadge shows how many of a parent's subtasks are done and approved.
+export const SubtaskBadge = ({count}: {count?: SubtaskCount}) => {
+    const {formatMessage} = useIntl();
+    if (!count) {
+        return null;
+    }
+    return (
+        <span
+            className='TaskSubtaskCount'
+            title={formatMessage({id: 'tasks.subtasks.count', defaultMessage: '{done} of {total} subtasks done'}, {...count})}
+        >
+            <CheckboxMultipleMarkedOutlineIcon size={12}/>
+            <FormattedMessage
+                id='tasks.subtasks.progress'
+                defaultMessage='{done}/{total}'
+                values={{...count}}
+            />
+        </span>
+    );
+};
+
+// ParentLabel names a subtask's parent on the subtask's own card.
+export const ParentLabel = ({task, byId}: {task: Task; byId: Record<string, Task>}) => {
+    const parent = task.parent_id ? byId[task.parent_id] : undefined;
+    if (!parent) {
+        return null;
+    }
+    return (
+        <span className='TaskParentLabel'>
+            <FormattedMessage
+                id='tasks.subtasks.parent'
+                defaultMessage='↳ {title}'
+                values={{title: parent.title}}
+            />
+        </span>
+    );
+};
+
+// SubtasksToggle shows subtasks as their own cards; hidden (by default) they are reached from their parent.
+export const SubtasksToggle = ({tasks, checked, onChange}: {tasks: Task[]; checked: boolean; onChange: (checked: boolean) => void}) => {
+    if (!tasks.some((t) => t.parent_id)) {
+        return null;
+    }
+    return (
+        <label className='TaskSubtasksToggle'>
+            <input
+                type='checkbox'
+                checked={checked}
+                onChange={(e) => onChange(e.target.checked)}
+            />
+            <FormattedMessage
+                id='tasks.subtasks.show'
+                defaultMessage='Show subtasks'
+            />
+        </label>
     );
 };
 

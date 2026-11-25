@@ -288,6 +288,8 @@ export const permissionLabels = defineMessages({
     manage_tasks: {id: 'team_settings.departments.permission.manage_tasks', defaultMessage: 'Tasks'},
     manage_daily_reports: {id: 'team_settings.departments.permission.manage_daily_reports', defaultMessage: 'Daily reports'},
     manage_revisions: {id: 'team_settings.departments.permission.manage_revisions', defaultMessage: 'Revisions'},
+    approve_task_supervisor: {id: 'team_settings.departments.permission.approve_task_supervisor', defaultMessage: 'Supervisor approval'},
+    approve_task_director: {id: 'team_settings.departments.permission.approve_task_director', defaultMessage: 'Director approval'},
     assign_custom_roles: {id: 'team_settings.departments.permission.assign_custom_roles', defaultMessage: 'Give ranks'},
 });
 

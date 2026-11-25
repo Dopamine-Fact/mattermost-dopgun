@@ -45,6 +45,8 @@ const task = (id: string, status: Task['status'], extra: Partial<Task> = {}): Ta
     department_id: '',
     waits_for: [],
     folder_id: '',
+    parent_id: '',
+    approval_status: '',
     ...extra,
 });
 

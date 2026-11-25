@@ -37,6 +37,8 @@ const task: Task = {
     department_id: '',
     waits_for: [],
     folder_id: '',
+    parent_id: '',
+    approval_status: '',
 };
 
 describe('TaskDetail assignee picker', () => {

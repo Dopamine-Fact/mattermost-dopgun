@@ -46,6 +46,7 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
     const {formatMessage} = useIntl();
     const [tasksEnabled, setTasksEnabled] = useState<boolean>(Boolean(team.tasks_enabled));
     const [revisionsEnabled, setRevisionsEnabled] = useState<boolean>(Boolean(team.revisions_enabled));
+    const [taskApprovalEnabled, setTaskApprovalEnabled] = useState<boolean>(Boolean(team.task_approval_enabled));
     const [canvasEnabled, setCanvasEnabled] = useState<boolean>(Boolean(team.canvas_enabled));
     const [episodeFolders, setEpisodeFolders] = useState<EpisodeFolder[]>(() => parseEpisodeFolders(team.episode_folders));
 
@@ -68,13 +69,15 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
         // Saving clears department, folder and waits-for references that point at nothing.
         const cleaned = serializeEpisodeTasks(sanitizeEpisodeTasks(parsedTasks, departments?.map((d) => d.id), episodeFolders.filter((f) => !f.mirror_of).map((f) => f.path)));
         const tasksChanged = episodeTasks !== (team.episode_tasks ?? '') || cleaned !== serializeEpisodeTasks(parsedTasks);
-        const changed = foldersChanged || tasksChanged || tasksEnabled !== Boolean(team.tasks_enabled) || revisionsEnabled !== Boolean(team.revisions_enabled) || canvasEnabled !== Boolean(team.canvas_enabled);
+        const approvalChanged = taskApprovalEnabled !== Boolean(team.task_approval_enabled);
+        const changed = foldersChanged || tasksChanged || approvalChanged || tasksEnabled !== Boolean(team.tasks_enabled) || revisionsEnabled !== Boolean(team.revisions_enabled) || canvasEnabled !== Boolean(team.canvas_enabled);
         if (changed) {
             const {error} = await actions.patchTeam({
                 id: team.id,
                 tasks_enabled: tasksEnabled,
                 revisions_enabled: revisionsEnabled,
                 canvas_enabled: canvasEnabled,
+                ...(approvalChanged && {task_approval_enabled: taskApprovalEnabled}),
                 ...(foldersChanged && {episode_folders: serializedFolders}),
                 ...(tasksChanged && {episode_tasks: cleaned}),
             });
@@ -93,7 +96,7 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
         setSaveChangesPanelState('saved');
         setShowTabSwitchError(false);
         setAreThereUnsavedChanges(false);
-    }, [actions, parsedTasks, departments, tasksEnabled, revisionsEnabled, canvasEnabled, episodeFolders, episodeTasks, team.id, team.tasks_enabled, team.revisions_enabled, team.canvas_enabled, team.episode_folders, team.episode_tasks, setShowTabSwitchError, setAreThereUnsavedChanges]);
+    }, [actions, parsedTasks, departments, tasksEnabled, revisionsEnabled, taskApprovalEnabled, canvasEnabled, episodeFolders, episodeTasks, team.id, team.tasks_enabled, team.revisions_enabled, team.task_approval_enabled, team.canvas_enabled, team.episode_folders, team.episode_tasks, setShowTabSwitchError, setAreThereUnsavedChanges]);
 
     const handleClose = useCallback(() => {
         setSaveChangesPanelState('editing');
@@ -104,12 +107,13 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
     const handleCancel = useCallback(() => {
         setTasksEnabled(Boolean(team.tasks_enabled));
         setRevisionsEnabled(Boolean(team.revisions_enabled));
+        setTaskApprovalEnabled(Boolean(team.task_approval_enabled));
         setCanvasEnabled(Boolean(team.canvas_enabled));
         setEpisodeFolders(parseEpisodeFolders(team.episode_folders));
         setEpisodeTasks(team.episode_tasks ?? '');
         setTemplateError(undefined);
         handleClose();
-    }, [handleClose, team.tasks_enabled, team.revisions_enabled, team.canvas_enabled, team.episode_folders, team.episode_tasks]);
+    }, [handleClose, team.tasks_enabled, team.revisions_enabled, team.task_approval_enabled, team.canvas_enabled, team.episode_folders, team.episode_tasks]);
 
     // Every field marks the tab as edited before taking its new value.
     const edited = useCallback(<T, >(set: (value: T) => void) => (value: T) => {
@@ -158,6 +162,8 @@ const EpisodesTab = ({team, areThereUnsavedChanges, showTabSwitchError, setShowT
                 handleTasksEnabledChange={edited(setTasksEnabled)}
                 revisionsEnabled={revisionsEnabled}
                 handleRevisionsEnabledChange={edited(setRevisionsEnabled)}
+                taskApprovalEnabled={taskApprovalEnabled}
+                handleTaskApprovalEnabledChange={edited(setTaskApprovalEnabled)}
                 canvasEnabled={canvasEnabled}
                 handleCanvasEnabledChange={edited(setCanvasEnabled)}
             />

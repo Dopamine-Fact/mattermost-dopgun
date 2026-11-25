@@ -47,7 +47,7 @@ export type DepartmentPatch = Partial<Pick<Department, 'name' | 'color'>>;
 export type DepartmentCreate = Pick<Department, 'name' | 'color'>;
 
 /** Every permission a rank may carry, in display order. */
-export const RANK_PERMISSIONS = ['manage_tasks', 'manage_daily_reports', 'manage_revisions', 'assign_custom_roles'] as const;
+export const RANK_PERMISSIONS = ['manage_tasks', 'manage_daily_reports', 'manage_revisions', 'approve_task_supervisor', 'approve_task_director', 'assign_custom_roles'] as const;
 
 /** Websocket event sent to a team when one of its departments or ranks, or a member's ranks, change. */
 export const DEPARTMENTS_CHANGED = 'departments_changed';

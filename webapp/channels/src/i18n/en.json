@@ -11431,6 +11431,22 @@
     "defaultMessage": "Load more schemes",
     "description": "Button at the bottom of the Team Override Schemes list that loads the next page of schemes."
   },
+  "admin.permissions.permission.approve_task_director.description": {
+    "defaultMessage": "Give the final approval to a task in Done, send it back at that stage, or reopen an approved task.",
+    "description": "System Console permission description for the director approval of team tasks: final approval of a task in the Done column, sending it back, or reopening an approved task."
+  },
+  "admin.permissions.permission.approve_task_director.name": {
+    "defaultMessage": "Approve tasks (director)",
+    "description": "System Console permission name for the director (final) approval stage of team tasks."
+  },
+  "admin.permissions.permission.approve_task_supervisor.description": {
+    "defaultMessage": "Give the first approval to a task in Done, or send it back to In progress at that stage.",
+    "description": "System Console permission description for the supervisor approval of team tasks: first approval of a task in the Done column, or sending it back at that stage."
+  },
+  "admin.permissions.permission.approve_task_supervisor.name": {
+    "defaultMessage": "Approve tasks (supervisor)",
+    "description": "System Console permission name for the supervisor (first) approval stage of team tasks."
+  },
   "admin.permissions.permission.assign_system_admin_role.description": {
     "defaultMessage": "Assign system admin role",
     "description": "Description of the assign-system-admin-role permission in the scheme editor; same wording as its name."
@@ -25515,6 +25531,18 @@
     "defaultMessage": "When enabled, task managers can create revision channels: chat channels with a video where revisions are pinned to moments and assigned as tasks.",
     "description": "Help text under the revision channels setting in Team Settings > Episodes explaining what a revision channel is."
   },
+  "general_tab.taskApprovalEnabled": {
+    "defaultMessage": "Require approval of done tasks",
+    "description": "Checkbox label in Team Settings > Episodes that turns on the supervisor then director approval of tasks moved to Done."
+  },
+  "general_tab.taskApprovalInfo": {
+    "defaultMessage": "When enabled, a task moved to Done waits for a supervisor's and then a director's approval before it counts as finished. Approved tasks are locked until a director reopens them.",
+    "description": "Help text above the task approval checkbox in Team Settings > Episodes, explaining the two approval stages and the lock on approved tasks."
+  },
+  "general_tab.taskApprovalTitle": {
+    "defaultMessage": "Task approval",
+    "description": "Setting title in Team Settings > Episodes for the approval of done tasks."
+  },
   "general_tab.revisionsTitle": {
     "defaultMessage": "Revision channels",
     "description": "Section title in Team Settings > Episodes for the setting that turns revision channels on or off for the team."
@@ -33651,6 +33679,34 @@
     "defaultMessage": "+ Add task",
     "description": ""
   },
+  "tasks.approval.approve": {
+    "defaultMessage": "Approve",
+    "description": "Button in the task detail panel that gives the current approval stage (supervisor or director) to a task in Done."
+  },
+  "tasks.approval.approved": {
+    "defaultMessage": "Approved",
+    "description": "Badge on a task card and in the task detail when a director has approved the task; the task is then locked."
+  },
+  "tasks.approval.pendingDirector": {
+    "defaultMessage": "Awaiting director",
+    "description": "Badge on a task in Done that the supervisor approved and that now waits for the director's approval."
+  },
+  "tasks.approval.pendingSupervisor": {
+    "defaultMessage": "Awaiting supervisor",
+    "description": "Badge on a task in Done that waits for the supervisor's (first) approval."
+  },
+  "tasks.approval.reject": {
+    "defaultMessage": "Send back",
+    "description": "Button in the task detail panel that refuses the approval and sends the task back to In progress."
+  },
+  "tasks.approval.rejected": {
+    "defaultMessage": "Rejected",
+    "description": "Badge on a task whose approval was refused; it is back in In progress for rework."
+  },
+  "tasks.approval.revert": {
+    "defaultMessage": "Reopen",
+    "description": "Button in the task detail panel, for directors, that withdraws an approval and reopens the task in In progress."
+  },
   "tasks.addTask.label": {
     "defaultMessage": "New task title",
     "description": ""
@@ -34019,6 +34075,38 @@
     "defaultMessage": "To do",
     "description": ""
   },
+  "tasks.subtasks.add": {
+    "defaultMessage": "+ Add subtask",
+    "description": "Placeholder of the input under a task's subtask list in the task detail panel; typing a title and leaving the field adds a subtask."
+  },
+  "tasks.subtasks.add.label": {
+    "defaultMessage": "New subtask title",
+    "description": "Accessible label of the input that adds a subtask in the task detail panel."
+  },
+  "tasks.subtasks.count": {
+    "defaultMessage": "{done} of {total} subtasks done",
+    "description": "Tooltip of the subtask counter on a parent task's card, e.g. \"2 of 5 subtasks done\"; done means done and approved."
+  },
+  "tasks.subtasks.parent": {
+    "defaultMessage": "↳ {title}",
+    "description": "Small label on a subtask's card naming its parent task; the arrow shows it sits under that task. {title} is the parent task's title."
+  },
+  "tasks.subtasks.progress": {
+    "defaultMessage": "{done}/{total}",
+    "description": "Compact subtask counter on a parent task's card, e.g. 2/5: subtasks done and approved out of all its subtasks."
+  },
+  "tasks.subtasks.show": {
+    "defaultMessage": "Show subtasks",
+    "description": "Checkbox above the task board and list that shows subtasks as their own cards (they are hidden under their parent by default)."
+  },
+  "tasks.subtasks.subtaskOf": {
+    "defaultMessage": "Subtask of {title}",
+    "description": "Link at the top of a subtask's detail panel that opens its parent task. {title} is the parent task's title."
+  },
+  "tasks.subtasks.title": {
+    "defaultMessage": "Subtasks ({done}/{total})",
+    "description": "Heading of the subtask list in a task's detail panel with progress, e.g. \"Subtasks (2/5)\"; done means done and approved."
+  },
   "tasks.statusOf": {
     "defaultMessage": "Status of {title}",
     "description": ""
@@ -34222,6 +34310,14 @@
   "team_settings.departments.new_department": {
     "defaultMessage": "New department",
     "description": "Name given to a department just created from the Team Settings › Departments tab; the admin renames it inline."
+  },
+  "team_settings.departments.permission.approve_task_director": {
+    "defaultMessage": "Director approval",
+    "description": "Name of the rank permission (Team Settings > Departments) that lets holders give the final, director approval of tasks."
+  },
+  "team_settings.departments.permission.approve_task_supervisor": {
+    "defaultMessage": "Supervisor approval",
+    "description": "Name of the rank permission (Team Settings > Departments) that lets holders give the first, supervisor approval of tasks."
   },
   "team_settings.departments.new_rank": {
     "defaultMessage": "New rank",

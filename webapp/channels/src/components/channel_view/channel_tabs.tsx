@@ -225,6 +225,7 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
             members={members}
             displayName={(user: UserProfile) => displayUsername(user, nameDisplay)}
             onClose={() => setSelectedId('')}
+            onSelect={setSelectedId}
             canManage={selected.video_file_id ? canManageRevisions : canManageTasks}
         />
     );

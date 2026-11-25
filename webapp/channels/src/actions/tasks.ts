@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import type {Channel} from '@mattermost/types/channels';
-import type {Task, TaskCreate, TaskPatch, TaskSectionCreate, TaskSectionPatch} from '@mattermost/types/tasks';
+import type {Task, TaskApprovalAction, TaskCreate, TaskPatch, TaskSectionCreate, TaskSectionPatch} from '@mattermost/types/tasks';
 
 import {TaskTypes} from 'mattermost-redux/action_types';
 import {createChannel, deleteChannel, getChannelAndMyMember} from 'mattermost-redux/actions/channels';
@@ -66,6 +66,10 @@ export function patchTask(taskId: string, patch: TaskPatch): ActionFuncAsync<Tas
         }
         return result;
     };
+}
+
+export function applyTaskApproval(taskId: string, action: TaskApprovalAction) {
+    return run((connectionId) => Client4.applyTaskApproval(taskId, action, connectionId), (data) => ({type: TaskTypes.TASK_RECEIVED, data}));
 }
 
 export function deleteTask(taskId: string) {

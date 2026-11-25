@@ -20,10 +20,11 @@ describe('userDepartmentIds', () => {
 
 describe('lockedBy', () => {
     const story = task('s', {status: 'in_progress'});
-    const byId = {s: story, d: task('d', {status: 'done'})};
+    const pending = task('p', {status: 'done', approval_status: 'pending_director'});
+    const byId = {s: story, d: task('d', {status: 'done', approval_status: 'approved'}), p: pending};
 
-    test('lists the waits-for tasks that are not done, while the task is to do', () => {
-        expect(lockedBy(task('t', {waits_for: ['s', 'd']}), byId)).toEqual([story]);
+    test('lists the waits-for tasks that are not done and approved, while the task is to do', () => {
+        expect(lockedBy(task('t', {waits_for: ['s', 'd', 'p']}), byId)).toEqual([story, pending]);
     });
 
     test('is empty once they are done, once the task has started, and for revisions', () => {
