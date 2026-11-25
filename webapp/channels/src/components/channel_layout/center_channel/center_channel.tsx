@@ -50,6 +50,13 @@ const FileExplorer = makeAsyncComponent('FileExplorer', lazy(() => import('compo
         </div>
     ),
 );
+const PersonalNotes = makeAsyncComponent('PersonalNotes', lazy(() => import('components/personal_notes')),
+    (
+        <div className='app__content'>
+            <LoadingScreen/>
+        </div>
+    ),
+);
 const Dashboard = makeAsyncComponent('Dashboard', lazy(() => import('components/dashboard')));
 const Tasks = makeAsyncComponent('Tasks', lazy(() => import('components/tasks')),
     (
@@ -151,6 +158,10 @@ export default class CenterChannel extends React.PureComponent<Props, State> {
                         <Route
                             path={`/:team(${TEAM_NAME_PATH_PATTERN})/files/:channelName?/:folderId?`}
                             component={FileExplorer}
+                        />
+                        <Route
+                            path={`/:team(${TEAM_NAME_PATH_PATTERN})/calendar`}
+                            component={PersonalNotes}
                         />
                         <Route
                             path={`/:team(${TEAM_NAME_PATH_PATTERN})/drafts`}

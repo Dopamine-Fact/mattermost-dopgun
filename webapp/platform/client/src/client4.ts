@@ -119,6 +119,7 @@ import type {
     PluginsResponse,
     PluginStatus,
 } from '@mattermost/types/plugins';
+import type {PersonalNote, PersonalNotePatch, PersonalNotesQuery} from '@mattermost/types/personal_notes';
 import type {Post, PostList, PostSearchResults, PostsUsageResponse, TeamsUsageResponse, PaginatedPostList, FilesUsageResponse, PostAcknowledgement, PostAnalytics, PostInfo} from '@mattermost/types/posts';
 import type {PreferenceType} from '@mattermost/types/preferences';
 import type {ProductNotices} from '@mattermost/types/product_notices';
@@ -5208,6 +5209,31 @@ export default class Client4 {
             `${this.getTeamRoute(teamId)}/daily_reports/excuse`,
             {method: 'post', body: JSON.stringify({user_id: userId, date})},
         );
+    };
+
+    // Personal notes (Calendar page)
+    getPersonalNotesRoute(teamId: string) {
+        return `${this.getTeamRoute(teamId)}/notes`;
+    }
+
+    getPersonalNotes = (teamId: string, query: PersonalNotesQuery) => {
+        return this.doFetch<PersonalNote[]>(`${this.getPersonalNotesRoute(teamId)}${buildQueryString(query)}`, {method: 'get'});
+    };
+
+    getPersonalNote = (teamId: string, noteId: string) => {
+        return this.doFetch<PersonalNote>(`${this.getPersonalNotesRoute(teamId)}/${noteId}`, {method: 'get'});
+    };
+
+    createPersonalNote = (teamId: string, note: Partial<PersonalNote>) => {
+        return this.doFetch<PersonalNote>(this.getPersonalNotesRoute(teamId), {method: 'post', body: JSON.stringify(note)});
+    };
+
+    patchPersonalNote = (teamId: string, noteId: string, patch: PersonalNotePatch) => {
+        return this.doFetch<PersonalNote>(`${this.getPersonalNotesRoute(teamId)}/${noteId}/patch`, {method: 'put', body: JSON.stringify(patch)});
+    };
+
+    deletePersonalNote = (teamId: string, noteId: string) => {
+        return this.doFetch<StatusOK>(`${this.getPersonalNotesRoute(teamId)}/${noteId}`, {method: 'delete'});
     };
 
     // Channel drive methods

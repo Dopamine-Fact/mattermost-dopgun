@@ -17,6 +17,7 @@ import TeamDailyReportsSection from './team_daily_reports_section';
 import TeamDescriptionSection from './team_description_section';
 import TeamFilesSection from './team_files_section';
 import TeamNameSection from './team_name_section';
+import TeamNotesSection from './team_notes_section';
 import TeamPictureSection from './team_picture_section';
 
 import type {PropsFromRedux, OwnProps} from '.';
@@ -58,6 +59,7 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
     const [dailyReportsEnabled, setDailyReportsEnabled] = useState<boolean>(Boolean(team.daily_reports_enabled));
     const [dailyReportTime, setDailyReportTime] = useState<string>(team.daily_report_time || DEFAULT_DAILY_REPORT_TIME);
     const [filesEnabled, setFilesEnabled] = useState<boolean>(Boolean(team.files_enabled));
+    const [notesEnabled, setNotesEnabled] = useState<boolean>(Boolean(team.notes_enabled));
     const [teamIconFile, setTeamIconFile] = useState<File | undefined>();
     const [loading, setLoading] = useState<boolean>(false);
     const [imageClientError, setImageClientError] = useState<BaseSettingItemProps['error'] | undefined>();
@@ -65,7 +67,7 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
     const [saveChangesPanelState, setSaveChangesPanelState] = useState<SaveChangesPanelState>();
 
     const handleNameDescriptionSubmit = useCallback(async (): Promise<boolean> => {
-        if (name.trim() === team.display_name && description === team.description && dailyReportsEnabled === Boolean(team.daily_reports_enabled) && dailyReportTime === (team.daily_report_time || DEFAULT_DAILY_REPORT_TIME) && filesEnabled === Boolean(team.files_enabled)) {
+        if (name.trim() === team.display_name && description === team.description && dailyReportsEnabled === Boolean(team.daily_reports_enabled) && dailyReportTime === (team.daily_report_time || DEFAULT_DAILY_REPORT_TIME) && filesEnabled === Boolean(team.files_enabled) && notesEnabled === Boolean(team.notes_enabled)) {
             return true;
         }
 
@@ -90,9 +92,10 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
                 daily_report_timezone: new Intl.DateTimeFormat().resolvedOptions().timeZone,
             }),
             ...(filesEnabled !== Boolean(team.files_enabled) && {files_enabled: filesEnabled}),
+            ...(notesEnabled !== Boolean(team.notes_enabled) && {notes_enabled: notesEnabled}),
         });
         return !error;
-    }, [actions, description, name, dailyReportsEnabled, dailyReportTime, filesEnabled, team.description, team.display_name, team.id, team.daily_reports_enabled, team.daily_report_time, team.files_enabled]);
+    }, [actions, description, name, dailyReportsEnabled, dailyReportTime, filesEnabled, notesEnabled, team.description, team.display_name, team.id, team.daily_reports_enabled, team.daily_report_time, team.files_enabled, team.notes_enabled]);
 
     const handleTeamIconSubmit = useCallback(async (): Promise<boolean> => {
         if (!teamIconFile) {
@@ -133,11 +136,12 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
         setDailyReportsEnabled(Boolean(team.daily_reports_enabled));
         setDailyReportTime(team.daily_report_time || DEFAULT_DAILY_REPORT_TIME);
         setFilesEnabled(Boolean(team.files_enabled));
+        setNotesEnabled(Boolean(team.notes_enabled));
         setTeamIconFile(undefined);
         setImageClientError(undefined);
         setNameClientError(undefined);
         handleClose();
-    }, [handleClose, team.description, team.display_name, team.name, team.daily_reports_enabled, team.daily_report_time, team.files_enabled]);
+    }, [handleClose, team.description, team.display_name, team.name, team.daily_reports_enabled, team.daily_report_time, team.files_enabled, team.notes_enabled]);
 
     const handleTeamIconRemove = useCallback(async () => {
         setLoading(true);
@@ -198,6 +202,12 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
         setFilesEnabled(enabled);
     }, [setAreThereUnsavedChanges]);
 
+    const handleNotesEnabledChange = useCallback((enabled: boolean) => {
+        setAreThereUnsavedChanges(true);
+        setSaveChangesPanelState('editing');
+        setNotesEnabled(enabled);
+    }, [setAreThereUnsavedChanges]);
+
     const handleDailyReportTimeChange = useCallback((time: string) => {
         setAreThereUnsavedChanges(true);
         setSaveChangesPanelState('editing');
@@ -244,6 +254,10 @@ const InfoTab = ({team, areThereUnsavedChanges, maxFileSize, showTabSwitchError,
                 <TeamFilesSection
                     filesEnabled={filesEnabled}
                     handleFilesEnabledChange={handleFilesEnabledChange}
+                />
+                <TeamNotesSection
+                    notesEnabled={notesEnabled}
+                    handleNotesEnabledChange={handleNotesEnabledChange}
                 />
             </div>
             {(areThereUnsavedChanges || saveChangesPanelState === 'saved') && (

@@ -25487,6 +25487,18 @@
     "defaultMessage": "Files",
     "description": "Title of the file explorer setting in Team Settings."
   },
+  "general_tab.notesEnabled": {
+    "defaultMessage": "Enable personal notes and the calendar for this team",
+    "description": "Checkbox label in Team Settings that turns personal notes and the Calendar page on for the team."
+  },
+  "general_tab.notesInfo": {
+    "defaultMessage": "When enabled, team members get a calendar in the sidebar where they can write notes, tick them off, share them with the team and get reminders.",
+    "description": "Explanation under the personal notes section title in Team Settings."
+  },
+  "general_tab.notesTitle": {
+    "defaultMessage": "Personal notes and calendar",
+    "description": "Title of the Team Settings section that turns personal notes and the Calendar page on for the team."
+  },
   "general_tab.regenerate": {
     "defaultMessage": "Regenerate",
     "description": "Button in team settings that generates a new team invite code, invalidating the old invitation link; verb."
@@ -29646,6 +29658,10 @@
   "persist_notification.too_many.title": {
     "defaultMessage": "Too many recipients",
     "description": "Title of the dialog shown when a persistent-notification message mentions more recipients than allowed."
+  },
+  "personal_notes.sidebarLink": {
+    "defaultMessage": "Calendar",
+    "description": "Sidebar link that opens the team's Calendar page of personal notes."
   },
   "pluggable.errorOccurred": {
     "defaultMessage": "An error occurred in the {pluginId} plugin.",

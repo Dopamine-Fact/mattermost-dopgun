@@ -41,6 +41,7 @@ const DashboardLink = makeAsyncComponent('DashboardLink', lazy(() => import('com
 const TasksLink = makeAsyncComponent('TasksLink', lazy(() => import('components/tasks/tasks_link')));
 const DailyReportsLink = makeAsyncComponent('DailyReportsLink', lazy(() => import('components/daily_reports/daily_reports_link')));
 const FileExplorerLink = makeAsyncComponent('FileExplorerLink', lazy(() => import('components/file_explorer/file_explorer_link')));
+const CalendarLink = makeAsyncComponent('CalendarLink', lazy(() => import('components/personal_notes/calendar_link')));
 const UnreadChannelIndicator = makeAsyncComponent('UnreadChannelIndicator', lazy(() => import('../unread_channel_indicator')));
 const UnreadChannels = makeAsyncComponent('UnreadChannels', lazy(() => import('../unread_channels')));
 
@@ -600,6 +601,7 @@ export class SidebarList extends React.PureComponent<Props, State> {
                 <TasksLink/>
                 <DailyReportsLink/>
                 <FileExplorerLink/>
+                <CalendarLink/>
                 <div
                     id='sidebar-left'
                     role='application'
