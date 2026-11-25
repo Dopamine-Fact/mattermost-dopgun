@@ -180,6 +180,8 @@ func TestDoAdvancedPermissionsMigration(t *testing.T) {
 			model.PermissionManageTasks.Id,
 			model.PermissionManageDailyReports.Id,
 			model.PermissionManageRevisions.Id,
+			model.PermissionApproveTaskSupervisor.Id,
+			model.PermissionApproveTaskDirector.Id,
 			model.PermissionAssignCustomRoles.Id,
 			model.PermissionManageChannelRoles.Id,
 			model.PermissionManageOwnIncomingWebhooks.Id,

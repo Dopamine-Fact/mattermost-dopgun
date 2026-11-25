@@ -12622,6 +12622,16 @@
     "description": "Internal error when the stored server installation date cannot be parsed as a number; technical."
   },
   {
+    "id": "app.task.approval_invalid.app_error",
+    "translation": "This task is not at a stage where that approval step applies.",
+    "description": "API error when someone approves or rejects a task that is not waiting for approval, reverts one that is not approved, sends an unknown action, or acts on a revision (revisions have no approval)."
+  },
+  {
+    "id": "app.task.approved_locked.app_error",
+    "translation": "This task is approved and locked. Revert the approval to change its status, section, assignee or parent.",
+    "description": "API error when a task patch changes the status, section, assignee or parent task of a task that a director has approved."
+  },
+  {
     "id": "app.task.assigned_notification",
     "translation": "{{.Actor}} assigned you a task: [{{.Title}}]({{.Link}})",
     "description": "Direct message the system bot sends to a user when a task on a team task board is assigned to them. Actor is the @username who assigned it (may be empty), Title the task title and Link opens the task."
@@ -12645,6 +12655,11 @@
     "id": "app.task.invalid_channel.app_error",
     "translation": "This channel can't become a revision channel. It must be an active channel of this team that isn't already a revision channel.",
     "description": "API error when creating a revision channel's task section for a channel that is archived, belongs to another team or is already linked to another section."
+  },
+  {
+    "id": "app.task.invalid_parent.app_error",
+    "translation": "A subtask needs a top-level task of the same team as its parent, and a task with subtasks cannot become a subtask. Revisions cannot have subtasks.",
+    "description": "API validation error when a task's parent task is missing, is itself a subtask, is the task itself, belongs to another team, or when either task is a revision, or the task already has subtasks of its own."
   },
   {
     "id": "app.task.invalid_section.app_error",
@@ -12672,6 +12687,11 @@
     "description": "API error when the file uploaded as the video of a task revision channel is not a supported video type."
   },
   {
+    "id": "app.task.parent_done.app_error",
+    "translation": "The parent task is done. Reopen it first.",
+    "description": "API error when an unfinished task is attached to a parent task in the Done column, or a subtask leaves Done (or its approval is reverted) while its parent is in Done."
+  },
+  {
     "id": "app.task.revision_added",
     "translation": "New revision at {{.Time}}: [{{.Title}}]({{.Link}})",
     "description": "Fallback text of the card posted in a revision channel's chat when someone adds a revision (shown where the card cannot be drawn, e.g. notifications). Time is the m:ss.cc moment in the video, Title the revision and Link opens it on the Revisions tab."
@@ -12690,6 +12710,11 @@
     "id": "app.task.store.app_error",
     "translation": "Unable to save or load the task.",
     "description": "Internal server error when the database fails to read or write a task or task list section."
+  },
+  {
+    "id": "app.task.subtasks_open.app_error",
+    "translation": "Finish and approve all subtasks first.",
+    "description": "API error when a parent task is moved to Done, or approved, while one of its subtasks is not yet done and approved."
   },
   {
     "id": "app.task.waits_for.app_error",
@@ -19767,6 +19792,11 @@
     "description": "API error when a login session record's UserId field is malformed; 'UserId' is the field name and can stay untranslated."
   },
   {
+    "id": "model.task.is_valid.approval_status.app_error",
+    "translation": "Invalid approval status.",
+    "description": "API validation error when a task's approval stage is not one of the known stages (none, pending supervisor, pending director, approved, rejected)."
+  },
+  {
     "id": "model.task.is_valid.assignee_id.app_error",
     "translation": "Invalid assignee id.",
     "description": "API validation error when a task's assignee user ID is malformed."
@@ -19805,6 +19835,11 @@
     "id": "model.task.is_valid.id.app_error",
     "translation": "Invalid task id.",
     "description": "API validation error when a task's ID is malformed."
+  },
+  {
+    "id": "model.task.is_valid.parent_id.app_error",
+    "translation": "Invalid parent task id.",
+    "description": "API validation error when a task's parent task ID is malformed or is the task's own ID."
   },
   {
     "id": "model.task.is_valid.section_id.app_error",

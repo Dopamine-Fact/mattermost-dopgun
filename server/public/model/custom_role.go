@@ -23,6 +23,8 @@ var CustomRolePermissionWhitelist = []string{
 	"manage_tasks",
 	"manage_daily_reports",
 	"manage_revisions",
+	"approve_task_supervisor",
+	"approve_task_director",
 	"assign_custom_roles",
 }
 

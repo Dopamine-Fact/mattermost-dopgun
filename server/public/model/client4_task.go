@@ -40,6 +40,16 @@ func (c *Client4) PatchTask(ctx context.Context, taskId string, patch *TaskPatch
 	return DecodeJSONFromResponse[*Task](r)
 }
 
+// ApplyTaskApproval approves, rejects or reverts a done task's approval (action is a TaskApprovalAction*).
+func (c *Client4) ApplyTaskApproval(ctx context.Context, taskId, action string) (*Task, *Response, error) {
+	r, err := c.doAPIPostJSON(ctx, newClientRoute("tasks").Join(taskId, "approval"), &TaskApprovalRequest{Action: action})
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return DecodeJSONFromResponse[*Task](r)
+}
+
 func (c *Client4) DeleteTask(ctx context.Context, taskId string) (*Response, error) {
 	r, err := c.doAPIDelete(ctx, newClientRoute("tasks").Join(taskId))
 	if err != nil {

@@ -129,6 +129,19 @@ func (a *App) CreateTask(rctx request.CTX, task *model.Task, connectionID string
 	if appErr := a.validateTaskVideo(task); appErr != nil {
 		return nil, appErr
 	}
+	task.ApprovalStatus = ""
+	if appErr := a.syncTaskApproval("", task); appErr != nil {
+		return nil, appErr
+	}
+	if task.ParentId != "" {
+		teamTasks, appErr := a.GetTasksForTeam(task.TeamId)
+		if appErr != nil {
+			return nil, appErr
+		}
+		if appErr := validateTaskParent(task, tasksByID(teamTasks)); appErr != nil {
+			return nil, appErr
+		}
+	}
 	saved, err := a.Srv().Store().Task().Save(task)
 	if err != nil {
 		return nil, taskStoreError("CreateTask", task.Id, err)
@@ -155,11 +168,25 @@ func (a *App) PatchTask(rctx request.CTX, task *model.Task, patch *model.TaskPat
 	if task.VideoFileId != "" && patched.SectionId != task.SectionId {
 		return nil, invalidTaskVideoError(task)
 	}
+	if task.VideoFileId == "" && task.ApprovalStatus == model.TaskApprovalApproved && (patched.Status != task.Status ||
+		patched.SectionId != task.SectionId || patched.AssigneeId != task.AssigneeId || patched.ParentId != task.ParentId) {
+		// Only an approval someone gave locks the task; without the chain, done is approved on arrival and stays open.
+		approvalOn, appErr := a.taskApprovalEnabled(task.TeamId)
+		if appErr != nil {
+			return nil, appErr
+		}
+		if approvalOn {
+			return nil, model.NewAppError("PatchTask", "app.task.approved_locked.app_error", nil, "id="+task.Id, http.StatusBadRequest)
+		}
+	}
 	if appErr := a.validateTaskRefs(rctx, &patched); appErr != nil {
 		return nil, appErr
 	}
-	if task.VideoFileId != "" && (patch.DepartmentId != nil || patch.WaitsFor != nil) {
+	if task.VideoFileId != "" && (patch.DepartmentId != nil || patch.WaitsFor != nil || (patch.ParentId != nil && *patch.ParentId != "")) {
 		return nil, model.NewAppError("PatchTask", "app.task.revision_rules.app_error", nil, "id="+task.Id, http.StatusBadRequest)
+	}
+	if appErr := a.syncTaskApproval(task.Status, &patched); appErr != nil {
+		return nil, appErr
 	}
 	var teamTasks []*model.Task
 	if task.VideoFileId == "" {
@@ -167,9 +194,14 @@ func (a *App) PatchTask(rctx request.CTX, task *model.Task, patch *model.TaskPat
 		if teamTasks, appErr = a.GetTasksForTeam(task.TeamId); appErr != nil {
 			return nil, appErr
 		}
-		byID := make(map[string]*model.Task, len(teamTasks))
-		for _, t := range teamTasks {
-			byID[t.Id] = t
+		byID := tasksByID(teamTasks)
+		if patched.ParentId != task.ParentId {
+			if appErr := validateTaskParent(&patched, byID); appErr != nil {
+				return nil, appErr
+			}
+		}
+		if appErr := checkTaskHierarchy(task.Status, &patched, byID); appErr != nil {
+			return nil, appErr
 		}
 		if patched.SectionId != task.SectionId || patched.WaitsFor == nil {
 			patched.WaitsFor = model.StringArray{} // links never cross sections; nil would store JSON null
@@ -191,7 +223,7 @@ func (a *App) PatchTask(rctx request.CTX, task *model.Task, patch *model.TaskPat
 		return nil, taskStoreError("PatchTask", task.Id, err)
 	}
 	if patched.SectionId != task.SectionId {
-		if appErr := a.removeFromWaitsFor(rctx, task.Id, teamTasks, connectionID); appErr != nil {
+		if appErr := a.unlinkTask(rctx, task.Id, teamTasks, false, connectionID); appErr != nil {
 			return nil, appErr
 		}
 	}
@@ -202,6 +234,67 @@ func (a *App) PatchTask(rctx request.CTX, task *model.Task, patch *model.TaskPat
 	}
 	a.notifyTaskAssignee(rctx, updated, task.AssigneeId, actorID)
 	return updated, nil
+}
+
+// ApplyTaskApproval moves a done task along the approval chain (approve, reject) or reopens an approved one (revert).
+// The API has already checked the permission for the task's current stage.
+func (a *App) ApplyTaskApproval(rctx request.CTX, task *model.Task, action, connectionID string) (*model.Task, *model.AppError) {
+	if appErr := a.RequireTasksEnabled(task.TeamId); appErr != nil {
+		return nil, appErr
+	}
+	invalid := model.NewAppError("ApplyTaskApproval", "app.task.approval_invalid.app_error", nil, "id="+task.Id+" action="+action, http.StatusBadRequest)
+	if task.VideoFileId != "" {
+		return nil, invalid
+	}
+	teamTasks, appErr := a.GetTasksForTeam(task.TeamId)
+	if appErr != nil {
+		return nil, appErr
+	}
+	byID := tasksByID(teamTasks)
+	pending := task.Status == model.TaskStatusDone &&
+		(task.ApprovalStatus == model.TaskApprovalPendingSupervisor || task.ApprovalStatus == model.TaskApprovalPendingDirector)
+
+	updated := *task
+	switch action {
+	case model.TaskApprovalActionApprove:
+		if !pending {
+			return nil, invalid
+		}
+		if len(a.taskLocked(task, byID)) > 0 {
+			return nil, model.NewAppError("ApplyTaskApproval", "app.task.locked.app_error", nil, "id="+task.Id, http.StatusBadRequest)
+		}
+		if hasOpenSubtasks(task.Id, byID) {
+			return nil, model.NewAppError("ApplyTaskApproval", "app.task.subtasks_open.app_error", nil, "id="+task.Id, http.StatusBadRequest)
+		}
+		updated.ApprovalStatus = model.TaskApprovalApproved
+		if task.ApprovalStatus == model.TaskApprovalPendingSupervisor {
+			updated.ApprovalStatus = model.TaskApprovalPendingDirector
+		}
+	case model.TaskApprovalActionReject:
+		if !pending {
+			return nil, invalid
+		}
+		updated.ApprovalStatus = model.TaskApprovalRejected
+		updated.Status = model.TaskStatusInProgress
+	case model.TaskApprovalActionRevert:
+		if !task.IsComplete() {
+			return nil, invalid
+		}
+		if parent := byID[task.ParentId]; parent != nil && parent.Status == model.TaskStatusDone {
+			return nil, taskParentDoneError(task.Id)
+		}
+		updated.ApprovalStatus = ""
+		updated.Status = model.TaskStatusInProgress
+	default:
+		return nil, invalid
+	}
+
+	saved, err := a.Srv().Store().Task().Update(&updated)
+	if err != nil {
+		return nil, taskStoreError("ApplyTaskApproval", task.Id, err)
+	}
+	a.publishTaskEvent(rctx, model.WebsocketTaskUpserted, saved.TeamId, "task", saved, connectionID)
+	return saved, nil
 }
 
 func taskWaitsForError(id string) *model.AppError {
@@ -238,15 +331,117 @@ func validateTaskWaitsFor(task *model.Task, byID map[string]*model.Task) *model.
 	return nil
 }
 
-// taskLocked lists the tasks task waits for that are not done yet.
+// taskLocked lists the tasks task waits for that are not complete yet.
 func (a *App) taskLocked(task *model.Task, byID map[string]*model.Task) []*model.Task {
 	var open []*model.Task
 	for _, id := range task.WaitsFor {
-		if other := byID[id]; other != nil && other.Status != model.TaskStatusDone {
+		if other := byID[id]; other != nil && !other.IsComplete() {
 			open = append(open, other)
 		}
 	}
 	return open
+}
+
+func tasksByID(tasks []*model.Task) map[string]*model.Task {
+	byID := make(map[string]*model.Task, len(tasks))
+	for _, t := range tasks {
+		byID[t.Id] = t
+	}
+	return byID
+}
+
+func taskParentError(id, reason string) *model.AppError {
+	return model.NewAppError("validateTaskParent", "app.task.invalid_parent.app_error", nil, "id="+id+" reason="+reason, http.StatusBadRequest)
+}
+
+func taskParentDoneError(id string) *model.AppError {
+	return model.NewAppError("checkTaskHierarchy", "app.task.parent_done.app_error", nil, "id="+id, http.StatusBadRequest)
+}
+
+// validateTaskParent keeps subtasks one level deep inside the team and off revisions, and keeps open work out of a
+// parent that is already in done. byID holds the team's tasks.
+func validateTaskParent(task *model.Task, byID map[string]*model.Task) *model.AppError {
+	if task.ParentId == "" {
+		return nil
+	}
+	parent := byID[task.ParentId]
+	switch {
+	case parent == nil || parent.Id == task.Id:
+		return taskParentError(task.Id, "not found")
+	case parent.ParentId != "":
+		return taskParentError(task.Id, "parent is a subtask")
+	case parent.VideoFileId != "" || task.VideoFileId != "":
+		return taskParentError(task.Id, "revision")
+	case task.Id != "" && hasSubtasks(task.Id, byID):
+		return taskParentError(task.Id, "has subtasks")
+	case parent.Status == model.TaskStatusDone && !task.IsComplete():
+		return taskParentDoneError(task.Id)
+	}
+	return nil
+}
+
+func hasSubtasks(id string, byID map[string]*model.Task) bool {
+	for _, other := range byID {
+		if other.ParentId == id {
+			return true
+		}
+	}
+	return false
+}
+
+func hasOpenSubtasks(id string, byID map[string]*model.Task) bool {
+	for _, other := range byID {
+		if other.ParentId == id && !other.IsComplete() {
+			return true
+		}
+	}
+	return false
+}
+
+// checkTaskHierarchy: a parent enters done only once its subtasks are complete, and a subtask cannot leave done while
+// its parent is there.
+func checkTaskHierarchy(oldStatus string, task *model.Task, byID map[string]*model.Task) *model.AppError {
+	if task.Status == model.TaskStatusDone && oldStatus != model.TaskStatusDone && hasOpenSubtasks(task.Id, byID) {
+		return model.NewAppError("checkTaskHierarchy", "app.task.subtasks_open.app_error", nil, "id="+task.Id, http.StatusBadRequest)
+	}
+	if task.ParentId != "" && oldStatus == model.TaskStatusDone && task.Status != model.TaskStatusDone {
+		if parent := byID[task.ParentId]; parent != nil && parent.Status == model.TaskStatusDone {
+			return taskParentDoneError(task.Id)
+		}
+	}
+	return nil
+}
+
+// syncTaskApproval keeps a task's approval stage in step with its status: entering done starts the chain (or approves
+// at once when the team has no approval or the task is a revision), and outside done only a rejection being reworked
+// (in progress) keeps its stage.
+func (a *App) syncTaskApproval(oldStatus string, task *model.Task) *model.AppError {
+	if task.Status != model.TaskStatusDone {
+		if task.ApprovalStatus != model.TaskApprovalRejected || task.Status != model.TaskStatusInProgress {
+			task.ApprovalStatus = ""
+		}
+		return nil
+	}
+	if oldStatus == model.TaskStatusDone && task.ApprovalStatus != "" {
+		return nil
+	}
+	approvalOn, appErr := a.taskApprovalEnabled(task.TeamId)
+	if appErr != nil {
+		return appErr
+	}
+	task.ApprovalStatus = model.TaskApprovalApproved
+	if approvalOn && task.VideoFileId == "" {
+		task.ApprovalStatus = model.TaskApprovalPendingSupervisor
+	}
+	return nil
+}
+
+func (a *App) taskApprovalEnabled(teamID string) (bool, *model.AppError) {
+	team, appErr := a.GetTeam(teamID)
+	if appErr != nil {
+		return false, appErr
+	}
+	return team.TaskApprovalEnabled, nil
 }
 
 // checkTaskLock refuses to start or claim a to-do task that is still locked, unless the session manages tasks.
@@ -263,17 +458,23 @@ func (a *App) checkTaskLock(rctx request.CTX, task, patched *model.Task, byID ma
 	return model.NewAppError("PatchTask", "app.task.locked.app_error", nil, "id="+task.Id, http.StatusBadRequest)
 }
 
-// removeFromWaitsFor drops id from the waits-for of every task in tasks that has it, saving and publishing each.
-func (a *App) removeFromWaitsFor(rctx request.CTX, id string, tasks []*model.Task, connectionID string) *model.AppError {
+// unlinkTask drops id from the waits-for of every task in tasks that has it and, with detachSubtasks, makes id's
+// subtasks top-level; each changed task is saved and published once.
+func (a *App) unlinkTask(rctx request.CTX, id string, tasks []*model.Task, detachSubtasks bool, connectionID string) *model.AppError {
 	for _, other := range tasks {
-		if other.Id == id || !slices.Contains(other.WaitsFor, id) {
+		waits := slices.Contains(other.WaitsFor, id)
+		child := detachSubtasks && other.ParentId == id
+		if other.Id == id || (!waits && !child) {
 			continue
 		}
 		c := *other
 		c.WaitsFor = slices.DeleteFunc(slices.Clone(other.WaitsFor), func(w string) bool { return w == id })
+		if child {
+			c.ParentId = ""
+		}
 		saved, err := a.Srv().Store().Task().Update(&c)
 		if err != nil {
-			return taskStoreError("removeFromWaitsFor", other.Id, err)
+			return taskStoreError("unlinkTask", other.Id, err)
 		}
 		a.publishTaskEvent(rctx, model.WebsocketTaskUpserted, saved.TeamId, "task", saved, connectionID)
 	}
@@ -392,7 +593,7 @@ func (a *App) DeleteTask(rctx request.CTX, task *model.Task, connectionID string
 	if appErr != nil {
 		return appErr
 	}
-	return a.removeFromWaitsFor(rctx, task.Id, teamTasks, connectionID)
+	return a.unlinkTask(rctx, task.Id, teamTasks, true, connectionID)
 }
 
 func (a *App) GetTaskSection(sectionID string) (*model.TaskSection, *model.AppError) {

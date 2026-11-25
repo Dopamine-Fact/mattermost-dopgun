@@ -437,6 +437,41 @@ func uploadSectionVideo(t *testing.T, client *model.Client4, sectionID string) *
 }
 
 // videoSection turns tasks and revisions on and gives the basic channel a linked section with one video.
+func TestTaskApprovalPermissions(t *testing.T) {
+	mainHelper.Parallel(t)
+	th := Setup(t).InitBasic(t)
+	ctx := context.Background()
+	teamId := th.BasicTeam.Id
+	_, _, err := th.SystemAdminClient.PatchTeam(ctx, teamId, &model.TeamPatch{TasksEnabled: new(true), TaskApprovalEnabled: new(true)})
+	require.NoError(t, err)
+	task, _, err := th.SystemAdminClient.CreateTask(ctx, &model.Task{TeamId: teamId, Title: "Approve me"})
+	require.NoError(t, err)
+	done := model.TaskStatusDone
+	task, _, err = th.Client.PatchTask(ctx, task.Id, &model.TaskPatch{Status: &done})
+	require.NoError(t, err)
+	require.Equal(t, model.TaskApprovalPendingSupervisor, task.ApprovalStatus)
+
+	_, resp, err := th.Client.ApplyTaskApproval(ctx, task.Id, model.TaskApprovalActionApprove)
+	require.Error(t, err)
+	CheckForbiddenStatus(t, resp)
+
+	task, _, err = th.SystemAdminClient.ApplyTaskApproval(ctx, task.Id, model.TaskApprovalActionApprove)
+	require.NoError(t, err)
+	require.Equal(t, model.TaskApprovalPendingDirector, task.ApprovalStatus)
+	task, _, err = th.SystemAdminClient.ApplyTaskApproval(ctx, task.Id, model.TaskApprovalActionApprove)
+	require.NoError(t, err)
+	require.Equal(t, model.TaskApprovalApproved, task.ApprovalStatus)
+
+	todo := model.TaskStatusTodo
+	_, resp, err = th.Client.PatchTask(ctx, task.Id, &model.TaskPatch{Status: &todo})
+	require.Error(t, err)
+	CheckBadRequestStatus(t, resp)
+
+	_, resp, err = th.SystemAdminClient.ApplyTaskApproval(ctx, task.Id, "bogus")
+	require.Error(t, err)
+	CheckBadRequestStatus(t, resp)
+}
+
 func videoSection(t *testing.T, th *TestHelper) *model.TaskSection {
 	t.Helper()
 	ctx := context.Background()

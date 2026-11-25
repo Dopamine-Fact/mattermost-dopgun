@@ -51,6 +51,7 @@ type Team struct {
 	CloudLimitsArchived bool    `json:"cloud_limits_archived"`
 	TasksEnabled        bool    `json:"tasks_enabled"`
 	RevisionsEnabled    bool    `json:"revisions_enabled"` // revision channels; only effective with TasksEnabled
+	TaskApprovalEnabled bool    `json:"task_approval_enabled"`
 	CanvasEnabled       bool    `json:"canvas_enabled"`
 	DailyReportsEnabled bool    `json:"daily_reports_enabled"`
 	DailyReportTime     string  `json:"daily_report_time"` // "HH:MM" in DailyReportTimezone
@@ -106,6 +107,7 @@ func (o *Team) Auditable() map[string]any {
 		"cloud_limits_archived": o.CloudLimitsArchived,
 		"tasks_enabled":         o.TasksEnabled,
 		"revisions_enabled":     o.RevisionsEnabled,
+		"task_approval_enabled": o.TaskApprovalEnabled,
 		"canvas_enabled":        o.CanvasEnabled,
 		"daily_reports_enabled": o.DailyReportsEnabled,
 		"daily_report_time":     o.DailyReportTime,
@@ -131,6 +133,7 @@ type TeamPatch struct {
 	CloudLimitsArchived *bool   `json:"cloud_limits_archived"`
 	TasksEnabled        *bool   `json:"tasks_enabled"`
 	RevisionsEnabled    *bool   `json:"revisions_enabled"`
+	TaskApprovalEnabled *bool   `json:"task_approval_enabled"`
 	CanvasEnabled       *bool   `json:"canvas_enabled"`
 	DailyReportsEnabled *bool   `json:"daily_reports_enabled"`
 	DailyReportTime     *string `json:"daily_report_time"`
@@ -148,6 +151,7 @@ func (o *TeamPatch) Auditable() map[string]any {
 		"cloud_limits_archived": o.CloudLimitsArchived,
 		"tasks_enabled":         o.TasksEnabled,
 		"revisions_enabled":     o.RevisionsEnabled,
+		"task_approval_enabled": o.TaskApprovalEnabled,
 		"canvas_enabled":        o.CanvasEnabled,
 		"daily_reports_enabled": o.DailyReportsEnabled,
 		"daily_report_time":     o.DailyReportTime,
@@ -523,6 +527,10 @@ func (o *Team) Patch(patch *TeamPatch) {
 
 	if patch.RevisionsEnabled != nil {
 		o.RevisionsEnabled = *patch.RevisionsEnabled
+	}
+
+	if patch.TaskApprovalEnabled != nil {
+		o.TaskApprovalEnabled = *patch.TaskApprovalEnabled
 	}
 
 	if patch.CanvasEnabled != nil {

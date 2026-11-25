@@ -62,7 +62,8 @@ func TestRankRoleNames(t *testing.T) {
 	assert.False(t, IsRankRoleName("cr_abc"))
 	assert.Equal(t, "team_user team_admin", RemoveRankRoles("team_user rk_a team_admin"))
 	assert.Equal(t, "", RemoveRankRoles("rk_a rk_b"))
-	assert.ElementsMatch(t, []string{PermissionManageTasks.Id, PermissionManageDailyReports.Id, PermissionManageRevisions.Id, PermissionAssignCustomRoles.Id}, CustomRolePermissionWhitelist)
+	assert.ElementsMatch(t, []string{PermissionManageTasks.Id, PermissionManageDailyReports.Id, PermissionManageRevisions.Id,
+		PermissionApproveTaskSupervisor.Id, PermissionApproveTaskDirector.Id, PermissionAssignCustomRoles.Id}, CustomRolePermissionWhitelist)
 }
 
 func TestAssignCustomRolesIsTeamScoped(t *testing.T) {

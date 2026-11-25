@@ -71,4 +71,5 @@ const (
 	MigrationKeyAddManageTeamTasksPermission           = "add_manage_team_tasks_permission"
 	MigrationKeySplitManageTeamTasksPermission         = "split_manage_team_tasks_permission"
 	MigrationKeyTeamAdminAssignCustomRoles             = "team_admin_assign_custom_roles"
+	MigrationKeyAddTaskApprovalPermissions             = "add_task_approval_permissions"
 )

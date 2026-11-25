@@ -47,6 +47,8 @@ var PermissionManageTeamTasks *Permission
 var PermissionManageTasks *Permission
 var PermissionManageDailyReports *Permission
 var PermissionManageRevisions *Permission
+var PermissionApproveTaskSupervisor *Permission
+var PermissionApproveTaskDirector *Permission
 var PermissionAssignCustomRoles *Permission
 var PermissionCreateDirectChannel *Permission
 var PermissionCreateGroupChannel *Permission
@@ -552,6 +554,20 @@ func initializePermissions() {
 	// PermissionManageRevisions gates revision sections, their video and their tasks.
 	PermissionManageRevisions = &Permission{
 		"manage_revisions",
+		"",
+		"",
+		PermissionScopeTeam,
+	}
+	// PermissionApproveTaskSupervisor gates the first approval of a done task (and rejecting it at that stage).
+	PermissionApproveTaskSupervisor = &Permission{
+		"approve_task_supervisor",
+		"",
+		"",
+		PermissionScopeTeam,
+	}
+	// PermissionApproveTaskDirector gates the final approval of a done task, rejecting it then, and reverting an approval.
+	PermissionApproveTaskDirector = &Permission{
+		"approve_task_director",
 		"",
 		"",
 		PermissionScopeTeam,
@@ -2634,6 +2650,8 @@ func initializePermissions() {
 		PermissionManageTasks,
 		PermissionManageDailyReports,
 		PermissionManageRevisions,
+		PermissionApproveTaskSupervisor,
+		PermissionApproveTaskDirector,
 		PermissionAssignCustomRoles,
 		PermissionListTeamChannels,
 		PermissionJoinPublicChannels,

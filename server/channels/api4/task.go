@@ -24,6 +24,7 @@ func (api *API) InitTasks() {
 	api.BaseRoutes.Team.Handle("/tasks", api.APISessionRequired(createTask)).Methods(http.MethodPost)
 	api.BaseRoutes.APIRoot.Handle("/tasks/{task_id:[A-Za-z0-9]+}", api.APISessionRequired(patchTask)).Methods(http.MethodPatch)
 	api.BaseRoutes.APIRoot.Handle("/tasks/{task_id:[A-Za-z0-9]+}", api.APISessionRequired(deleteTask)).Methods(http.MethodDelete)
+	api.BaseRoutes.APIRoot.Handle("/tasks/{task_id:[A-Za-z0-9]+}/approval", api.APISessionRequired(taskApproval)).Methods(http.MethodPost)
 
 	api.BaseRoutes.Team.Handle("/task_sections", api.APISessionRequired(getTeamTaskSections)).Methods(http.MethodGet)
 	api.BaseRoutes.Team.Handle("/task_sections", api.APISessionRequired(createTaskSection)).Methods(http.MethodPost)
@@ -201,7 +202,8 @@ func patchTask(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	changesRules := (patch.DepartmentId != nil && *patch.DepartmentId != task.DepartmentId) ||
-		(patch.WaitsFor != nil && !slices.Equal(*patch.WaitsFor, task.WaitsFor))
+		(patch.WaitsFor != nil && !slices.Equal(*patch.WaitsFor, task.WaitsFor)) ||
+		(patch.ParentId != nil && *patch.ParentId != task.ParentId)
 	if changesRules {
 		if requireTaskPermission(c, task); c.Err != nil {
 			return
@@ -243,6 +245,46 @@ func patchTask(c *Context, w http.ResponseWriter, r *http.Request) {
 	auditRec.AddEventPriorState(task)
 
 	updated, appErr := c.App.PatchTask(c.AppContext, task, &patch, r.Header.Get(model.ConnectionId))
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	auditRec.Success()
+	auditRec.AddEventResultState(updated)
+	auditRec.AddEventObjectType("task")
+	writeTaskJSON(w, http.StatusOK, updated)
+}
+
+// taskApprovalPermission: the director stage and reverting an approval need approve_task_director, the supervisor
+// stage approve_task_supervisor.
+func taskApprovalPermission(task *model.Task, action string) *model.Permission {
+	if action == model.TaskApprovalActionRevert || task.ApprovalStatus == model.TaskApprovalPendingDirector {
+		return model.PermissionApproveTaskDirector
+	}
+	return model.PermissionApproveTaskSupervisor
+}
+
+func taskApproval(c *Context, w http.ResponseWriter, r *http.Request) {
+	task := loadTask(c, r)
+	if c.Err != nil {
+		return
+	}
+	var body model.TaskApprovalRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		c.SetInvalidParamWithErr("approval", err)
+		return
+	}
+	if requireTeamPermission(c, task.TeamId, taskApprovalPermission(task, body.Action)); c.Err != nil {
+		return
+	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventPatchTask, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	auditRec.AddEventPriorState(task)
+	model.AddEventParameterToAuditRec(auditRec, "action", body.Action)
+
+	updated, appErr := c.App.ApplyTaskApproval(c.AppContext, task, body.Action, r.Header.Get(model.ConnectionId))
 	if appErr != nil {
 		c.Err = appErr
 		return

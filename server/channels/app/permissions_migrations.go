@@ -1391,6 +1391,16 @@ func (a *App) getSplitManageTeamTasksPermissionMigration() (permissionsMap, erro
 	}, nil
 }
 
+// getAddTaskApprovalPermissionsMigration gives team admins both approval stages; system admins hold every permission.
+func (a *App) getAddTaskApprovalPermissionsMigration() (permissionsMap, error) {
+	return permissionsMap{
+		permissionTransformation{
+			On:  permissionOr(isRole(model.TeamAdminRoleId), isRole(model.SystemAdminRoleId)),
+			Add: []string{model.PermissionApproveTaskSupervisor.Id, model.PermissionApproveTaskDirector.Id},
+		},
+	}, nil
+}
+
 // getTeamAdminAssignCustomRolesMigration grants team admins assign_custom_roles once it became team-scoped.
 func (a *App) getTeamAdminAssignCustomRolesMigration() (permissionsMap, error) {
 	return permissionsMap{
@@ -1469,6 +1479,7 @@ func (s *Server) doPermissionsMigrations() error {
 		{Key: model.MigrationKeyAddManageTeamTasksPermission, Migration: a.getAddManageTeamTasksPermissionMigration},
 		{Key: model.MigrationKeySplitManageTeamTasksPermission, Migration: a.getSplitManageTeamTasksPermissionMigration},
 		{Key: model.MigrationKeyTeamAdminAssignCustomRoles, Migration: a.getTeamAdminAssignCustomRolesMigration},
+		{Key: model.MigrationKeyAddTaskApprovalPermissions, Migration: a.getAddTaskApprovalPermissionsMigration},
 	}
 
 	roles, err := s.Store().Role().GetAll()

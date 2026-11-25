@@ -18,6 +18,16 @@ const (
 	TaskStatusTodo       = "todo"
 	TaskStatusInProgress = "in_progress"
 	TaskStatusDone       = "done"
+
+	// A done task moves through these approval stages; "" means it has not reached done (or left it).
+	TaskApprovalPendingSupervisor = "pending_supervisor"
+	TaskApprovalPendingDirector   = "pending_director"
+	TaskApprovalApproved          = "approved"
+	TaskApprovalRejected          = "rejected"
+
+	TaskApprovalActionApprove = "approve"
+	TaskApprovalActionReject  = "reject"
+	TaskApprovalActionRevert  = "revert"
 )
 
 // TaskVideoContentTypes lists the videos a revision channel accepts, by extension; the server's mime table may not know them.
@@ -52,9 +62,18 @@ type Task struct {
 	DepartmentId string      `json:"department_id"` // the department that does the task; empty = any
 	WaitsFor     StringArray `json:"waits_for"`     // ids of the tasks that must be done first
 	FolderId     string      `json:"folder_id"`     // the drive folder seeded for the task; set on create only
-	CreatorId    string      `json:"creator_id"`
-	CreateAt     int64       `json:"create_at"`
-	UpdateAt     int64       `json:"update_at"`
+	ParentId     string      `json:"parent_id"`     // the task this is a subtask of; empty for a top-level task
+
+	// ApprovalStatus is where a done task is in the approval chain (TaskApproval*); the server sets it, never a patch.
+	ApprovalStatus string `json:"approval_status"`
+	CreatorId      string `json:"creator_id"`
+	CreateAt       int64  `json:"create_at"`
+	UpdateAt       int64  `json:"update_at"`
+}
+
+// IsComplete reports whether the task is finished: in done and through the approval chain.
+func (t *Task) IsComplete() bool {
+	return t.Status == TaskStatusDone && t.ApprovalStatus == TaskApprovalApproved
 }
 
 type TaskPatch struct {
@@ -70,6 +89,12 @@ type TaskPatch struct {
 
 	DepartmentId *string      `json:"department_id"`
 	WaitsFor     *StringArray `json:"waits_for"`
+	ParentId     *string      `json:"parent_id"`
+}
+
+// TaskApprovalRequest is the body of POST /tasks/{task_id}/approval.
+type TaskApprovalRequest struct {
+	Action string `json:"action"` // TaskApprovalAction*
 }
 
 // TaskSection groups tasks. A section linked to a channel (ChannelId) is that revision channel's list:
@@ -110,11 +135,13 @@ type TaskSectionPatch struct {
 
 func (t *Task) Auditable() map[string]any {
 	return map[string]any{
-		"id":          t.Id,
-		"team_id":     t.TeamId,
-		"section_id":  t.SectionId,
-		"assignee_id": t.AssigneeId,
-		"status":      t.Status,
+		"id":              t.Id,
+		"team_id":         t.TeamId,
+		"section_id":      t.SectionId,
+		"assignee_id":     t.AssigneeId,
+		"status":          t.Status,
+		"parent_id":       t.ParentId,
+		"approval_status": t.ApprovalStatus,
 	}
 }
 
@@ -176,6 +203,9 @@ func (t *Task) Patch(p *TaskPatch) {
 	if p.WaitsFor != nil {
 		t.WaitsFor = *p.WaitsFor
 	}
+	if p.ParentId != nil {
+		t.ParentId = *p.ParentId
+	}
 }
 
 func (t *Task) IsValid() *AppError {
@@ -199,6 +229,14 @@ func (t *Task) IsValid() *AppError {
 	}
 	if t.FolderId != "" && !IsValidId(t.FolderId) {
 		return NewAppError("Task.IsValid", "model.task.is_valid.folder_id.app_error", nil, "id="+t.Id, http.StatusBadRequest)
+	}
+	if t.ParentId != "" && (!IsValidId(t.ParentId) || t.ParentId == t.Id) {
+		return NewAppError("Task.IsValid", "model.task.is_valid.parent_id.app_error", nil, "id="+t.Id, http.StatusBadRequest)
+	}
+	switch t.ApprovalStatus {
+	case "", TaskApprovalPendingSupervisor, TaskApprovalPendingDirector, TaskApprovalApproved, TaskApprovalRejected:
+	default:
+		return NewAppError("Task.IsValid", "model.task.is_valid.approval_status.app_error", nil, "id="+t.Id, http.StatusBadRequest)
 	}
 	for _, id := range t.WaitsFor {
 		if !IsValidId(id) {
