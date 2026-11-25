@@ -3415,6 +3415,26 @@
     "translation": "Kanal adı rengi #ff8800 gibi bir hex renk olmalıdır."
   },
   {
+    "id": "model.channel.is_valid.parent_id.app_error",
+    "translation": "Geçersiz üst kanal."
+  },
+  {
+    "id": "model.channel.parent.archived.app_error",
+    "translation": "Arşivlenmiş kanallar üst kanal ya da alt kanal olamaz."
+  },
+  {
+    "id": "model.channel.parent.depth.app_error",
+    "translation": "Alt kanallar tek seviyelidir: bir alt kanalın kendi alt kanalı olamaz."
+  },
+  {
+    "id": "model.channel.parent.team.app_error",
+    "translation": "Alt kanal, üst kanalıyla aynı takımda olmalıdır."
+  },
+  {
+    "id": "model.channel.parent.type.app_error",
+    "translation": "Yalnızca genel ve özel kanallar alt kanal ya da üst kanal olabilir."
+  },
+  {
     "id": "model.channel.is_valid.purpose.app_error",
     "translation": "Amaç geçersiz."
   },

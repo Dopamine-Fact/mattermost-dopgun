@@ -361,6 +361,8 @@ type ChannelStore interface {
 	GroupSyncedChannelCount() (int64, error)
 
 	SetShared(channelID string, shared bool) error
+	// HasChildChannels reports whether any non-deleted channel has parentID as its parent.
+	HasChildChannels(parentID string) (bool, error)
 	// GetTeamForChannel returns the team for a given channelID.
 	GetTeamForChannel(channelID string) (*model.Team, error)
 	IsReadOnlyChannel(channelID string) (bool, error)

@@ -184,6 +184,7 @@ func channelSliceColumns(isSelect bool, prefix ...string) []string {
 		p + "DisableJoinLeaveMessages",
 		p + "LastIconUpdate",
 		p + "NameColor",
+		p + "ParentId",
 	}
 
 	if isSelect {
@@ -230,6 +231,7 @@ func channelToSlice(channel *model.Channel) []any {
 		channel.DisableJoinLeaveMessages,
 		channel.LastIconUpdate,
 		channel.NameColor,
+		channel.ParentId,
 	}
 }
 
@@ -910,7 +912,8 @@ func (s SqlChannelStore) updateChannelT(transaction *sqlxTxWrapper, channel *mod
 			Discoverable=:Discoverable,
 			DisableJoinLeaveMessages=:DisableJoinLeaveMessages,
 			LastIconUpdate=:LastIconUpdate,
-			NameColor=:NameColor
+			NameColor=:NameColor,
+			ParentId=:ParentId
 		WHERE Id=:Id`, channel)
 	if err != nil {
 		if IsUniqueConstraintError(err, []string{"Name", "channels_name_teamid_key"}) {
@@ -4593,6 +4596,14 @@ func (s SqlChannelStore) SetShared(channelId string, shared bool) error {
 }
 
 // GetTeamForChannel returns the team for a given channelID.
+func (s SqlChannelStore) HasChildChannels(parentID string) (bool, error) {
+	var exists bool
+	if err := s.GetMaster().Get(&exists, "SELECT EXISTS (SELECT 1 FROM Channels WHERE ParentId = $1 AND DeleteAt = 0)", parentID); err != nil {
+		return false, errors.Wrapf(err, "failed to check child channels of parent_id=%s", parentID)
+	}
+	return exists, nil
+}
+
 func (s SqlChannelStore) GetTeamForChannel(channelID string) (*model.Team, error) {
 	nestedQ, nestedArgs, err := s.getQueryBuilder().Select("TeamId").From("Channels").Where(sq.Eq{"Id": channelID}).ToSql()
 	if err != nil {

@@ -2904,6 +2904,16 @@ func (c *Client4) UpdateChannelPrivacy(ctx context.Context, channelId string, pr
 	return DecodeJSONFromResponse[*Channel](r)
 }
 
+// SetChannelParent makes a channel a sub-channel of parentId, or detaches it when parentId is empty.
+func (c *Client4) SetChannelParent(ctx context.Context, channelId, parentId string) (*Channel, *Response, error) {
+	r, err := c.doAPIPutJSON(ctx, c.channelRoute(channelId).Join("parent"), map[string]string{"parent_id": parentId})
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return DecodeJSONFromResponse[*Channel](r)
+}
+
 // RestoreChannel restores a previously deleted channel. Any missing fields are not updated.
 func (c *Client4) RestoreChannel(ctx context.Context, channelId string) (*Channel, *Response, error) {
 	r, err := c.doAPIPost(ctx, c.channelRoute(channelId).Join("restore"), "")

@@ -121,6 +121,48 @@ func TestChannelIsValidNameColor(t *testing.T) {
 	}
 }
 
+func TestChannelValidateParent(t *testing.T) {
+	teamID := NewId()
+	newChannel := func(mod func(*Channel)) *Channel {
+		c := &Channel{Id: NewId(), TeamId: teamID, Type: ChannelTypeOpen}
+		if mod != nil {
+			mod(c)
+		}
+		return c
+	}
+	child := newChannel(nil)
+
+	require.Nil(t, child.ValidateParent(newChannel(nil), false))
+	require.Nil(t, child.ValidateParent(newChannel(func(c *Channel) { c.Type = ChannelTypePrivate }), false))
+
+	for name, tc := range map[string]struct {
+		parent      *Channel
+		hasChildren bool
+		errID       string
+	}{
+		"self":             {child, false, "model.channel.is_valid.parent_id.app_error"},
+		"dm parent":        {newChannel(func(c *Channel) { c.Type = ChannelTypeDirect }), false, "model.channel.parent.type.app_error"},
+		"archived parent":  {newChannel(func(c *Channel) { c.DeleteAt = 1 }), false, "model.channel.parent.archived.app_error"},
+		"other team":       {newChannel(func(c *Channel) { c.TeamId = NewId() }), false, "model.channel.parent.team.app_error"},
+		"parent is child":  {newChannel(func(c *Channel) { c.ParentId = NewId() }), false, "model.channel.parent.depth.app_error"},
+		"child has childs": {newChannel(nil), true, "model.channel.parent.depth.app_error"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			appErr := child.ValidateParent(tc.parent, tc.hasChildren)
+			require.NotNil(t, appErr)
+			require.Equal(t, tc.errID, appErr.Id)
+		})
+	}
+
+	c := newChannel(func(c *Channel) { c.CreateAt = 1; c.UpdateAt = 1; c.DisplayName = "x"; c.Name = "valid-name" })
+	c.ParentId = c.Id
+	require.NotNil(t, c.IsValid())
+	c.ParentId = "bad"
+	require.NotNil(t, c.IsValid())
+	c.ParentId = NewId()
+	require.Nil(t, c.IsValid())
+}
+
 func TestChannelSupportsGroupSync(t *testing.T) {
 	require.True(t, (&Channel{Type: ChannelTypeOpen}).SupportsGroupSync())
 	require.True(t, (&Channel{Type: ChannelTypePrivate}).SupportsGroupSync())

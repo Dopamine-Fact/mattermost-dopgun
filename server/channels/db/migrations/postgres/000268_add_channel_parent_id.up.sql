@@ -1,0 +1,1 @@
+ALTER TABLE channels ADD COLUMN IF NOT EXISTS ParentId varchar(26) NOT NULL DEFAULT '';
