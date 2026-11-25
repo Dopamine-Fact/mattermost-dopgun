@@ -2,17 +2,20 @@
 // See LICENSE.txt for license information.
 
 import type {Channel} from '@mattermost/types/channels';
+import type {FileInfo} from '@mattermost/types/files';
 import type {Post, PostMetadata} from '@mattermost/types/posts';
 
 import {logError} from 'mattermost-redux/actions/errors';
 import * as PostActions from 'mattermost-redux/actions/posts';
-import {Permissions} from 'mattermost-redux/constants';
+import {Client4} from 'mattermost-redux/client';
+import {General, Permissions} from 'mattermost-redux/constants';
+import {getChannel} from 'mattermost-redux/selectors/entities/channels';
 import {getLicense} from 'mattermost-redux/selectors/entities/general';
 import {getAssociatedGroupsForReferenceByMention} from 'mattermost-redux/selectors/entities/groups';
 import {isCustomGroupsEnabled} from 'mattermost-redux/selectors/entities/preferences';
 import {haveIChannelPermission, haveICurrentChannelPermission} from 'mattermost-redux/selectors/entities/roles';
 import {getCurrentTeam} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
 
 import {getPermalinkURL} from 'selectors/urls';
 
@@ -68,7 +71,23 @@ export function forwardPost(post: Post, channel: Channel, message = '', taskId =
         const time = getTimestamp();
         const userId = currentUserId;
 
-        newPost.message = message ? `${message}\n${permaLink}` : permaLink;
+        // Outsiders can't open a DM/GM, so its permalink would render as a dead link; send a quoted copy instead.
+        const sourceType = getChannel(state, post.channel_id)?.type;
+        let body = permaLink;
+        let files: FileInfo[] = [];
+        if ((sourceType === General.DM_CHANNEL || sourceType === General.GM_CHANNEL) && post.channel_id !== channelId) {
+            const author = getUser(state, post.user_id)?.username;
+            const quote = post.message.split('\n').map((line) => `> ${line}`).join('\n');
+            body = author ? `> **${author}**:\n${quote}` : quote;
+
+            if (post.file_ids?.length) {
+                // The server returns copies in file_ids order; reuse each original's info so the pending post renders.
+                const copyIds = await Client4.copyFileInfosForPost(post.id);
+                files = copyIds.map((id, i) => ({...post.metadata?.files?.find((f) => f.id === post.file_ids![i]), id} as FileInfo));
+            }
+        }
+
+        newPost.message = message ? `${message}\n${body}` : body;
         newPost.pending_post_id = `${userId}:${time}`;
         newPost.user_id = userId;
         newPost.create_at = time;
@@ -94,7 +113,7 @@ export function forwardPost(post: Post, channel: Channel, message = '', taskId =
 
         newPost = hookResult.data!;
 
-        return dispatch(PostActions.createPost(newPost, []));
+        return dispatch(PostActions.createPost(newPost, files));
     };
 }
 

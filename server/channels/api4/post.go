@@ -31,6 +31,7 @@ func (api *API) InitPost() {
 	api.BaseRoutes.Post.Handle("/thread", api.APISessionRequired(getPostThread)).Methods(http.MethodGet)
 	api.BaseRoutes.Post.Handle("/info", api.APISessionRequired(getPostInfo)).Methods(http.MethodGet)
 	api.BaseRoutes.Post.Handle("/files/info", api.APISessionRequired(getFileInfosForPost)).Methods(http.MethodGet)
+	api.BaseRoutes.Post.Handle("/files/copy", api.APISessionRequired(copyFileInfosForPost)).Methods(http.MethodPost)
 	api.BaseRoutes.PostsForChannel.Handle("", api.APISessionRequired(getPostsForChannel)).Methods(http.MethodGet)
 	api.BaseRoutes.PostsForUser.Handle("/flagged", api.APISessionRequired(getFlaggedPostsForUser)).Methods(http.MethodGet)
 
@@ -1492,6 +1493,56 @@ func saveIsPinnedPost(c *Context, w http.ResponseWriter, isPinned bool) {
 
 	auditRec.Success()
 	ReturnStatusOK(w)
+}
+
+// copyFileInfosForPost lets a reader forward a post's attachments: the copies belong to the
+// caller and are unattached, so createPost accepts them in any channel the caller can post to.
+func copyFileInfosForPost(c *Context, w http.ResponseWriter, r *http.Request) {
+	c.RequirePostId()
+	if c.Err != nil {
+		return
+	}
+
+	if !*c.App.Config().FileSettings.EnableFileAttachments {
+		c.Err = model.NewAppError("copyFileInfosForPost", "api.file.attachments.disabled.app_error", nil, "", http.StatusForbidden)
+		return
+	}
+
+	if ok, _ := c.App.SessionHasPermissionToReadPost(c.AppContext, *c.AppContext.Session(), c.Params.PostId); !ok {
+		c.SetPermissionError(model.PermissionReadChannelContent)
+		return
+	}
+
+	post, appErr := c.App.GetSinglePost(c.AppContext, c.Params.PostId, false)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	// Burn-on-read attachments must not outlive their post.
+	if post.Type == model.PostTypeBurnOnRead {
+		c.SetPermissionError(model.PermissionReadChannelContent)
+		return
+	}
+
+	if c.App.Config().FeatureFlags.PermissionPolicies &&
+		!c.App.HasPermissionToChannelAction(c.AppContext, c.AppContext.Session().UserId, c.AppContext.Session().Roles, post.ChannelId, model.AccessControlPolicyActionDownloadFileAttachment) {
+		c.Err = model.NewAppError("copyFileInfosForPost", "api.file.get_file.abac_denied.app_error", nil, "", http.StatusForbidden)
+		return
+	}
+
+	ids, appErr := c.App.CopyFileInfos(c.AppContext, c.AppContext.Session().UserId, post.FileIds)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	if ids == nil {
+		ids = []string{}
+	}
+
+	if err := json.NewEncoder(w).Encode(ids); err != nil {
+		c.Logger.Warn("Error while writing response", mlog.Err(err))
+	}
 }
 
 func pinPost(c *Context, w http.ResponseWriter, _ *http.Request) {

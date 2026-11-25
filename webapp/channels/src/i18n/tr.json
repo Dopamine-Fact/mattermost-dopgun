@@ -5963,7 +5963,6 @@
   "forward_post_modal.button.forward": "İlet",
   "forward_post_modal.channel_select.placeholder": "Kanal ya da kişi seçin",
   "forward_post_modal.comment.placeholder": "Bir yorum ekleyin (isteğe bağlı)",
-  "forward_post_modal.notification.dm_or_gm": "Bu ileti özel bir görüşmede bulunuyor ve yalnızca {participants} ile paylaşılabilir",
   "forward_post_modal.notification.private_channel": "Bu ileti özel bir kanalda bulunuyor ve yalnızca <strong>{channelName}</strong> ile paylaşılabilir",
   "forward_post_modal.preview.footer_message": "Özgün ileti ~{channel} içine gönderilmiş",
   "forward_post_modal.preview.title": "İleti ön izlemesi",

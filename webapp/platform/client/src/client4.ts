@@ -2852,6 +2852,13 @@ export default class Client4 {
         );
     };
 
+    copyFileInfosForPost = (postId: string) => {
+        return this.doFetch<string[]>(
+            `${this.getPostRoute(postId)}/files/copy`,
+            {method: 'post'},
+        );
+    };
+
     getFileInfo = (fileId: string) => {
         return this.doFetch<FileInfo>(
             `${this.getFileRoute(fileId)}/info`,

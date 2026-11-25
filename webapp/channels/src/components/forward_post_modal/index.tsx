@@ -3,14 +3,14 @@
 
 import classNames from 'classnames';
 import React, {useCallback, useEffect, useRef, useState, useMemo} from 'react';
-import {FormattedList, FormattedMessage, useIntl} from 'react-intl';
+import {FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import type {OnChangeValue} from 'react-select';
 
 import {GenericModal} from '@mattermost/components';
 import type {Post, PostPreviewMetadata} from '@mattermost/types/posts';
 
-import {General, Permissions} from 'mattermost-redux/constants';
+import {Permissions} from 'mattermost-redux/constants';
 import {getMyChannelMember, makeGetChannel} from 'mattermost-redux/selectors/entities/channels';
 import {haveIChannelPermission, haveITeamPermission} from 'mattermost-redux/selectors/entities/roles';
 import {getTaskSectionForChannel, makeGetTasksForTeam} from 'mattermost-redux/selectors/entities/tasks';
@@ -60,7 +60,8 @@ const ForwardPostModal = ({onExited, post}: Props) => {
     const relativePermaLink = useSelector((state: GlobalState) => (currentTeam ? getPermalinkURL(state, currentTeam.id, post.id) : ''));
     const permaLink = `${getSiteURL()}${relativePermaLink}`;
 
-    const isPrivateConversation = channel?.type !== Constants.OPEN_CHANNEL;
+    // DMs/GMs forward anywhere as a quoted copy; a private channel's post stays inside it.
+    const isPrivateChannel = channel?.type === Constants.PRIVATE_CHANNEL;
 
     const [comment, setComment] = useState('');
     const [bodyHeight, setBodyHeight] = useState<number>(0);
@@ -91,9 +92,9 @@ const ForwardPostModal = ({onExited, post}: Props) => {
 
     const canPostInSelectedChannel = useSelector(
         (state: GlobalState) => {
-            const channelId = isPrivateConversation ? post.channel_id : selectedChannelId;
+            const channelId = isPrivateChannel ? post.channel_id : selectedChannelId;
             const isDMChannel = selectedChannel?.details?.type === Constants.DM_CHANNEL;
-            const teamId = isPrivateConversation ? currentTeam?.id : selectedChannel?.details?.team_id;
+            const teamId = isPrivateChannel ? currentTeam?.id : selectedChannel?.details?.team_id;
 
             if (isSelectedChannelUnjoinedPublic) {
                 return Boolean(haveITeamPermission(state, teamId, Permissions.JOIN_PUBLIC_CHANNELS));
@@ -111,8 +112,8 @@ const ForwardPostModal = ({onExited, post}: Props) => {
     );
 
     // A task-list channel takes only messages about one of its tasks, so forwarding there names one.
-    const targetChannelId = isPrivateConversation ? post.channel_id : selectedChannelId;
-    const targetTeamId = (isPrivateConversation ? channel?.team_id : selectedChannel?.details?.team_id) || '';
+    const targetChannelId = isPrivateChannel ? post.channel_id : selectedChannelId;
+    const targetTeamId = (isPrivateChannel ? channel?.team_id : selectedChannel?.details?.team_id) || '';
     const section = useSelector((state: GlobalState) => getTaskSectionForChannel(state, targetChannelId));
     const getTasks = useMemo(() => makeGetTasksForTeam(), []);
     const teamTasks = useSelector((state: GlobalState) => getTasks(state, section?.team_id ?? ''));
@@ -130,7 +131,7 @@ const ForwardPostModal = ({onExited, post}: Props) => {
         }
     }, [dispatch, targetTeamId, needsTeamTasks]);
 
-    const canForwardPost = (isPrivateConversation || canPostInSelectedChannel) && !postError && (!section || tasks.some((t) => t.id === taskId));
+    const canForwardPost = (isPrivateChannel || canPostInSelectedChannel) && !postError && (!section || tasks.some((t) => t.id === taskId));
 
     const onHide = useCallback(() => {
         onExited?.();
@@ -167,39 +168,20 @@ const ForwardPostModal = ({onExited, post}: Props) => {
     };
 
     let notification;
-    if (isPrivateConversation) {
-        let notificationText;
-        if (channel?.type === General.PRIVATE_CHANNEL) {
-            const channelName = `~${channel.display_name}`;
-            notificationText = (
-                <FormattedMessage
-                    id='forward_post_modal.notification.private_channel'
-                    defaultMessage='This message is from a private channel and can only be shared with <strong>{channelName}</strong>'
-                    values={{
-                        channelName,
-                        strong: (x: React.ReactNode) => <strong>{x}</strong>,
-                    }}
-                />
-            );
-        } else {
-            const allParticipants = channel?.display_name.split(', ') || [];
-            const participants = allParticipants.map((participant) => <strong key={participant}>{participant}</strong>);
-
-            notificationText = (
-                <FormattedMessage
-                    id='forward_post_modal.notification.dm_or_gm'
-                    defaultMessage='This message is from a private conversation and can only be shared with {participants}'
-                    values={{
-                        participants: <FormattedList value={participants}/>,
-                    }}
-                />
-            );
-        }
-
+    if (isPrivateChannel) {
         notification = (
             <NotificationBox
                 variant={'info'}
-                text={notificationText}
+                text={
+                    <FormattedMessage
+                        id='forward_post_modal.notification.private_channel'
+                        defaultMessage='This message is from a private channel and can only be shared with <strong>{channelName}</strong>'
+                        values={{
+                            channelName: `~${channel?.display_name}`,
+                            strong: (x: React.ReactNode) => <strong>{x}</strong>,
+                        }}
+                    />
+                }
                 id={'forward_post'}
             />
         );
@@ -220,7 +202,7 @@ const ForwardPostModal = ({onExited, post}: Props) => {
             return Promise.resolve();
         }
 
-        const channelToForward = isPrivateConversation ? makeSelectedChannelOption(channel) : selectedChannel;
+        const channelToForward = isPrivateChannel ? makeSelectedChannelOption(channel) : selectedChannel;
 
         if (!channelToForward) {
             return Promise.resolve();
@@ -256,8 +238,8 @@ const ForwardPostModal = ({onExited, post}: Props) => {
                 section ? taskId : '',
             ));
         }).then(() => {
-            // only switch channels when we are not in a private conversation
-            if (!isPrivateConversation) {
+            // only switch channels when we are not in a private channel
+            if (!isPrivateChannel) {
                 return dispatch(switchToChannel(channelToForward.details));
             }
             return {data: false};
@@ -308,7 +290,7 @@ const ForwardPostModal = ({onExited, post}: Props) => {
                 className={'forward-post__body'}
                 ref={measuredRef}
             >
-                {isPrivateConversation ? (
+                {isPrivateChannel ? (
                     notification
                 ) : (
                     <ForwardPostChannelSelect

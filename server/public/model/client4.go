@@ -4435,6 +4435,16 @@ func (c *Client4) GetFileInfosForPost(ctx context.Context, postId string, etag s
 	return DecodeJSONFromResponse[[]*FileInfo](r)
 }
 
+// CopyFileInfosForPost copies a post's attachments into unattached files owned by the caller, ready to attach to a new post.
+func (c *Client4) CopyFileInfosForPost(ctx context.Context, postId string) ([]string, *Response, error) {
+	r, err := c.doAPIPost(ctx, c.postRoute(postId).Join("files", "copy"), "")
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return DecodeJSONFromResponse[[]string](r)
+}
+
 // GetFileInfosForPost gets all the file info objects attached to a post, including deleted
 func (c *Client4) GetFileInfosForPostIncludeDeleted(ctx context.Context, postId string, etag string) ([]*FileInfo, *Response, error) {
 	values := url.Values{}

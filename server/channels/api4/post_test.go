@@ -9658,3 +9658,47 @@ func TestEditPostUploadFileAttachmentABACEnforcement(t *testing.T) {
 		})
 	}
 }
+
+func TestCopyFileInfosForPost(t *testing.T) {
+	th := Setup(t).InitBasic(t)
+	client := th.Client
+
+	dm := th.CreateDmChannel(t, th.BasicUser2)
+	data, err := testutils.ReadTestFile("test.png")
+	require.NoError(t, err)
+	upload, _, err := client.UploadFile(context.Background(), data, dm.Id, "test.png")
+	require.NoError(t, err)
+	post, _, err := client.CreatePost(context.Background(), &model.Post{ChannelId: dm.Id, Message: "see attached", FileIds: []string{upload.FileInfos[0].Id}})
+	require.NoError(t, err)
+
+	t.Run("a reader gets fresh copies it can attach elsewhere", func(t *testing.T) {
+		ids, _, err := client.CopyFileInfosForPost(context.Background(), post.Id)
+		require.NoError(t, err)
+		require.Len(t, ids, 1)
+		require.NotEqual(t, upload.FileInfos[0].Id, ids[0])
+
+		forwarded, _, err := client.CreatePost(context.Background(), &model.Post{ChannelId: th.BasicChannel.Id, Message: "fwd", FileIds: ids})
+		require.NoError(t, err)
+		require.Equal(t, model.StringArray(ids), forwarded.FileIds)
+	})
+
+	t.Run("someone outside the conversation is refused", func(t *testing.T) {
+		outsider := th.CreateUser(t)
+		outsiderClient := th.CreateClient()
+		_, _, err := outsiderClient.Login(context.Background(), outsider.Email, outsider.Password)
+		require.NoError(t, err)
+
+		_, resp, err := outsiderClient.CopyFileInfosForPost(context.Background(), post.Id)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+	})
+
+	t.Run("refused when attachments are disabled", func(t *testing.T) {
+		th.App.UpdateConfig(func(cfg *model.Config) { *cfg.FileSettings.EnableFileAttachments = false })
+		defer th.App.UpdateConfig(func(cfg *model.Config) { *cfg.FileSettings.EnableFileAttachments = true })
+
+		_, resp, err := client.CopyFileInfosForPost(context.Background(), post.Id)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+	})
+}

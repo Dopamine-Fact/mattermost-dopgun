@@ -39,7 +39,7 @@ const task = (id: string, title: string) => ({id, team_id: 'team1', section_id: 
 const post = TestHelper.getPostMock({id: 'p1', channel_id: 'from'});
 const member = (id: string) => TestHelper.getChannelMembershipMock({channel_id: id, user_id: 'me', roles: 'channel_user'});
 
-const renderModal = (sections: Record<string, typeof section> = {sec1: section}) => renderWithContext(
+const renderModal = (sections: Record<string, typeof section> = {sec1: section}, sourceType = 'O') => renderWithContext(
     <ForwardPostModal post={post}/>,
     {
         entities: {
@@ -51,7 +51,7 @@ const renderModal = (sections: Record<string, typeof section> = {sec1: section})
             },
             channels: {
                 channels: {
-                    from: TestHelper.getChannelMock({id: 'from', team_id: 'team1', type: 'O'}),
+                    from: TestHelper.getChannelMock({id: 'from', team_id: 'team1', type: sourceType as 'O'}),
                     ep: TestHelper.getChannelMock({id: 'ep', team_id: 'team1', type: 'O'}),
                     plain: TestHelper.getChannelMock({id: 'plain', team_id: 'team1', type: 'O'}),
                 },
@@ -95,5 +95,17 @@ describe('ForwardPostModal into a task-list channel', () => {
         renderModal({});
         fireEvent.click(screen.getByText('pick plain'));
         expect(fetchTeamTasks).toHaveBeenCalledWith('team1');
+    });
+});
+
+describe('ForwardPostModal from a direct message', () => {
+    beforeEach(() => jest.clearAllMocks());
+
+    test('lets the message be forwarded to another channel', async () => {
+        renderModal({}, 'D');
+        fireEvent.click(screen.getByText('pick plain'));
+        fireEvent.click(screen.getByRole('button', {name: 'Forward'}));
+
+        await waitFor(() => expect(forwardPost).toHaveBeenCalledWith(post, expect.objectContaining({id: 'plain'}), '', ''));
     });
 });
