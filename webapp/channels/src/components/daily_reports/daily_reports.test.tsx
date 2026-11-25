@@ -588,6 +588,23 @@ describe('DailyReports team tab', () => {
         expect(screen.getByText('Download CSV').closest('a')).toHaveAttribute('href', expect.stringContaining('from=2026-10-01'));
     });
 
+    test('team: day arrows move the range one day, not past today', async () => {
+        const list = mockReports([], []);
+        renderPage(true);
+        await openTeamTab();
+        const next = await screen.findByRole('button', {name: 'Next day'});
+        expect(next).toBeDisabled();
+
+        fireEvent.click(screen.getByRole('button', {name: 'Previous day'}));
+        expect(screen.getByLabelText('From')).toHaveValue('2026-11-15');
+        expect(screen.getByLabelText('To')).toHaveValue('2026-11-15');
+        await waitFor(() => expect(list).toHaveBeenLastCalledWith('team1', '2026-11-15', '2026-11-15'));
+
+        fireEvent.click(next);
+        expect(screen.getByLabelText('From')).toHaveValue('2026-11-16');
+        expect(next).toBeDisabled();
+    });
+
     test('team: Onayla on a missing row asks, then excuses that user and date', async () => {
         const excuse = jest.spyOn(Client4, 'excuseDailyReport').mockResolvedValue(report({user_id: 'u3', status: 'excused'}));
         renderPage(true);

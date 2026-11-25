@@ -346,6 +346,12 @@ const TeamReports = ({teamId, timeZone, tick, onError}: Props) => {
         }
     };
 
+    // Moves the whole range by one day, keeping its length.
+    const shiftDay = (days: number) => {
+        setFrom(daysBefore(from, -days));
+        setTo(daysBefore(to, -days));
+    };
+
     return (
         <section className='DailyReportsPage__team'>
             <div className='DailyReportsPage__filters'>
@@ -403,6 +409,14 @@ const TeamReports = ({teamId, timeZone, tick, onError}: Props) => {
                         ))}
                     </optgroup>
                 </select>
+                <button
+                    className='btn btn-icon btn-sm'
+                    onClick={() => shiftDay(-1)}
+                    aria-label={formatMessage({id: 'daily_reports.prevDay', defaultMessage: 'Previous day'})}
+                    title={formatMessage({id: 'daily_reports.prevDay', defaultMessage: 'Previous day'})}
+                >
+                    <i className='icon icon-chevron-left'/>
+                </button>
                 <label className='DailyReportsPage__field'>
                     <FormattedMessage
                         id='daily_reports.from'
@@ -430,6 +444,15 @@ const TeamReports = ({teamId, timeZone, tick, onError}: Props) => {
                         onChange={(e) => e.target.value && setTo(clampTo(from, e.target.value))}
                     />
                 </label>
+                <button
+                    className='btn btn-icon btn-sm'
+                    onClick={() => shiftDay(1)}
+                    disabled={to >= today}
+                    aria-label={formatMessage({id: 'daily_reports.nextDay', defaultMessage: 'Next day'})}
+                    title={formatMessage({id: 'daily_reports.nextDay', defaultMessage: 'Next day'})}
+                >
+                    <i className='icon icon-chevron-right'/>
+                </button>
                 <a
                     className='btn btn-tertiary btn-sm'
                     href={Client4.getDailyReportsExportUrl(teamId, from, to)}

@@ -23499,6 +23499,10 @@
     "defaultMessage": "What did you get done today?",
     "description": "Placeholder of the daily report editor."
   },
+  "daily_reports.nextDay": {
+    "defaultMessage": "Next day",
+    "description": "Accessible label and tooltip of the arrow button on Team reports that moves the selected date range one day later."
+  },
   "daily_reports.noContent": {
     "defaultMessage": "No report content.",
     "description": "Shown on a Team reports row that has no report text, e.g. a missing day."
@@ -23506,6 +23510,10 @@
   "daily_reports.notExpected": {
     "defaultMessage": "No report is expected from you in this team.",
     "description": "Shown on My report when the team picked who sends reports and the user is not among them."
+  },
+  "daily_reports.prevDay": {
+    "defaultMessage": "Previous day",
+    "description": "Accessible label and tooltip of the arrow button on Team reports that moves the selected date range one day earlier."
   },
   "daily_reports.previous": {
     "defaultMessage": "Before the edit",
