@@ -5,6 +5,7 @@ package model
 
 import (
 	"context"
+	"net/http"
 	"net/url"
 	"strconv"
 )
@@ -18,12 +19,16 @@ func (c *Client4) CreateCanvas(ctx context.Context, teamId, channelId string) (*
 	return DecodeJSONFromResponse[*Canvas](r)
 }
 
+// GetCanvas returns a nil canvas (and no error) when the channel has none.
 func (c *Client4) GetCanvas(ctx context.Context, channelId string) (*Canvas, *Response, error) {
 	r, err := c.doAPIGet(ctx, c.channelRoute(channelId).Join("canvas"), "")
 	if err != nil {
 		return nil, BuildResponse(r), err
 	}
 	defer closeBody(r)
+	if r.StatusCode == http.StatusNoContent {
+		return nil, BuildResponse(r), nil
+	}
 	return DecodeJSONFromResponse[*Canvas](r)
 }
 

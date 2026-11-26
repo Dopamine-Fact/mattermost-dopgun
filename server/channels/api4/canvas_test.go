@@ -76,12 +76,13 @@ func TestCanvas(t *testing.T) {
 		CheckBadRequestStatus(t, resp)
 	})
 
-	t.Run("get canvas on a plain channel is 404", func(t *testing.T) {
-		_, resp, err := th.Client.GetCanvas(ctx, th.CreatePublicChannel(t).Id)
-		require.Error(t, err)
-		CheckNotFoundStatus(t, resp)
+	t.Run("get canvas on a plain channel is 204 with no canvas", func(t *testing.T) {
+		canvas, resp, err := th.Client.GetCanvas(ctx, th.CreatePublicChannel(t).Id)
+		require.NoError(t, err)
+		require.Nil(t, canvas)
+		CheckNoContentStatus(t, resp)
 
-		canvas, _, err := th.Client.GetCanvas(ctx, channelID)
+		canvas, _, err = th.Client.GetCanvas(ctx, channelID)
 		require.NoError(t, err)
 		require.Equal(t, channelID, canvas.ChannelId)
 	})

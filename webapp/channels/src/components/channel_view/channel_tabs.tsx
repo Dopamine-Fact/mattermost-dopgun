@@ -128,7 +128,7 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
         return channel ? !isArchivedChannel(channel) && haveIChannelPermission(state, channel.team_id, channel.id, Permissions.CREATE_POST) : false;
     });
 
-    // The channel the server confirmed to be a canvas; any error (404 included) leaves it unset.
+    // The channel the server confirmed to be a canvas; no canvas (null, from a 204) or an error leaves it unset.
     const [canvasChannelId, setCanvasChannelId] = useState('');
     useEffect(() => {
         setCanvasChannelId('');
@@ -136,8 +136,8 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
             return undefined;
         }
         let cancelled = false;
-        Client4.getCanvas(channelId).then(() => {
-            if (!cancelled) {
+        Client4.getCanvas(channelId).then((canvas) => {
+            if (canvas && !cancelled) {
                 setCanvasChannelId(channelId);
             }
         }).catch(() => {});

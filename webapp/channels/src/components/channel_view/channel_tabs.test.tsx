@@ -132,7 +132,7 @@ const chatHidden = () => screen.getByText('chat').closest('[inert]') !== null;
 
 describe('ChannelTabs', () => {
     let getCanvas: jest.SpyInstance;
-    const isCanvas = (yes: boolean) => getCanvas.mockImplementation(() => (yes ? Promise.resolve(canvas) : Promise.reject(Object.assign(new Error('not found'), {status_code: 404}))));
+    const isCanvas = (yes: boolean) => getCanvas.mockImplementation(() => Promise.resolve(yes ? canvas : null));
     beforeEach(() => {
         getCanvas = jest.spyOn(Client4, 'getCanvas');
         isCanvas(false);

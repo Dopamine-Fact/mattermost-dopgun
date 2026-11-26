@@ -5575,8 +5575,10 @@ export default class Client4 {
         );
     };
 
-    getCanvas = (channelId: string) => {
-        return this.doFetch<Canvas>(`${this.getChannelRoute(channelId)}/canvas`, {method: 'get'});
+    // Resolves to null (204 No Content) when the channel has no canvas.
+    getCanvas = async (channelId: string): Promise<Canvas | null> => {
+        const canvas = await this.doFetch<Canvas | ''>(`${this.getChannelRoute(channelId)}/canvas`, {method: 'get'});
+        return canvas || null;
     };
 
     getCanvasState = (channelId: string, after = 0) => {

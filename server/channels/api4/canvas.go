@@ -94,6 +94,11 @@ func getCanvas(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 	canvas, appErr := c.App.GetCanvas(c.AppContext, c.Params.ChannelId)
 	if appErr != nil {
+		// A channel without a canvas is a normal answer for this probe; 204 keeps it out of the browser console.
+		if appErr.Id == "app.canvas.not_found.app_error" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		c.Err = appErr
 		return
 	}
