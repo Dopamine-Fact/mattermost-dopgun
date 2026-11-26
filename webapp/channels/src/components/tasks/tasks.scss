@@ -1436,8 +1436,8 @@
 .TaskDetail__check {
     display: flex;
     align-items: center;
-    gap: 8px;
     font-weight: 400;
+    gap: 8px;
 }
 
 .TaskDetail__folder {
@@ -1723,20 +1723,258 @@
     }
 }
 
-.StagesPage {
-    padding-bottom: 40px;
+// Production overview: one card per episode with its stages as a stepper; colours follow TaskStatus--<status>.
+.ProductionOverview {
+    overflow: auto;
+    padding: 24px 20px 40px;
+    background: rgba(var(--center-channel-color-rgb), 0.03);
+    gap: 12px;
 
-    &__section {
-        h2 {
-            padding: 16px 20px 0;
+    &__header {
+        h1 {
             margin: 0;
-            font-size: 16px;
+            font-size: 28px;
+            font-weight: 700;
+        }
+    }
+
+    &__subtitle {
+        margin: 4px 0 0;
+        color: rgba(var(--center-channel-color-rgb), 0.72);
+        font-size: 16px;
+    }
+
+    &__note {
+        margin: 12px 0 0;
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+        font-size: 12px;
+    }
+
+    &__seasons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    &__season {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 14px;
+        border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+        border-radius: var(--radius-pill, 999px);
+        background: var(--center-channel-bg);
+        color: var(--center-channel-color);
+        font-size: 12px;
+        font-weight: 600;
+        gap: 10px;
+
+        span {
+            color: rgba(var(--center-channel-color-rgb), 0.56);
+            font-size: 10px;
+        }
+
+        &--active {
+            border-color: var(--button-bg);
+            color: var(--button-bg);
+        }
+    }
+
+    &__search {
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+        border-radius: 8px;
+        margin: 0;
+        background: var(--center-channel-bg);
+        color: rgba(var(--center-channel-color-rgb), 0.56);
+        font-weight: normal;
+        gap: 8px;
+
+        input {
+            height: 36px;
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--center-channel-color);
+            outline: none;
+        }
+    }
+
+    &__head,
+    &__row {
+        display: grid;
+        align-items: center;
+        gap: 24px;
+        grid-template-columns: minmax(140px, 200px) minmax(0, 1fr) minmax(180px, 28%);
+    }
+
+    &__head {
+        padding: 4px 16px;
+        color: rgba(var(--center-channel-color-rgb), 0.72);
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    &__rows {
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        margin: 0;
+        gap: 12px;
+        list-style: none;
+    }
+
+    &__row {
+        padding: 16px;
+        border: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+        border-radius: 8px;
+        background: var(--center-channel-bg);
+        box-shadow: var(--elevation-1);
+    }
+
+    &__episode {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        h2 {
+            margin: 0;
+            font-size: 20px;
             font-weight: 600;
         }
 
-        .TaskStages {
-            padding-top: 8px;
-            padding-bottom: 8px;
+        a {
+            color: var(--link-color);
+            font-size: 12px;
         }
+    }
+
+    &__code {
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+        font-size: 12px;
+    }
+
+    &__progress {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    &__barRow {
+        display: flex;
+        align-items: center;
+        font-size: 12px;
+        font-weight: 600;
+        gap: 12px;
+    }
+
+    &__bar {
+        overflow: hidden;
+        height: 8px;
+        flex: 1;
+        border-radius: 4px;
+        background: rgba(var(--center-channel-color-rgb), 0.12);
+
+        span {
+            display: block;
+            height: 100%;
+            background: var(--online-indicator);
+        }
+    }
+
+    &__count {
+        margin: 0;
+        color: rgba(var(--center-channel-color-rgb), 0.72);
+        font-size: 12px;
+    }
+
+    &__preview video,
+    &__noVideo {
+        width: 100%;
+        min-height: 100px;
+        border-radius: 8px;
+        background: rgba(var(--center-channel-color-rgb), 0.06);
+    }
+
+    &__noVideo {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+        font-size: 12px;
+        gap: 8px;
+    }
+}
+
+// StageStepper: round icons joined by lines with an arrow head, the stage name under each.
+.StageStepper {
+    display: flex;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+
+    &__step {
+        position: relative;
+        display: flex;
+        min-width: 0;
+        flex: 1;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        text-align: center;
+
+        // The connector runs from this icon to the previous one, ending in a small arrow.
+        & + &::before {
+            position: absolute;
+            top: 14px;
+            right: calc(50% + 18px);
+            left: calc(-50% + 18px);
+            height: 1px;
+            background: rgba(var(--center-channel-color-rgb), 0.24);
+            content: '';
+        }
+
+        & + &::after {
+            position: absolute;
+            top: 11px;
+            left: 0;
+            width: 7px;
+            height: 7px;
+            border-top: 1px solid rgba(var(--center-channel-color-rgb), 0.40);
+            border-right: 1px solid rgba(var(--center-channel-color-rgb), 0.40);
+            content: '';
+            transform: rotate(45deg);
+        }
+    }
+
+    &__icon {
+        display: flex;
+        width: 28px;
+        height: 28px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: var(--task-status-color);
+        color: var(--center-channel-bg);
+    }
+
+    &__step--current &__icon {
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--task-status-color) 30%, transparent);
+    }
+
+    &__name {
+        color: rgba(var(--center-channel-color-rgb), 0.72);
+        font-size: 12px;
+        hyphens: auto;
+        overflow-wrap: break-word;
+    }
+
+    &__step--current &__name {
+        color: var(--center-channel-color);
+        font-weight: 600;
     }
 }

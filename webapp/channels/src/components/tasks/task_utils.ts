@@ -83,6 +83,13 @@ export function deriveStages(stages: TaskStage[], byId: Record<string, Task>): D
     });
 }
 
+// episodeCode reads the season and episode out of an episode name such as "02KU01" (season 02, episode 01).
+// shortcut: episodes carry no season field, so the name is the only source; add one if names stop following the code.
+export function episodeCode(name: string): {season: string; episode: string} | undefined {
+    const match = (/^(\d{2})[A-Za-z]+(\d{2,3})$/).exec(name.trim());
+    return match ? {season: `S${match[1]}`, episode: `E${match[2]}`} : undefined;
+}
+
 // hasWeight: a task's weight is its span from start to due date, so it needs both.
 export function hasWeight(task: Task): boolean {
     return task.start_at > 0 && task.due_at > 0;

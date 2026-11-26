@@ -66,7 +66,7 @@ const tasks = [
     task('revision', {video_file_id: 'file1'}),
 ];
 
-const renderStages = (canManage: boolean, extra: {sectionId?: string; compact?: boolean} = {}) => renderWithContext(
+const renderStages = (canManage: boolean, extra: {sectionId?: string} = {}) => renderWithContext(
     <Stages
         teamId='team1'
         tasks={tasks}
@@ -101,16 +101,6 @@ describe('Stages', () => {
         expect(fetchTeamStages).toHaveBeenCalledWith('team1');
         expect(screen.getByText('Task a')).toBeInTheDocument();
         expect(screen.getByRole('combobox')).toBeInTheDocument();
-    });
-
-    test('a fixed, compact overview has no picker, task lists or editing and loads nothing itself', () => {
-        jest.mocked(fetchTeamStages).mockClear();
-        renderStages(true, {sectionId: 'sec1', compact: true});
-        expect(fetchTeamStages).not.toHaveBeenCalled();
-        expect(screen.queryByRole('combobox')).toBeNull();
-        expect(screen.queryByText('Task a')).toBeNull();
-        expect(screen.queryByPlaceholderText('New stage name')).toBeNull();
-        expect(screen.getAllByRole('progressbar').map((b) => b.getAttribute('aria-valuenow'))).toEqual(['1', '0', '0']);
     });
 
     test('managers link only unlinked ordinary tasks and add stages', () => {

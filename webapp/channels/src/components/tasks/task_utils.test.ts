@@ -5,7 +5,7 @@ import type {DropResult} from '@hello-pangea/dnd';
 
 import type {Task, TaskStage} from '@mattermost/types/tasks';
 
-import {addDays, dayIndex, deriveStages, dropToPatch, folderPaths, groupByStatus, hasWeight, isApprovalLocked, isComplete, libraryFolderPaths, resizeSpan, sectionColor, sortOrderBetween, startOfDay, subtaskCounts, taskSpan, timelineRange, visibleTasks} from './task_utils';
+import {addDays, dayIndex, deriveStages, dropToPatch, episodeCode, folderPaths, groupByStatus, hasWeight, isApprovalLocked, isComplete, libraryFolderPaths, resizeSpan, sectionColor, sortOrderBetween, startOfDay, subtaskCounts, taskSpan, timelineRange, visibleTasks} from './task_utils';
 
 const task = (id: string, status: Task['status'], sortOrder: number) => ({id, status, sort_order: sortOrder} as Task);
 
@@ -31,6 +31,13 @@ describe('task_utils', () => {
 
         expect(deriveStages([stage('todo', 'doing')], byId)[0].status).toBe('in_progress');
         expect(deriveStages([stage('done')], byId)[0].current).toBe(false);
+    });
+
+    test('episodeCode reads season and episode from the name', () => {
+        expect(episodeCode('02KU01')).toEqual({season: 'S02', episode: 'E01'});
+        expect(episodeCode(' 01AB112 ')).toEqual({season: 'S01', episode: 'E112'});
+        expect(episodeCode('Trailer')).toBeUndefined();
+        expect(episodeCode('02KU')).toBeUndefined();
     });
 
     test('hasWeight needs both dates', () => {

@@ -26,15 +26,12 @@ type Props = ViewProps & {
 
     // sectionId fixes the section (an episode channel's tab) instead of offering a picker.
     sectionId?: string;
-
-    // compact leaves out each stage's task list, for an overview of many sections.
-    compact?: boolean;
 };
 
 // Stages lists one section's production stages in order. Their status comes from their tasks; the first stage that is
 // not done is the current one and the stage after it is next. Order is shown only: it does not lock any task.
 // Render it only for users who may see stages (useCanSeeStages); it loads them itself.
-const Stages = ({teamId, tasks, sections, selectedId, onSelect, canManage, sectionId: fixedId, compact}: Props) => {
+const Stages = ({teamId, tasks, sections, selectedId, onSelect, canManage, sectionId: fixedId}: Props) => {
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
     const [chosenId, setChosenId] = useState('');
@@ -43,12 +40,9 @@ const Stages = ({teamId, tasks, sections, selectedId, onSelect, canManage, secti
 
     const sectionId = fixedId ?? (sections.some((s) => s.id === chosenId) ? chosenId : (sections[0]?.id ?? ''));
 
-    // A compact overview is one of many on the stages page, which loads the stages once for all of them.
     useEffect(() => {
-        if (!compact) {
-            dispatch(fetchTeamStages(teamId));
-        }
-    }, [dispatch, teamId, compact]);
+        dispatch(fetchTeamStages(teamId));
+    }, [dispatch, teamId]);
     const getStages = useMemo(() => makeGetTaskStagesForSection(), []);
     const stages = useSelector((state: GlobalState) => getStages(state, sectionId));
     const byId = useMemo(() => Object.fromEntries(tasks.map((t) => [t.id, t])), [tasks]);
@@ -229,43 +223,41 @@ const Stages = ({teamId, tasks, sections, selectedId, onSelect, canManage, secti
                                 <span style={{width: `${stageTasks.length ? (100 * done) / stageTasks.length : 0}%`}}/>
                             </div>
 
-                            {!compact && (
-                                <ul className='TaskStage__tasks'>
-                                    {stageTasks.map((task) => (
-                                        <li
-                                            key={task.id}
-                                            className={classNames('TaskStage__task', `TaskStatus--${task.status}`, {'TaskStage__task--selected': task.id === selectedId})}
+                            <ul className='TaskStage__tasks'>
+                                {stageTasks.map((task) => (
+                                    <li
+                                        key={task.id}
+                                        className={classNames('TaskStage__task', `TaskStatus--${task.status}`, {'TaskStage__task--selected': task.id === selectedId})}
+                                    >
+                                        <span className='TaskStatusDot'/>
+                                        <button
+                                            className='TaskStage__taskTitle'
+                                            onClick={() => onSelect(task.id)}
                                         >
-                                            <span className='TaskStatusDot'/>
+                                            {task.title}
+                                        </button>
+                                        {canManage && (
                                             <button
-                                                className='TaskStage__taskTitle'
-                                                onClick={() => onSelect(task.id)}
+                                                className='btn btn-icon btn-xs'
+                                                aria-label={formatMessage({id: 'tasks.stages.unlink', defaultMessage: 'Remove {title} from the stage'}, {title: task.title})}
+                                                onClick={() => patch(stage, {task_ids: stage.task_ids.filter((id) => id !== task.id)})}
                                             >
-                                                {task.title}
+                                                <CloseIcon size={14}/>
                                             </button>
-                                            {canManage && (
-                                                <button
-                                                    className='btn btn-icon btn-xs'
-                                                    aria-label={formatMessage({id: 'tasks.stages.unlink', defaultMessage: 'Remove {title} from the stage'}, {title: task.title})}
-                                                    onClick={() => patch(stage, {task_ids: stage.task_ids.filter((id) => id !== task.id)})}
-                                                >
-                                                    <CloseIcon size={14}/>
-                                                </button>
-                                            )}
-                                        </li>
-                                    ))}
-                                    {!stageTasks.length && (
-                                        <li className='TaskStage__none'>
-                                            <FormattedMessage
-                                                id='tasks.stages.noTasks'
-                                                defaultMessage='No tasks linked yet.'
-                                            />
-                                        </li>
-                                    )}
-                                </ul>
-                            )}
+                                        )}
+                                    </li>
+                                ))}
+                                {!stageTasks.length && (
+                                    <li className='TaskStage__none'>
+                                        <FormattedMessage
+                                            id='tasks.stages.noTasks'
+                                            defaultMessage='No tasks linked yet.'
+                                        />
+                                    </li>
+                                )}
+                            </ul>
 
-                            {canManage && !compact && unlinked.length > 0 && (
+                            {canManage && unlinked.length > 0 && (
                                 <select
                                     className='form-control TaskStage__link'
                                     value=''
@@ -288,7 +280,7 @@ const Stages = ({teamId, tasks, sections, selectedId, onSelect, canManage, secti
                 })}
             </ol>
 
-            {canManage && !compact && (
+            {canManage && (
                 <form
                     className='TaskStages__add'
                     onSubmit={(e) => {

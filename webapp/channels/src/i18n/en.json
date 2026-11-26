@@ -33947,6 +33947,62 @@
     "defaultMessage": "No section",
     "description": ""
   },
+  "tasks.overview.allDone": {
+    "defaultMessage": "All stages completed",
+    "description": "Shown instead of the current stage when every stage of an episode is done, on the Production overview page (the Stages page in the sidebar)."
+  },
+  "tasks.overview.col.episode": {
+    "defaultMessage": "Episode",
+    "description": "Column heading on the Production overview page (the Stages page in the sidebar)."
+  },
+  "tasks.overview.col.preview": {
+    "defaultMessage": "Episode preview",
+    "description": "Column heading on the Production overview page (the Stages page in the sidebar), above each episode's latest video."
+  },
+  "tasks.overview.col.progress": {
+    "defaultMessage": "Production progress",
+    "description": "Column heading on the Production overview page (the Stages page in the sidebar), above each episode's progress bar and stage stepper."
+  },
+  "tasks.overview.current": {
+    "defaultMessage": "Now: {name}",
+    "description": "Names the current stage of an episode on the Production overview page (the Stages page in the sidebar); {name} is the stage name."
+  },
+  "tasks.overview.empty": {
+    "defaultMessage": "No episodes yet.",
+    "description": "Shown on the Production overview page (the Stages page in the sidebar) when the team has no episodes."
+  },
+  "tasks.overview.noStages": {
+    "defaultMessage": "No stages yet. Add them from the Stages tab of the episode.",
+    "description": "Shown for an episode that has no stages, on the Production overview page (the Stages page in the sidebar)."
+  },
+  "tasks.overview.noVideo": {
+    "defaultMessage": "No video uploaded yet",
+    "description": "Empty preview box for an episode without a video, on the Production overview page (the Stages page in the sidebar)."
+  },
+  "tasks.overview.note": {
+    "defaultMessage": "Progress shows the completed production stages.",
+    "description": "Note under the subtitle on the Production overview page (the Stages page in the sidebar), explaining that the percentage is the share of stages done."
+  },
+  "tasks.overview.search": {
+    "defaultMessage": "Search episodes...",
+    "description": "Placeholder of the search box that filters episodes by name on the Production overview page (the Stages page in the sidebar)."
+  },
+  "tasks.overview.stagesDone": {
+    "defaultMessage": "{done}/{total} stages completed",
+    "description": "Count under an episode's stage stepper on the Production overview page (the Stages page in the sidebar); {done} stages are done out of {total}."
+  },
+  "tasks.overview.subtitle": {
+    "defaultMessage": "Progress per episode and latest previews",
+    "description": "Subtitle on the Production overview page (the Stages page in the sidebar)."
+  },
+  "tasks.overview.title": {
+    "defaultMessage": "Production overview",
+    "description": "Title on the Production overview page (the Stages page in the sidebar), which shows each episode's production stages."
+  },
+  "tasks.overview.viewTasks": {
+    "defaultMessage": "View task progress ›",
+    "description": "Link under an episode on the Production overview page (the Stages page in the sidebar) that opens the episode channel's Tasks tab."
+  },
   "tasks.postLabel.deleted": {
     "defaultMessage": "Deleted task",
     "description": "Label on a message in a task-list channel whose task has been deleted; shown in place of the task title, not clickable."
@@ -34210,10 +34266,6 @@
   "tasks.stages.noTasks": {
     "defaultMessage": "No tasks linked yet.",
     "description": "Shown inside a stage card that has no tasks linked to it."
-  },
-  "tasks.stages.noneInTeam": {
-    "defaultMessage": "No section has stages yet. Add them from the Stages tab of the task page.",
-    "description": "Shown on the Stages page when no task section of the team has production stages."
   },
   "tasks.stages.progress": {
     "defaultMessage": "{done}/{total} complete",
