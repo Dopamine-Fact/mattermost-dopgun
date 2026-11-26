@@ -1,0 +1,1 @@
+ALTER TABLE Departments DROP COLUMN IF EXISTS StagesView;

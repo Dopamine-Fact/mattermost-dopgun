@@ -11,6 +11,29 @@ import (
 	"github.com/mattermost/mattermost/server/public/shared/request"
 )
 
+// SessionCanSeeTaskStages: team admins (manage_team), task managers and members of a department with StagesView see
+// the team's stages.
+func (a *App) SessionCanSeeTaskStages(rctx request.CTX, session model.Session, teamID string) (bool, *model.AppError) {
+	if a.SessionHasPermissionToTeam(session, teamID, model.PermissionManageTeam) || a.SessionHasPermissionToTeam(session, teamID, model.PermissionManageTasks) {
+		return true, nil
+	}
+	depts, appErr := a.UserDepartments(rctx, teamID, session.UserId)
+	if appErr != nil || len(depts) == 0 {
+		return false, appErr
+	}
+	list, err := a.Srv().Store().Department().GetForTeam(teamID)
+	if err != nil {
+		return false, customRoleStoreError("SessionCanSeeTaskStages", err)
+	}
+	return slices.ContainsFunc(list, func(d *model.Department) bool { return d.StagesView && depts[d.Id] }), nil
+}
+
+// publishTaskStageEvent sends only the stage id: the team broadcast also reaches members who may not see stages, so
+// clients that may see them refetch the stages.
+func (a *App) publishTaskStageEvent(rctx request.CTX, event model.WebsocketEventType, stage *model.TaskStage, connectionID string) {
+	a.publishTaskEvent(rctx, event, stage.TeamId, "stage_id", stage.Id, connectionID)
+}
+
 func (a *App) GetTaskStage(stageID string) (*model.TaskStage, *model.AppError) {
 	stage, err := a.Srv().Store().Task().GetStage(stageID)
 	if err != nil {
@@ -116,7 +139,7 @@ func (a *App) CreateTaskStage(rctx request.CTX, stage *model.TaskStage, connecti
 		return nil, taskStoreError("CreateTaskStage", stage.Id, err)
 	}
 	saved = a.derivedTaskStage(saved)
-	a.publishTaskEvent(rctx, model.WebsocketTaskStageUpserted, saved.TeamId, "stage", saved, connectionID)
+	a.publishTaskStageEvent(rctx, model.WebsocketTaskStageUpserted, saved, connectionID)
 	return saved, nil
 }
 
@@ -136,7 +159,7 @@ func (a *App) PatchTaskStage(rctx request.CTX, stage *model.TaskStage, patch *mo
 		return nil, taskStoreError("PatchTaskStage", stage.Id, err)
 	}
 	updated = a.derivedTaskStage(updated)
-	a.publishTaskEvent(rctx, model.WebsocketTaskStageUpserted, updated.TeamId, "stage", updated, connectionID)
+	a.publishTaskStageEvent(rctx, model.WebsocketTaskStageUpserted, updated, connectionID)
 	return updated, nil
 }
 
@@ -147,7 +170,7 @@ func (a *App) DeleteTaskStage(rctx request.CTX, stage *model.TaskStage, connecti
 	if err := a.Srv().Store().Task().DeleteStage(stage.Id); err != nil {
 		return taskStoreError("DeleteTaskStage", stage.Id, err)
 	}
-	a.publishTaskEvent(rctx, model.WebsocketTaskStageDeleted, stage.TeamId, "stage_id", stage.Id, connectionID)
+	a.publishTaskStageEvent(rctx, model.WebsocketTaskStageDeleted, stage, connectionID)
 	return nil
 }
 
@@ -169,7 +192,7 @@ func (a *App) unlinkTaskFromStages(rctx request.CTX, teamID, sectionID, taskID, 
 		if err != nil {
 			return taskStoreError("unlinkTaskFromStages", stage.Id, err)
 		}
-		a.publishTaskEvent(rctx, model.WebsocketTaskStageUpserted, saved.TeamId, "stage", a.derivedTaskStage(saved), connectionID)
+		a.publishTaskStageEvent(rctx, model.WebsocketTaskStageUpserted, saved, connectionID)
 	}
 	return nil
 }

@@ -25,10 +25,12 @@ type Department struct {
 	Position int    `json:"position"`
 	IsStudio bool   `json:"is_studio"`
 	// LibraryWrite lets the department's ranks write into the team files library.
-	LibraryWrite bool  `json:"library_write"`
-	CreateAt     int64 `json:"create_at"`
-	UpdateAt     int64 `json:"update_at"`
-	DeleteAt     int64 `json:"delete_at"`
+	LibraryWrite bool `json:"library_write"`
+	// StagesView lets the department's members see the task stages (the stages panels and the task page's Stages tab).
+	StagesView bool  `json:"stages_view"`
+	CreateAt   int64 `json:"create_at"`
+	UpdateAt   int64 `json:"update_at"`
+	DeleteAt   int64 `json:"delete_at"`
 }
 
 // DepartmentWithRanks is a department and its ranks in order, as the Departmanlar tab shows them.
@@ -42,6 +44,7 @@ type DepartmentPatch struct {
 	Color *string `json:"color"`
 
 	LibraryWrite *bool `json:"library_write"`
+	StagesView   *bool `json:"stages_view"`
 }
 
 func (d *Department) Auditable() map[string]any {
@@ -64,6 +67,9 @@ func (d *Department) Patch(p *DepartmentPatch) {
 	}
 	if p.LibraryWrite != nil {
 		d.LibraryWrite = *p.LibraryWrite
+	}
+	if p.StagesView != nil {
+		d.StagesView = *p.StagesView
 	}
 }
 

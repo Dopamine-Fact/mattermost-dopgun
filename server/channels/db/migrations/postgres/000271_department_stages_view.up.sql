@@ -1,0 +1,1 @@
+ALTER TABLE Departments ADD COLUMN IF NOT EXISTS StagesView boolean NOT NULL DEFAULT false;

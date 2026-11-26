@@ -4820,6 +4820,11 @@
     "description": "API error when a user assigns a task (on the Tasks page or a revision) to someone whose custom roles are not below the user's own role in the role hierarchy."
   },
   {
+    "id": "api.task_stage.hidden.app_error",
+    "translation": "You do not have permission to see the stages.",
+    "description": "API error when a team member outside the departments allowed to see stages (and without task management or team admin rights) asks for the team's task stages."
+  },
+  {
     "id": "api.team.access_control.added.system_message",
     "translation": "You have been added to the team **{{.TeamName}}** because you now meet its membership requirements.",
     "description": "Direct message from the system bot telling a user they were automatically added to a team by attribute-based access rules; {{.TeamName}} is the team's display name and ** ** is Markdown bold."

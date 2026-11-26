@@ -763,6 +763,15 @@ func getTeamTaskStages(c *Context, w http.ResponseWriter, r *http.Request) {
 	if requireTaskTeamMember(c, c.Params.TeamId); c.Err != nil {
 		return
 	}
+	canSee, appErr := c.App.SessionCanSeeTaskStages(c.AppContext, *c.AppContext.Session(), c.Params.TeamId)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	if !canSee {
+		c.Err = model.NewAppError("getTeamTaskStages", "api.task_stage.hidden.app_error", nil, "", http.StatusForbidden)
+		return
+	}
 	stages, appErr := c.App.GetTaskStagesForTeam(c.Params.TeamId)
 	if appErr != nil {
 		c.Err = appErr

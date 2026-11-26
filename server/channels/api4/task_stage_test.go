@@ -34,7 +34,7 @@ func TestTaskStages(t *testing.T) {
 	layout, animation, foreign := newTask("Layout", section.Id), newTask("Animation", section.Id), newTask("Other", otherSection.Id)
 
 	stageByID := func(id string) *model.TaskStage {
-		stages, _, err := th.Client.GetTeamTaskStages(ctx, teamId)
+		stages, _, err := admin.GetTeamTaskStages(ctx, teamId)
 		require.NoError(t, err)
 		for _, s := range stages {
 			if s.Id == id {
@@ -44,11 +44,30 @@ func TestTaskStages(t *testing.T) {
 		return nil
 	}
 
-	t.Run("members without manage_tasks only read", func(t *testing.T) {
+	t.Run("stages are seen by task managers and departments with stages_view", func(t *testing.T) {
 		_, resp, err := th.Client.CreateTaskStage(ctx, &model.TaskStage{TeamId: teamId, SectionId: section.Id, Name: "x"})
 		require.Error(t, err)
 		CheckForbiddenStatus(t, resp)
-		_, _, err = th.Client.GetTeamTaskStages(ctx, teamId)
+		_, resp, err = th.Client.GetTeamTaskStages(ctx, teamId)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+
+		dept := newTestDepartment(t, th, teamId, "Layout")
+		deptClient, _ := rankedClient(t, th, th.BasicTeam, newTestRank(t, th, teamId, dept.Id, "Artist"))
+		_, resp, err = deptClient.GetTeamTaskStages(ctx, teamId)
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+
+		_, appErr := th.App.PatchDepartment(th.Context, teamId, dept.Id, &model.DepartmentPatch{StagesView: new(true)})
+		require.Nil(t, appErr)
+		_, _, err = deptClient.GetTeamTaskStages(ctx, teamId)
+		require.NoError(t, err)
+		_, resp, err = deptClient.CreateTaskStage(ctx, &model.TaskStage{TeamId: teamId, SectionId: section.Id, Name: "x"})
+		require.Error(t, err)
+		CheckForbiddenStatus(t, resp)
+
+		managerClient, _ := rankedClient(t, th, th.BasicTeam, newTestRank(t, th, teamId, newTestDepartment(t, th, teamId, "Prod").Id, "Lead", model.PermissionManageTasks.Id))
+		_, _, err = managerClient.GetTeamTaskStages(ctx, teamId)
 		require.NoError(t, err)
 	})
 
