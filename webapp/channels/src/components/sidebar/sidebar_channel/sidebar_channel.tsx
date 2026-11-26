@@ -218,21 +218,21 @@ function SidebarChannel({
 
 const subChannelsOpenKey = (channelId: string) => `sidebarSubChannelsOpen:${channelId}`;
 
-// Whether a parent's sub-channels are shown is remembered per browser; closed until opened.
+// Whether a parent's sub-channels are shown is remembered per browser; shown until hidden.
 function readSubChannelsOpen(channelId: string) {
     try {
-        return localStorage.getItem(subChannelsOpenKey(channelId)) === 'true';
+        return localStorage.getItem(subChannelsOpenKey(channelId)) !== 'false';
     } catch {
-        return false;
+        return true;
     }
 }
 
 function writeSubChannelsOpen(channelId: string, open: boolean) {
     try {
         if (open) {
-            localStorage.setItem(subChannelsOpenKey(channelId), 'true');
-        } else {
             localStorage.removeItem(subChannelsOpenKey(channelId));
+        } else {
+            localStorage.setItem(subChannelsOpenKey(channelId), 'false');
         }
     } catch {
         // Storage can be unavailable (private mode); the toggle still works for this session.

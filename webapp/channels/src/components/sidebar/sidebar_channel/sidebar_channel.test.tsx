@@ -71,18 +71,19 @@ describe('components/sidebar/sidebar_channel', () => {
             },
         );
 
-        const toggle = screen.getByRole('button', {name: 'Show sub-channels'});
-        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        // Shown under the parent until hidden.
+        const toggle = screen.getByRole('button', {name: 'Hide sub-channels'});
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
         const subRow = screen.getAllByRole('listitem')[1];
-        expect(subRow).toHaveClass('SidebarChannel--sub', 'collapsed');
+        expect(subRow).toHaveClass('SidebarChannel--sub', 'expanded');
 
         await userEvent.click(toggle);
-        expect(screen.getByRole('button', {name: 'Hide sub-channels'})).toHaveAttribute('aria-expanded', 'true');
-        expect(subRow).toHaveClass('expanded');
-        expect(localStorage.getItem('sidebarSubChannelsOpen:channel_id')).toBe('true');
-
-        await userEvent.click(screen.getByRole('button', {name: 'Hide sub-channels'}));
+        expect(screen.getByRole('button', {name: 'Show sub-channels'})).toHaveAttribute('aria-expanded', 'false');
         expect(subRow).toHaveClass('collapsed');
+        expect(localStorage.getItem('sidebarSubChannelsOpen:channel_id')).toBe('false');
+
+        await userEvent.click(screen.getByRole('button', {name: 'Show sub-channels'}));
+        expect(subRow).toHaveClass('expanded');
         expect(localStorage.getItem('sidebarSubChannelsOpen:channel_id')).toBeNull();
     });
 
