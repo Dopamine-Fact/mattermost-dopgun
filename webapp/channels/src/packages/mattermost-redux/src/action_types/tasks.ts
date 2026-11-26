@@ -9,6 +9,7 @@ export default keyMirror({
     TASK_DELETED: null,
     TASK_SECTION_RECEIVED: null,
     TASK_SECTION_DELETED: null,
+    TEAM_STAGES_RECEIVED: null,
     TASK_STAGE_RECEIVED: null,
     TASK_STAGE_DELETED: null,
 });

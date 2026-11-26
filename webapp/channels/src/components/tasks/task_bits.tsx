@@ -13,13 +13,16 @@ import type {Department} from '@mattermost/types/custom_roles';
 import type {Task, TaskSection, TaskStatus} from '@mattermost/types/tasks';
 import type {UserProfile} from '@mattermost/types/users';
 
+import {Permissions} from 'mattermost-redux/constants';
 import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
+import {haveITeamPermission} from 'mattermost-redux/selectors/entities/roles';
 import {getMyTeamMember, getTeam} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 
 import {createTask, patchTask} from 'actions/tasks';
 
+import {useLoadedTeamDepartments} from 'components/profile_popover/use_custom_roles';
 import Avatar from 'components/widgets/users/avatar';
 
 import {imageURLForUser} from 'utils/utils';
@@ -35,6 +38,19 @@ import type {SubtaskCount} from './task_utils';
 // useApprovalEnabled: whether the team runs the supervisor → director approval of done tasks.
 export function useApprovalEnabled(teamId: string): boolean {
     return useSelector((state: GlobalState) => Boolean(getTeam(state, teamId)?.task_approval_enabled));
+}
+
+// useCanSeeStages mirrors the server: team admins and task managers see the stages, and so do members of a department
+// allowed to (stages_view).
+export function useCanSeeStages(teamId: string): boolean {
+    const manager = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_TEAM) || haveITeamPermission(state, teamId, Permissions.MANAGE_TASKS));
+    const roles = useSelector((state: GlobalState) => getMyTeamMember(state, teamId)?.roles ?? '');
+    const departments = useLoadedTeamDepartments(manager ? '' : teamId);
+    if (manager) {
+        return true;
+    }
+    const mine = departments ? userDepartmentIds(roles, departments) : new Set<string>();
+    return Boolean(departments?.some((d) => d.stages_view && mine.has(d.id)));
 }
 
 // useCannotFinish: a task cannot be finished while one of its subtasks, or a task it waits for, is not done and approved.

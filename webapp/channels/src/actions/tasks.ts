@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import type {Channel} from '@mattermost/types/channels';
-import type {Task, TaskApprovalAction, TaskCreate, TaskPatch, TaskSectionCreate, TaskSectionPatch, TaskStageCreate, TaskStagePatch} from '@mattermost/types/tasks';
+import type {Task, TaskApprovalAction, TaskCreate, TaskPatch, TaskSectionCreate, TaskSectionPatch, TaskStage, TaskStageCreate, TaskStagePatch} from '@mattermost/types/tasks';
 
 import {TaskTypes} from 'mattermost-redux/action_types';
 import {createChannel, deleteChannel, getChannelAndMyMember} from 'mattermost-redux/actions/channels';
@@ -40,9 +40,27 @@ function run<T>(call: (connectionId: string) => Promise<T>, received?: (data: T)
 
 export function fetchTeamTasks(teamId: string) {
     return run(
-        () => Promise.all([Client4.getTeamTasks(teamId), Client4.getTeamTaskSections(teamId), Client4.getTeamTaskStages(teamId)]),
-        ([tasks, sections, stages]) => ({type: TaskTypes.TEAM_TASKS_RECEIVED, data: {teamId, tasks, sections, stages}}),
+        () => Promise.all([Client4.getTeamTasks(teamId), Client4.getTeamTaskSections(teamId)]),
+        ([tasks, sections]) => ({type: TaskTypes.TEAM_TASKS_RECEIVED, data: {teamId, tasks, sections}}),
     );
+}
+
+// fetchTeamStages loads the team's stages. Only some departments may see them: a 403 leaves them empty, unlogged.
+export function fetchTeamStages(teamId: string): ActionFuncAsync<TaskStage[]> {
+    return async (dispatch, getState) => {
+        let stages: TaskStage[] = [];
+        try {
+            stages = await Client4.getTeamTaskStages(teamId);
+        } catch (error) {
+            if ((error as {status_code?: number}).status_code !== 403) {
+                forceLogoutIfNecessary(error, dispatch, getState);
+                dispatch(logError(error));
+                return {error};
+            }
+        }
+        dispatch({type: TaskTypes.TEAM_STAGES_RECEIVED, data: {teamId, stages}});
+        return {data: stages};
+    };
 }
 
 export function fetchTaskPosts(taskId: string, options: {channelId?: string; before?: number; perPage?: number} = {}) {

@@ -134,14 +134,18 @@
         font-size: 12px;
     }
 
-    // pushes the rest of the footer to the right
+    // the last checkbox pushes the rest of the footer to the right
     &__library {
         display: flex;
         align-items: center;
-        margin: 0 auto 0 0;
+        margin: 0;
         font-size: 12px;
         font-weight: normal;
         gap: 6px;
+
+        &:last-of-type {
+            margin-right: auto;
+        }
     }
 
     &__libraryHelp {
@@ -150,6 +154,7 @@
 
     &__footer {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         justify-content: flex-end;
         padding: 6px 12px;

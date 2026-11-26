@@ -25,7 +25,7 @@ import type {Reaction} from '@mattermost/types/reactions';
 import type {Role} from '@mattermost/types/roles';
 import type {ScheduledPost} from '@mattermost/types/schedule_post';
 import type {GlobalState} from '@mattermost/types/store';
-import type {Task, TaskSection, TaskStage} from '@mattermost/types/tasks';
+import type {Task, TaskSection} from '@mattermost/types/tasks';
 import type {Team, TeamMembership} from '@mattermost/types/teams';
 import type {UserThread} from '@mattermost/types/threads';
 
@@ -156,6 +156,7 @@ import {sendDesktopNotification} from 'actions/notification_actions';
 import {handleNewPost} from 'actions/post_actions';
 import * as StatusActions from 'actions/status_actions';
 import {setGlobalItem} from 'actions/storage';
+import {fetchTeamStages} from 'actions/tasks';
 import {loadProfilesForDM, loadProfilesForGM, loadProfilesForSidebar} from 'actions/user_actions';
 import {loadUnreads, syncPostsInChannel} from 'actions/views/channel';
 import {setGlobalDraft, transformServerDraft} from 'actions/views/drafts';
@@ -790,7 +791,9 @@ export function handleEvent(msg: WebSocketMessage) {
         dispatch({type: TaskTypes.TASK_SECTION_DELETED, data: {id: msg.data.section_id}});
         break;
     case WebSocketEvents.TaskStageUpserted:
-        dispatch({type: TaskTypes.TASK_STAGE_RECEIVED, data: JSON.parse(msg.data.stage) as TaskStage});
+        // The event names the stage only, since not every team member may see stages; those who may reload them.
+        // shortcut: every team member's client refetches (others get a quiet 403); send per-user events if teams grow large.
+        dispatch(fetchTeamStages(msg.data.team_id));
         break;
     case WebSocketEvents.TaskStageDeleted:
         dispatch({type: TaskTypes.TASK_STAGE_DELETED, data: {id: msg.data.stage_id}});

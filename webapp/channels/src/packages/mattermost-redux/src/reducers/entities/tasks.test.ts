@@ -70,12 +70,15 @@ describe('reducers.entities.tasks', () => {
     test('TEAM_TASKS_RECEIVED replaces only that team', () => {
         const state = reducer(initial, {
             type: TaskTypes.TEAM_TASKS_RECEIVED,
-            data: {teamId: 'team1', tasks: [task('c')], sections: [], stages: [stage('st3')]},
+            data: {teamId: 'team1', tasks: [task('c')], sections: []},
         });
 
         expect(Object.keys(state.byId).sort()).toEqual(['c', 'other']);
         expect(Object.keys(state.sectionsById)).toEqual(['s2']);
-        expect(Object.keys(state.stagesById).sort()).toEqual(['other', 'st3']);
+        expect(state.stagesById).toBe(initial.stagesById);
+
+        const staged = reducer(initial, {type: TaskTypes.TEAM_STAGES_RECEIVED, data: {teamId: 'team1', stages: [stage('st3')]}});
+        expect(Object.keys(staged.stagesById).sort()).toEqual(['other', 'st3']);
     });
 
     test('TASK_RECEIVED ignores an older copy of a task', () => {

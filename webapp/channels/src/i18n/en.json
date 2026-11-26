@@ -34183,6 +34183,10 @@
     "defaultMessage": "No stages in this section yet.",
     "description": "Shown on the Stages tab when the chosen section has no production stages."
   },
+  "tasks.stages.hidden": {
+    "defaultMessage": "Your department cannot see the stages.",
+    "description": "Shown on the Stages page to a user whose departments are not allowed to see task stages."
+  },
   "tasks.stages.moveDown": {
     "defaultMessage": "Move stage down",
     "description": "Accessible label of the down-arrow button that moves a stage one place later in its section's order."
@@ -34206,6 +34210,10 @@
   "tasks.stages.noTasks": {
     "defaultMessage": "No tasks linked yet.",
     "description": "Shown inside a stage card that has no tasks linked to it."
+  },
+  "tasks.stages.noneInTeam": {
+    "defaultMessage": "No section has stages yet. Add them from the Stages tab of the task page.",
+    "description": "Shown on the Stages page when no task section of the team has production stages."
   },
   "tasks.stages.progress": {
     "defaultMessage": "{done}/{total} complete",
@@ -34526,6 +34534,14 @@
   "team_settings.departments.remove_member": {
     "defaultMessage": "Remove {name} from {rank}",
     "description": "Accessible label of the × button on a person under a rank in Team Settings › Departments; it takes the rank {rank} away from {name}."
+  },
+  "team_settings.departments.stages_view": {
+    "defaultMessage": "Can see the stages panel",
+    "description": "Checkbox on a department card in team settings that lets the department's members see the task stages (the Stages page, the episode channel's Stages tab and the task page's Stages tab)."
+  },
+  "team_settings.departments.stages_view_help": {
+    "defaultMessage": "Members of this department see the stages of each episode. Team admins and task managers always see them.",
+    "description": "Help text next to the department's stages panel checkbox."
   },
   "team_settings_modal.accessPoliciesTab": {
     "defaultMessage": "Channel Membership",

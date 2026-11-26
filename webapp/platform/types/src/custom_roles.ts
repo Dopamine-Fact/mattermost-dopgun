@@ -35,6 +35,9 @@ export type Department = {
 
     /** the department's ranks may write into the team Files library */
     library_write?: boolean;
+
+    /** the department's members may see the task stages (stage panels and the task page's Stages tab) */
+    stages_view?: boolean;
     create_at: number;
     update_at: number;
     delete_at: number;
@@ -45,7 +48,7 @@ export type RankPatch = Partial<Pick<Rank, 'display_name' | 'color' | 'permissio
 
 export type RankCreate = Pick<Rank, 'display_name' | 'color' | 'permissions'>;
 
-export type DepartmentPatch = Partial<Pick<Department, 'name' | 'color' | 'library_write'>>;
+export type DepartmentPatch = Partial<Pick<Department, 'name' | 'color' | 'library_write' | 'stages_view'>>;
 
 export type DepartmentCreate = Pick<Department, 'name' | 'color'>;
 

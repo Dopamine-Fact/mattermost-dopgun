@@ -29,6 +29,8 @@ import {useExplorerUploads} from 'components/file_explorer/use_explorer_uploads'
 import Board from 'components/tasks/board';
 import List from 'components/tasks/list';
 import Revisions from 'components/tasks/revisions';
+import Stages from 'components/tasks/stages';
+import {useCanSeeStages} from 'components/tasks/task_bits';
 import TaskDetail from 'components/tasks/task_detail';
 import TaskPostList from 'components/tasks/task_post_list';
 import Timeline from 'components/tasks/timeline';
@@ -49,12 +51,13 @@ const LazyFileExplorer = React.lazy(() => import('components/file_explorer/file_
 // shortcut: the assignee picker lists the first 200 team members, like the tasks page.
 const MEMBER_PAGE_SIZE = 200;
 
-type Tab = 'messages' | 'revisions' | 'tasks' | 'timeline' | 'canvas' | 'files';
+type Tab = 'messages' | 'revisions' | 'tasks' | 'timeline' | 'stages' | 'canvas' | 'files';
 
 const viewLabels = defineMessages({
     list: {id: 'tasks.view.list', defaultMessage: 'List'},
     board: {id: 'tasks.view.board', defaultMessage: 'Board'},
     timeline: {id: 'tasks.view.timeline', defaultMessage: 'Timeline'},
+    stages: {id: 'tasks.view.stages', defaultMessage: 'Stages'},
 });
 
 // The Tasks tab's views, picked from the menu that opens when hovering or focusing the tab.
@@ -98,6 +101,7 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
     const canManageRevisions = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_REVISIONS));
     const canManageTasks = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_TASKS));
     const section = useSelector((state: GlobalState) => getTaskSectionForChannel(state, channelId));
+    const canSeeStages = useCanSeeStages(teamId);
     const sectionTasks = useMemo(() => tasks.filter((t) => section && t.section_id === section.id && !t.video_file_id), [tasks, section]);
 
     // The Messages filter offers every task of the section, revisions included, like the post box's task picker, and
@@ -286,6 +290,27 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
                 {detail}
             </div>
         );
+    } else if (section && canSeeStages && tab === 'stages') {
+        panel = (
+            <div
+                className='RevisionTabs__panel ChannelTabs__cover'
+                role='tabpanel'
+            >
+                <div className='RevisionTabs__main'>
+                    <Stages
+                        teamId={teamId}
+                        tasks={sectionTasks}
+                        sections={[section]}
+                        sectionId={section.id}
+                        usersById={usersById}
+                        selectedId={selectedId}
+                        onSelect={setSelectedId}
+                        canManage={canManageTasks}
+                    />
+                </div>
+                {detail}
+            </div>
+        );
     } else if (isCanvas && tab === 'canvas') {
         // While the Canvas tab shows, the composer is unmounted, so the post textbox's document keydown listener
         // (use_textbox_focus) is gone and keys the board ignores cannot steal focus.
@@ -370,6 +395,7 @@ const ChannelTabs = ({channelId, children, composer}: Props) => {
                         </div>
                     )}
                     {section && tabButton('timeline', <FormattedMessage {...viewLabels.timeline}/>)}
+                    {section && canSeeStages && tabButton('stages', <FormattedMessage {...viewLabels.stages}/>)}
                     {isCanvas && tabButton('canvas', (
                         <FormattedMessage
                             id='canvas.tabs.canvas'

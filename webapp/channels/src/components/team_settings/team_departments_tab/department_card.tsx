@@ -280,6 +280,17 @@ const DepartmentCard = ({teamId, department, departments, dragHandleProps, onDel
                         <FormattedMessage {...msg.libraryWriteHelp}/>
                     </span>
                 </label>
+                <label className='TeamDepartments__library'>
+                    <input
+                        type='checkbox'
+                        checked={Boolean(department.stages_view)}
+                        onChange={(e) => patchDepartment({stages_view: e.target.checked})}
+                    />
+                    <FormattedMessage {...msg.stagesView}/>
+                    <span className='TeamDepartments__libraryHelp'>
+                        <FormattedMessage {...msg.stagesViewHelp}/>
+                    </span>
+                </label>
                 {error && <span className='TeamDepartments__error'>{error}</span>}
                 <button
                     type='button'
@@ -318,6 +329,8 @@ const msg = defineMessages({
     dragRank: {id: 'team_settings.departments.drag_rank', defaultMessage: 'Drag {name} to change its rank'},
     libraryWrite: {id: 'team_settings.departments.library_write', defaultMessage: 'Can write to the Files library'},
     libraryWriteHelp: {id: 'team_settings.departments.library_write_help', defaultMessage: 'Every rank of this department may add and change files in the team library folder.'},
+    stagesView: {id: 'team_settings.departments.stages_view', defaultMessage: 'Can see the stages panel'},
+    stagesViewHelp: {id: 'team_settings.departments.stages_view_help', defaultMessage: 'Members of this department see the stages of each episode. Team admins and task managers always see them.'},
     members: {id: 'team_settings.departments.members', defaultMessage: '{count, plural, one {# member} other {# members}}'},
 });
 

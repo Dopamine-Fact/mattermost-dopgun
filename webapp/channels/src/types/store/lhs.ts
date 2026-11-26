@@ -24,6 +24,7 @@ export enum LhsPage {
     Drafts = 'drafts',
     Files = 'files',
     Recaps = 'recaps',
+    Stages = 'stages',
     Tasks = 'tasks',
     Threads = 'threads',
 }

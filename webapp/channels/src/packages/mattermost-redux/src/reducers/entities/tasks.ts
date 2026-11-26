@@ -99,7 +99,7 @@ function sectionsById(state: TasksState['sectionsById'] = {}, action: MMReduxAct
 
 function stagesById(state: TasksState['stagesById'] = {}, action: MMReduxAction): TasksState['stagesById'] {
     switch (action.type) {
-    case TaskTypes.TEAM_TASKS_RECEIVED: {
+    case TaskTypes.TEAM_STAGES_RECEIVED: {
         const next = withoutTeam(state, action.data.teamId);
         action.data.stages.forEach((stage: TaskStage) => {
             next[stage.id] = stage;

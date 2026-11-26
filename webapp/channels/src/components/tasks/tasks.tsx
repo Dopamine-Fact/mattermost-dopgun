@@ -28,6 +28,7 @@ import {LhsItemType, LhsPage} from 'types/store/lhs';
 import Board from './board';
 import List from './list';
 import Stages from './stages';
+import {useCanSeeStages} from './task_bits';
 import TaskDetail from './task_detail';
 import Timeline from './timeline';
 
@@ -69,6 +70,9 @@ const Tasks = () => {
     const canManage = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_TASKS));
     const canManageRevisions = useSelector((state: GlobalState) => haveITeamPermission(state, teamId, Permissions.MANAGE_REVISIONS));
 
+    const canSeeStages = useCanSeeStages(teamId);
+    const views = VIEWS.filter((v) => v.id !== 'stages' || canSeeStages);
+
     const {search} = useLocation();
     const [view, setView] = useState<ViewId>('board');
     const [selectedId, setSelectedId] = useState('');
@@ -101,7 +105,7 @@ const Tasks = () => {
 
     const displayName = (user: UserProfile) => displayUsername(user, nameDisplay);
     const selected = tasks.find((t) => t.id === selectedId);
-    const {View} = VIEWS.find((v) => v.id === view)!;
+    const {View} = views.find((v) => v.id === view) ?? views[0];
 
     return (
         <div className='TasksPage'>
@@ -120,7 +124,7 @@ const Tasks = () => {
                         className='TasksPage__tabs'
                         role='tablist'
                     >
-                        {VIEWS.map(({id, Icon, label}) => (
+                        {views.map(({id, Icon, label}) => (
                             <button
                                 key={id}
                                 role='tab'

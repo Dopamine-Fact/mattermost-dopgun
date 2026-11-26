@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import classNames from 'classnames';
-import React, {useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 
@@ -11,7 +11,7 @@ import type {TaskStage, TaskStagePatch, TaskStageStatus, TaskStatus} from '@matt
 
 import {makeGetTaskStagesForSection} from 'mattermost-redux/selectors/entities/tasks';
 
-import {createTaskStage, deleteTaskStage, patchTaskStage} from 'actions/tasks';
+import {createTaskStage, deleteTaskStage, fetchTeamStages, patchTaskStage} from 'actions/tasks';
 
 import type {ActionFuncAsync, GlobalState} from 'types/store';
 
@@ -22,16 +22,33 @@ import type {ViewProps} from './task_utils';
 // A stage borrows the colour of the task status it matches.
 const STAGE_COLOR: Record<TaskStageStatus, TaskStatus> = {not_started: 'todo', in_progress: 'in_progress', done: 'done'};
 
+type Props = ViewProps & {
+
+    // sectionId fixes the section (an episode channel's tab) instead of offering a picker.
+    sectionId?: string;
+
+    // compact leaves out each stage's task list, for an overview of many sections.
+    compact?: boolean;
+};
+
 // Stages lists one section's production stages in order. Their status comes from their tasks; the first stage that is
 // not done is the current one and the stage after it is next. Order is shown only: it does not lock any task.
-const Stages = ({teamId, tasks, sections, selectedId, onSelect, canManage}: ViewProps) => {
+// Render it only for users who may see stages (useCanSeeStages); it loads them itself.
+const Stages = ({teamId, tasks, sections, selectedId, onSelect, canManage, sectionId: fixedId, compact}: Props) => {
     const {formatMessage} = useIntl();
     const dispatch = useDispatch();
     const [chosenId, setChosenId] = useState('');
     const [newName, setNewName] = useState('');
     const [error, setError] = useState('');
 
-    const sectionId = sections.some((s) => s.id === chosenId) ? chosenId : (sections[0]?.id ?? '');
+    const sectionId = fixedId ?? (sections.some((s) => s.id === chosenId) ? chosenId : (sections[0]?.id ?? ''));
+
+    // A compact overview is one of many on the stages page, which loads the stages once for all of them.
+    useEffect(() => {
+        if (!compact) {
+            dispatch(fetchTeamStages(teamId));
+        }
+    }, [dispatch, teamId, compact]);
     const getStages = useMemo(() => makeGetTaskStagesForSection(), []);
     const stages = useSelector((state: GlobalState) => getStages(state, sectionId));
     const byId = useMemo(() => Object.fromEntries(tasks.map((t) => [t.id, t])), [tasks]);
@@ -70,7 +87,7 @@ const Stages = ({teamId, tasks, sections, selectedId, onSelect, canManage}: View
         }
     };
 
-    if (!sections.length) {
+    if (!sectionId) {
         return (
             <p className='TaskStages__empty'>
                 <FormattedMessage
@@ -83,26 +100,28 @@ const Stages = ({teamId, tasks, sections, selectedId, onSelect, canManage}: View
 
     return (
         <div className='TaskStages'>
-            <label className='TaskStages__section'>
-                <FormattedMessage
-                    id='tasks.detail.section'
-                    defaultMessage='Section'
-                />
-                <select
-                    className='form-control'
-                    value={sectionId}
-                    onChange={(e) => setChosenId(e.target.value)}
-                >
-                    {sections.map((section) => (
-                        <option
-                            key={section.id}
-                            value={section.id}
-                        >
-                            {section.name}
-                        </option>
-                    ))}
-                </select>
-            </label>
+            {!fixedId && (
+                <label className='TaskStages__section'>
+                    <FormattedMessage
+                        id='tasks.detail.section'
+                        defaultMessage='Section'
+                    />
+                    <select
+                        className='form-control'
+                        value={sectionId}
+                        onChange={(e) => setChosenId(e.target.value)}
+                    >
+                        {sections.map((section) => (
+                            <option
+                                key={section.id}
+                                value={section.id}
+                            >
+                                {section.name}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+            )}
 
             {error && (
                 <p
@@ -125,6 +144,7 @@ const Stages = ({teamId, tasks, sections, selectedId, onSelect, canManage}: View
             <ol className='TaskStages__list'>
                 {derived.map(({stage, status, current}, index) => {
                     const stageTasks = stage.task_ids.map((id) => byId[id]).filter(Boolean);
+                    const done = stageTasks.filter(isComplete).length;
                     return (
                         <li
                             key={stage.id}
@@ -167,7 +187,7 @@ const Stages = ({teamId, tasks, sections, selectedId, onSelect, canManage}: View
                                     <FormattedMessage
                                         id='tasks.stages.progress'
                                         defaultMessage='{done}/{total} complete'
-                                        values={{done: stageTasks.filter(isComplete).length, total: stageTasks.length}}
+                                        values={{done, total: stageTasks.length}}
                                     />
                                 </span>
                                 {canManage && (
@@ -198,42 +218,54 @@ const Stages = ({teamId, tasks, sections, selectedId, onSelect, canManage}: View
                                     </span>
                                 )}
                             </header>
+                            <div
+                                className='TaskStage__bar'
+                                role='progressbar'
+                                aria-valuemin={0}
+                                aria-valuemax={stageTasks.length}
+                                aria-valuenow={done}
+                                aria-label={stage.name}
+                            >
+                                <span style={{width: `${stageTasks.length ? (100 * done) / stageTasks.length : 0}%`}}/>
+                            </div>
 
-                            <ul className='TaskStage__tasks'>
-                                {stageTasks.map((task) => (
-                                    <li
-                                        key={task.id}
-                                        className={classNames('TaskStage__task', `TaskStatus--${task.status}`, {'TaskStage__task--selected': task.id === selectedId})}
-                                    >
-                                        <span className='TaskStatusDot'/>
-                                        <button
-                                            className='TaskStage__taskTitle'
-                                            onClick={() => onSelect(task.id)}
+                            {!compact && (
+                                <ul className='TaskStage__tasks'>
+                                    {stageTasks.map((task) => (
+                                        <li
+                                            key={task.id}
+                                            className={classNames('TaskStage__task', `TaskStatus--${task.status}`, {'TaskStage__task--selected': task.id === selectedId})}
                                         >
-                                            {task.title}
-                                        </button>
-                                        {canManage && (
+                                            <span className='TaskStatusDot'/>
                                             <button
-                                                className='btn btn-icon btn-xs'
-                                                aria-label={formatMessage({id: 'tasks.stages.unlink', defaultMessage: 'Remove {title} from the stage'}, {title: task.title})}
-                                                onClick={() => patch(stage, {task_ids: stage.task_ids.filter((id) => id !== task.id)})}
+                                                className='TaskStage__taskTitle'
+                                                onClick={() => onSelect(task.id)}
                                             >
-                                                <CloseIcon size={14}/>
+                                                {task.title}
                                             </button>
-                                        )}
-                                    </li>
-                                ))}
-                                {!stageTasks.length && (
-                                    <li className='TaskStage__none'>
-                                        <FormattedMessage
-                                            id='tasks.stages.noTasks'
-                                            defaultMessage='No tasks linked yet.'
-                                        />
-                                    </li>
-                                )}
-                            </ul>
+                                            {canManage && (
+                                                <button
+                                                    className='btn btn-icon btn-xs'
+                                                    aria-label={formatMessage({id: 'tasks.stages.unlink', defaultMessage: 'Remove {title} from the stage'}, {title: task.title})}
+                                                    onClick={() => patch(stage, {task_ids: stage.task_ids.filter((id) => id !== task.id)})}
+                                                >
+                                                    <CloseIcon size={14}/>
+                                                </button>
+                                            )}
+                                        </li>
+                                    ))}
+                                    {!stageTasks.length && (
+                                        <li className='TaskStage__none'>
+                                            <FormattedMessage
+                                                id='tasks.stages.noTasks'
+                                                defaultMessage='No tasks linked yet.'
+                                            />
+                                        </li>
+                                    )}
+                                </ul>
+                            )}
 
-                            {canManage && unlinked.length > 0 && (
+                            {canManage && !compact && unlinked.length > 0 && (
                                 <select
                                     className='form-control TaskStage__link'
                                     value=''
@@ -256,7 +288,7 @@ const Stages = ({teamId, tasks, sections, selectedId, onSelect, canManage}: View
                 })}
             </ol>
 
-            {canManage && (
+            {canManage && !compact && (
                 <form
                     className='TaskStages__add'
                     onSubmit={(e) => {

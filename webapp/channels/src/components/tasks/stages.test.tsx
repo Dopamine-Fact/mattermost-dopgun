@@ -5,7 +5,7 @@ import React from 'react';
 
 import type {Task, TaskSection, TaskStage} from '@mattermost/types/tasks';
 
-import {createTaskStage, patchTaskStage} from 'actions/tasks';
+import {createTaskStage, fetchTeamStages, patchTaskStage} from 'actions/tasks';
 
 import {fireEvent, renderWithContext, screen, within} from 'tests/react_testing_utils';
 
@@ -16,6 +16,7 @@ jest.mock('actions/tasks', () => ({
     createTaskStage: jest.fn(() => () => Promise.resolve({data: {}})),
     patchTaskStage: jest.fn(() => () => Promise.resolve({data: {}})),
     deleteTaskStage: jest.fn(() => () => Promise.resolve({data: true})),
+    fetchTeamStages: jest.fn(() => () => Promise.resolve({data: []})),
 }));
 
 const section: TaskSection = {id: 'sec1', team_id: 'team1', name: 'Episode 1', sort_order: 1, channel_id: '', video_file_id: '', create_at: 1, update_at: 1};
@@ -65,7 +66,7 @@ const tasks = [
     task('revision', {video_file_id: 'file1'}),
 ];
 
-const renderStages = (canManage: boolean) => renderWithContext(
+const renderStages = (canManage: boolean, extra: {sectionId?: string; compact?: boolean} = {}) => renderWithContext(
     <Stages
         teamId='team1'
         tasks={tasks}
@@ -74,6 +75,7 @@ const renderStages = (canManage: boolean) => renderWithContext(
         selectedId=''
         onSelect={jest.fn()}
         canManage={canManage}
+        {...extra}
     />,
     {entities: {tasks: {byId: {}, sectionsById: {}, stagesById: {s3: stage('s3', 3, ['c']), s1: stage('s1', 1, ['a']), s2: stage('s2', 2, ['b'])}}}},
 );
@@ -92,6 +94,23 @@ describe('Stages', () => {
         // Read-only without manage_tasks.
         expect(screen.queryByRole('button', {name: 'Delete stage'})).toBeNull();
         expect(screen.queryByPlaceholderText('New stage name')).toBeNull();
+    });
+
+    test('loads the stages and offers a section picker', () => {
+        renderStages(false);
+        expect(fetchTeamStages).toHaveBeenCalledWith('team1');
+        expect(screen.getByText('Task a')).toBeInTheDocument();
+        expect(screen.getByRole('combobox')).toBeInTheDocument();
+    });
+
+    test('a fixed, compact overview has no picker, task lists or editing and loads nothing itself', () => {
+        jest.mocked(fetchTeamStages).mockClear();
+        renderStages(true, {sectionId: 'sec1', compact: true});
+        expect(fetchTeamStages).not.toHaveBeenCalled();
+        expect(screen.queryByRole('combobox')).toBeNull();
+        expect(screen.queryByText('Task a')).toBeNull();
+        expect(screen.queryByPlaceholderText('New stage name')).toBeNull();
+        expect(screen.getAllByRole('progressbar').map((b) => b.getAttribute('aria-valuenow'))).toEqual(['1', '0', '0']);
     });
 
     test('managers link only unlinked ordinary tasks and add stages', () => {
