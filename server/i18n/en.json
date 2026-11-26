@@ -12742,6 +12742,16 @@
     "description": "API error, shown on the task board, when a task is moved to Done while tasks it waits for are not done. Titles is a comma-separated list of those task titles."
   },
   {
+    "id": "app.task_stage.invalid_section.app_error",
+    "translation": "The stage's section was not found in this team.",
+    "description": "API error when a task stage is created for a task list section that does not exist or belongs to another team."
+  },
+  {
+    "id": "app.task_stage.invalid_tasks.app_error",
+    "translation": "A stage can only list ordinary tasks of its own section, each once, and a task can belong to only one stage.",
+    "description": "API error, shown on the Stages tab of the task page, when linking a task to a production stage that is in another section, is a revision, is listed twice, or is already in another stage."
+  },
+  {
     "id": "app.team.access_policies.channel_not_found.app_error",
     "translation": "One or more channels were not found.",
     "description": "API error shown to an admin configuring a team access policy when some of the selected channels do not exist."
@@ -19960,6 +19970,36 @@
     "id": "model.task_section.is_valid.team_id.app_error",
     "translation": "Invalid team id.",
     "description": "API validation error when a task list section's team ID is malformed."
+  },
+  {
+    "id": "model.task_stage.is_valid.create_at.app_error",
+    "translation": "Create and update times must be set.",
+    "description": "API validation error when a task stage is saved without its create or update time."
+  },
+  {
+    "id": "model.task_stage.is_valid.id.app_error",
+    "translation": "Invalid stage id.",
+    "description": "API validation error when a task stage's id is not a valid id."
+  },
+  {
+    "id": "model.task_stage.is_valid.name.app_error",
+    "translation": "Stage name must be between 1 and 64 characters.",
+    "description": "API validation error, shown on the Stages tab of the task page, when a production stage's name is empty or longer than 64 characters."
+  },
+  {
+    "id": "model.task_stage.is_valid.section_id.app_error",
+    "translation": "Invalid section id.",
+    "description": "API validation error when a task stage has no valid task list section id."
+  },
+  {
+    "id": "model.task_stage.is_valid.task_ids.app_error",
+    "translation": "Invalid task id.",
+    "description": "API validation error when a task stage lists a task id that is not a valid id."
+  },
+  {
+    "id": "model.task_stage.is_valid.team_id.app_error",
+    "translation": "Invalid team id.",
+    "description": "API validation error when a task stage's team id is not a valid id."
   },
   {
     "id": "model.team.is_valid.characters.app_error",

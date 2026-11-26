@@ -224,3 +224,48 @@ func (c *Client4) GetTaskSectionVideo(ctx context.Context, sectionId, fileId str
 	}
 	return data, BuildResponse(r), nil
 }
+
+func (c *Client4) GetTaskSchedule(ctx context.Context, sectionId string) (*TaskSchedule, *Response, error) {
+	r, err := c.doAPIGet(ctx, newClientRoute("task_sections").Join(sectionId, "schedule"), "")
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return DecodeJSONFromResponse[*TaskSchedule](r)
+}
+
+func (c *Client4) GetTeamTaskStages(ctx context.Context, teamId string) ([]*TaskStage, *Response, error) {
+	r, err := c.doAPIGet(ctx, c.teamRoute(teamId).Join("task_stages"), "")
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return DecodeJSONFromResponse[[]*TaskStage](r)
+}
+
+func (c *Client4) CreateTaskStage(ctx context.Context, stage *TaskStage) (*TaskStage, *Response, error) {
+	r, err := c.doAPIPostJSON(ctx, c.teamRoute(stage.TeamId).Join("task_stages"), stage)
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return DecodeJSONFromResponse[*TaskStage](r)
+}
+
+func (c *Client4) PatchTaskStage(ctx context.Context, stageId string, patch *TaskStagePatch) (*TaskStage, *Response, error) {
+	r, err := c.doAPIPatchJSON(ctx, newClientRoute("task_stages").Join(stageId), patch)
+	if err != nil {
+		return nil, BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return DecodeJSONFromResponse[*TaskStage](r)
+}
+
+func (c *Client4) DeleteTaskStage(ctx context.Context, stageId string) (*Response, error) {
+	r, err := c.doAPIDelete(ctx, newClientRoute("task_stages").Join(stageId))
+	if err != nil {
+		return BuildResponse(r), err
+	}
+	defer closeBody(r)
+	return BuildResponse(r), nil
+}

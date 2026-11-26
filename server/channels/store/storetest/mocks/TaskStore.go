@@ -578,6 +578,144 @@ func (_m *TaskStore) GetLibraryTaskFiles(teamId string, folderId string, limit i
 	return r0, r1
 }
 
+// SaveStage provides a mock function with given fields: stage
+func (_m *TaskStore) SaveStage(stage *model.TaskStage) (*model.TaskStage, error) {
+	ret := _m.Called(stage)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveStage")
+	}
+
+	var r0 *model.TaskStage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*model.TaskStage) (*model.TaskStage, error)); ok {
+		return rf(stage)
+	}
+	if rf, ok := ret.Get(0).(func(*model.TaskStage) *model.TaskStage); ok {
+		r0 = rf(stage)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.TaskStage)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*model.TaskStage) error); ok {
+		r1 = rf(stage)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// UpdateStage provides a mock function with given fields: stage
+func (_m *TaskStore) UpdateStage(stage *model.TaskStage) (*model.TaskStage, error) {
+	ret := _m.Called(stage)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateStage")
+	}
+
+	var r0 *model.TaskStage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*model.TaskStage) (*model.TaskStage, error)); ok {
+		return rf(stage)
+	}
+	if rf, ok := ret.Get(0).(func(*model.TaskStage) *model.TaskStage); ok {
+		r0 = rf(stage)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.TaskStage)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*model.TaskStage) error); ok {
+		r1 = rf(stage)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetStage provides a mock function with given fields: id
+func (_m *TaskStore) GetStage(id string) (*model.TaskStage, error) {
+	ret := _m.Called(id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetStage")
+	}
+
+	var r0 *model.TaskStage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (*model.TaskStage, error)); ok {
+		return rf(id)
+	}
+	if rf, ok := ret.Get(0).(func(string) *model.TaskStage); ok {
+		r0 = rf(id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.TaskStage)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetStagesForTeam provides a mock function with given fields: teamId
+func (_m *TaskStore) GetStagesForTeam(teamId string) ([]*model.TaskStage, error) {
+	ret := _m.Called(teamId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetStagesForTeam")
+	}
+
+	var r0 []*model.TaskStage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]*model.TaskStage, error)); ok {
+		return rf(teamId)
+	}
+	if rf, ok := ret.Get(0).(func(string) []*model.TaskStage); ok {
+		r0 = rf(teamId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.TaskStage)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(teamId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// DeleteStage provides a mock function with given fields: id
+func (_m *TaskStore) DeleteStage(id string) error {
+	ret := _m.Called(id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteStage")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(id)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // NewTaskStore creates a new instance of TaskStore. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewTaskStore(t interface {

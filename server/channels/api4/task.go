@@ -34,6 +34,13 @@ func (api *API) InitTasks() {
 	api.BaseRoutes.APIRoot.Handle("/task_sections/{section_id:[A-Za-z0-9]+}/video", api.APISessionRequiredTrustRequester(getTaskSectionVideo)).Methods(http.MethodGet)
 	api.BaseRoutes.APIRoot.Handle("/task_sections/{section_id:[A-Za-z0-9]+}/videos", api.APISessionRequired(getTaskSectionVideos)).Methods(http.MethodGet)
 
+	api.BaseRoutes.APIRoot.Handle("/task_sections/{section_id:[A-Za-z0-9]+}/schedule", api.APISessionRequired(getTaskSchedule)).Methods(http.MethodGet)
+
+	api.BaseRoutes.Team.Handle("/task_stages", api.APISessionRequired(getTeamTaskStages)).Methods(http.MethodGet)
+	api.BaseRoutes.Team.Handle("/task_stages", api.APISessionRequired(createTaskStage)).Methods(http.MethodPost)
+	api.BaseRoutes.APIRoot.Handle("/task_stages/{stage_id:[A-Za-z0-9]+}", api.APISessionRequired(patchTaskStage)).Methods(http.MethodPatch)
+	api.BaseRoutes.APIRoot.Handle("/task_stages/{stage_id:[A-Za-z0-9]+}", api.APISessionRequired(deleteTaskStage)).Methods(http.MethodDelete)
+
 	api.BaseRoutes.APIRoot.Handle("/tasks/{task_id:[A-Za-z0-9]+}/comments", api.APISessionRequired(getTaskComments)).Methods(http.MethodGet)
 	api.BaseRoutes.APIRoot.Handle("/tasks/{task_id:[A-Za-z0-9]+}/posts", api.APISessionRequired(getTaskPosts)).Methods(http.MethodGet)
 	api.BaseRoutes.APIRoot.Handle("/tasks/{task_id:[A-Za-z0-9]+}/comments", api.APISessionRequired(createTaskComment, handlerParamFileAPI)).Methods(http.MethodPost)
@@ -720,4 +727,132 @@ func getTaskCommentFile(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	forceDownload := r.URL.Query().Get("download") == "1"
 	web.WriteFileResponse(info.Name, info.MimeType, info.Size, time.UnixMilli(info.UpdateAt), *c.App.Config().ServiceSettings.WebserverMode, fileReader, forceDownload, w, r)
+}
+
+// getTaskSchedule returns the section's task weights and first and last tasks; any team member may read it.
+func getTaskSchedule(c *Context, w http.ResponseWriter, r *http.Request) {
+	section := loadTaskSection(c, r)
+	if c.Err != nil {
+		return
+	}
+	schedule, appErr := c.App.GetTaskSchedule(section)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	writeTaskJSON(w, http.StatusOK, schedule)
+}
+
+// loadTaskStage resolves {stage_id} and checks the caller belongs to the stage's team.
+func loadTaskStage(c *Context, r *http.Request) *model.TaskStage {
+	stage, appErr := c.App.GetTaskStage(mux.Vars(r)["stage_id"])
+	if appErr != nil {
+		c.Err = appErr
+		return nil
+	}
+	if requireTaskTeamMember(c, stage.TeamId); c.Err != nil {
+		return nil
+	}
+	return stage
+}
+
+func getTeamTaskStages(c *Context, w http.ResponseWriter, r *http.Request) {
+	if c.RequireTeamId(); c.Err != nil {
+		return
+	}
+	if requireTaskTeamMember(c, c.Params.TeamId); c.Err != nil {
+		return
+	}
+	stages, appErr := c.App.GetTaskStagesForTeam(c.Params.TeamId)
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+	writeTaskJSON(w, http.StatusOK, stages)
+}
+
+// Stages are part of planning the tasks, so creating, changing and deleting them needs manage_tasks.
+func createTaskStage(c *Context, w http.ResponseWriter, r *http.Request) {
+	if c.RequireTeamId(); c.Err != nil {
+		return
+	}
+	if requireTeamPermission(c, c.Params.TeamId, model.PermissionManageTasks); c.Err != nil {
+		return
+	}
+
+	var stage model.TaskStage
+	if err := json.NewDecoder(r.Body).Decode(&stage); err != nil {
+		c.SetInvalidParamWithErr("task_stage", err)
+		return
+	}
+	stage.Id = ""
+	stage.TeamId = c.Params.TeamId
+
+	auditRec := c.MakeAuditRecord(model.AuditEventCreateTaskStage, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	model.AddEventParameterAuditableToAuditRec(auditRec, "task_stage", &stage)
+
+	created, appErr := c.App.CreateTaskStage(c.AppContext, &stage, r.Header.Get(model.ConnectionId))
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	auditRec.Success()
+	auditRec.AddEventResultState(created)
+	auditRec.AddEventObjectType("task_stage")
+	writeTaskJSON(w, http.StatusCreated, created)
+}
+
+func patchTaskStage(c *Context, w http.ResponseWriter, r *http.Request) {
+	stage := loadTaskStage(c, r)
+	if c.Err != nil {
+		return
+	}
+	if requireTeamPermission(c, stage.TeamId, model.PermissionManageTasks); c.Err != nil {
+		return
+	}
+
+	var patch model.TaskStagePatch
+	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
+		c.SetInvalidParamWithErr("task_stage", err)
+		return
+	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventPatchTaskStage, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	auditRec.AddEventPriorState(stage)
+
+	updated, appErr := c.App.PatchTaskStage(c.AppContext, stage, &patch, r.Header.Get(model.ConnectionId))
+	if appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	auditRec.Success()
+	auditRec.AddEventResultState(updated)
+	auditRec.AddEventObjectType("task_stage")
+	writeTaskJSON(w, http.StatusOK, updated)
+}
+
+func deleteTaskStage(c *Context, w http.ResponseWriter, r *http.Request) {
+	stage := loadTaskStage(c, r)
+	if c.Err != nil {
+		return
+	}
+	if requireTeamPermission(c, stage.TeamId, model.PermissionManageTasks); c.Err != nil {
+		return
+	}
+
+	auditRec := c.MakeAuditRecord(model.AuditEventDeleteTaskStage, model.AuditStatusFail)
+	defer c.LogAuditRec(auditRec)
+	auditRec.AddEventPriorState(stage)
+
+	if appErr := c.App.DeleteTaskStage(c.AppContext, stage, r.Header.Get(model.ConnectionId)); appErr != nil {
+		c.Err = appErr
+		return
+	}
+
+	auditRec.Success()
+	ReturnStatusOK(w)
 }

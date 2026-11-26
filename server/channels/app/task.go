@@ -240,6 +240,9 @@ func (a *App) PatchTask(rctx request.CTX, task *model.Task, patch *model.TaskPat
 		if appErr := a.unlinkTask(rctx, task.Id, teamTasks, false, connectionID); appErr != nil {
 			return nil, appErr
 		}
+		if appErr := a.unlinkTaskFromStages(rctx, task.TeamId, task.SectionId, task.Id, connectionID); appErr != nil {
+			return nil, appErr
+		}
 	}
 	a.publishTaskEvent(rctx, model.WebsocketTaskUpserted, updated.TeamId, "task", updated, connectionID)
 	actorID := ""
@@ -607,7 +610,10 @@ func (a *App) DeleteTask(rctx request.CTX, task *model.Task, connectionID string
 	if appErr != nil {
 		return appErr
 	}
-	return a.unlinkTask(rctx, task.Id, teamTasks, true, connectionID)
+	if appErr := a.unlinkTask(rctx, task.Id, teamTasks, true, connectionID); appErr != nil {
+		return appErr
+	}
+	return a.unlinkTaskFromStages(rctx, task.TeamId, task.SectionId, task.Id, connectionID)
 }
 
 func (a *App) GetTaskSection(sectionID string) (*model.TaskSection, *model.AppError) {

@@ -17549,6 +17549,27 @@ func (s *RetryLayerTaskStore) DeleteSection(id string) error {
 
 }
 
+func (s *RetryLayerTaskStore) DeleteStage(id string) error {
+
+	tries := 0
+	for {
+		err := s.TaskStore.DeleteStage(id)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
 func (s *RetryLayerTaskStore) Get(id string) (*model.Task, error) {
 
 	tries := 0
@@ -17780,6 +17801,48 @@ func (s *RetryLayerTaskStore) GetSectionsForTeam(teamId string) ([]*model.TaskSe
 
 }
 
+func (s *RetryLayerTaskStore) GetStage(id string) (*model.TaskStage, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.GetStage(id)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTaskStore) GetStagesForTeam(teamId string) ([]*model.TaskStage, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.GetStagesForTeam(teamId)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
 func (s *RetryLayerTaskStore) Save(task *model.Task) (*model.Task, error) {
 
 	tries := 0
@@ -17864,6 +17927,27 @@ func (s *RetryLayerTaskStore) SaveSectionVideo(video *model.TaskSectionVideo) (*
 
 }
 
+func (s *RetryLayerTaskStore) SaveStage(stage *model.TaskStage) (*model.TaskStage, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.SaveStage(stage)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
 func (s *RetryLayerTaskStore) Update(task *model.Task) (*model.Task, error) {
 
 	tries := 0
@@ -17890,6 +17974,27 @@ func (s *RetryLayerTaskStore) UpdateSection(section *model.TaskSection) (*model.
 	tries := 0
 	for {
 		result, err := s.TaskStore.UpdateSection(section)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerTaskStore) UpdateStage(stage *model.TaskStage) (*model.TaskStage, error) {
+
+	tries := 0
+	for {
+		result, err := s.TaskStore.UpdateStage(stage)
 		if err == nil {
 			return result, nil
 		}

@@ -1234,6 +1234,11 @@ type TaskStore interface {
 	DeleteSection(id string) error
 	SaveSectionVideo(video *model.TaskSectionVideo) (*model.TaskSectionVideo, error)
 	GetSectionVideos(sectionId string) ([]*model.TaskSectionVideo, error)
+	SaveStage(stage *model.TaskStage) (*model.TaskStage, error)
+	GetStage(id string) (*model.TaskStage, error)
+	GetStagesForTeam(teamId string) ([]*model.TaskStage, error)
+	UpdateStage(stage *model.TaskStage) (*model.TaskStage, error)
+	DeleteStage(id string) error
 	SaveComment(comment *model.TaskComment) (*model.TaskComment, error)
 	GetComment(id string) (*model.TaskComment, error)
 	GetCommentsForTask(taskId string) ([]*model.TaskComment, error)

@@ -27,6 +27,8 @@ var taskCommentColumns = []string{"Id", "TaskId", "UserId", "Message", "FileIds"
 
 var taskSectionColumns = []string{"Id", "TeamId", "Name", "SortOrder", "ChannelId", "VideoFileId", "CreateAt", "UpdateAt"}
 
+var taskStageColumns = []string{"Id", "TeamId", "SectionId", "Name", "SortOrder", "TaskIds", "CreateAt", "UpdateAt"}
+
 func (s *SqlTaskStore) Save(task *model.Task) (*model.Task, error) {
 	task.PreSave()
 	if err := task.IsValid(); err != nil {
@@ -192,7 +194,7 @@ func (s *SqlTaskStore) UpdateSection(section *model.TaskSection) (*model.TaskSec
 	return section, nil
 }
 
-// DeleteSection removes the section and its video versions, and moves its tasks to "no section" as ordinary tasks, in one transaction.
+// DeleteSection removes the section, its video versions and stages, and moves its tasks to "no section" as ordinary tasks, in one transaction.
 func (s *SqlTaskStore) DeleteSection(id string) (err error) {
 	transaction, err := s.GetMaster().Begin()
 	if err != nil {
@@ -211,6 +213,10 @@ func (s *SqlTaskStore) DeleteSection(id string) (err error) {
 
 	if _, err = transaction.ExecBuilder(s.getQueryBuilder().Delete("TaskSectionVideos").Where(sq.Eq{"SectionId": id})); err != nil {
 		return errors.Wrapf(err, "failed to delete TaskSectionVideos for section_id=%s", id)
+	}
+
+	if _, err = transaction.ExecBuilder(s.getQueryBuilder().Delete("TaskStages").Where(sq.Eq{"SectionId": id})); err != nil {
+		return errors.Wrapf(err, "failed to delete TaskStages for section_id=%s", id)
 	}
 
 	if _, err = transaction.ExecBuilder(s.getQueryBuilder().Delete("TaskSections").Where(sq.Eq{"Id": id})); err != nil {
@@ -243,6 +249,76 @@ func (s *SqlTaskStore) GetSectionVideos(sectionId string) ([]*model.TaskSectionV
 		return nil, errors.Wrapf(err, "failed to get TaskSectionVideos for section_id=%s", sectionId)
 	}
 	return videos, nil
+}
+
+func (s *SqlTaskStore) SaveStage(stage *model.TaskStage) (*model.TaskStage, error) {
+	stage.PreSave()
+	if err := stage.IsValid(); err != nil {
+		return nil, err
+	}
+
+	_, err := s.GetMaster().ExecBuilder(s.getQueryBuilder().
+		Insert("TaskStages").
+		Columns(taskStageColumns...).
+		Values(stage.Id, stage.TeamId, stage.SectionId, stage.Name, stage.SortOrder, stage.TaskIds, stage.CreateAt, stage.UpdateAt))
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to save TaskStage with id=%s", stage.Id)
+	}
+	return stage, nil
+}
+
+func (s *SqlTaskStore) GetStage(id string) (*model.TaskStage, error) {
+	var stage model.TaskStage
+	err := s.GetReplica().GetBuilder(&stage, s.getQueryBuilder().Select(taskStageColumns...).From("TaskStages").Where(sq.Eq{"Id": id}))
+	if err == sql.ErrNoRows {
+		return nil, store.NewErrNotFound("TaskStage", id)
+	} else if err != nil {
+		return nil, errors.Wrapf(err, "failed to get TaskStage with id=%s", id)
+	}
+	return &stage, nil
+}
+
+// GetStagesForTeam returns the team's stages in order: by section, then SortOrder.
+func (s *SqlTaskStore) GetStagesForTeam(teamId string) ([]*model.TaskStage, error) {
+	stages := []*model.TaskStage{}
+	err := s.GetReplica().SelectBuilder(&stages, s.getQueryBuilder().
+		Select(taskStageColumns...).
+		From("TaskStages").
+		Where(sq.Eq{"TeamId": teamId}).
+		OrderBy("SectionId ASC", "SortOrder ASC", "CreateAt ASC"))
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get TaskStages for team_id=%s", teamId)
+	}
+	return stages, nil
+}
+
+func (s *SqlTaskStore) UpdateStage(stage *model.TaskStage) (*model.TaskStage, error) {
+	stage.PreUpdate()
+	if err := stage.IsValid(); err != nil {
+		return nil, err
+	}
+
+	res, err := s.GetMaster().ExecBuilder(s.getQueryBuilder().
+		Update("TaskStages").
+		Set("Name", stage.Name).
+		Set("SortOrder", stage.SortOrder).
+		Set("TaskIds", stage.TaskIds).
+		Set("UpdateAt", stage.UpdateAt).
+		Where(sq.Eq{"Id": stage.Id}))
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to update TaskStage with id=%s", stage.Id)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, store.NewErrNotFound("TaskStage", stage.Id)
+	}
+	return stage, nil
+}
+
+func (s *SqlTaskStore) DeleteStage(id string) error {
+	if _, err := s.GetMaster().ExecBuilder(s.getQueryBuilder().Delete("TaskStages").Where(sq.Eq{"Id": id})); err != nil {
+		return errors.Wrapf(err, "failed to delete TaskStage with id=%s", id)
+	}
+	return nil
 }
 
 func (s *SqlTaskStore) SaveComment(comment *model.TaskComment) (*model.TaskComment, error) {

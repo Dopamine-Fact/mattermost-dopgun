@@ -455,6 +455,9 @@ const (
 	AuditEventCreateTaskSection   = "createTaskSection"   // create task list section
 	AuditEventPatchTaskSection    = "patchTaskSection"    // update task list section
 	AuditEventDeleteTaskSection   = "deleteTaskSection"   // delete task list section and unassign its tasks
+	AuditEventCreateTaskStage     = "createTaskStage"     // create a production stage of a task section
+	AuditEventPatchTaskStage      = "patchTaskStage"      // rename, reorder or relink a task stage
+	AuditEventDeleteTaskStage     = "deleteTaskStage"     // delete a task stage
 	AuditEventCreateTaskComment   = "createTaskComment"   // comment on a task, with optional file attachments
 	AuditEventDeleteTaskComment   = "deleteTaskComment"   // delete task comment and its attachments
 	AuditEventSetTaskSectionVideo = "setTaskSectionVideo" // upload the video of a revision channel

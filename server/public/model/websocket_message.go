@@ -102,6 +102,8 @@ const (
 	WebsocketTaskDeleted                              WebsocketEventType = "task_deleted"
 	WebsocketTaskSectionUpserted                      WebsocketEventType = "task_section_upserted"
 	WebsocketTaskSectionDeleted                       WebsocketEventType = "task_section_deleted"
+	WebsocketTaskStageUpserted                        WebsocketEventType = "task_stage_upserted"
+	WebsocketTaskStageDeleted                         WebsocketEventType = "task_stage_deleted"
 	WebsocketEventCanvasUpdated                       WebsocketEventType = "canvas_updated"
 	WebsocketEventCanvasAwareness                     WebsocketEventType = "canvas_awareness"
 	WebsocketDailyReportUpdated                       WebsocketEventType = "daily_report_updated"

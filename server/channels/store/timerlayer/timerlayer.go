@@ -13865,6 +13865,22 @@ func (s *TimerLayerTaskStore) DeleteSection(id string) error {
 	return err
 }
 
+func (s *TimerLayerTaskStore) DeleteStage(id string) error {
+	start := time.Now()
+
+	err := s.TaskStore.DeleteStage(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.DeleteStage", success, elapsed)
+	}
+	return err
+}
+
 func (s *TimerLayerTaskStore) Get(id string) (*model.Task, error) {
 	start := time.Now()
 
@@ -14041,6 +14057,38 @@ func (s *TimerLayerTaskStore) GetSectionsForTeam(teamId string) ([]*model.TaskSe
 	return result, err
 }
 
+func (s *TimerLayerTaskStore) GetStage(id string) (*model.TaskStage, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.GetStage(id)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.GetStage", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerTaskStore) GetStagesForTeam(teamId string) ([]*model.TaskStage, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.GetStagesForTeam(teamId)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.GetStagesForTeam", success, elapsed)
+	}
+	return result, err
+}
+
 func (s *TimerLayerTaskStore) Save(task *model.Task) (*model.Task, error) {
 	start := time.Now()
 
@@ -14105,6 +14153,22 @@ func (s *TimerLayerTaskStore) SaveSectionVideo(video *model.TaskSectionVideo) (*
 	return result, err
 }
 
+func (s *TimerLayerTaskStore) SaveStage(stage *model.TaskStage) (*model.TaskStage, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.SaveStage(stage)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.SaveStage", success, elapsed)
+	}
+	return result, err
+}
+
 func (s *TimerLayerTaskStore) Update(task *model.Task) (*model.Task, error) {
 	start := time.Now()
 
@@ -14133,6 +14197,22 @@ func (s *TimerLayerTaskStore) UpdateSection(section *model.TaskSection) (*model.
 			success = "true"
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.UpdateSection", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerTaskStore) UpdateStage(stage *model.TaskStage) (*model.TaskStage, error) {
+	start := time.Now()
+
+	result, err := s.TaskStore.UpdateStage(stage)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TaskStore.UpdateStage", success, elapsed)
 	}
 	return result, err
 }
