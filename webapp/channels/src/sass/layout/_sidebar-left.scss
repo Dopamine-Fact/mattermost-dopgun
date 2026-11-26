@@ -1042,8 +1042,9 @@ $sidebarOpacityAnimationDuration: 0.15s;
         }
     }
 
-    .SidebarChannel--sub .SidebarLink {
-        padding-left: 37px;
+    // Doubled class so it outranks the `.SidebarChannel .SidebarLink` padding declared further down.
+    .SidebarChannel.SidebarChannel--sub .SidebarLink {
+        padding-left: 43px;
     }
 
     .SidebarChannel.combineTarget .SidebarLink {

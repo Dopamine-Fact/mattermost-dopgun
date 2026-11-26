@@ -965,7 +965,7 @@ describe('makeGetFilteredChannelIdsForCategory', () => {
         const parent = {...readChannel, team_id: 'team1', display_name: 'Parent'};
         const subB = {...unreadChannel1, team_id: 'team1', display_name: 'B', parent_id: parent.id};
         const subA = {...unreadChannel2, team_id: 'team1', display_name: 'A', parent_id: parent.id};
-        const category1 = {id: 'category1', team_id: 'team1', channel_ids: [subB.id, parent.id, subA.id]} as ChannelCategory;
+        const category1 = {id: 'category1', team_id: 'team1', channel_ids: [subB.id, parent.id, subA.id], sorting: 'manual'} as ChannelCategory;
 
         const makeState = (myMembers: Record<string, unknown>) => ({
             ...baseState,
@@ -978,7 +978,7 @@ describe('makeGetFilteredChannelIdsForCategory', () => {
                 },
                 channelCategories: {
                     byId: {category1},
-                    orderByTeam: {team1: [category1]},
+                    orderByTeam: {team1: [category1.id]},
                 },
             },
         } as unknown as GlobalState);
@@ -987,6 +987,9 @@ describe('makeGetFilteredChannelIdsForCategory', () => {
         const state = makeState({...otherMembers, [parent.id]: parentMember});
         expect(Selectors.getSubChannelIdsByParent(state)).toEqual({[parent.id]: [subA.id, subB.id]});
         expect(Selectors.makeGetFilteredChannelIdsForCategory()(state, category1)).toEqual([parent.id]);
+
+        // Keyboard navigation follows the sidebar: sub-channels right after their parent.
+        expect(Selectors.getChannelsInCategoryOrder(state).map((c) => c.id)).toEqual([parent.id, subA.id, subB.id]);
 
         // A sub-channel whose parent I'm not in stays in its own category.
         const notInParent = makeState(otherMembers);

@@ -91,6 +91,33 @@ const getUnreadChannelIdsSet = createSelector(
 
 // getChannelsInCategoryOrder returns an array of channels on the current team that are currently visible in the sidebar.
 // Channels are returned in the same order as in the sidebar. Channels in the Unreads category are not included.
+// Sub-channels I'm a member of whose parent is also one of my unarchived channels in the current team, keyed by
+// parent id and sorted by name. Those sub-channels are listed under their parent in the sidebar.
+// shortcut: sub-channels I haven't joined aren't listed; add a server query if they should show up too.
+export const getSubChannelIdsByParent: (state: GlobalState) => Record<string, string[]> = createSelector(
+    'getSubChannelIdsByParent',
+    getAllChannels,
+    getMyChannelMemberships,
+    getCurrentTeamId,
+    (allChannels, myMembers, teamId) => {
+        const channels = Object.values(allChannels).filter((c) => c.team_id === teamId && c.delete_at === 0 && myMembers[c.id]);
+        const parentIds = new Set(channels.map((c) => c.id));
+        const subChannels = channels.filter((c) => c.parent_id && parentIds.has(c.parent_id));
+        const byParent: Record<string, string[]> = {};
+        for (const c of subChannels.sort((a, b) => a.display_name.localeCompare(b.display_name))) {
+            (byParent[c.parent_id!] ??= []).push(c.id);
+        }
+        return byParent;
+    },
+);
+
+// The sub-channels shown under their parent, so their own categories leave them out.
+export const getNestedSubChannelIds: (state: GlobalState) => Set<string> = createSelector(
+    'getNestedSubChannelIds',
+    getSubChannelIdsByParent,
+    (byParent) => new Set(Object.values(byParent).flat()),
+);
+
 export const getChannelsInCategoryOrder = (() => {
     return createSelector(
         'getChannelsInCategoryOrder',
@@ -102,8 +129,10 @@ export const getChannelsInCategoryOrder = (() => {
         getProductRailFilter,
         getBoardChannelIds,
         shouldCollapseCategoryWithUnreads,
-        (categories, channelsByCategory, currentChannelId, unreadChannelIds, showUnreadsCategory, railSection, boardChannelIds, collapseCategoryWithUnreads) => {
-            return categories.map((category) => {
+        getSubChannelIdsByParent,
+        getNestedSubChannelIds,
+        (categories, channelsByCategory, currentChannelId, unreadChannelIds, showUnreadsCategory, railSection, boardChannelIds, collapseCategoryWithUnreads, subChannelIdsByParent, nestedIds) => {
+            const ordered = categories.map((category) => {
                 const channels = channelsByCategory[category.id];
 
                 return channels.filter((channel: Channel) => {
@@ -130,6 +159,16 @@ export const getChannelsInCategoryOrder = (() => {
                     return true;
                 });
             }).flat();
+
+            // Sub-channels come right after their parent, as the sidebar lists them.
+            if (!nestedIds.size) {
+                return ordered;
+            }
+            const shown = new Map(ordered.map((channel) => [channel.id, channel]));
+            return ordered.filter((channel) => !nestedIds.has(channel.id)).flatMap((channel) => [
+                channel,
+                ...(subChannelIdsByParent[channel.id] ?? []).flatMap((id) => shown.get(id) ?? []),
+            ]);
         },
     );
 })();
@@ -226,33 +265,6 @@ export const getDisplayedChannels = createSelector(
 
         return channelsInCategoryOrder;
     },
-);
-
-// Sub-channels I'm a member of whose parent is also one of my unarchived channels in the current team, keyed by
-// parent id and sorted by name. Those sub-channels are listed under their parent in the sidebar.
-// shortcut: sub-channels I haven't joined aren't listed; add a server query if they should show up too.
-export const getSubChannelIdsByParent: (state: GlobalState) => Record<string, string[]> = createSelector(
-    'getSubChannelIdsByParent',
-    getAllChannels,
-    getMyChannelMemberships,
-    getCurrentTeamId,
-    (allChannels, myMembers, teamId) => {
-        const channels = Object.values(allChannels).filter((c) => c.team_id === teamId && c.delete_at === 0 && myMembers[c.id]);
-        const parentIds = new Set(channels.map((c) => c.id));
-        const subChannels = channels.filter((c) => c.parent_id && parentIds.has(c.parent_id));
-        const byParent: Record<string, string[]> = {};
-        for (const c of subChannels.sort((a, b) => a.display_name.localeCompare(b.display_name))) {
-            (byParent[c.parent_id!] ??= []).push(c.id);
-        }
-        return byParent;
-    },
-);
-
-// The sub-channels shown under their parent, so their own categories leave them out.
-export const getNestedSubChannelIds: (state: GlobalState) => Set<string> = createSelector(
-    'getNestedSubChannelIds',
-    getSubChannelIdsByParent,
-    (byParent) => new Set(Object.values(byParent).flat()),
 );
 
 // Returns a selector that, given a category, returns the ids of channels visible in that category. The returned channels do not
