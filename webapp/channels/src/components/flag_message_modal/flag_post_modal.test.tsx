@@ -45,6 +45,11 @@ describe('components/FlagPostModal', () => {
         },
     };
 
+    beforeEach(() => {
+        // The post preview's profile popover loads team departments (use_custom_roles); the automock returns undefined.
+        mockedClient4.getTeamDepartments = jest.fn().mockResolvedValue([]);
+    });
+
     it('should render modal with reasons and post preview', async () => {
         renderWithContext(
             <FlagPostModal

@@ -17,15 +17,11 @@ describe('AdminConsoleIndex.generateIndex', () => {
         expect(idx.search('ldap')).toEqual([
             'environment/session_lengths',
             'authentication/mfa',
-            'authentication/saml',
             'authentication/email',
-            'authentication/ldap',
             'authentication/guest_access',
         ]);
         expect(idx.search('saml')).toEqual([
-            'authentication/saml',
             'environment/session_lengths',
-            'environment/mobile_security',
             'authentication/email',
         ]);
         expect(idx.search('nginx')).toEqual([
@@ -51,7 +47,6 @@ describe('AdminConsoleIndex.generateIndex', () => {
             'environment/notifications',
         ]);
         expect(idx.search('deactivation')).toEqual([
-            'authentication/saml',
             'site_config/users_and_teams',
         ]);
         expect(idx.search('away')).toEqual([

@@ -3,6 +3,9 @@
 
 /** @type {import('jest').Config} */
 
+// Date tests assume UTC; pin it here so a bare `npx jest` matches `npm test` (cross-env TZ=Etc/UTC).
+process.env.TZ = 'Etc/UTC'; // eslint-disable-line no-process-env
+
 const config = {
     testPathIgnorePatterns: ['/node_modules/'],
     clearMocks: true,
