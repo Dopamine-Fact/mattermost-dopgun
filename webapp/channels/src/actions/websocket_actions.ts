@@ -25,7 +25,7 @@ import type {Reaction} from '@mattermost/types/reactions';
 import type {Role} from '@mattermost/types/roles';
 import type {ScheduledPost} from '@mattermost/types/schedule_post';
 import type {GlobalState} from '@mattermost/types/store';
-import type {Task, TaskSection} from '@mattermost/types/tasks';
+import type {Task, TaskSection, TaskStage} from '@mattermost/types/tasks';
 import type {Team, TeamMembership} from '@mattermost/types/teams';
 import type {UserThread} from '@mattermost/types/threads';
 
@@ -788,6 +788,12 @@ export function handleEvent(msg: WebSocketMessage) {
         break;
     case WebSocketEvents.TaskSectionDeleted:
         dispatch({type: TaskTypes.TASK_SECTION_DELETED, data: {id: msg.data.section_id}});
+        break;
+    case WebSocketEvents.TaskStageUpserted:
+        dispatch({type: TaskTypes.TASK_STAGE_RECEIVED, data: JSON.parse(msg.data.stage) as TaskStage});
+        break;
+    case WebSocketEvents.TaskStageDeleted:
+        dispatch({type: TaskTypes.TASK_STAGE_DELETED, data: {id: msg.data.stage_id}});
         break;
     case WebSocketEvents.PersistentNotificationTriggered:
         dispatch(handlePersistentNotification(msg));

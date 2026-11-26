@@ -18,7 +18,7 @@ import type {PropertyField, PropertyValue} from '@mattermost/types/properties';
 import type {Reaction} from '@mattermost/types/reactions';
 import type {Role} from '@mattermost/types/roles';
 import type {ScheduledPost as ScheduledPostType} from '@mattermost/types/schedule_post';
-import type {Task as TaskType, TaskSection as TaskSectionType} from '@mattermost/types/tasks';
+import type {Task as TaskType, TaskSection as TaskSectionType, TaskStage as TaskStageType} from '@mattermost/types/tasks';
 import type {Team as TeamType, TeamMembership} from '@mattermost/types/teams';
 import type {UserThread} from '@mattermost/types/threads';
 import type {UserProfile, UserStatus} from '@mattermost/types/users';
@@ -157,6 +157,16 @@ export type TaskSectionUpserted = BaseWebSocketMessage<WebSocketEvents.TaskSecti
 
 export type TaskSectionDeleted = BaseWebSocketMessage<WebSocketEvents.TaskSectionDeleted, {
     section_id: string;
+    team_id: string;
+}>;
+
+export type TaskStageUpserted = BaseWebSocketMessage<WebSocketEvents.TaskStageUpserted, {
+    stage: JsonEncodedValue<TaskStageType>;
+    team_id: string;
+}>;
+
+export type TaskStageDeleted = BaseWebSocketMessage<WebSocketEvents.TaskStageDeleted, {
+    stage_id: string;
     team_id: string;
 }>;
 

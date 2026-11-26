@@ -553,6 +553,15 @@
         }
     }
 
+    &__warning {
+        display: flex;
+        align-items: center;
+        margin: 0;
+        color: var(--dnd-indicator);
+        font-size: 12px;
+        gap: 6px;
+    }
+
     &__field {
         display: flex;
         flex-direction: column;
@@ -1539,5 +1548,164 @@
 
     &__add {
         margin-top: 6px;
+    }
+}
+
+// Stages: one section's production stages as an ordered column of cards, coloured like the task status they match.
+.TaskStages {
+    display: flex;
+    max-width: 760px;
+    flex-direction: column;
+    padding: 16px 20px 40px;
+    gap: 12px;
+
+    &__section {
+        display: flex;
+        max-width: 320px;
+        flex-direction: column;
+        margin: 0;
+        font-size: 12px;
+        font-weight: 600;
+        gap: 4px;
+    }
+
+    &__empty {
+        padding: 16px 20px;
+        margin: 0;
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+    }
+
+    &__error {
+        margin: 0;
+        color: var(--error-text);
+    }
+
+    &__list {
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        margin: 0;
+        gap: 12px;
+        list-style: none;
+    }
+
+    &__add {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        input {
+            max-width: 320px;
+        }
+    }
+}
+
+.TaskStage {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 12px;
+    border-left: 4px solid var(--task-status-color);
+    border-radius: 12px;
+    background: rgba(var(--center-channel-color-rgb), 0.04);
+    gap: 8px;
+
+    &--current {
+        box-shadow: 0 0 0 2px var(--task-status-color);
+    }
+
+    &__header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    &__number {
+        color: rgba(var(--center-channel-color-rgb), 0.56);
+        font-weight: 600;
+    }
+
+    &__name {
+        max-width: 260px;
+        flex: 1;
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    &__status,
+    &__progress {
+        display: inline-flex;
+        align-items: center;
+        color: rgba(var(--center-channel-color-rgb), 0.72);
+        font-size: 12px;
+        gap: 6px;
+    }
+
+    &__badge {
+        padding: 1px 8px;
+        border-radius: 10px;
+        background: rgba(var(--center-channel-color-rgb), 0.08);
+        font-size: 11px;
+        font-weight: 600;
+
+        &--current {
+            background: var(--task-status-color);
+            color: var(--center-channel-bg);
+        }
+    }
+
+    &__actions {
+        display: inline-flex;
+        margin-left: auto;
+        gap: 2px;
+    }
+
+    &__tasks {
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        margin: 0;
+        gap: 4px;
+        list-style: none;
+    }
+
+    &__task {
+        display: flex;
+        align-items: center;
+        padding: 4px 8px;
+        border-radius: 6px;
+        background: var(--center-channel-bg);
+        gap: 8px;
+
+        &--selected {
+            background: rgba(var(--center-channel-color-rgb), 0.08);
+        }
+
+        &.TaskStatus--done .TaskStage__taskTitle {
+            color: rgba(var(--center-channel-color-rgb), 0.64);
+            text-decoration: line-through;
+        }
+    }
+
+    &__taskTitle {
+        overflow: hidden;
+        flex: 1;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: var(--center-channel-color);
+        text-align: left;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &__none {
+        color: rgba(var(--center-channel-color-rgb), 0.56);
+        font-size: 12px;
+    }
+
+    &__link {
+        max-width: 320px;
     }
 }

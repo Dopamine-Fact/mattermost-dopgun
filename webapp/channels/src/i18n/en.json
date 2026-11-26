@@ -33875,6 +33875,10 @@
     "defaultMessage": "None",
     "description": "Option of the task folder fields meaning no folder."
   },
+  "tasks.detail.noWeight": {
+    "defaultMessage": "Set a start and a due date: without both, this task has no weight in the plan.",
+    "description": "Warning under the start and due date fields in the task detail panel when the task lacks one of them; a task's weight is the span between the two dates."
+  },
   "tasks.detail.openFolder": {
     "defaultMessage": "Open folder",
     "description": "Link in the task details panel that opens the task's folder in the channel Files tab."
@@ -34155,6 +34159,74 @@
     "defaultMessage": "Tasks",
     "description": ""
   },
+  "tasks.stages.add": {
+    "defaultMessage": "Add stage",
+    "description": "Button on the Stages tab of the task page that creates a production stage with the typed name."
+  },
+  "tasks.stages.addPlaceholder": {
+    "defaultMessage": "New stage name",
+    "description": "Placeholder and label of the field on the Stages tab where a new production stage is named."
+  },
+  "tasks.stages.addTask": {
+    "defaultMessage": "Add a task to the stage",
+    "description": "First option and label of the dropdown on a stage card that links one of the section's tasks to that stage."
+  },
+  "tasks.stages.current": {
+    "defaultMessage": "Current stage",
+    "description": "Badge on the stage card that is the first one in its section not yet done, i.e. where work is now."
+  },
+  "tasks.stages.delete": {
+    "defaultMessage": "Delete stage",
+    "description": "Accessible label of the trash button on a stage card; deleting a stage keeps its tasks."
+  },
+  "tasks.stages.empty": {
+    "defaultMessage": "No stages in this section yet.",
+    "description": "Shown on the Stages tab when the chosen section has no production stages."
+  },
+  "tasks.stages.moveDown": {
+    "defaultMessage": "Move stage down",
+    "description": "Accessible label of the down-arrow button that moves a stage one place later in its section's order."
+  },
+  "tasks.stages.moveUp": {
+    "defaultMessage": "Move stage up",
+    "description": "Accessible label of the up-arrow button that moves a stage one place earlier in its section's order."
+  },
+  "tasks.stages.name": {
+    "defaultMessage": "Stage name",
+    "description": "Accessible label of the editable name field on a stage card."
+  },
+  "tasks.stages.next": {
+    "defaultMessage": "Next",
+    "description": "Badge on the stage card right after the current stage: the one work moves to once the current stage is done."
+  },
+  "tasks.stages.noSections": {
+    "defaultMessage": "Create a section to plan its stages.",
+    "description": "Shown on the Stages tab when the team has no task sections; stages belong to a section."
+  },
+  "tasks.stages.noTasks": {
+    "defaultMessage": "No tasks linked yet.",
+    "description": "Shown inside a stage card that has no tasks linked to it."
+  },
+  "tasks.stages.progress": {
+    "defaultMessage": "{done}/{total} complete",
+    "description": "Count on a stage card: {done} is how many of its tasks are done and approved, {total} how many tasks it has."
+  },
+  "tasks.stages.status.done": {
+    "defaultMessage": "Done",
+    "description": "Status of a stage whose tasks are all done and approved."
+  },
+  "tasks.stages.status.inProgress": {
+    "defaultMessage": "In progress",
+    "description": "Status of a stage some of whose tasks have started but not all are complete."
+  },
+  "tasks.stages.status.notStarted": {
+    "defaultMessage": "Not started",
+    "description": "Status of a stage none of whose tasks has started."
+  },
+  "tasks.stages.unlink": {
+    "defaultMessage": "Remove {title} from the stage",
+    "description": "Accessible label of the × button next to a task on a stage card; {title} is the task title. The task itself is kept."
+  },
   "tasks.status.done": {
     "defaultMessage": "Done",
     "description": ""
@@ -34222,6 +34294,10 @@
   "tasks.view.list": {
     "defaultMessage": "List",
     "description": ""
+  },
+  "tasks.view.stages": {
+    "defaultMessage": "Stages",
+    "description": "Tab on the task page that shows each section's ordered production stages and their status."
   },
   "tasks.view.timeline": {
     "defaultMessage": "Timeline",

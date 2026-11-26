@@ -5,7 +5,7 @@ import type {DropResult} from '@hello-pangea/dnd';
 import {defineMessages} from 'react-intl';
 
 import type {DriveItem, TeamFilesFolder, TeamFilesLayout} from '@mattermost/types/drive';
-import type {Task, TaskPatch, TaskSection, TaskStatus} from '@mattermost/types/tasks';
+import type {Task, TaskPatch, TaskSection, TaskStage, TaskStageStatus, TaskStatus} from '@mattermost/types/tasks';
 import type {UserProfile} from '@mattermost/types/users';
 
 // ViewProps is what the board, list and timeline views share.
@@ -52,6 +52,40 @@ export function isComplete(task: Task): boolean {
 // until a director reverts the approval. Revisions have no approval.
 export function isApprovalLocked(task: Task, approvalEnabled: boolean): boolean {
     return approvalEnabled && !task.video_file_id && task.approval_status === 'approved';
+}
+
+export const stageStatusMessages = defineMessages({
+    not_started: {id: 'tasks.stages.status.notStarted', defaultMessage: 'Not started'},
+    in_progress: {id: 'tasks.stages.status.inProgress', defaultMessage: 'In progress'},
+    done: {id: 'tasks.stages.status.done', defaultMessage: 'Done'},
+});
+
+// stageStatus mirrors the server: done once every listed task is complete, not started while none has left to do,
+// in progress otherwise. Ids of tasks that are not loaded are skipped; a stage without tasks has not started.
+export function stageStatus(stage: TaskStage, byId: Record<string, Task>): TaskStageStatus {
+    const tasks = stage.task_ids.map((id) => byId[id]).filter(Boolean);
+    if (tasks.length && tasks.every(isComplete)) {
+        return 'done';
+    }
+    return tasks.some((t) => t.status !== 'todo') ? 'in_progress' : 'not_started';
+}
+
+export type DerivedStage = {stage: TaskStage; status: TaskStageStatus; current: boolean};
+
+// deriveStages gives one section's ordered stages their status; the current stage is the first that is not done.
+export function deriveStages(stages: TaskStage[], byId: Record<string, Task>): DerivedStage[] {
+    let found = false;
+    return stages.map((stage) => {
+        const status = stageStatus(stage, byId);
+        const current = !found && status !== 'done';
+        found = found || current;
+        return {stage, status, current};
+    });
+}
+
+// hasWeight: a task's weight is its span from start to due date, so it needs both.
+export function hasWeight(task: Task): boolean {
+    return task.start_at > 0 && task.due_at > 0;
 }
 
 export type SubtaskCount = {done: number; total: number};

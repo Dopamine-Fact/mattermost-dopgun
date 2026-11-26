@@ -7,7 +7,7 @@ import {defineMessages, FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {Redirect, useLocation} from 'react-router-dom';
 
-import {CheckboxMarkedCircleOutlineIcon, FormatListBulletedIcon, KanbanIcon, TimelineTextOutlineIcon} from '@mattermost/compass-icons/components';
+import {CheckboxMarkedCircleOutlineIcon, FlagCheckeredIcon, FormatListBulletedIcon, KanbanIcon, TimelineTextOutlineIcon} from '@mattermost/compass-icons/components';
 import type {UserProfile} from '@mattermost/types/users';
 
 import {getProfilesInTeam as fetchProfilesInTeam} from 'mattermost-redux/actions/users';
@@ -27,6 +27,7 @@ import {LhsItemType, LhsPage} from 'types/store/lhs';
 
 import Board from './board';
 import List from './list';
+import Stages from './stages';
 import TaskDetail from './task_detail';
 import Timeline from './timeline';
 
@@ -39,12 +40,14 @@ const viewLabels = defineMessages({
     board: {id: 'tasks.view.board', defaultMessage: 'Board'},
     list: {id: 'tasks.view.list', defaultMessage: 'List'},
     timeline: {id: 'tasks.view.timeline', defaultMessage: 'Timeline'},
+    stages: {id: 'tasks.view.stages', defaultMessage: 'Stages'},
 });
 
 const VIEWS = [
     {id: 'board', Icon: KanbanIcon, View: Board, label: viewLabels.board},
     {id: 'list', Icon: FormatListBulletedIcon, View: List, label: viewLabels.list},
     {id: 'timeline', Icon: TimelineTextOutlineIcon, View: Timeline, label: viewLabels.timeline},
+    {id: 'stages', Icon: FlagCheckeredIcon, View: Stages, label: viewLabels.stages},
 ] as const;
 
 type ViewId = typeof VIEWS[number]['id'];

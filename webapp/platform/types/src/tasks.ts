@@ -109,9 +109,54 @@ export type TaskComment = {
     files?: FileInfo[];
 };
 
+/** A stage's status, derived from its tasks: done once all are complete, not started while all are to do. */
+export type TaskStageStatus = 'not_started' | 'in_progress' | 'done';
+
+// TaskStage is one ordered production step of a section (episode), made of some of the section's tasks.
+export type TaskStage = {
+    id: string;
+    team_id: string;
+
+    /** set on create only */
+    section_id: string;
+    name: string;
+
+    /** order within the section */
+    sort_order: number;
+
+    /** the section's ordinary tasks that make up the stage; a task is in at most one stage */
+    task_ids: string[];
+    create_at: number;
+    update_at: number;
+
+    /** derived by the server when the stage was sent; derive it from the current tasks with the task utils instead */
+    status: TaskStageStatus;
+
+    /** the first stage of its section that is not done */
+    current: boolean;
+};
+
+export type TaskStagePatch = Partial<Pick<TaskStage, 'name' | 'sort_order' | 'task_ids'>>;
+
+export type TaskStageCreate = Pick<TaskStage, 'team_id' | 'section_id' | 'name'> & TaskStagePatch;
+
+/**
+ * TaskSchedule is the timing of a section's ordinary tasks. weights maps a task id to its span, due_at - start_at, in
+ * milliseconds; tasks missing either date have no weight and are listed in missing_dates. first_task_id has the earliest
+ * start date and last_task_id the latest due date ('' when none).
+ */
+export type TaskSchedule = {
+    section_id: string;
+    weights: Record<string, number>;
+    missing_dates: string[];
+    first_task_id: string;
+    last_task_id: string;
+};
+
 export type TasksState = {
     byId: Record<string, Task>;
     sectionsById: Record<string, TaskSection>;
+    stagesById: Record<string, TaskStage>;
 };
 
 /** What the episode endpoint returns; failed lists the template folders and tasks that could not be created, task_ids the seeded tasks. */

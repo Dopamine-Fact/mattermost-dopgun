@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import type {Channel} from '@mattermost/types/channels';
-import type {Task, TaskApprovalAction, TaskCreate, TaskPatch, TaskSectionCreate, TaskSectionPatch} from '@mattermost/types/tasks';
+import type {Task, TaskApprovalAction, TaskCreate, TaskPatch, TaskSectionCreate, TaskSectionPatch, TaskStageCreate, TaskStagePatch} from '@mattermost/types/tasks';
 
 import {TaskTypes} from 'mattermost-redux/action_types';
 import {createChannel, deleteChannel, getChannelAndMyMember} from 'mattermost-redux/actions/channels';
@@ -40,8 +40,8 @@ function run<T>(call: (connectionId: string) => Promise<T>, received?: (data: T)
 
 export function fetchTeamTasks(teamId: string) {
     return run(
-        () => Promise.all([Client4.getTeamTasks(teamId), Client4.getTeamTaskSections(teamId)]),
-        ([tasks, sections]) => ({type: TaskTypes.TEAM_TASKS_RECEIVED, data: {teamId, tasks, sections}}),
+        () => Promise.all([Client4.getTeamTasks(teamId), Client4.getTeamTaskSections(teamId), Client4.getTeamTaskStages(teamId)]),
+        ([tasks, sections, stages]) => ({type: TaskTypes.TEAM_TASKS_RECEIVED, data: {teamId, tasks, sections, stages}}),
     );
 }
 
@@ -90,6 +90,18 @@ export function setTaskSectionVideo(sectionId: string, video: File, onProgress?:
 
 export function deleteTaskSection(sectionId: string) {
     return run((connectionId) => Client4.deleteTaskSection(sectionId, connectionId), () => ({type: TaskTypes.TASK_SECTION_DELETED, data: {id: sectionId}}));
+}
+
+export function createTaskStage(stage: TaskStageCreate) {
+    return run((connectionId) => Client4.createTaskStage(stage, connectionId), (data) => ({type: TaskTypes.TASK_STAGE_RECEIVED, data}));
+}
+
+export function patchTaskStage(stageId: string, patch: TaskStagePatch) {
+    return run((connectionId) => Client4.patchTaskStage(stageId, patch, connectionId), (data) => ({type: TaskTypes.TASK_STAGE_RECEIVED, data}));
+}
+
+export function deleteTaskStage(stageId: string) {
+    return run((connectionId) => Client4.deleteTaskStage(stageId, connectionId), () => ({type: TaskTypes.TASK_STAGE_DELETED, data: {id: stageId}}));
 }
 
 // createLinkedChannel makes a public channel whose revision list holds the video, then runs extra (the episode's canvas);

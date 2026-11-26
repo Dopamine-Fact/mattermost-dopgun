@@ -138,7 +138,7 @@ import type {Session} from '@mattermost/types/sessions';
 import type {CompleteOnboardingRequest} from '@mattermost/types/setup';
 import type {RemoteClusterInfo, SharedChannelRemote} from '@mattermost/types/shared_channels';
 import type {StatusPeriod} from '@mattermost/types/status_periods';
-import type {EpisodeCreated, Task, TaskApprovalAction, TaskComment, TaskCreate, TaskPatch, TaskSection, TaskSectionCreate, TaskSectionPatch, TaskSectionVideo} from '@mattermost/types/tasks';
+import type {EpisodeCreated, Task, TaskApprovalAction, TaskComment, TaskCreate, TaskPatch, TaskSchedule, TaskSection, TaskSectionCreate, TaskSectionPatch, TaskSectionVideo, TaskStage, TaskStageCreate, TaskStagePatch} from '@mattermost/types/tasks';
 import type {
     GetTeamMembersOpts,
     MemberInviteProfile,
@@ -5478,6 +5478,36 @@ export default class Client4 {
     deleteTaskSection = (sectionId: string, connectionId: string) => {
         return this.doFetch<StatusOK>(
             `${this.getBaseRoute()}/task_sections/${sectionId}`,
+            {method: 'delete', headers: {'Connection-Id': connectionId}},
+        );
+    };
+
+    /** weights and first/last tasks of the section's ordinary tasks, computed from their current dates */
+    getTaskSchedule = (sectionId: string) => {
+        return this.doFetch<TaskSchedule>(`${this.getBaseRoute()}/task_sections/${sectionId}/schedule`, {method: 'get'});
+    };
+
+    getTeamTaskStages = (teamId: string) => {
+        return this.doFetch<TaskStage[]>(`${this.getTeamRoute(teamId)}/task_stages`, {method: 'get'});
+    };
+
+    createTaskStage = (stage: TaskStageCreate, connectionId: string) => {
+        return this.doFetch<TaskStage>(
+            `${this.getTeamRoute(stage.team_id)}/task_stages`,
+            {method: 'post', body: JSON.stringify(stage), headers: {'Connection-Id': connectionId}},
+        );
+    };
+
+    patchTaskStage = (stageId: string, patch: TaskStagePatch, connectionId: string) => {
+        return this.doFetch<TaskStage>(
+            `${this.getBaseRoute()}/task_stages/${stageId}`,
+            {method: 'PATCH', body: JSON.stringify(patch), headers: {'Connection-Id': connectionId}},
+        );
+    };
+
+    deleteTaskStage = (stageId: string, connectionId: string) => {
+        return this.doFetch<StatusOK>(
+            `${this.getBaseRoute()}/task_stages/${stageId}`,
             {method: 'delete', headers: {'Connection-Id': connectionId}},
         );
     };

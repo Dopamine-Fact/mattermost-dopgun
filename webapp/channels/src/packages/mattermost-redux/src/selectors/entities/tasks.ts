@@ -3,7 +3,7 @@
 
 import type {Post} from '@mattermost/types/posts';
 import type {GlobalState} from '@mattermost/types/store';
-import type {Task, TaskSection} from '@mattermost/types/tasks';
+import type {Task, TaskSection, TaskStage} from '@mattermost/types/tasks';
 
 import {createSelector} from 'mattermost-redux/selectors/create_selector';
 
@@ -30,6 +30,18 @@ export function makeGetTaskSectionsForTeam(): (state: GlobalState, teamId: strin
         (_state: GlobalState, teamId: string) => teamId,
         (sectionsById, teamId) => Object.values(sectionsById).
             filter((section) => section.team_id === teamId).
+            sort((a, b) => (a.sort_order - b.sort_order) || (a.create_at - b.create_at)),
+    );
+}
+
+// makeGetTaskStagesForSection: the section's stages in order.
+export function makeGetTaskStagesForSection(): (state: GlobalState, sectionId: string) => TaskStage[] {
+    return createSelector(
+        'makeGetTaskStagesForSection',
+        (state: GlobalState) => state.entities.tasks.stagesById,
+        (_state: GlobalState, sectionId: string) => sectionId,
+        (stagesById, sectionId) => Object.values(stagesById).
+            filter((stage) => stage.section_id === sectionId).
             sort((a, b) => (a.sort_order - b.sort_order) || (a.create_at - b.create_at)),
     );
 }

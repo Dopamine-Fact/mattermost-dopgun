@@ -6,7 +6,7 @@ import {FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {Link} from 'react-router-dom';
 
-import {CloseIcon, TrashCanOutlineIcon} from '@mattermost/compass-icons/components';
+import {AlertOutlineIcon, CloseIcon, TrashCanOutlineIcon} from '@mattermost/compass-icons/components';
 import type {Task, TaskPatch, TaskSection} from '@mattermost/types/tasks';
 import type {UserProfile} from '@mattermost/types/users';
 
@@ -29,7 +29,7 @@ import {DepartmentChip, LockLine, StatusSelect, TakeItButton, useApprovalEnabled
 import TaskComments from './task_comments';
 import {lockedBy} from './task_departments';
 import TaskSubtasks from './task_subtasks';
-import {folderPaths, isApprovalLocked, libraryFolderPaths} from './task_utils';
+import {folderPaths, hasWeight, isApprovalLocked, libraryFolderPaths} from './task_utils';
 import type {FolderOption} from './task_utils';
 
 type Props = {
@@ -279,6 +279,15 @@ const TaskDetail = ({task, sections, members, displayName, onClose, canManage, o
                     />
                 </label>
             </div>
+            {!task.video_file_id && !hasWeight(task) && (
+                <p className='TaskDetail__warning'>
+                    <AlertOutlineIcon size={16}/>
+                    <FormattedMessage
+                        id='tasks.detail.noWeight'
+                        defaultMessage='Set a start and a due date: without both, this task has no weight in the plan.'
+                    />
+                </p>
+            )}
 
             <label className='TaskDetail__field'>
                 <FormattedMessage

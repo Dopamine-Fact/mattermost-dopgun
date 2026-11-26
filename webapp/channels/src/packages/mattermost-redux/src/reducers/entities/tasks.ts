@@ -3,7 +3,7 @@
 
 import {combineReducers} from 'redux';
 
-import type {Task, TaskSection, TasksState} from '@mattermost/types/tasks';
+import type {Task, TaskSection, TaskStage, TasksState} from '@mattermost/types/tasks';
 
 import type {MMReduxAction} from 'mattermost-redux/action_types';
 import {TaskTypes, UserTypes} from 'mattermost-redux/action_types';
@@ -97,7 +97,45 @@ function sectionsById(state: TasksState['sectionsById'] = {}, action: MMReduxAct
     }
 }
 
+function stagesById(state: TasksState['stagesById'] = {}, action: MMReduxAction): TasksState['stagesById'] {
+    switch (action.type) {
+    case TaskTypes.TEAM_TASKS_RECEIVED: {
+        const next = withoutTeam(state, action.data.teamId);
+        action.data.stages.forEach((stage: TaskStage) => {
+            next[stage.id] = stage;
+        });
+        return next;
+    }
+    case TaskTypes.TASK_STAGE_RECEIVED: {
+        const stage: TaskStage = action.data;
+        const existing = state[stage.id];
+        if (existing && existing.update_at > stage.update_at) {
+            return state;
+        }
+        return {...state, [stage.id]: stage};
+    }
+    case TaskTypes.TASK_STAGE_DELETED: {
+        if (!state[action.data.id]) {
+            return state;
+        }
+        const next = {...state};
+        delete next[action.data.id];
+        return next;
+    }
+    case TaskTypes.TASK_SECTION_DELETED: {
+        // The server deletes the section's stages with it, without per-stage events.
+        const next = Object.fromEntries(Object.entries(state).filter(([, stage]) => stage.section_id !== action.data.id));
+        return Object.keys(next).length === Object.keys(state).length ? state : next;
+    }
+    case UserTypes.LOGOUT_SUCCESS:
+        return {};
+    default:
+        return state;
+    }
+}
+
 export default combineReducers({
     byId,
     sectionsById,
+    stagesById,
 });

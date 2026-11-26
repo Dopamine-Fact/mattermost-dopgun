@@ -94,6 +94,8 @@ export const enum WebSocketEvents {
     TaskDeleted = 'task_deleted',
     TaskSectionUpserted = 'task_section_upserted',
     TaskSectionDeleted = 'task_section_deleted',
+    TaskStageUpserted = 'task_stage_upserted',
+    TaskStageDeleted = 'task_stage_deleted',
     CanvasUpdated = 'canvas_updated',
     CanvasAwareness = 'canvas_awareness',
     CPAFieldCreated = 'custom_profile_attributes_field_created',

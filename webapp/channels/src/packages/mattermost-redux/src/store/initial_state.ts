@@ -240,6 +240,7 @@ const state: GlobalState = {
         tasks: {
             byId: {},
             sectionsById: {},
+            stagesById: {},
         },
         contentFlagging: {},
         properties: {
