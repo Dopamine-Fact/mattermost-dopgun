@@ -29,8 +29,8 @@ import type {GlobalState} from 'types/store';
 import CanvasFooter from './canvas_footer';
 import CanvasProperties from './canvas_properties';
 import type {PanelAction} from './canvas_properties';
-import CanvasToolbar, {TOOLS, keepFocus} from './canvas_toolbar';
-import type {Tool} from './canvas_toolbar';
+import CanvasToolbar, {FRAME_LABEL, FRAME_PRESETS, TOOLS, keepFocus} from './canvas_toolbar';
+import type {FramePreset, Tool} from './canvas_toolbar';
 import {isImageFile, uploadImages} from './canvas_uploads';
 import {bounds, hitTest, inRect, resizeAll, unionBounds} from './geometry';
 import type {Bounds, Handle, Point, ResizePatch} from './geometry';
@@ -180,6 +180,7 @@ function Board({channelId, readOnly}: Props) {
     const [selected, setSelected] = useState<string[]>([]);
     const [marquee, setMarquee] = useState<Bounds>();
     const [tool, setTool] = useState<Tool>('select');
+    const [framePreset, setFramePreset] = useState<FramePreset>(FRAME_PRESETS[0]);
     const [space, setSpace] = useState(false);
     const [style, setStyle] = useState<ElementStyle>(DEFAULT_STYLE);
 
@@ -303,6 +304,16 @@ function Board({channelId, readOnly}: Props) {
         z: topZ() + 1,
         seed: randomSeed(),
         ...extra,
+    });
+
+    // A frame sits below everything, so what is drawn on it stays visible.
+    const frameProps = (label: FramePreset['label']): Partial<CanvasElement> => ({
+        stroke: '#cccccc',
+        fill: '#ffffff',
+        fillStyle: 'solid',
+        opacity: 100,
+        label: typeof label === 'string' ? label : formatMessage(label),
+        z: (elsRef.current[0]?.z ?? 0) - 1,
     });
     const create = (type: ElementType, at: Point, extra: Partial<CanvasElement> = {}) => {
         const el = newElement(type, at, extra);
@@ -641,7 +652,12 @@ function Board({channelId, readOnly}: Props) {
         } else if (g.id) {
             updateElements(doc, [g.id], {w: dx, h: dy, points: g.type === 'line' || g.type === 'arrow' ? [0, 0, dx, dy] : undefined});
         } else if (dx || dy) {
-            g.id = create(g.type, g.start, {w: dx, h: dy, ...(g.type === 'line' || g.type === 'arrow' ? {points: [0, 0, dx, dy]} : {})});
+            g.id = create(g.type, g.start, {
+                w: dx,
+                h: dy,
+                ...(g.type === 'line' || g.type === 'arrow' ? {points: [0, 0, dx, dy]} : {}),
+                ...(g.type === 'frame' ? frameProps(FRAME_LABEL) : {}),
+            });
         }
     };
 
@@ -669,6 +685,9 @@ function Board({channelId, readOnly}: Props) {
             flushPen(g);
         } else if (g.kind === 'resize') {
             flushResize(g);
+        } else if (g.kind === 'draw' && !g.id && g.type === 'frame' && framePreset.w) {
+            const {w, h} = framePreset;
+            g.id = create('frame', {x: g.start.x - (w / 2), y: g.start.y - (h / 2)}, {...frameProps(framePreset.label), w, h});
         } else if (g.kind === 'move' && g.moved && renderer) {
             // Dropping an image on a card (or on the empty board) re-parents it, in the same undo step as the move.
             updateInBatches(doc, membershipPatches(elsRef.current, selRef.current, renderer.toWorld(e.clientX, e.clientY), topZ()));
@@ -1108,6 +1127,8 @@ function Board({channelId, readOnly}: Props) {
                 tool={activeTool}
                 readOnly={readOnly}
                 onSelect={setTool}
+                framePreset={framePreset}
+                onFramePreset={setFramePreset}
             />
             <CanvasFooter
                 zoom={renderer?.getZoom() ?? 1}

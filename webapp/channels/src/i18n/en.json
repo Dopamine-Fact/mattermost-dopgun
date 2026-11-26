@@ -19587,6 +19587,34 @@
     "defaultMessage": "Create canvas channel",
     "description": "Title of the dialog that creates a canvas (whiteboard) channel."
   },
+  "canvas.frame.a4": {
+    "defaultMessage": "A4",
+    "description": "Frame size option in the canvas size picker: an A4 paper sheet."
+  },
+  "canvas.frame.custom": {
+    "defaultMessage": "Custom",
+    "description": "Frame size option in the canvas size picker: drag on the board to draw a frame of any size."
+  },
+  "canvas.frame.desktop": {
+    "defaultMessage": "Desktop",
+    "description": "Frame size option in the canvas size picker: a desktop screen."
+  },
+  "canvas.frame.letter": {
+    "defaultMessage": "Letter",
+    "description": "Frame size option in the canvas size picker: a US Letter paper sheet."
+  },
+  "canvas.frame.mobile": {
+    "defaultMessage": "Mobile",
+    "description": "Frame size option in the canvas size picker: a phone screen."
+  },
+  "canvas.frame.sizes": {
+    "defaultMessage": "Frame size",
+    "description": "Accessible label of the size picker shown under the canvas toolbar while the Frame tool is active."
+  },
+  "canvas.frame.tablet": {
+    "defaultMessage": "Tablet",
+    "description": "Frame size option in the canvas size picker: a tablet screen."
+  },
   "canvas.import.dismiss": {
     "defaultMessage": "Dismiss",
     "description": "Tooltip and accessible name of the button that closes the skipped or failed image message in a canvas channel."
@@ -19906,6 +19934,10 @@
   "canvas.tool.eraser": {
     "defaultMessage": "Eraser",
     "description": "Tooltip and accessible name of a tool button in the canvas channel toolbar; picks the eraser, which deletes elements it touches."
+  },
+  "canvas.tool.frame": {
+    "defaultMessage": "Frame",
+    "description": "Canvas toolbar tool that draws a frame: a plain sheet over the grid that other elements sit on."
   },
   "canvas.tool.hand": {
     "defaultMessage": "Hand (pan)",

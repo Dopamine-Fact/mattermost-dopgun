@@ -5,7 +5,7 @@ import * as Y from 'yjs';
 
 import {generateId} from 'utils/utils';
 
-export type ElementType = 'pen' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'text' | 'scene' | 'image';
+export type ElementType = 'pen' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'text' | 'scene' | 'image' | 'frame';
 
 export type Arrowhead = 'none' | 'arrow' | 'triangle' | 'bar';
 
@@ -51,7 +51,7 @@ export type CanvasElement = ElementStyle & {
     updatedBy?: string;
     updatedAt?: number;
 
-    /** scene cards */
+    /** scene cards and frames */
     label?: string;
     done?: boolean;
     ownerId?: string;
@@ -108,7 +108,7 @@ export const MAX_TEXT_LENGTH = 20000;
 /** Longest scene label or file name an element may hold. */
 export const MAX_LABEL_LENGTH = 200;
 
-const TYPES = new Set<unknown>(['pen', 'rect', 'ellipse', 'line', 'arrow', 'text', 'scene', 'image']);
+const TYPES = new Set<unknown>(['pen', 'rect', 'ellipse', 'line', 'arrow', 'text', 'scene', 'image', 'frame']);
 const finite = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
 export const isId = (v: unknown) => typeof v === 'string' && (/^[a-z0-9]{26}$/).test(v);
 

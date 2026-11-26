@@ -11,6 +11,9 @@ export type AlignMode = 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom
 export const MIN_ZOOM = 0.1;
 export const MAX_ZOOM = 30;
 
+/** Height of the title strip drawn above a frame. */
+export const FRAME_TITLE = 24;
+
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
 export function bounds(el: Pick<CanvasElement, 'x' | 'y' | 'w' | 'h'>): Bounds {
@@ -73,6 +76,8 @@ function hits(el: CanvasElement, p: Point, tolerance: number) {
         return inBox(p, b, tolerance) && (filled || !inBox(p, b, -tolerance));
     case 'ellipse':
         return inEllipse(p, b, tolerance) && (filled || !inEllipse(p, b, -tolerance));
+    case 'frame': // by its edge or title only, so a press inside starts a marquee over what sits on it
+        return (inBox(p, b, tolerance) && !inBox(p, b, -tolerance)) || inBox(p, {x: b.x, y: b.y - FRAME_TITLE, w: b.w, h: FRAME_TITLE}, 0);
     default:
         return inBox(p, b, tolerance);
     }

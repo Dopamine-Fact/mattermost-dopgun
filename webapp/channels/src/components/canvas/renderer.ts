@@ -8,7 +8,7 @@ import 'pixi.js/unsafe-eval'; // the server's CSP (script-src 'self') forbids ev
 import rough from 'roughjs';
 import type {Drawable, Op, Options} from 'roughjs/bin/core';
 
-import {bounds, dashPolyline, fitViewport, MAX_ZOOM, MIN_ZOOM, unionBounds} from './geometry';
+import {bounds, dashPolyline, fitViewport, FRAME_TITLE, MAX_ZOOM, MIN_ZOOM, unionBounds} from './geometry';
 import type {Bounds} from './geometry';
 import {ImageTextures, loadTexture, textureKey, textureSize} from './image_textures';
 import {FONT_FAMILIES, MAX_LABEL_LENGTH, MAX_TEXT_LENGTH} from './model';
@@ -27,6 +27,9 @@ const PLACEHOLDER_TINT = 0xe5e5e5;
 const HAIRLINE = '#d9d9d9';
 const SCENE_FONT = 20;
 const FINAL_INSET = SCENE_FRAME + 4;
+const GRID = 20; // world units between grid lines at 100%
+const GRID_MIN_PX = 12;
+const GRID_COLOR = '#ebebeb';
 const generator = rough.generator();
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
@@ -219,11 +222,28 @@ function buildScene(el: DrawElement, stroke: string): Container {
     return root;
 }
 
+/** A plain sheet over the grid with its name above it. */
+function buildFrame(el: DrawElement, stroke: string): Container {
+    const b = bounds({x: 0, y: 0, w: num(el.w), h: num(el.h)});
+    const g = new Graphics();
+    g.rect(b.x, b.y, b.w, b.h).fill(safeColor(el.fill) ?? '#ffffff').stroke({width: 1, color: stroke});
+    const title = new Text({text: String(el.label ?? '').slice(0, MAX_LABEL_LENGTH), style: {fontFamily: FONT_FAMILIES.normal, fontSize: 14, fill: '#6b6b6b'}});
+    title.anchor.set(0, 1);
+    title.position.set(b.x, b.y - ((FRAME_TITLE - 14) / 2));
+    fitText(title, b.w);
+    const root = new Container();
+    root.addChild(g, title);
+    return root;
+}
+
 /** Builds the display object for one element, in coordinates relative to (el.x, el.y). */
 export function build(el: DrawElement): Container {
     const stroke = safeColor(el.stroke) ?? '#000000';
     if (el.type === 'scene') {
         return buildScene(el, stroke);
+    }
+    if (el.type === 'frame') {
+        return buildFrame(el, stroke);
     }
     if (el.type === 'image') {
         const sprite = new Sprite(Texture.WHITE); // the texture pass fills in the image
@@ -312,6 +332,7 @@ export class CanvasRenderer {
     onViewportChange?: () => void;
 
     private viewport: Viewport;
+    private grid = new Graphics();
     private overlay = new Graphics();
     private cursorLayer = new Container();
     private items = new Map<string, Item>();
@@ -356,9 +377,10 @@ export class CanvasRenderer {
         this.viewport.on('moved', this.changed);
         this.viewport.on('zoomed', this.changed);
         this.viewport.on('zoomed-end', this.updateTextResolution);
-        app.stage.addChild(this.viewport, this.overlay, this.cursorLayer);
+        app.stage.addChild(this.grid, this.viewport, this.overlay, this.cursorLayer);
         app.renderer.on('resize', this.handleResize);
         this.updateTextResolution();
+        this.drawGrid();
     }
 
     destroy() {
@@ -499,6 +521,7 @@ export class CanvasRenderer {
     };
 
     private changed = () => {
+        this.drawGrid();
         this.placeTextures();
         this.drawOverlay();
         this.placeCursors();
@@ -556,6 +579,24 @@ export class CanvasRenderer {
             fitSprite(item.sprite, texture, slot, el.type === 'scene');
         }
         this.textures.retain(used);
+    }
+
+    // Drawn in screen space behind the viewport; zoomed out, every other line is dropped until they are GRID_MIN_PX apart.
+    private drawGrid() {
+        let step = GRID * this.getZoom();
+        while (step < GRID_MIN_PX) {
+            step *= 2;
+        }
+        const origin = this.viewport.toScreen(0, 0);
+        const {width, height} = this.app.screen;
+        const g = this.grid.clear();
+        for (let x = ((origin.x % step) + step) % step; x < width; x += step) {
+            g.moveTo(Math.round(x) + 0.5, 0).lineTo(Math.round(x) + 0.5, height);
+        }
+        for (let y = ((origin.y % step) + step) % step; y < height; y += step) {
+            g.moveTo(0, Math.round(y) + 0.5).lineTo(width, Math.round(y) + 0.5);
+        }
+        g.stroke({width: 1, color: GRID_COLOR});
     }
 
     private placeCursors() {

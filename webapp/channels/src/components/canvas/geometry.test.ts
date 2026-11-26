@@ -24,6 +24,13 @@ describe('canvas geometry', () => {
         expect(unionBounds([el('a'), el('b', {x: 150, y: -10, w: 10, h: 10})])).toEqual({x: 0, y: -10, w: 160, h: 110});
     });
 
+    test('a frame is hit by its edge and title, not its inside', () => {
+        const frame = [el('f', {type: 'frame', fill: '#ffffff'})];
+        expect(hitTest(frame, {x: 50, y: 50}, 2)).toBeUndefined();
+        expect(hitTest(frame, {x: 0, y: 50}, 2)).toBe('f');
+        expect(hitTest(frame, {x: 50, y: -10}, 2)).toBe('f');
+    });
+
     test('hitTest picks the topmost of two overlapping rects', () => {
         const els = [el('top', {z: 1, fill: '#ff0000'}), el('bottom', {z: 0, fill: '#ff0000'})];
         expect(hitTest(els, {x: 50, y: 50}, 2)).toBe('top');

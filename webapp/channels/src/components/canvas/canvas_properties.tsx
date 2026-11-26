@@ -347,7 +347,7 @@ export default function CanvasProperties({types, values, onChange, onCommit, onA
                     onCommit={onCommit}
                 />
             )}
-            {has(...SHAPES) && (
+            {has(...SHAPES, 'frame') && (
                 <Colors
                     label={messages.background}
                     colors={FILL_COLORS}

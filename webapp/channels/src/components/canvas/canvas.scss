@@ -21,7 +21,8 @@
     &--rect,
     &--ellipse,
     &--line,
-    &--arrow {
+    &--arrow,
+    &--frame {
         .CanvasBoard__surface {
             cursor: crosshair;
         }
@@ -63,6 +64,34 @@
     top: 12px;
     left: 50%;
     transform: translateX(-50%);
+}
+
+.CanvasBoard__frames {
+    position: absolute;
+    z-index: 2;
+    top: 60px;
+    left: 50%;
+    display: grid;
+    padding: 8px;
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+    border-radius: 8px;
+    background: var(--center-channel-bg);
+    box-shadow: var(--elevation-2);
+    gap: 4px;
+    grid-template-columns: repeat(3, 1fr);
+    transform: translateX(-50%);
+
+    .CanvasBoard__propsButton {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 6px 8px;
+    }
+}
+
+.CanvasBoard__frameSize {
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    font-size: 10px;
 }
 
 .CanvasBoard__toolSlot {

@@ -127,13 +127,39 @@ describe('CanvasBoard', () => {
         jest.mocked(getMissingProfilesByIds).mockReturnValue({type: 'MOCK_NOOP'} as never);
     });
 
-    test('toolbar renders all 9 tools', async () => {
+    test('toolbar renders all 10 tools', async () => {
         await renderBoard();
         const toolbar = screen.getByRole('toolbar');
-        expect(toolbar.querySelectorAll('button')).toHaveLength(9);
-        for (const name of ['Select', 'Hand (pan)', 'Pen', 'Rectangle', 'Ellipse', 'Line', 'Arrow', 'Text', 'Eraser']) {
+        expect(toolbar.querySelectorAll('button')).toHaveLength(10);
+        for (const name of ['Select', 'Hand (pan)', 'Pen', 'Rectangle', 'Ellipse', 'Line', 'Arrow', 'Text', 'Eraser', 'Frame']) {
             expect(screen.getByRole('button', {name})).toBeInTheDocument();
         }
+    });
+
+    test('a preset frame is placed centred on a click, below everything else', async () => {
+        const {root, surface, doc, els} = await renderBoard();
+        addElement(doc, {...DEFAULT_STYLE, id: 'r', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 5, seed: 1});
+        fireEvent.keyDown(root, {key: 'f'});
+        fireEvent.click(within(screen.getByRole('group', {name: 'Frame size'})).getByRole('button', {name: /16:9/}));
+        fireEvent.pointerDown(surface, {button: 0, clientX: 1000, clientY: 1000});
+        fireEvent.pointerUp(surface, {clientX: 1000, clientY: 1000});
+
+        const frame = els().find((el) => el.type === 'frame')!;
+        expect(pick(frame)).toEqual({x: 360, y: 640, w: 1280, h: 720});
+        expect(frame).toMatchObject({label: '16:9', fill: '#ffffff', z: 4});
+        expect(screen.getByRole('button', {name: 'Select'})).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    test('a custom frame is drawn by dragging; a click alone adds nothing', async () => {
+        const {root, surface, els} = await renderBoard();
+        fireEvent.keyDown(root, {key: 'f'});
+        fireEvent.pointerDown(surface, {button: 0, clientX: 30, clientY: 30});
+        fireEvent.pointerUp(surface, {clientX: 30, clientY: 30});
+        expect(els()).toHaveLength(0);
+
+        drag(surface, [10, 10], [210, 110]);
+        expect(els()).toHaveLength(1);
+        expect(els()[0]).toMatchObject({type: 'frame', label: 'Frame', x: 10, y: 10, w: 200, h: 100});
     });
 
     test('R then drag adds a rect; Delete removes it; Ctrl+Z restores it', async () => {
