@@ -391,7 +391,18 @@ export class CanvasRenderer {
         this.textures.destroy(); // last: destroying sprites never destroys their (shared) textures
     }
 
+    /** Pass the same els array again to update only the selection and marquee. */
     draw(els: DrawElement[], selected: string[], marquee?: Bounds) {
+        if (els !== this.els) {
+            this.drawElements(els);
+        }
+        const sel = new Set(selected);
+        this.selected = els.filter((el) => sel.has(el.id));
+        this.marquee = marquee;
+        this.drawOverlay();
+    }
+
+    private drawElements(els: DrawElement[]) {
         const seen = new Set<string>();
         els.forEach((el, i) => {
             seen.add(el.id);
@@ -425,10 +436,6 @@ export class CanvasRenderer {
         }
         this.els = els;
         this.placeTextures();
-        const sel = new Set(selected);
-        this.selected = els.filter((el) => sel.has(el.id));
-        this.marquee = marquee;
-        this.drawOverlay();
     }
 
     drawRemoteSelections(selections: RemoteSelection[]) {

@@ -162,6 +162,18 @@ describe('CanvasBoard', () => {
         expect(els()[0]).toMatchObject({type: 'frame', label: 'Frame', x: 10, y: 10, w: 200, h: 100});
     });
 
+    test('a box-selected group is dragged from the empty space between its elements', async () => {
+        const {root, surface, doc, els} = await renderBoard();
+        addElement(doc, {...DEFAULT_STYLE, id: 'a', type: 'rect', x: 0, y: 0, w: 20, h: 20, z: 1, seed: 1});
+        addElement(doc, {...DEFAULT_STYLE, id: 'b', type: 'rect', x: 100, y: 0, w: 20, h: 20, z: 2, seed: 1});
+        fireEvent.keyDown(root, {key: 'v'});
+        drag(surface, [-10, -10], [130, 30]);
+        drag(surface, [60, 10], [160, 60]);
+
+        expect(els().map(pick)).toEqual([{x: 100, y: 50, w: 20, h: 20}, {x: 200, y: 50, w: 20, h: 20}]);
+        expect(mockRenderer.draw.mock.calls.at(-1)![1]).toEqual(['a', 'b']);
+    });
+
     test('R then drag adds a rect; Delete removes it; Ctrl+Z restores it', async () => {
         const {root, surface, els} = await renderBoard();
         fireEvent.keyDown(root, {key: 'r'});

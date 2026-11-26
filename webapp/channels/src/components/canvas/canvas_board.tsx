@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useEffect, useLayoutEffect, useRef, useState} from 'react';
+import React, {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {defineMessages, useIntl} from 'react-intl';
 import {useDispatch, useSelector, useStore} from 'react-redux';
 
@@ -468,12 +468,18 @@ function Board({channelId, readOnly}: Props) {
         syncRef.current?.awareness.setLocalStateField('user', {id: userId, name: me?.username ?? '', color: colorFor(userId)});
     }, [userId, me?.username]);
 
+    // A stroke being drawn or a resize in progress shows from local state; the doc only gets it every FLUSH_MS.
+    // Memoised so a selection or marquee change hands the renderer the same list, which it then does not redraw.
+    const hiddenId = editing?.field ? undefined : editing?.id;
+    const drawn = useMemo(() => {
+        const hidden = new Set([hiddenId, ...preview.map((el) => el.id)]);
+        return forDrawing([...els.filter((el) => !hidden.has(el.id)), ...preview], users);
+    }, [els, hiddenId, preview, users]);
+
     useEffect(() => {
-        // A stroke being drawn or a resize in progress shows from local state; the doc only gets it every FLUSH_MS.
-        const hidden = new Set([editing?.field ? undefined : editing?.id, ...preview.map((el) => el.id)]);
-        renderer?.draw(forDrawing([...els.filter((el) => !hidden.has(el.id)), ...preview], users), selected, marquee);
+        renderer?.draw(drawn, selected, marquee);
         drawPeersRef.current();
-    }, [renderer, els, selected, marquee, editing, preview, users]);
+    }, [renderer, drawn, selected, marquee]);
 
     useEffect(() => {
         renderer?.setPanMode(pan);
@@ -564,13 +570,16 @@ function Board({channelId, readOnly}: Props) {
             }
             const id = hitTest(all, p, tol);
             const hit = all.find((el) => el.id === id);
+
+            // A press on empty space inside the selection's box (between its elements, inside a frame) drags the selection.
+            const inSelection = !id && !e.shiftKey && sel.length > 0 && contains(unionBounds(pick(sel)), p);
             if (hit?.type === 'scene' && contains(sceneParts(bounds(hit)).tick, p)) {
                 discrete(() => updateElements(doc, [hit.id], {done: !hit.done}));
                 select([hit.id]);
             } else if (id && e.shiftKey) {
                 select(sel.includes(id) ? sel.filter((s) => s !== id) : [...sel, id]);
-            } else if (id) {
-                const ids = sel.includes(id) ? sel : [id];
+            } else if (id || inSelection) {
+                const ids = id && !sel.includes(id) ? [id] : sel;
                 select(ids);
                 beginGesture({kind: 'move', pointerId, start: p, screen: {x: e.clientX, y: e.clientY}, orig: pick(withChildren(all, ids))});
             } else {
@@ -648,7 +657,10 @@ function Board({channelId, readOnly}: Props) {
         } else if (g.kind === 'marquee') {
             const rect = {x: g.start.x, y: g.start.y, w: dx, h: dy};
             setMarquee(rect);
-            select([...new Set([...g.base, ...inRect(elsRef.current, rect)])]);
+            const next = [...new Set([...g.base, ...inRect(elsRef.current, rect)])];
+            if (next.length !== selRef.current.length || next.some((id, i) => id !== selRef.current[i])) {
+                select(next);
+            }
         } else if (g.id) {
             updateElements(doc, [g.id], {w: dx, h: dy, points: g.type === 'line' || g.type === 'arrow' ? [0, 0, dx, dy] : undefined});
         } else if (dx || dy) {
